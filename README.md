@@ -15,20 +15,21 @@ practice questions.
 |---------|-----------|
 | **CCA-F · Domain 1 — Agentic Architecture** (curriculum hub) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/index.html) |
 | CCA-F · Domain 1 — visual overview & flashcards | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/overview.html) |
+| 🧪 **CCA-F · Domain 1 — Mock Exam Bank** (7 sets + full mock, 118 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
 | CCA-F full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/CCA-F_Study_Guide.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
 
 ## 📊 CCA-F exam blueprint — domains & weight
 
-| # | Domain | Weight | Key focus areas |
-|---|--------|:------:|-----------------|
-| **D1** | Agentic Architecture & Orchestration | **27%** | Agentic loops, `stop_reason`, multi-agent patterns, orchestration |
-| **D2** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents |
-| **D3** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples |
-| **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling |
-| **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability |
-| | **Total** | **100%** | |
+| # | Domain | Weight | Key focus areas | Mock exam |
+|---|--------|:------:|-----------------|-----------|
+| **D1** | Agentic Architecture & Orchestration | **27%** | Agentic loops, `stop_reason`, multi-agent patterns, orchestration | [Take quiz ›](CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
+| **D2** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents | _coming soon_ |
+| **D3** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples | _coming soon_ |
+| **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | _coming soon_ |
+| **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability | _coming soon_ |
+| | **Total** | **100%** | | |
 
 > **Key insight:** Domain 1 (Agentic Architecture) is the largest and hardest slice at 27% — master it first and you've effectively passed a quarter of the exam.
 
