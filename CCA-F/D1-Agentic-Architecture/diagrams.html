@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCA-F Domain 1 — Agentic Architecture · Visual Diagrams</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6; color: #333; background: #f5f5f5;
+    }
+    header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff; padding: 40px 20px; text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,.1);
+    }
+    header h1 { font-size: 2.2em; margin-bottom: 8px; }
+    header p { opacity: .95; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .card {
+        background: #fff; border-radius: 10px; padding: 26px 30px; margin: 24px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .card h2 {
+        color: #667eea; font-size: 1.4em; margin-bottom: 6px;
+        border-bottom: 3px solid #667eea; padding-bottom: 8px;
+    }
+    .note {
+        background: #d1ecf1; border-left: 4px solid #17a2b8; color: #0c5460;
+        padding: 12px 15px; border-radius: 4px; margin-top: 16px; font-size: .96em;
+    }
+    .warn {
+        background: #fff3cd; border-left: 4px solid #ffc107; color: #856404;
+        padding: 12px 15px; border-radius: 4px; margin-top: 16px; font-size: .96em;
+    }
+    .mermaid { text-align: center; margin: 18px 0 4px; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px;
+           font-family: 'Courier New', monospace; font-size: .9em; }
+    .toc { background:#fff; border-radius:10px; padding:18px 26px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .toc a { color:#764ba2; text-decoration:none; display:inline-block; margin:4px 14px 4px 0; }
+    .toc a:hover { text-decoration:underline; }
+    footer { text-align:center; padding:24px; color:#666; }
+</style>
+</head>
+<body>
+<header>
+    <h1>Domain 1 — Agentic Architecture &amp; Orchestration</h1>
+    <p>Visual diagrams (27% of the CCA-F exam) · rendered with Mermaid.js</p>
+</header>
+
+<div class="wrap">
+
+    <div class="toc">
+        <strong>Jump to:</strong>
+        <a href="#loop">The Agentic Loop</a>
+        <a href="#stop">stop_reason router</a>
+        <a href="#tool">Tool-result contract</a>
+        <a href="#pick">Single vs multi-agent</a>
+        <a href="#orch">Orchestration patterns</a>
+        <a href="#fail">Failure modes</a>
+        <a href="#knobs">Model · thinking · effort</a>
+    </div>
+
+    <div class="card" id="loop">
+        <h2>🔁 The Agentic Loop</h2>
+        <pre class="mermaid">
+flowchart TD
+    U([User request]) --> B["Build messages array<br/>system + FULL history<br/><i>API is stateless — resend every call</i>"]
+    B --> C["client.messages.create(model, tools, messages)"]
+    C --> D{"response.stop_reason ?"}
+    D -->|"end_turn ✅"| E([Return text to user · DONE])
+    D -->|"tool_use 🛠"| F["Append WHOLE response.content<br/>then run tool → tool_result"]
+    F --> B
+    D -->|"pause_turn ⏸"| G["Re-send assistant turn as-is<br/>server resumes · no Continue msg"]
+    G --> C
+    D -->|"max_tokens ✂"| H["Output truncated<br/>raise max_tokens / stream / continue"]
+    H --> B
+    D -->|"refusal 🚫"| I([Surface the decline<br/>don't retry same prompt])
+    classDef done fill:#d4edda,stroke:#28a745,color:#155724;
+    classDef warn fill:#fff3cd,stroke:#ffc107,color:#856404;
+    classDef stop fill:#f8d7da,stroke:#dc3545,color:#721c24;
+    class E done;
+    class H,G warn;
+    class I stop;
+        </pre>
+        <div class="note">🧠 The two things people forget: the API is <b>stateless</b> (you resend the
+        full history every call), and you must append the <b>whole</b> <code>response.content</code>
+        (with its <code>tool_use</code> block), not just the <code>.text</code>.</div>
+    </div>
+
+    <div class="card" id="stop">
+        <h2>🚦 stop_reason — router + loop control</h2>
+        <pre class="mermaid">
+flowchart LR
+    S{{stop_reason}} --> ET["end_turn ✅<br/>finished naturally"]
+    S --> TU["tool_use 🛠<br/>wants a tool"]
+    S --> MT["max_tokens ✂<br/>OUTPUT truncated"]
+    S --> SS["stop_sequence 🛑<br/>hit your stop seq"]
+    S --> PT["pause_turn ⏸<br/>server-tool paused"]
+    S --> RF["refusal 🚫<br/>safety decline"]
+    ET --> X([■ exit loop])
+    SS --> X
+    RF --> X
+    TU --> L([↻ keep looping])
+    MT --> L
+    PT --> L
+    classDef exit fill:#f8d7da,stroke:#dc3545,color:#721c24;
+    classDef loop fill:#d1ecf1,stroke:#17a2b8,color:#0c5460;
+    class X exit;
+    class L loop;
+        </pre>
+        <div class="warn">⚠️ Six values total — the "4-value" list in most guides is <b>incomplete</b>.
+        <code>max_tokens</code> means the <b>output</b> was cut off, <b>not</b> "conversation too long."</div>
+    </div>
+
+    <div class="card" id="tool">
+        <h2>🧩 The tool-result contract (why you get a 400)</h2>
+        <pre class="mermaid">
+sequenceDiagram
+    participant H as Your harness
+    participant C as Claude (Messages API)
+    H->>C: user turn — weather in Paris?
+    C-->>H: assistant turn — tool_use (id = toolu_A)
+    Note over H: run get_weather(Paris) → 18C sunny
+    H->>C: user turn — tool_result (tool_use_id = toolu_A) ✅ ids match
+    C-->>H: assistant turn — It's 18C and sunny. (end_turn)
+    Note over H,C: Rules: results in a USER turn · ids MUST match · roles alternate<br/>Break any → HTTP 400. Tool errored? add is_error = true
+        </pre>
+    </div>
+
+    <div class="card" id="pick">
+        <h2>🤖 vs 🤖🤖 — single or multi-agent?</h2>
+        <pre class="mermaid">
+flowchart TD
+    Q(["What is the task?"]) --> P{"Independent<br/>parallel sub-tasks?"}
+    P -->|Yes| M["🤖🤖 Multi-agent<br/>parallelise to cut wall-clock"]
+    P -->|No| CL{"Cost / latency<br/>sensitive?"}
+    CL -->|Yes| S1["🤖 Single agent + tools<br/>simplest tier wins"]
+    CL -->|No| ST{"5+ steps OR<br/>distinct specialised roles?"}
+    ST -->|Yes| M
+    ST -->|No| S2["🤖 Single agent + tools<br/>don't over-engineer"]
+    classDef single fill:#d4edda,stroke:#28a745,color:#155724;
+    classDef multi fill:#e2d4f0,stroke:#764ba2,color:#3d1a5b;
+    class S1,S2 single;
+    class M multi;
+        </pre>
+        <div class="note">Golden rule: <b>pick the simplest tier that works.</b> The exam punishes over-engineering.</div>
+    </div>
+
+    <div class="card" id="orch">
+        <h2>🕸️ Orchestration patterns</h2>
+        <pre class="mermaid">
+flowchart TD
+    subgraph HS["Hub & Spoke — start here"]
+        A1["🤖 agent"] --> T1["🛠 tool"]
+        A1 --> T2["🛠 tool"]
+        A1 --> T3["🛠 tool"]
+    end
+    subgraph CO["Coordinator / Sub-agent"]
+        K["🧭 coordinator"] --> R1["🤖 refund"]
+        K --> R2["🤖 technical"]
+        K --> R3["🤖 billing"]
+        R1 --> MG(["merge → response"])
+        R2 --> MG
+        R3 --> MG
+    end
+    subgraph SP["Sequential pipeline"]
+        P1["research"] --> P2["outline"] --> P3["draft"] --> P4["edit"]
+    end
+        </pre>
+        <div class="note">🔑 Sub-agents are <b>context-isolated</b> — they don't see the coordinator's history.
+        Pass what they need <b>explicitly</b>.</div>
+    </div>
+
+    <div class="card" id="fail">
+        <h2>💥 Failure modes → fixes</h2>
+        <pre class="mermaid">
+flowchart LR
+    F1["💣 Cascade<br/>a1 ✗ → a2 ✗ → a3 ✗"] --> S1["🔌 Circuit breaker"]
+    F2["🕳 Lost state<br/>sub-agent has no context"] --> S2["📨 Pass state explicitly"]
+    F3["⏳ Timeout chain<br/>A→B→C latency adds up"] --> S3["⚡ Parallelise independents"]
+    F4["✂ Truncation<br/>stop_reason = max_tokens"] --> S4["⬆ Raise cap / stream"]
+    F5["🌩 Transient<br/>429 / 500 / 529"] --> S5["↩ Retry w/ backoff (SDK auto)"]
+    classDef fail fill:#f8d7da,stroke:#dc3545,color:#721c24;
+    classDef fix fill:#d4edda,stroke:#28a745,color:#155724;
+    class F1,F2,F3,F4,F5 fail;
+    class S1,S2,S3,S4,S5 fix;
+        </pre>
+        <div class="note">Recovery ladder: <b>retry</b> (transient) → <b>fallback</b> (alt / skip) → <b>escalate</b> (human).</div>
+    </div>
+
+    <div class="card" id="knobs">
+        <h2>🎛️ The knobs (model · thinking · effort)</h2>
+        <pre class="mermaid">
+flowchart LR
+    subgraph MODEL
+        O["claude-opus-4-8<br/>default · agentic"]
+        SN["claude-sonnet-4-6<br/>speed / volume"]
+        HA["claude-haiku-4-5<br/>cheap · fast · sub-tasks"]
+    end
+    subgraph THINKING
+        TH["type: adaptive<br/>Claude picks depth &amp;<br/>interleaves automatically<br/><i>budget_tokens is GONE</i>"]
+    end
+    subgraph EFFORT
+        EF["low ─ medium ─ high ─ max<br/>cheaper ◀──▶ more thorough"]
+    end
+    MODEL --> THINKING --> EFFORT
+        </pre>
+        <div class="warn">Big <code>max_tokens</code> (≳16K)? → <b>stream</b> to avoid HTTP timeouts.</div>
+    </div>
+
+</div>
+
+<footer>CCA-F Study Material · Domain 1 · Diagrams render client-side via Mermaid.js</footer>
+
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
