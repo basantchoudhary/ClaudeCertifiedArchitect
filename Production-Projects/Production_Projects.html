@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Projects Roadmap: CCA-F &amp; CCAR-P</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin: 5px 0;
+        }
+
+        .sidebar a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.95em;
+            display: block;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar a:hover {
+            background-color: #f0f0ff;
+            padding-left: 15px;
+        }
+
+        .sidebar .sub-link {
+            padding-left: 25px;
+            font-size: 0.9em;
+        }
+
+        .main-content {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            font-size: 1.8em;
+        }
+
+        h3 {
+            color: #764ba2;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        h4 {
+            color: #666;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .project-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .project-card h3 {
+            margin-top: 0;
+        }
+
+        .project-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .project-header div {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+
+        .project-header strong {
+            color: #667eea;
+        }
+
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #155724;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #856404;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            color: #0c5460;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+
+        .checklist {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .checklist label {
+            display: block;
+            margin: 8px 0;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .checklist input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline-item {
+            margin-bottom: 30px;
+            padding-left: 40px;
+            position: relative;
+        }
+
+        .timeline-item:before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 5px;
+            width: 16px;
+            height: 16px;
+            background: #667eea;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+
+        .timeline-item:after {
+            content: '';
+            position: absolute;
+            left: 19px;
+            top: 21px;
+            width: 2px;
+            height: 30px;
+            background: #ddd;
+        }
+
+        .timeline-item:last-child:after {
+            display: none;
+        }
+
+        .domain-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin: 3px 3px 3px 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            background: #f5f5f5;
+            margin-top: 40px;
+        }
+
+        @media print {
+            .sidebar { display: none; }
+            body { background: white; }
+            .main-content { box-shadow: none; }
+            h2 { page-break-before: always; }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: relative;
+                top: 0;
+            }
+
+            .project-header {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Production Projects Roadmap</h1>
+        <p>Build Real Systems While Preparing for CCA-F &amp; CCAR-P Certifications</p>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <h3>&#128218; Projects</h3>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#timeline">Timeline &amp; Summary</a></li>
+                <li><a href="#project1">Project 1: Chatbot</a></li>
+                <li><a href="#project2">Project 2: Support Agent</a></li>
+                <li><a href="#project3">Project 3: RAG System</a></li>
+                <li><a href="#project4">Project 4: Multi-Agent</a></li>
+                <li><a href="#project5">Project 5: MCP Server</a></li>
+                <li><a href="#project6">Project 6: Claude Code</a></li>
+                <li><a href="#project7">Project 7: Enterprise RAG</a></li>
+                <li><a href="#project8">Project 8: Security</a></li>
+                <li><a href="#implementation">Implementation Tips</a></li>
+                <li><a href="#next">Next Steps</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <section id="overview">
+                <h2>Building Real Systems: The Bridge Strategy</h2>
+
+                <p>Instead of "study then build," you'll <strong>study + build simultaneously</strong>. Each project teaches specific exam domains through real constraints (latency, cost, compliance).</p>
+
+                <div class="info-box">
+                    <strong>Timeline:</strong> 6 months (5&ndash;6 weeks for CCA-F + 6 weeks for CCAR-P)<br>
+                    <strong>Total Projects:</strong> 8 real, deployable systems<br>
+                    <strong>Hours:</strong> 100&ndash;120 for CCA-F prep + 165&ndash;210 for CCAR-P prep<br>
+                    <strong>Portfolio Value:</strong> 8 production systems + 2 Anthropic certifications
+                </div>
+
+                <h3>Why This Approach Works</h3>
+                <ul>
+                    <li><strong>Real learning:</strong> You understand architecture through building, not memorizing</li>
+                    <li><strong>Exam relevance:</strong> You reference your own systems in exam scenarios</li>
+                    <li><strong>Portfolio:</strong> Every project is deployable and shows to employers/clients</li>
+                    <li><strong>Confidence:</strong> You pass exams because you've built real systems</li>
+                </ul>
+            </section>
+
+            <section id="timeline">
+                <h2>Timeline at a Glance</h2>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Project</th>
+                            <th>Duration</th>
+                            <th>Domains</th>
+                            <th>Exam Phase</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>M1</td>
+                            <td>Project 1: Chatbot</td>
+                            <td>2 weeks</td>
+                            <td>CCA-F D1, D3</td>
+                            <td>Foundation study</td>
+                        </tr>
+                        <tr>
+                            <td>M1&ndash;M2</td>
+                            <td>Project 2: Support Agent</td>
+                            <td>3 weeks</td>
+                            <td>CCA-F D1, D4, D5</td>
+                            <td>Core domains</td>
+                        </tr>
+                        <tr>
+                            <td>M2</td>
+                            <td>Project 3: RAG System</td>
+                            <td>3 weeks</td>
+                            <td>CCA-F D4</td>
+                            <td>Advanced domains</td>
+                        </tr>
+                        <tr>
+                            <td>M2&ndash;M3</td>
+                            <td>Project 4: Multi-Agent</td>
+                            <td>3 weeks</td>
+                            <td>CCA-F D1, D2</td>
+                            <td>Practice &amp; CCA-F</td>
+                        </tr>
+                        <tr>
+                            <td>M3</td>
+                            <td>Project 5: MCP Server</td>
+                            <td>2 weeks</td>
+                            <td>CCA-F D4</td>
+                            <td>CCA-F exam</td>
+                        </tr>
+                        <tr>
+                            <td>M3&ndash;M4</td>
+                            <td>Project 6: Claude Code</td>
+                            <td>2 weeks</td>
+                            <td>CCA-F D2</td>
+                            <td>CCA-F pass</td>
+                        </tr>
+                        <tr>
+                            <td>M4&ndash;M5</td>
+                            <td>Project 7: Enterprise RAG</td>
+                            <td>4 weeks</td>
+                            <td>CCAR-P D1, D4, D6</td>
+                            <td>CCAR-P study</td>
+                        </tr>
+                        <tr>
+                            <td>M5&ndash;M6</td>
+                            <td>Project 8: Security</td>
+                            <td>2 weeks</td>
+                            <td>CCAR-P D5</td>
+                            <td>CCAR-P practice</td>
+                        </tr>
+                        <tr>
+                            <td>M6</td>
+                            <td>&ndash;</td>
+                            <td>&ndash;</td>
+                            <td>&ndash;</td>
+                            <td>CCAR-P exam</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="project1">
+                <h2>Project 1: Simple Chatbot</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 2 weeks</div>
+                        <div><strong>Domains:</strong> D1, D3</div>
+                        <div><strong>Tech:</strong> Flask + Claude API</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Build a conversational chatbot that demonstrates basic architecture patterns and prompt engineering.</p>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>How Claude API works (completions, streaming, system prompts)</li>
+                        <li>Token management (conversation history pruning)</li>
+                        <li>Session persistence (SQLite or in-memory)</li>
+                        <li>Basic error handling &amp; retries</li>
+                        <li>Prompt engineering for specific tone/voice</li>
+                        <li>Measuring performance (latency, cost)</li>
+                    </ul>
+
+                    <h4>Implementation Checklist</h4>
+                    <div class="checklist">
+                        <label><input type="checkbox"> Set up Python project (FastAPI or Flask)</label>
+                        <label><input type="checkbox"> Integrate Claude API with streaming responses</label>
+                        <label><input type="checkbox"> Implement conversation history (max 10 turns)</label>
+                        <label><input type="checkbox"> Add system prompt (tuned for specific tone)</label>
+                        <label><input type="checkbox"> Token counting to prevent context overflow</label>
+                        <label><input type="checkbox"> Error handling (invalid responses, timeouts)</label>
+                        <label><input type="checkbox"> Simple web UI (gradio or streamlit)</label>
+                        <label><input type="checkbox"> Measure: latency, cost per request</label>
+                    </div>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        Responds in &lt;2 seconds<br>
+                        Costs &lt;$0.01 per request<br>
+                        Handles 100 turns before context overflow<br>
+                        Gracefully handles errors
+                    </div>
+                </div>
+            </section>
+
+            <section id="project2">
+                <h2>Project 2: Customer Support Agent</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 3 weeks</div>
+                        <div><strong>Domains:</strong> D1, D4, D5</div>
+                        <div><strong>Tech:</strong> FastAPI + SQLite</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Build a real agent that uses tools to solve customer issues without manual escalation (or escalates intelligently).</p>
+
+                    <h4>Tools to Implement</h4>
+                    <ol>
+                        <li><code>query_ticket_history(customer_id)</code> &ndash; Recent tickets</li>
+                        <li><code>get_customer(id)</code> &ndash; Account status, plan, billing</li>
+                        <li><code>search_knowledge_base(query)</code> &ndash; Relevant docs, FAQs</li>
+                        <li><code>create_escalation(issue_type, priority)</code> &ndash; Hand off to human</li>
+                        <li><code>log_resolution(ticket_id, solution, tags)</code> &ndash; Track for analytics</li>
+                    </ol>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>Agentic loops: request -> check stop_reason -> call tool -> repeat</li>
+                        <li>Tool descriptions (more important than function names!)</li>
+                        <li>Error handling: what if a tool fails?</li>
+                        <li>Context management: when to include customer history vs. omit</li>
+                        <li>When to escalate (agent confidence, complexity, security)</li>
+                        <li>Measuring agent performance (resolution rate, cost, time)</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        Resolves 70%+ without escalation<br>
+                        Latency &lt;5 seconds<br>
+                        Cost &lt;$0.05 per ticket<br>
+                        Correct escalations (no billing handled, no password resets)
+                    </div>
+                </div>
+            </section>
+
+            <section id="project3">
+                <h2>Project 3: RAG System</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 3 weeks</div>
+                        <div><strong>Domains:</strong> D4, D5</div>
+                        <div><strong>Tech:</strong> Chroma + Embeddings</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Build a retrieval-augmented generation system for a document corpus. Learn why retrieval strategy matters.</p>
+
+                    <h4>Pipeline</h4>
+                    <pre>Query -> Embed -> Vector search (top-10) -> Format -> Claude -> Answer + Citations</pre>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>Chunking strategies (fixed size, semantic, recursive)</li>
+                        <li>Embedding models (OpenAI, local, specialized)</li>
+                        <li>Vector database setup (Pinecone, Chroma, Qdrant)</li>
+                        <li>Retrieval ranking: keyword + semantic hybrid?</li>
+                        <li>Reranking: simple heuristics vs. LLM-based</li>
+                        <li>Context formatting &amp; token budgeting</li>
+                        <li>Evaluation: ROUGE, MRR, human QA</li>
+                    </ul>
+
+                    <h4>Key Experiment</h4>
+                    <p>Test 3 chunking strategies on your corpus:</p>
+                    <ol>
+                        <li>Fixed 256-token chunks (baseline)</li>
+                        <li>Semantic chunking (topic-based)</li>
+                        <li>Recursive chunking (hierarchical)</li>
+                    </ol>
+                    <p>Measure: retrieval quality, latency, cost. Which is best?</p>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        Retrieval precision (top-5 results relevant) &gt;80%<br>
+                        Answer accuracy (vs. eval set) &gt;70%<br>
+                        Latency &lt;3 seconds<br>
+                        Cost per query &lt;$0.10<br>
+                        Can cite sources
+                    </div>
+                </div>
+            </section>
+
+            <section id="project4">
+                <h2>Project 4: Multi-Agent Workflow</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 3 weeks</div>
+                        <div><strong>Domains:</strong> D1, D2</div>
+                        <div><strong>Tech:</strong> FastAPI + Multiple Claude instances</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Orchestrate multiple specialized agents working together. Learn when to use multi-agent vs. single agent + tools.</p>
+
+                    <h4>Scenario: Content Creation Workflow</h4>
+                    <pre>User: "Write a blog post about React hooks"
+    |
+Coordinator Agent (decides workflow)
+    |-- Research Agent (searches, summarizes)
+    |-- Outline Agent (structures)
+    |-- Draft Agent (writes)
+    |-- Editor Agent (checks grammar)
+    |-- Reviewer Agent (fact-checks)
+    |
+Final Blog Post</pre>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>Coordinator pattern: central agent routes work</li>
+                        <li>State management: passing context without explosion</li>
+                        <li>Tool allocation: which agent gets which tools?</li>
+                        <li>Error handling: if one agent fails, what then?</li>
+                        <li>Prompt isolation: agents don't know about each other</li>
+                        <li>Serial vs. parallel: latency trade-offs</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        All agents coordinate without error<br>
+                        Final output is coherent<br>
+                        Latency &lt;30 seconds (for 5-agent workflow)<br>
+                        Can explain: why multi-agent here vs. single+tools?
+                    </div>
+                </div>
+            </section>
+
+            <section id="project5">
+                <h2>Project 5: Custom MCP Server</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 2 weeks</div>
+                        <div><strong>Domains:</strong> D4</div>
+                        <div><strong>Tech:</strong> Python MCP library + PostgreSQL</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Build a production MCP server that Claude agents can call. Learn MCP primitives and security.</p>
+
+                    <h4>Scenario: Database Query MCP</h4>
+                    <p>Your company has PostgreSQL. You want Claude to query it safely.</p>
+
+                    <h4>Tools to Implement</h4>
+                    <ul>
+                        <li><code>list_tables()</code> &ndash; available tables</li>
+                        <li><code>describe_table(name)</code> &ndash; schema + samples</li>
+                        <li><code>safe_query(sql)</code> &ndash; validate + execute</li>
+                        <li><code>get_schema()</code> &ndash; full DB schema</li>
+                    </ul>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>MCP spec &amp; tool definitions</li>
+                        <li>Security: input validation, rate limiting, access control</li>
+                        <li>Error handling: graceful failures</li>
+                        <li>Deployment: Docker, monitoring</li>
+                        <li>Versioning: backward compatibility</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        MCP server starts without errors<br>
+                        Claude can call tools and receive results<br>
+                        SQL injection attempts are blocked<br>
+                        Every call is logged with timestamp + user + query<br>
+                        Can deploy to production (Docker)
+                    </div>
+                </div>
+            </section>
+
+            <section id="project6">
+                <h2>Project 6: Claude Code Workflow</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 2 weeks</div>
+                        <div><strong>Domains:</strong> D2</div>
+                        <div><strong>Tech:</strong> Claude Code + CLAUDE.md</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Build a workflow using Claude Code. Learn CLAUDE.md configuration, skills, commands, and hooks.</p>
+
+                    <h4>Scenario: Automated Code Review Workflow</h4>
+                    <pre>Developer pushes code
+    |
+Webhook triggers Claude Code session
+    |-- Analyze code (search files)
+    |-- Run tests
+    |-- Suggest improvements
+    |-- Post comment on PR
+    |
+Developer reviews suggestions</pre>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>CLAUDE.md hierarchy: root, subdirs, path-scoping</li>
+                        <li>Custom commands (/review, /test, /suggest)</li>
+                        <li>Skills: reusable markdown instructions</li>
+                        <li>Hooks: before_command, after_command, on_error</li>
+                        <li>Subagents: delegating with isolated context</li>
+                        <li>CI/CD integration: running in pipelines</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        CLAUDE.md is valid and loads<br>
+                        Custom commands work (/review analyzes code)<br>
+                        Skills are reusable<br>
+                        Hooks log events<br>
+                        Runs in CI/CD pipeline (headless mode)
+                    </div>
+                </div>
+            </section>
+
+            <section id="project7">
+                <h2>Project 7: Enterprise RAG (Advanced)</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 4 weeks</div>
+                        <div><strong>Domains:</strong> D1, D4, D6</div>
+                        <div><strong>Tech:</strong> Hybrid retrieval + Caching</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Scale Project 3 (RAG) to production. Learn what happens when RAG hits real constraints.</p>
+
+                    <h4>Production Constraints</h4>
+                    <ul>
+                        <li><strong>Documents:</strong> 100k+, updated hourly</li>
+                        <li><strong>Queries:</strong> 1000+/day</li>
+                        <li><strong>Latency:</strong> &lt;3 seconds SLA</li>
+                        <li><strong>Cost:</strong> $1000/month budget</li>
+                        <li><strong>Quality:</strong> &gt;80% answer relevance</li>
+                    </ul>
+
+                    <h4>Architecture</h4>
+                    <pre>[1] Keyword search (BM25) -> 1000 results
+[2] Semantic search -> 1000 results
+[3] Merge &amp; dedupe -> 500 results
+[4] Time filter (7 days) -> 200 results
+[5] Rerank (LLM) -> top-10
+[6] Format with citations
+[7] Claude (with prompt cache) -> Answer</pre>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>Hybrid retrieval: keyword + semantic</li>
+                        <li>Time-aware retrieval: filtering by recency</li>
+                        <li>Multi-stage retrieval: coarse -> fine -> rerank</li>
+                        <li>Prompt caching: ROI analysis</li>
+                        <li>Cost optimization: Opus vs. Sonnet</li>
+                        <li>Production evaluation: automated + human evals</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        Retrieval quality &gt;80%<br>
+                        Latency &lt;3 seconds end-to-end<br>
+                        Cost &lt;$1 per query<br>
+                        System handles 100 concurrent<br>
+                        Explain: why hybrid? Why that reranker?
+                    </div>
+                </div>
+            </section>
+
+            <section id="project8">
+                <h2>Project 8: Security &amp; Compliance</h2>
+                <div class="project-card">
+                    <div class="project-header">
+                        <div><strong>Duration:</strong> 2 weeks</div>
+                        <div><strong>Domains:</strong> D5</div>
+                        <div><strong>Tech:</strong> Encryption + Audit Logging</div>
+                    </div>
+
+                    <h4>Goal</h4>
+                    <p>Harden one of the previous systems for regulated industry. Learn compliance constraints.</p>
+
+                    <h4>Scenario: HIPAA-Compliant Healthcare Agent</h4>
+                    <p>Your customer support agent now handles healthcare data. What changes?</p>
+
+                    <h4>Security Measures</h4>
+                    <ul>
+                        <li><strong>Encryption:</strong> At rest (database) + in transit (TLS)</li>
+                        <li><strong>PII Handling:</strong> Redaction before storage</li>
+                        <li><strong>Access Control:</strong> Only authorized staff see conversations</li>
+                        <li><strong>Audit Logging:</strong> Who accessed what, when, why</li>
+                        <li><strong>Data Retention:</strong> Automatic deletion after period</li>
+                    </ul>
+
+                    <h4>What You'll Learn</h4>
+                    <ul>
+                        <li>Data security: encryption, access controls</li>
+                        <li>Compliance frameworks: SOC2, HIPAA, GDPR</li>
+                        <li>Audit logging: what, how long, tamper-proof</li>
+                        <li>Threat modeling: what could go wrong?</li>
+                        <li>Design constraints from compliance</li>
+                    </ul>
+
+                    <h4>Success Criteria</h4>
+                    <div class="success-box">
+                        All sensitive data encrypted<br>
+                        Audit log is tamper-proof<br>
+                        PII redacted before storage<br>
+                        Can demonstrate compliance<br>
+                        &lt;100ms latency impact from security
+                    </div>
+                </div>
+            </section>
+
+            <section id="implementation">
+                <h2>Implementation Tips</h2>
+
+                <h3>Document Your Decisions</h3>
+                <p>For each project, write a 1-page <strong>Architecture Decision Record (ADR)</strong>:</p>
+
+                <pre>## Project X: Decision Y
+
+### Context
+Why did we need to decide this?
+
+### Decision
+What did we choose?
+
+### Rationale
+Why this option over alternatives?
+
+### Trade-offs
+What are we giving up?
+
+### Cost Impact
+What's the latency/cost/complexity impact?</pre>
+
+                <h3>Use Projects as Exam Case Studies</h3>
+                <p>In the exam, you'll see scenarios. You've <strong>literally built this</strong>. You can reference:</p>
+                <ul>
+                    <li>"I built a similar system. Here's what worked..."</li>
+                    <li>"Compliance required X, which added Y latency..."</li>
+                    <li>"Cost per request came to $Z, fitting within budget..."</li>
+                </ul>
+
+                <h3>Week-by-Week Schedule</h3>
+                <ul>
+                    <li><strong>Days 1&ndash;3:</strong> Study exam domain (3&ndash;4 hours/day)</li>
+                    <li><strong>Days 4&ndash;7:</strong> Build project (4&ndash;5 hours/day)</li>
+                    <li><strong>Sunday:</strong> Reflection - what did I learn? How does this connect to the exam?</li>
+                </ul>
+            </section>
+
+            <section id="next">
+                <h2>Your Next Steps</h2>
+
+                <div class="success-box">
+                    <strong>This Week:</strong>
+                    <ol>
+                        <li>Create Python project folder</li>
+                        <li>Get/verify Anthropic API key</li>
+                        <li>Install dependencies</li>
+                        <li>Start Project 1 (Chatbot)</li>
+                    </ol>
+                </div>
+
+                <div class="warning-box">
+                    <strong>Critical:</strong> You're not memorizing APIs. You're learning to think like an architect through hands-on experience. Build real systems. Pass real exams. Level up.
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <p>Production Projects Roadmap | Interactive HTML Version</p>
+        <p>Print-friendly: Use Ctrl+P or Cmd+P to save as PDF | Use offline: download HTML file</p>
+    </footer>
+</body>
+</html>
