@@ -18,6 +18,7 @@ exam-focused CCA material land more easily.
 | Section | Live link |
 |---------|-----------|
 | 🧠 **Gen AI Fundamentals** (new here? start with the big-picture "AI Universe") | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/GenAI-Fundamentals/index.html) |
+| 🏗️ **AI Engineering Projects** (real-problem project catalog — architecture, impl & failure modes) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/AIEngineeringProjects/index.html) |
 | **CCA-F · Domain 1 — Agentic Architecture** (curriculum hub) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/index.html) |
 | CCA-F · Domain 1 — visual overview & flashcards | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/overview.html) |
 | 🧪 **CCA-F · Domain 1 — Mock Exam Bank** (7 sets + full mock, 118 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/quizzes/index.html) |

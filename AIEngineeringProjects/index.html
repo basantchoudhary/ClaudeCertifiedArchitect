@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Engineering Projects · Catalog</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .tier { margin-top:26px; }
+    .tierhead { display:flex; align-items:center; gap:12px; }
+    .tierbadge { font-size:.72em; font-weight:700; padding:3px 12px; border-radius:14px; }
+    .t1 { background:#e6fcf0; color:#2b8a3e; } .t2 { background:#fff4e0; color:#b5691a; } .t3 { background:#fdeaf0; color:#b0296b; }
+    .pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin:14px 0; }
+    .pcard { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:18px 20px; border-top:4px solid #764ba2; }
+    .pcard h4 { color:#4a3b7a; margin:0 0 6px; font-size:1.08em; }
+    .pcard .prob { font-size:.9em; color:#555; margin-bottom:10px; }
+    .pcard .meta { font-size:.8em; color:#777; }
+    .pcard .tags { margin:8px 0; display:flex; flex-wrap:wrap; gap:6px; }
+    .pcard .tag2 { background:#f3f0ff; color:#4a3b7a; border:1px solid #e0dcf5; border-radius:14px; padding:2px 10px; font-size:.76em; }
+    .pcard .fail { background:#fff8f0; border-left:3px solid #ff9f40; padding:6px 10px; border-radius:0 5px 5px 0; font-size:.82em; color:#8a4a0a; margin-top:8px; }
+    .rec { border-left:4px solid #28a745; }
+    .num0 { font-family:'Courier New',monospace; color:#764ba2; font-weight:700; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="../README.md">Home</a> › AI Engineering Projects</div>
+    <h1>🏗️ AI Engineering Projects — Catalog</h1>
+    <div class="tag">Real problems, chosen to teach the concepts hands-on · pick one, then we design it end-to-end</div>
+</header>
+
+<div class="wrap">
+
+    <div class="card" style="margin-bottom:16px">
+        <p>Reading about agentic architecture only gets you so far. This is a curated shortlist of <strong>real
+        problems</strong> — each deliberately chosen because it forces you to learn a distinct set of AI-engineering and
+        agentic concepts <em>in practice</em>. We'll pick one, then produce a full deep-dive for it (see
+        <a href="#anatomy">what each deep-dive contains</a>).</p>
+        <div class="note">🎯 <strong>Selection criteria</strong> — every project here is: (1) a genuine problem people pay to
+        solve, (2) buildable as a <em>minimal</em> but real implementation, (3) rich in <em>production failure modes</em>
+        worth studying, and (4) mapped to concepts in the <a href="../CCA-F/CCA-F_Study_Guide.html">CCA material</a> and
+        <a href="../GenAI-Fundamentals/index.html">Gen AI Fundamentals</a>.</p>
+    </div>
+
+    <h2><span class="chip diagram">LEARNING PATH</span> Build them in this order</h2>
+    <div class="mermaid">
+flowchart LR
+    subgraph T1["Tier 1 · Foundations"]
+        P1["📄 Docs Q&A (RAG)"]
+        P2["📝 Notes → Actions"]
+        P3["🏷️ Classifier at scale"]
+    end
+    subgraph T2["Tier 2 · Agentic core"]
+        P4["🎧 Support Agent"]
+        P5["🗄️ NL→SQL Copilot"]
+        P6["🧾 Doc Extraction"]
+    end
+    subgraph T3["Tier 3 · Advanced"]
+        P7["🔬 Research Agent"]
+        P8["💻 Coding Agent"]
+        P9["📬 Ops Automation"]
+        P10["📊 Eval Harness"]
+    end
+    T1 --> T2 --> T3
+    classDef a fill:#e6fcf0,stroke:#2b8a3e,color:#155724;
+    classDef b fill:#fff4e0,stroke:#b5691a,color:#7a4a0a;
+    classDef c fill:#fdeaf0,stroke:#b0296b,color:#7a1f4a;
+    class P1,P2,P3 a; class P4,P5,P6 b; class P7,P8,P9,P10 c;
+    </div>
+    <p style="text-align:center;color:#888;font-size:.9em">Tier 1 teaches the stack with <em>no</em> autonomy; Tier 2 introduces the <em>agentic loop</em> &amp; tools; Tier 3 is <em>multi-agent</em> &amp; long-horizon.</p>
+
+    <!-- ================= TIER 1 ================= -->
+    <div class="tier">
+    <div class="tierhead"><h2 style="margin:0;border:none">Tier 1 · Foundations</h2><span class="tierbadge t1">start here · no autonomy</span></div>
+    <p>Deterministic pipelines — one/few LLM calls, no agent loop. You learn RAG, structured outputs, evals, and cost without the complexity of autonomy.</p>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">P1</span> · 📄 Docs Q&amp;A Assistant (RAG) <span class="tag2" style="background:#e6fcf0;color:#2b8a3e">★ recommended first</span></h4>
+            <div class="prob">Answer questions over a company's own docs/knowledge base, grounded &amp; cited — the "hello world" of production AI, and the base of half the apps out there.</div>
+            <div class="tags"><span class="tag2">RAG</span><span class="tag2">embeddings</span><span class="tag2">vector store</span><span class="tag2">chunking</span><span class="tag2">citations</span><span class="tag2">grounding</span></div>
+            <div class="meta">Teaches: the whole retrieval stack · Maps to <b>D5</b>, D3</div>
+            <div class="fail">⚠ Prod failures: stale index · bad chunking · low retrieval recall · confident hallucination · cost of re-embedding</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P2</span> · 📝 Meeting Notes → Action Items</h4>
+            <div class="prob">Turn a transcript into a structured summary + owned action items with due dates — a pure <em>workflow</em>, no agent needed.</div>
+            <div class="tags"><span class="tag2">structured outputs</span><span class="tag2">workflow vs agent</span><span class="tag2">batch API</span><span class="tag2">evals</span></div>
+            <div class="meta">Teaches: when NOT to use an agent · Maps to D3, D1, D5</div>
+            <div class="fail">⚠ Prod failures: schema drift · long transcripts overflow context · silent extraction misses</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P3</span> · 🏷️ Content Classifier at Scale</h4>
+            <div class="prob">Classify/moderate a high volume of items (tickets, posts, reviews) cheaply and reliably.</div>
+            <div class="tags"><span class="tag2">model-tier choice</span><span class="tag2">batch</span><span class="tag2">rate limits</span><span class="tag2">evals</span><span class="tag2">drift</span></div>
+            <div class="meta">Teaches: cost/throughput engineering · Maps to <b>D5</b></div>
+            <div class="fail">⚠ Prod failures: throughput vs rate limits · label drift · prompt-injection in user content · eval rot</div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ================= TIER 2 ================= -->
+    <div class="tier">
+    <div class="tierhead"><h2 style="margin:0;border:none">Tier 2 · Agentic core</h2><span class="tierbadge t2">the agent loop + tools</span></div>
+    <p>Now the model <em>decides and acts</em>: tool use, structured actions, error-recovery loops, and human-in-the-loop for anything risky.</p>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">P4</span> · 🎧 Customer Support Agent <span class="tag2" style="background:#fff4e0;color:#b5691a">★ recommended 2nd</span></h4>
+            <div class="prob">Resolve support requests: look up an order, check status, issue a refund — with human approval on the irreversible bits.</div>
+            <div class="tags"><span class="tag2">agentic loop</span><span class="tag2">tool design</span><span class="tag2">human-in-the-loop</span><span class="tag2">reversibility</span><span class="tag2">guardrails</span><span class="tag2">escalation</span></div>
+            <div class="meta">Teaches: the core agent + safe actions · Maps to <b>D1</b>, <b>D4</b></div>
+            <div class="fail">⚠ Prod failures: wrong refund issued · tool 400s break the loop · prompt injection triggers an action · runaway retries</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P5</span> · 🗄️ NL→SQL Analytics Copilot</h4>
+            <div class="prob">Turn "how many EU orders last quarter?" into SQL over a warehouse, run it, and answer — read-only and safe.</div>
+            <div class="tags"><span class="tag2">tool use</span><span class="tag2">schema in context</span><span class="tag2">self-correction</span><span class="tag2">guardrails</span><span class="tag2">structured outputs</span></div>
+            <div class="meta">Teaches: tool loops + error recovery · Maps to <b>D4</b>, D1, D5</div>
+            <div class="fail">⚠ Prod failures: wrong joins/hallucinated columns · runaway/expensive queries · SQL injection · retry storms on errors</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P6</span> · 🧾 Document Extraction Pipeline</h4>
+            <div class="prob">Extract structured fields from invoices/forms (PDF/images) into a validated schema, at scale.</div>
+            <div class="tags"><span class="tag2">multimodal</span><span class="tag2">structured outputs</span><span class="tag2">validation</span><span class="tag2">batch</span><span class="tag2">evals</span></div>
+            <div class="meta">Teaches: multimodal + strict schemas · Maps to <b>D3</b>, D5, D4</div>
+            <div class="fail">⚠ Prod failures: format drift breaks extraction · low-confidence fields · silent wrong values · cost per page</div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ================= TIER 3 ================= -->
+    <div class="tier">
+    <div class="tierhead"><h2 style="margin:0;border:none">Tier 3 · Advanced &amp; multi-agent</h2><span class="tierbadge t3">orchestration · long horizon</span></div>
+    <p>Multiple agents, long-running tasks, and real autonomy. Maximum learning, maximum failure surface.</p>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">P7</span> · 🔬 Multi-Source Research Agent <span class="tag2" style="background:#fdeaf0;color:#b0296b">★ recommended 3rd</span></h4>
+            <div class="prob">Answer a deep question by planning, searching many sources in parallel, verifying claims, and synthesizing a cited report.</div>
+            <div class="tags"><span class="tag2">multi-agent</span><span class="tag2">coordinator</span><span class="tag2">parallel fan-out</span><span class="tag2">result merging</span><span class="tag2">adversarial verify</span></div>
+            <div class="meta">Teaches: orchestration patterns end-to-end · Maps to <b>D1</b>, D4, D5</div>
+            <div class="fail">⚠ Prod failures: cost blowup from fan-out · hallucinated citations · sub-agent disagreement · no convergence</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P8</span> · 💻 Autonomous Coding Agent</h4>
+            <div class="prob">Given an issue, edit files, run tests, and iterate until green — a mini Claude-Code.</div>
+            <div class="tags"><span class="tag2">full agent loop</span><span class="tag2">loop termination</span><span class="tag2">permission gates</span><span class="tag2">MCP</span><span class="tag2">reliability</span></div>
+            <div class="meta">Teaches: long-horizon autonomy safely · Maps to <b>D1</b>, <b>D2</b>, D4</div>
+            <div class="fail">⚠ Prod failures: runaway loops · destructive edits · context exhaustion · flaky-test thrash · cost</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P9</span> · 📬 Agentic Ops Automation</h4>
+            <div class="prob">Triage incoming emails/alerts → classify → route → draft a reply/action, with humans on the loop (via MCP tools).</div>
+            <div class="tags"><span class="tag2">MCP integration</span><span class="tag2">orchestration</span><span class="tag2">HITL</span><span class="tag2">guardrails</span><span class="tag2">memory</span></div>
+            <div class="meta">Teaches: wiring real tools via MCP · Maps to <b>D4</b>, D1, D2</div>
+            <div class="fail">⚠ Prod failures: acting on injected instructions · over-broad tool scope · confused-deputy · missed escalations</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">P10</span> · 📊 Eval &amp; Observability Harness</h4>
+            <div class="prob">The meta-project: an LLM-as-judge eval suite + tracing/metrics that every other project needs.</div>
+            <div class="tags"><span class="tag2">evals</span><span class="tag2">LLM-as-judge</span><span class="tag2">tracing</span><span class="tag2">SLOs</span><span class="tag2">regression</span></div>
+            <div class="meta">Teaches: how you <em>know</em> it works · Maps to <b>D5</b></div>
+            <div class="fail">⚠ Prod failures: judge bias/same-model · flaky evals · no drift detection · unmeasured cost</div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ================= ANATOMY ================= -->
+    <h2 class="tier" id="anatomy"><span class="chip concept">DEEP-DIVE ANATOMY</span> What we'll produce for the project you pick</h2>
+    <p>Each chosen project gets a full, consistent treatment — not just code, but the thinking a real AI engineer does:</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>#</th><th>Section</th><th>What's in it</th></tr>
+        <tr><td>1</td><td><b>The problem &amp; why it matters</b></td><td>The real-world need, who has it, what "good" looks like</td></tr>
+        <tr><td>2</td><td><b>Requirements &amp; success criteria</b></td><td>Functional + non-functional (latency, cost, accuracy), measurable</td></tr>
+        <tr><td>3</td><td><b>Architecture design</b></td><td>Component diagram, data flow, the key boxes and why</td></tr>
+        <tr><td>4</td><td><b>Design decisions &amp; trade-offs</b></td><td>Model choice · RAG vs fine-tune · workflow vs agent · sync vs async — with the reasoning</td></tr>
+        <tr><td>5</td><td><b>Minimal implementation</b></td><td>A skeleton (pseudocode/real) that actually captures the core loop — small but honest</td></tr>
+        <tr><td>6</td><td><b>Cross-cutting concerns</b></td><td>Security &amp; prompt injection · cost model · latency · observability · evals · guardrails</td></tr>
+        <tr><td>7</td><td><b>Production failure points</b></td><td>The catalog of what breaks in prod for <em>this</em> project — and the mitigation for each</td></tr>
+        <tr><td>8</td><td><b>Concepts → CCA map</b></td><td>Exactly which exam concepts this project makes concrete</td></tr>
+        <tr><td>9</td><td><b>Level it up</b></td><td>Extensions that turn the toy into something real</td></tr>
+    </table>
+    </div>
+
+    <h2 class="tier"><span class="chip exam">MY RECOMMENDATION</span> The 3-project spine</h2>
+    <p>If you do just three, do these — together they cover the entire spectrum from "no autonomy" to "multi-agent," and every
+    cross-cutting concern shows up at least once:</p>
+    <div class="good">
+        <b>1. 📄 P1 · Docs Q&amp;A (RAG)</b> — learn the retrieval stack &amp; grounding (no autonomy). <br>
+        <b>2. 🎧 P4 · Support Agent</b> — your first real agent: tools, human-in-the-loop, safe actions. <br>
+        <b>3. 🔬 P7 · Research Agent</b> — multi-agent orchestration, parallelism, verification.
+    </div>
+    <div class="note">Then add <b>📊 P10 · Eval Harness</b> as a companion — because in production, "how do you know it works?" is the question that never goes away.</div>
+
+    <p style="text-align:center;color:#888;margin:22px 0">👉 <strong>Which one should we design first?</strong> Tell me a project number (P1–P10) — I'll build the full deep-dive for it, then we move down the spine.</p>
+
+</div>
+
+<footer>AI Engineering Projects · project catalog</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
