@@ -22,6 +22,8 @@ practice questions.
 | 🧪 **CCA-F · Domain 3 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
 | **CCA-F · Domain 4 — Tool Design & MCP** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/index.html) |
 | 🧪 **CCA-F · Domain 4 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
+| **CCA-F · Domain 5 — Context & Reliability** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/index.html) |
+| 🧪 **CCA-F · Domain 5 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/quizzes/index.html) |
 | CCA-F full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/CCA-F_Study_Guide.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
@@ -34,7 +36,7 @@ practice questions.
 | **D2** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents | [Take quiz ›](CCA-F/D2-Claude-Code/quizzes/index.html) |
 | **D3** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples | [Take quiz ›](CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
 | **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | [Take quiz ›](CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
-| **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability | _coming soon_ |
+| **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability | [Take quiz ›](CCA-F/D5-Context-Management/quizzes/index.html) |
 | | **Total** | **100%** | | |
 
 > **Key insight:** Domain 1 (Agentic Architecture) is the largest and hardest slice at 27% — master it first and you've effectively passed a quarter of the exam.
@@ -379,12 +381,87 @@ practice questions.
 
 ### D5 · Context Management & Reliability (15%)
 
-| Subtopic | Focus |
-|----------|-------|
-| Token budgeting | Pruning and summarizing conversation history |
-| Prompt caching | Caching system prompt + reference docs (~90% cheaper cached tokens) |
-| "Lost in the middle" | Placing key info at start/end of long prompts |
-| Error recovery | Retry with backoff, fallback, escalation |
+8 clusters · 40 subtopics · every number/error-code/header/field verified against the Messages API and official docs. Full deep-dive: [Domain 5 curriculum hub](CCA-F/D5-Context-Management/index.html).
+
+**Cluster 1 · Context Windows & Token Budgeting**
+
+| # | Subtopic |
+|:-:|----------|
+| 1.1 | [The Context Window (Sizes, 1M)](CCA-F/D5-Context-Management/subtopics/1-1-context-window.html) |
+| 1.2 | [Token Counting & the Count Endpoint](CCA-F/D5-Context-Management/subtopics/1-2-token-counting.html) |
+| 1.3 | [Input vs Output Tokens & max_tokens](CCA-F/D5-Context-Management/subtopics/1-3-input-output-max-tokens.html) |
+| 1.4 | [Budgeting a Growing Conversation](CCA-F/D5-Context-Management/subtopics/1-4-budgeting-conversation.html) |
+| 1.5 | [Context-Window-Exceeded Handling](CCA-F/D5-Context-Management/subtopics/1-5-context-exceeded-errors.html) |
+
+**Cluster 2 · Prompt Caching**
+
+| # | Subtopic |
+|:-:|----------|
+| 2.1 | [What Prompt Caching Is & Why](CCA-F/D5-Context-Management/subtopics/2-1-what-is-prompt-caching.html) |
+| 2.2 | [cache_control & Breakpoints](CCA-F/D5-Context-Management/subtopics/2-2-cache-control-breakpoints.html) |
+| 2.3 | [What's Cacheable & the Prefix Rule](CCA-F/D5-Context-Management/subtopics/2-3-cacheable-prefix-rule.html) |
+| 2.4 | [Cache TTL (5m / 1h) & Hits/Misses](CCA-F/D5-Context-Management/subtopics/2-4-cache-ttl-hits.html) |
+| 2.5 | [Caching in Multi-Turn / Agent Loops](CCA-F/D5-Context-Management/subtopics/2-5-caching-in-loops.html) |
+
+**Cluster 3 · Managing Long Conversations**
+
+| # | Subtopic |
+|:-:|----------|
+| 3.1 | [Conversation State & Statelessness](CCA-F/D5-Context-Management/subtopics/3-1-conversation-state.html) |
+| 3.2 | [Truncation / Sliding Window](CCA-F/D5-Context-Management/subtopics/3-2-truncation-sliding-window.html) |
+| 3.3 | [Summarization / Compaction](CCA-F/D5-Context-Management/subtopics/3-3-summarization-compaction.html) |
+| 3.4 | [Context Editing (Clearing Tool Results)](CCA-F/D5-Context-Management/subtopics/3-4-context-editing.html) |
+| 3.5 | [The Memory Tool / External Memory](CCA-F/D5-Context-Management/subtopics/3-5-memory-tool.html) |
+
+**Cluster 4 · Long Context & Retrieval**
+
+| # | Subtopic |
+|:-:|----------|
+| 4.1 | [Long-Context Prompting (Placement)](CCA-F/D5-Context-Management/subtopics/4-1-long-context-prompting.html) |
+| 4.2 | ["Lost in the Middle" & Attention](CCA-F/D5-Context-Management/subtopics/4-2-lost-in-the-middle.html) |
+| 4.3 | [RAG vs Long Context](CCA-F/D5-Context-Management/subtopics/4-3-rag-vs-long-context.html) |
+| 4.4 | [Citations & Grounding at Scale](CCA-F/D5-Context-Management/subtopics/4-4-citations-grounding.html) |
+| 4.5 | [Chunking & Context Assembly](CCA-F/D5-Context-Management/subtopics/4-5-chunking-assembly.html) |
+
+**Cluster 5 · Reliability: Errors & Retries**
+
+| # | Subtopic |
+|:-:|----------|
+| 5.1 | [API Error Codes (4xx vs 5xx, 429, 529)](CCA-F/D5-Context-Management/subtopics/5-1-error-codes.html) |
+| 5.2 | [Retryable vs Not & Idempotency](CCA-F/D5-Context-Management/subtopics/5-2-retryable-idempotency.html) |
+| 5.3 | [Exponential Backoff + Jitter](CCA-F/D5-Context-Management/subtopics/5-3-backoff-jitter.html) |
+| 5.4 | [Rate Limits & Handling 429](CCA-F/D5-Context-Management/subtopics/5-4-rate-limits.html) |
+| 5.5 | [Timeouts & Long Requests](CCA-F/D5-Context-Management/subtopics/5-5-timeouts-streaming.html) |
+
+**Cluster 6 · Reliability: Degradation & Recovery**
+
+| # | Subtopic |
+|:-:|----------|
+| 6.1 | [Fallbacks (Model / Provider / Degraded)](CCA-F/D5-Context-Management/subtopics/6-1-fallbacks.html) |
+| 6.2 | [Circuit Breakers](CCA-F/D5-Context-Management/subtopics/6-2-circuit-breakers.html) |
+| 6.3 | [Graceful Degradation & Partial Results](CCA-F/D5-Context-Management/subtopics/6-3-graceful-degradation.html) |
+| 6.4 | [max_tokens Truncation & Continuation](CCA-F/D5-Context-Management/subtopics/6-4-max-tokens-continuation.html) |
+| 6.5 | [Streaming for Reliability](CCA-F/D5-Context-Management/subtopics/6-5-streaming-reliability.html) |
+
+**Cluster 7 · Cost & Performance Optimization**
+
+| # | Subtopic |
+|:-:|----------|
+| 7.1 | [Cost Levers (Model, Cache, Batch)](CCA-F/D5-Context-Management/subtopics/7-1-cost-levers.html) |
+| 7.2 | [The Batch API (async, ~50% off)](CCA-F/D5-Context-Management/subtopics/7-2-batch-api.html) |
+| 7.3 | [Reducing Latency](CCA-F/D5-Context-Management/subtopics/7-3-reducing-latency.html) |
+| 7.4 | [Token-Efficient Patterns](CCA-F/D5-Context-Management/subtopics/7-4-token-efficient-patterns.html) |
+| 7.5 | [Caching + Batch Economics](CCA-F/D5-Context-Management/subtopics/7-5-caching-batch-economics.html) |
+
+**Cluster 8 · Observability & Production Ops**
+
+| # | Subtopic |
+|:-:|----------|
+| 8.1 | [Usage Metrics (Tokens, Cache, Cost)](CCA-F/D5-Context-Management/subtopics/8-1-usage-metrics.html) |
+| 8.2 | [Logging & Tracing (Request IDs)](CCA-F/D5-Context-Management/subtopics/8-2-logging-tracing.html) |
+| 8.3 | [Monitoring Reliability & SLOs](CCA-F/D5-Context-Management/subtopics/8-3-monitoring-slos.html) |
+| 8.4 | [Evaluations in Production](CCA-F/D5-Context-Management/subtopics/8-4-production-evals.html) |
+| 8.5 | [Safety & Guardrails at Runtime](CCA-F/D5-Context-Management/subtopics/8-5-runtime-guardrails.html) |
 
 ## Repository layout
 
@@ -412,7 +489,11 @@ CCA-F/                          Claude Certified Architect — Foundations
     subtopics/                  architect-level page per subtopic
     quizzes/                    interactive mock exam bank (120 questions)
     assets/style.css            shared styling
-  D5-Context-Management/        (planned)
+  D5-Context-Management/        Domain 5 deep-dive (15% of exam)
+    index.html                  curriculum hub — 40 subtopics, 8 clusters
+    subtopics/                  architect-level page per subtopic
+    quizzes/                    interactive mock exam bank (120 questions)
+    assets/style.css            shared styling
 CCAR-P/                         Claude Certified Architect — Professional
 Production-Projects/            hands-on build roadmap
 ```
