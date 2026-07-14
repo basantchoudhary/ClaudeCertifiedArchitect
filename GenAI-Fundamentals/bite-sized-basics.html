@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bite-Sized Basics · Gen AI Fundamentals</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    details { margin:8px 0; }
+    details summary { font-size:1.02em; }
+    .qcat { margin-top:26px; }
+    .toc { background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.08); padding:16px 22px; }
+    .toc a { display:inline-block; margin:4px 8px 4px 0; color:#764ba2; text-decoration:none; border:1px solid #e0dcf5; border-radius:20px; padding:5px 14px; font-size:.9em; }
+    .toc a:hover { background:#f7f5ff; }
+    .qa .answer { color:#333; }
+    .qa .answer b { color:#4a3b7a; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Bite-Sized Basics</div>
+    <h1>💡 Bite-Sized Basics — Gen AI Q&amp;A</h1>
+    <div class="tag">~50 short questions with plain answers · click any question to expand</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <p>Not sure what to ask? Start here. Each question has a 2–3 sentence answer. Skim the whole thing once to build
+    intuition, then dip back in when a term trips you up. Grouped by theme:</p>
+    <div class="toc">
+        <a href="#tokens">① Tokens</a>
+        <a href="#models">② Models &amp; choosing one</a>
+        <a href="#providers">③ Providers &amp; clouds</a>
+        <a href="#cost">④ Cost &amp; performance</a>
+        <a href="#prompt">⑤ Prompting &amp; context</a>
+        <a href="#rag">⑥ RAG &amp; vector stores</a>
+        <a href="#agents">⑦ Agents, tools &amp; MCP</a>
+        <a href="#training">⑧ Training vs inference</a>
+        <a href="#reliability">⑨ Reliability &amp; safety</a>
+    </div>
+
+    <!-- ================= TOKENS ================= -->
+    <h2 class="qcat" id="tokens"><span class="chip concept">①</span> Tokens &amp; tokenization</h2>
+    <div class="qa">
+    <details><summary>What is a token?</summary><p class="answer">A <b>token</b> is a chunk of text the model reads and writes — usually a whole short word or a piece of a longer one (e.g. "token", "ization"). Models don't see letters or words; they see sequences of tokens. You're billed per token, in and out.</p></details>
+    <details><summary>How is the number of tokens calculated?</summary><p class="answer">A component called the <b>tokenizer</b> splits your text into tokens using a fixed vocabulary learned during training (a "byte-pair encoding"-style scheme). Common character sequences become single tokens; rare ones get split into several. The token count is just how many pieces your text breaks into for that specific tokenizer.</p></details>
+    <details><summary>Why does the same text produce different token counts on different models?</summary><p class="answer">Because <b>each model family has its own tokenizer and vocabulary</b>, trained on different data. Claude, GPT, and Gemini each split text differently, so identical text can be, say, 1,000 tokens for one and 1,150 for another. Even a new version of the <em>same</em> provider can ship a new tokenizer that changes counts — so never assume counts transfer between models.</p></details>
+    <details><summary>Roughly how many tokens is a word or a page?</summary><p class="answer">Rule of thumb for English: <b>~1 token ≈ 4 characters ≈ ¾ of a word</b>, so ~1.3 tokens per word. A single-spaced page (~500 words) is roughly <b>~650–750 tokens</b>. These are estimates — always measure if it matters.</p></details>
+    <details><summary>Why do code and non-English text use more tokens?</summary><p class="answer">Tokenizers are optimized on mostly-English text, so English words often map to one token. <b>Code</b> (punctuation, indentation, rare identifiers) and <b>non-English scripts</b> break into many more, smaller tokens — sometimes one token per character. Same meaning, more tokens → more cost and more of your context window used.</p></details>
+    <details><summary>How do I count tokens before sending a request?</summary><p class="answer">Use the provider's <b>token-counting endpoint</b> (Anthropic exposes <code>/v1/messages/count_tokens</code>) or an official tokenizer library. It returns the exact input-token count for that model so you can budget before you pay. It's an estimate of input only — the model's output tokens aren't known until it generates.</p></details>
+    <details><summary>Why do tokens matter so much?</summary><p class="answer">Tokens are the unit of three things at once: <b>cost</b> (you pay per token), the <b>context window</b> (a token budget you can't exceed), and <b>latency</b> (more tokens = more to process and generate). Almost every optimization in Gen AI is really "use fewer/cheaper tokens."</p></details>
+    <details><summary>Input tokens vs output tokens — what's the difference?</summary><p class="answer"><b>Input</b> tokens are everything you send (system prompt, history, documents, tools). <b>Output</b> tokens are what the model generates. Output is usually priced several times higher than input, because it's produced one token at a time and is the expensive part.</p></details>
+    </div>
+
+    <!-- ================= MODELS ================= -->
+    <h2 class="qcat" id="models"><span class="chip concept">②</span> Models &amp; choosing one</h2>
+    <div class="qa">
+    <details><summary>What's the difference between a model family and a model (e.g. Opus / Sonnet / Haiku)?</summary><p class="answer">A <b>family</b> (e.g. Claude) shares training and design; within it, sizes trade capability for speed/cost. Roughly: a big model (Opus) is smartest but slowest/priciest, a mid model (Sonnet) balances, and a small model (Haiku) is fastest/cheapest. Same "brain lineage," different weight class.</p></details>
+    <details><summary>Why choose one model over another?</summary><p class="answer">Match the model to the <b>task's difficulty and constraints</b>: hard reasoning → a bigger model; high-volume simple work (classify, extract) → a small fast one. Also weigh <b>context-window size, latency needs, cost, and modality</b> (text vs images). The pro move is a mix — a strong model for hard steps, a cheap one for bulk.</p></details>
+    <details><summary>What is a context window and why does its size matter?</summary><p class="answer">The <b>context window</b> is the maximum tokens a model can consider at once — input <em>and</em> output combined. A bigger window lets you fit more documents/history in one call, but doesn't remove cost (you pay for what you fill) and doesn't guarantee the model uses the middle well.</p></details>
+    <details><summary>Bigger model vs smaller model — what actually changes?</summary><p class="answer">Bigger models generally reason better on complex, ambiguous, multi-step tasks, but cost more and respond slower. Smaller models are cheaper and faster and are often <em>good enough</em> for well-scoped tasks. Don't pay for Opus-level reasoning to do a lookup a Haiku-level model nails.</p></details>
+    <details><summary>When should I use a "reasoning" / extended-thinking model?</summary><p class="answer">When the task needs multi-step logic, math, planning, or careful analysis — letting the model "think" before answering measurably improves accuracy there. For simple lookups, classification, or formatting it just adds latency and cost, so skip it.</p></details>
+    <details><summary>What does "multimodal" mean?</summary><p class="answer">A <b>multimodal</b> model handles more than text — commonly images (and sometimes audio/PDF) as input. If your task involves screenshots, documents, or photos, you need a model with that modality; a text-only model can't see them.</p></details>
+    <details><summary>Open-weight vs closed/proprietary models — why pick each?</summary><p class="answer"><b>Open-weight</b> (e.g. Llama, Mistral) can be downloaded and self-hosted — full control, data stays in-house, no per-token fee but you run the infra. <b>Closed</b> (Claude, GPT, Gemini) are accessed via API — top capability and zero ops, but you send data out and pay per token.</p></details>
+    <details><summary>How do I know which model is actually "best" for me?</summary><p class="answer">There's no universal best — <b>run an eval</b>. Build a small set of representative test cases with a grading method, try a few models, and compare quality vs cost vs latency on <em>your</em> task. Benchmarks are a starting hint, not an answer.</p></details>
+    </div>
+
+    <!-- ================= PROVIDERS ================= -->
+    <h2 class="qcat" id="providers"><span class="chip concept">③</span> Providers &amp; clouds</h2>
+    <div class="qa">
+    <details><summary>What's the difference between a model provider (lab) and a cloud/gateway?</summary><p class="answer">A <b>provider/lab</b> (Anthropic, OpenAI, Google) <em>trains</em> the model. A <b>cloud gateway</b> (AWS Bedrock, Azure AI Foundry, Google Vertex AI) <em>hosts and resells</em> many models — often including the same ones — with enterprise plumbing around them. See the <a href="ai-universe.html">AI Universe</a> layer map.</p></details>
+    <details><summary>Why choose one provider over another (Anthropic vs OpenAI vs Google)?</summary><p class="answer">Compare on <b>model capability for your task, price, latency, context window, safety posture, and features</b> (caching, batch, tool use, structured outputs). Many teams also value ecosystem fit and support. The honest answer: benchmark 2–3 on your real workload rather than trusting a leaderboard.</p></details>
+    <details><summary>Why access a model through Bedrock/Vertex/Foundry instead of the provider's own API?</summary><p class="answer">To keep everything <b>inside your existing cloud</b>: unified billing, IAM/security, data residency, networking, and compliance you already trust. If your data and apps live in AWS/Azure/GCP, calling the model through that cloud's gateway avoids sending data to a separate vendor and simplifies governance.</p></details>
+    <details><summary>Why would an enterprise pick Azure AI Foundry or AWS Bedrock specifically?</summary><p class="answer">Usually because they're <b>already committed to that cloud</b> — contracts, credits, security reviews, and skills are in place. The gateway gives them multiple models (so they aren't locked to one lab), regional deployment, and central governance, all under one bill.</p></details>
+    <details><summary>What does Databricks add on top?</summary><p class="answer">Databricks sits where <b>your data</b> lives (the lakehouse). It adds model serving, RAG, and governance <em>next to</em> your data, so you can build Gen AI on your own tables without shipping data elsewhere. It's a data+AI platform, not a model lab.</p></details>
+    <details><summary>Does the same model behave identically across providers?</summary><p class="answer">Mostly yes on core quality — it's the same weights — but <b>availability, versions, region, latency, price, quotas, and some features can differ</b>, and a specific version may lag on one platform. Test on the platform you'll actually ship on.</p></details>
+    </div>
+
+    <!-- ================= COST ================= -->
+    <h2 class="qcat" id="cost"><span class="chip concept">④</span> Cost &amp; performance</h2>
+    <div class="qa">
+    <details><summary>What drives the cost of an LLM call?</summary><p class="answer"><b>Tokens × price</b>. Cost = (input tokens × input rate) + (output tokens × output rate), and the rates depend on the <b>model tier</b>. So the three cost levers are: pick a cheaper model, send fewer input tokens, and generate fewer output tokens.</p></details>
+    <details><summary>Why is output usually more expensive than input?</summary><p class="answer">Input is processed in one pass, but <b>output is generated one token at a time</b>, each requiring a full forward pass — it's the compute-heavy part. So output tokens are typically priced several times higher than input tokens; keeping responses concise saves real money.</p></details>
+    <details><summary>What is prompt caching and when does it save money?</summary><p class="answer"><b>Prompt caching</b> stores a processed, static prompt <em>prefix</em> so repeated requests reuse it instead of re-processing — cached reads are ~90% cheaper and faster. It pays off when you send the same large system prompt / documents across many calls (agents, chatbots). It doesn't help if your prompt changes every time.</p></details>
+    <details><summary>What is the Batch API and when should I use it?</summary><p class="answer">The <b>Batch API</b> processes many requests <em>asynchronously</em> (results within a 24-hour window) at roughly <b>half price</b>. Perfect for non-urgent bulk work — evals, backfills, offline generation — but not for anything interactive where a user is waiting.</p></details>
+    <details><summary>How do I reduce latency?</summary><p class="answer">Use a <b>smaller/faster model</b>, <b>stream</b> the response (so first words appear immediately), <b>cap output length</b>, <b>cache the prompt prefix</b>, and trim input tokens. Time-to-first-token and total tokens are the two dials that matter most.</p></details>
+    <details><summary>Why does a bigger model cost and take more?</summary><p class="answer">More parameters means more computation per token, so each token is pricier and slower to produce. That's the core trade-off: you buy better reasoning with money and time, so only spend it where the task actually needs it.</p></details>
+    </div>
+
+    <!-- ================= PROMPTING ================= -->
+    <h2 class="qcat" id="prompt"><span class="chip concept">⑤</span> Prompting &amp; context</h2>
+    <div class="qa">
+    <details><summary>What is a prompt, and what is a system prompt?</summary><p class="answer">A <b>prompt</b> is the text you send to steer the model. The <b>system prompt</b> is a special top-level instruction that sets the model's role, rules, and tone for the whole conversation, separate from the user's turn-by-turn messages.</p></details>
+    <details><summary>What's the difference between the context window and "memory"?</summary><p class="answer">The <b>context window</b> is the model's short-term working memory for a single request — it forgets everything once the call ends. "<b>Memory</b>" is what <em>you</em> build around it (summaries, a database, a memory tool) to carry facts across turns and sessions. The API itself is stateless.</p></details>
+    <details><summary>Why put important info at the start or end of a long prompt?</summary><p class="answer">Models pay <b>less attention to the middle</b> of very long inputs (the "lost in the middle" effect). Placing key instructions and the actual question near the top and bottom — and asking the model to quote relevant passages first — improves accuracy on long documents.</p></details>
+    <details><summary>What is few-shot prompting / using examples?</summary><p class="answer">Showing the model a few <b>input→output examples</b> of exactly what you want. It's often the single most effective way to lock in a format or style — "show, don't just tell." A few relevant, diverse examples usually beats a long paragraph of instructions.</p></details>
+    <details><summary>Prompting vs fine-tuning — when do I use which?</summary><p class="answer"><b>Prompting</b> is instant, free-ish, and iterable — always try it first. <b>Fine-tuning</b> retrains the model's weights on your data; it's heavier and slower to update, worth it only when prompting (and RAG) can't get the consistent behavior you need.</p></details>
+    </div>
+
+    <!-- ================= RAG ================= -->
+    <h2 class="qcat" id="rag"><span class="chip concept">⑥</span> RAG &amp; vector stores</h2>
+    <div class="qa">
+    <details><summary>What is an embedding?</summary><p class="answer">An <b>embedding</b> is a list of numbers (a vector) that represents the <em>meaning</em> of a piece of text, produced by an embedding model. Texts with similar meaning get similar vectors, so you can measure "closeness" mathematically — the basis of semantic search.</p></details>
+    <details><summary>What is a vector store / vector database?</summary><p class="answer">A database (Pinecone, Weaviate, pgvector, Milvus, Chroma) built to <b>store embeddings and find the nearest ones fast</b>. Given a query vector, it returns the most similar stored chunks — the retrieval engine behind RAG.</p></details>
+    <details><summary>What is RAG and why use it?</summary><p class="answer"><b>Retrieval-Augmented Generation</b>: at query time, fetch the most relevant chunks of <em>your</em> data from a vector store and put them in the prompt, so the model answers from current, private knowledge it was never trained on. It reduces hallucination and keeps answers grounded — without retraining.</p></details>
+    <details><summary>RAG vs fine-tuning vs long context — how do I choose?</summary><p class="answer"><b>Long context / prompting</b>: small, per-request info → just paste it in. <b>RAG</b>: large or frequently-changing knowledge base → retrieve the relevant bits. <b>Fine-tuning</b>: you need a fixed style/behavior, not new facts. They're complementary, not either/or.</p></details>
+    <details><summary>What is chunking?</summary><p class="answer">Splitting documents into smaller passages ("chunks") before embedding, so retrieval returns focused, relevant pieces instead of whole files. Chunk size and overlap are tuning knobs: too big wastes context, too small loses meaning.</p></details>
+    <details><summary>Does a bigger context window remove the need for RAG?</summary><p class="answer">No. You <em>could</em> stuff more in, but it's <b>slower, pricier, and less precise</b> — and models still attend unevenly to huge inputs. RAG sends only what's relevant, which is usually cheaper and more accurate. Big windows help RAG; they don't replace it.</p></details>
+    </div>
+
+    <!-- ================= AGENTS ================= -->
+    <h2 class="qcat" id="agents"><span class="chip concept">⑦</span> Agents, tools &amp; MCP</h2>
+    <div class="qa">
+    <details><summary>What's an agent vs a single LLM call?</summary><p class="answer">A single call is one prompt in, one answer out. An <b>agent</b> runs the model in a <em>loop</em>: it decides an action, calls a tool, reads the result, and repeats until the task is done. The model — not hard-coded logic — chooses the next step.</p></details>
+    <details><summary>What is tool / function calling?</summary><p class="answer">Giving the model a set of functions it can invoke (search, database query, send email). The model outputs a structured request to call a tool with arguments; <em>your</em> code runs it and returns the result, which the model then uses. It's how an LLM reaches live data and takes actions.</p></details>
+    <details><summary>What is MCP and why does it matter?</summary><p class="answer"><b>Model Context Protocol</b> is an open <em>standard</em> for connecting models to tools and data — the "USB-C port for AI." Instead of hand-wiring every integration per app, you run an MCP server once and any MCP-compatible app (Claude, IDEs, etc.) can use it. It standardizes the plumbing.</p></details>
+    <details><summary>What's the difference between a tool, RAG, and memory?</summary><p class="answer">Different jobs: <b>tools</b> give the model live data and <em>actions</em>; <b>RAG</b> gives it relevant <em>documents</em> to read; <b>memory</b> gives it <em>continuity</em> across turns. A capable app often uses all three together.</p></details>
+    </div>
+
+    <!-- ================= TRAINING ================= -->
+    <h2 class="qcat" id="training"><span class="chip concept">⑧</span> Training vs inference</h2>
+    <div class="qa">
+    <details><summary>What's the difference between training and inference?</summary><p class="answer"><b>Training</b> creates the model — a massive, one-time (expensive) process that sets its weights by learning from data. <b>Inference</b> is <em>using</em> the finished model to answer a prompt. As an app developer you almost always do inference, not training.</p></details>
+    <details><summary>What is pre-training vs fine-tuning?</summary><p class="answer"><b>Pre-training</b> teaches a model general language/knowledge from huge, broad data — this makes the "foundation model." <b>Fine-tuning</b> is a lighter follow-up that adapts that base to a specific behavior, domain, or format.</p></details>
+    <details><summary>What is a "foundation model"?</summary><p class="answer">A large, general-purpose model pre-trained on broad data that can be adapted to many tasks (via prompting, RAG, or fine-tuning). LLMs like Claude and GPT are foundation models; so are large image and embedding models.</p></details>
+    <details><summary>What does the "B" in "70B" mean?</summary><p class="answer">Billions of <b>parameters</b> — the tunable numbers (weights) the model learned during training. More parameters generally means more capacity to model complexity, but also more compute to run. It's a rough size indicator, not a quality guarantee.</p></details>
+    <details><summary>Does the model learn from my prompts?</summary><p class="answer">No — at inference the weights are <b>frozen</b>. The model doesn't remember or learn from your API calls; each request is independent, and any "memory" is something the app re-sends. (Separately, providers have data-use policies governing whether inputs may be used to improve future models — check them.)</p></details>
+    </div>
+
+    <!-- ================= RELIABILITY ================= -->
+    <h2 class="qcat" id="reliability"><span class="chip concept">⑨</span> Reliability &amp; safety</h2>
+    <div class="qa">
+    <details><summary>Why do models "hallucinate," and how do I reduce it?</summary><p class="answer">A model predicts plausible text, so when it lacks the facts it can state confident-sounding wrong answers. Reduce it by <b>grounding</b> (give it the source docs via RAG), <b>allowing "I don't know,"</b> asking it to cite/quote evidence, and verifying critical outputs.</p></details>
+    <details><summary>What is a rate limit?</summary><p class="answer">A cap on how much you can call the API in a window — typically <b>requests per minute</b> and <b>tokens per minute</b>. Exceed it and you get a <code>429</code> error; the fix is to back off and retry, and to spread or queue load.</p></details>
+    <details><summary>What are guardrails?</summary><p class="answer">Checks around the model that keep it safe and on-spec: <b>input/output validation, moderation, permission gates on tools, spend/rate caps, and human approval</b> for risky actions. The model is powerful but not trusted blindly — guardrails bound what it can do.</p></details>
+    <details><summary>What is an eval?</summary><p class="answer">A repeatable test of model quality: a set of representative cases plus a grading method (code checks, an LLM-as-judge, or humans). Evals let you compare models, catch regressions when you change a prompt or model, and prove something actually got better.</p></details>
+    </div>
+
+    <h2 class="qcat"><span class="chip trade">CHEAT SHEETS</span></h2>
+    <h3>Token rules of thumb (English)</h3>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Text</th><th>≈ Tokens</th></tr>
+        <tr><td>1 token</td><td>~4 characters · ~¾ word</td></tr>
+        <tr><td>1 word</td><td>~1.3 tokens</td></tr>
+        <tr><td>1 sentence</td><td>~15–30 tokens</td></tr>
+        <tr><td>1 single-spaced page (~500 words)</td><td>~650–750 tokens</td></tr>
+        <tr><td>Code &amp; non-English</td><td>Noticeably more per word</td></tr>
+    </table>
+    </div>
+    <h3>Quick "which to pick" guide</h3>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Decision</th><th>Lean toward…</th></tr>
+        <tr><td>Hard reasoning / ambiguous task</td><td>A bigger model (e.g. Opus-tier)</td></tr>
+        <tr><td>High-volume, simple, latency-sensitive</td><td>A small fast model (e.g. Haiku-tier)</td></tr>
+        <tr><td>Need current/private knowledge</td><td>RAG (not fine-tuning)</td></tr>
+        <tr><td>Need a fixed style/format everywhere</td><td>Few-shot examples → then fine-tuning</td></tr>
+        <tr><td>Same big prompt reused a lot</td><td>Prompt caching</td></tr>
+        <tr><td>Bulk, non-urgent jobs</td><td>Batch API (~50% off)</td></tr>
+        <tr><td>Data must stay in your cloud</td><td>A cloud gateway (Bedrock / Foundry / Vertex)</td></tr>
+    </table>
+    </div>
+
+    <div class="good">➡️ Solid on these? Go back to the <a href="ai-universe.html">AI Universe map</a> and the
+    <a href="genai-app-components.html">app anatomy</a>, then start the <a href="../CCA-F/CCA-F_Study_Guide.html">CCA-F material</a>.
+    Want a question added or expanded? Just ask.</div>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Gen AI Fundamentals</a>
+        <a class="next" href="ai-universe.html"><span class="k">Next →</span>The AI Universe</a>
+    </div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · Bite-Sized Basics</footer>
+</body>
+</html>
