@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NL→SQL on Databricks Unity Catalog · Production Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .qa { background:#faf9ff; border:1px solid #e6e1f7; border-left:4px solid #764ba2; border-radius:0 6px 6px 0; padding:10px 16px; margin:12px 0; }
+    .qa .q { font-weight:700; color:#4a3b7a; }
+    .feat { display:inline-block; background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:12px; padding:1px 9px; font-size:.75em; font-weight:600; margin:1px 2px; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="p0-text-to-sql-agent.html">P0</a> › Databricks Unity Catalog (production)</div>
+    <h1>🧱 NL→SQL on Databricks Unity Catalog</h1>
+    <div class="tag">From the P0 toy to a real copilot · every answer mapped to a Claude feature &amp; CCA domain</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE JUMP</span> Toy → real: the problem changes shape</h2>
+    <p>The <a href="p0-claude-api.html">P0 Claude API agent</a> had <em>one</em> DuckDB with a handful of tables — you
+    could paste the whole schema into the prompt. On <strong>Databricks Unity Catalog</strong> you have
+    <strong>many catalogs → schemas → tables/views/materialized views</strong>, possibly thousands of columns and rows of
+    metadata. You <em>cannot</em> send it all. The whole game becomes: <strong>get the right context to the model, keep it
+    small, and prove the SQL is correct before you trust it.</strong> Every technique below is a Claude/CCA lesson.</p>
+    <div class="note">Databricks ships its own NL→SQL (AI/BI <b>Genie</b>). We build our own <em>on the Claude API</em> so
+    each piece maps to an exam concept — that's the point of this page.</div>
+
+    <!-- ============================ A. GROUNDING ============================ -->
+    <h2><span class="chip venn">PART A</span> Grounding — hitting the right catalog·schema·table</h2>
+
+    <div class="qa"><span class="q">Q: How do we ensure it forms SQL against the RIGHT catalog / schema / table?</span></div>
+    <p>You never let the model <em>guess</em> from thousands of tables. You give it a <strong>retrieval + grounding</strong>
+    layer and make it <em>look things up with tools</em> instead of inventing names. Three moves:</p>
+    <ol>
+        <li><b>Retrieve candidate tables</b> — at ingestion, pull every table's fully-qualified name + description +
+        column list from UC (<code>system.information_schema</code>, <code>DESCRIBE TABLE EXTENDED</code>), embed it, and index it
+        (Databricks <b>Vector Search</b> or pgvector). At query time, retrieve the top-K tables relevant to the question.
+        <span class="feat">RAG</span> <span class="feat">D5</span></li>
+        <li><b>Ground with tools, not the prompt</b> — expose <code>search_tables(query)</code> and
+        <code>describe_table(full_name)</code>. The model must call <code>describe_table</code> to see <em>real</em> columns
+        before writing SQL. It queries reality → it can't hallucinate a column. <span class="feat">tool use</span> <span class="feat">D4</span></li>
+        <li><b>Enforce the 3-level namespace + an allow-set</b> — require <code>catalog.schema.table</code> in generated SQL;
+        reject any table not in the retrieved candidate set. Set a default catalog/schema in the cached system prompt to cut
+        ambiguity. <span class="feat">guardrail</span> <span class="feat">D1/D4</span></li>
+    </ol>
+    <div class="warn"><b>Governance is the real backstop.</b> Run the agent under a <b>service principal with least-privilege
+    SELECT grants</b>. UC enforces access <em>at the engine</em> — the model literally cannot read a table the principal can't,
+    and row/column masks apply automatically. Same rule as P0: <b>security lives at the grant layer, never in the prompt.</b></p></div>
+
+    <h3>Reference architecture</h3>
+    <div class="mermaid">
+flowchart LR
+    subgraph ING["Ingestion (offline, on DDL change)"]
+        UC[("UC information_schema<br/>+ DESCRIBE + comments + PK/FK")] --> META["Metadata + sample values"]
+        META --> EMB["Embed"] --> VDB[("Vector index")]
+    end
+    Q["User question"] --> AG["Claude agent (tools)"]
+    AG -->|"search_tables"| VDB
+    AG -->|"describe_table"| UC
+    AG -->|"validate_sql (EXPLAIN)"| WH["Databricks SQL warehouse"]
+    AG -->|"run_sql (read-only SP)"| WH
+    WH -->|"rows / error"| AG --> ANS["Answer + the SQL"]
+    classDef c fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    class AG c;
+    </div>
+
+    <div class="qa"><span class="q">Q: To make it "informed" for the AI — what should the schema context contain?</span></div>
+    <p>For the <em>retrieved candidate tables only</em>, send a compact, high-signal packet:</p>
+    <table>
+        <tr><th>Include ✅</th><th>Why it helps the model</th></tr>
+        <tr><td>Fully-qualified name <code>catalog.schema.table</code></td><td>Correct 3-level references; disambiguates same-named tables</td></tr>
+        <tr><td>Column names + <b>data types</b></td><td>Avoids type errors, informs casts/date handling</td></tr>
+        <tr><td>Table &amp; column <b>COMMENTs</b> (descriptions)</td><td>Maps business language → columns (the single biggest quality lever)</td></tr>
+        <tr><td><b>PK / FK</b> constraints (UC informational constraints)</td><td>Correct joins — the #1 source of logically-wrong SQL</td></tr>
+        <tr><td><b>Sample / distinct values</b> for low-cardinality columns</td><td>Maps "EU" → the real code <code>'EMEA'</code>; disambiguates enums &amp; statuses</td></tr>
+        <tr><td>Partition columns, rough row count</td><td>Nudges toward partition filters; avoids full scans</td></tr>
+        <tr><td>Object type (table / view / <b>materialized view</b>)</td><td>MVs/views may already pre-aggregate — prefer them; know what's queryable</td></tr>
+    </table>
+    <table>
+        <tr><th>Skip / be careful ⚠️</th><th>Reason</th></tr>
+        <tr><td>The <em>whole</em> metastore, every column of every table</td><td>Blows the context window &amp; cost; drowns signal</td></tr>
+        <tr><td>Raw <b>PII</b> in sample values</td><td>Mask it — sample <em>categorical</em> columns, not names/emails</td></tr>
+        <tr><td>Full data / large text blobs</td><td>Send shape, not payload</td></tr>
+    </table>
+    <div class="tip"><b>Sample values — yes, but bounded.</b> At ingestion run <code>SELECT DISTINCT col LIMIT 20</code> for
+    low-cardinality columns, mask PII, and cache the result. Don't sample at query time (cost + latency).</div>
+
+    <div class="qa"><span class="q">Q: How do we limit context — we can't send it all?</span></div>
+    <ul>
+        <li><b>Retrieval (top-K tables)</b> is the primary lever — send 3–8 candidate tables, not 3,000. <span class="feat">RAG</span></li>
+        <li><b>Progressive disclosure</b> — send names + one-line comments first; the model calls <code>describe_table</code>
+        only for the tables it actually wants. Keeps the fixed prompt tiny. <span class="feat">tool use</span></li>
+        <li><b>A curated semantic layer beats raw introspection</b> — a human-maintained data dictionary / glossary (metrics,
+        joins, business terms) is fewer tokens <em>and</em> higher quality. This is exactly what a <b>Skill</b> or a cached
+        instruction doc is for (Part C). <span class="feat">Skills</span> <span class="feat">D2</span></li>
+        <li><b>Prompt caching</b> — cache the stable prefix (SQL dialect rules + safety rules + semantic glossary); put the
+        per-question retrieved schema <em>after</em> the last cache breakpoint (it's volatile). <span class="feat">prompt caching</span> <span class="feat">D5</span></li>
+        <li><b>Tool search / <code>defer_loading</code></b> if you expose many per-domain tools. <span class="feat">tool search</span> <span class="feat">D4</span></li>
+        <li><b>Context editing / compaction</b> for long multi-question sessions — clear stale tool results so the window
+        stays lean. <span class="feat">context editing</span> <span class="feat">D5</span></li>
+    </ul>
+
+    <!-- ============================ B. CORRECTNESS ============================ -->
+    <h2><span class="chip solve">PART B</span> Correctness — syntactic, right-tables, and <em>logically</em> right</h2>
+
+    <div class="qa"><span class="q">Q: How do we ensure the SQL is syntactically valid, against the right tables, and logically correct?</span></div>
+    <p>Three <em>different</em> problems, three <em>different</em> guards. Never trust the model's SQL directly.</p>
+    <table>
+        <tr><th>Kind of wrong</th><th>Guard</th><th>Claude / CCA feature</th></tr>
+        <tr><td><b>Syntactic</b> (won't parse)</td><td><b><code>EXPLAIN</code> the query first</b> — Databricks parses &amp; analyzes (resolving every table/column) <em>without running it</em>. On error, feed it back → self-correct.</td><td><span class="feat">tool_result is_error</span> <span class="feat">D1 loop</span></td></tr>
+        <tr><td><b>Wrong tables/columns</b></td><td>EXPLAIN also fails on unresolved names; plus reject FQNs outside the retrieved allow-set.</td><td><span class="feat">guardrail</span> <span class="feat">D4</span></td></tr>
+        <tr><td><b>Logically wrong</b> (runs, wrong answer)</td><td>The hard one. Layer: (1) model <b>self-checks</b> the query against the question; (2) <b>evals vs golden queries</b> (result-set match); (3) <b>clarify</b> ambiguous questions instead of guessing; (4) <b>human approval</b> for high-stakes; (5) show the SQL + a plain-English restatement.</td><td><span class="feat">evals</span> <span class="feat">HITL</span> <span class="feat">D5/D1</span></td></tr>
+    </table>
+
+    <h3>The runtime pipeline (deterministic spine + a bounded self-correction loop)</h3>
+    <div class="mermaid">
+flowchart TB
+    Q["Question"] --> R["Retrieve candidate tables (top-K)"]
+    R --> A{"Ambiguous?"}
+    A -->|"yes"| CLR["ask_user() — clarify"] --> R
+    A -->|"no"| G["Claude: describe_table → write SQL"]
+    G --> V["validate_sql via EXPLAIN"]
+    V -->|"error"| FIX["feed error back → fix"]:::loop
+    FIX --> G
+    V -->|"ok"| X["run_sql (read-only, LIMIT, timeout)"]
+    X -->|"error"| FIX
+    X -->|"rows"| SC["self-check + summarize"]
+    SC --> OUT["Answer + SQL (+ approval if high-stakes)"]
+    classDef loop fill:#fff4e0,stroke:#b5691a,color:#7a4a0a;
+    </div>
+    <div class="note">Notice: most of this is a <b>deterministic workflow</b> (retrieve → generate → validate → execute →
+    summarize). The <em>only</em> genuinely agentic part is the <b>fix-on-error loop</b>. That's the D1 lesson — don't
+    agentify the parts you can hardcode.</div>
+
+    <div class="qa"><span class="q">Q: What test harness do we build?</span></div>
+    <p>A <b>golden-query eval suite</b> across catalogs — the thing that tells you it works and catches regressions when the
+    schema, prompt, or model changes. <span class="feat">evals</span> <span class="feat">D5</span></p>
+    <table>
+        <tr><th>Metric</th><th>What it measures</th></tr>
+        <tr><td><b>Execution accuracy</b></td><td>Does the generated SQL run without error?</td></tr>
+        <tr><td><b>Result-set match</b></td><td>Does it return the gold answer (order-insensitive)? — the real "correct"</td></tr>
+        <tr><td><b>Table-selection precision/recall</b></td><td>Did it pick the right tables from the metastore?</td></tr>
+        <tr><td><b>Self-correction count</b></td><td>How many EXPLAIN retries to get valid SQL (efficiency signal)</td></tr>
+        <tr><td><b>Latency · tokens · cost · bytes scanned</b></td><td>Cost/perf per query (Claude usage + warehouse compute)</td></tr>
+        <tr><td><b>Refusal / clarify rate</b></td><td>How often it declines or asks — calibrate ambiguity handling</td></tr>
+    </table>
+    <ul>
+        <li>Golden set = (question, gold SQL, gold result) pairs, incl. <b>ambiguous</b> and <b>adversarial</b> questions.</li>
+        <li>For fuzzy answers, use an <b>LLM-as-judge with a <em>different</em> model</b> + a rubric. <span class="feat">D5</span></li>
+        <li>Run against a <b>staging metastore snapshot</b>; re-run on every prompt/model/schema change (regression gate).</li>
+        <li>Track <b>drift</b> — execution accuracy quietly dropping as the schema evolves is your early warning.</li>
+    </ul>
+
+    <div class="qa"><span class="q">Q: How do we bring hallucination down?</span></div>
+    <ul>
+        <li><b>Ground, don't guess</b> — the model must <code>describe_table</code> real columns before writing SQL. This alone kills most column hallucination.</li>
+        <li><b>EXPLAIN</b> rejects any hallucinated table/column (they don't resolve).</li>
+        <li><b>Constrain to the retrieved allow-set</b> — no querying random tables.</li>
+        <li><b>Give it an out</b> — an <code>ask_user()</code> tool so it clarifies instead of inventing an answer to an ambiguous question. <span class="feat">D3</span></li>
+        <li><b>Rich comments + sample values</b> so business terms map to real columns/codes.</li>
+        <li><b>Cite</b> which tables/columns it used, and show the SQL — the user can sanity-check.</li>
+    </ul>
+
+    <!-- ============================ C. THE AGENT ============================ -->
+    <h2><span class="chip rule">PART C</span> The agent — pattern, tools, CLAUDE.md &amp; Skills, error handling</h2>
+
+    <div class="qa"><span class="q">Q: What agentic pattern fits here?</span></div>
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ Default: single agent + tools (hub-and-spoke)</h4>
+            <ul><li>One agent, tools: <code>search_tables · describe_table · validate_sql · run_sql · ask_user</code></li>
+            <li>The self-correcting loop over EXPLAIN/execute errors</li>
+            <li>Wraps a <em>deterministic</em> retrieve→validate→execute pipeline</li>
+            <li>Right for ~90% of NL→SQL (D1: single-agent-plus-tools beats multi-agent here)</li></ul></div>
+        <div class="con"><h4>⚙️ Reach further only when warranted</h4>
+            <ul><li><b>Fresh-context verifier sub-agent</b> to double-check the SQL for high-stakes queries (D1 sub-agent isolation)</li>
+            <li><b>Planner + parallel sub-agents</b> only for genuinely multi-part analytical questions (decompose → sub-queries → merge)</li>
+            <li><b>Programmatic tool calling</b> to chain many <code>describe_table</code> calls in code — only the final result returns to context (token saver, D4)</li></ul></div>
+    </div>
+
+    <div class="qa"><span class="q">Q: What tools do we expose?</span> <span class="feat">D4 · Tool Design</span></div>
+    <table>
+        <tr><th>Tool</th><th>Does</th><th>Guardrails / notes</th></tr>
+        <tr><td><code>search_tables(query)</code></td><td>Retrieval → candidate FQNs + comments</td><td>Returns only tables the SP can read</td></tr>
+        <tr><td><code>describe_table(full_name)</code></td><td>Columns, types, comments, PK/FK, sample distinct values</td><td>The grounding tool — PII masked</td></tr>
+        <tr><td><code>validate_sql(query)</code></td><td>Runs <code>EXPLAIN</code>, returns ok / analysis error</td><td>The deterministic validator — cheap, no data read</td></tr>
+        <tr><td><code>run_sql(query)</code></td><td>Executes read-only</td><td>SELECT-only SP · <code>LIMIT</code> · statement timeout · result-row cap</td></tr>
+        <tr><td><code>ask_user(question)</code></td><td>Clarify an ambiguous request (HITL)</td><td>Blocks &amp; hands control to a human</td></tr>
+    </table>
+    <p>Tool-design rules that are exam gold: the <b>description is the #1 lever</b> (say when to use it), constrain inputs with
+    <code>input_schema</code> (+ <code>strict</code>), return failures as <code>tool_result</code> with <code>is_error:true</code>
+    so Claude recovers, and <b>namespace</b> tools if you have per-domain sets.</p>
+
+<pre><span class="cm"># The two load-bearing tools (abridged) — validate BEFORE you execute</span>
+<span class="kw">def</span> <span class="fn">validate_sql</span>(query):                 <span class="cm"># deterministic guard: EXPLAIN parses+analyzes, no data read</span>
+    <span class="kw">try</span>:
+        warehouse.<span class="fn">execute</span>(<span class="st">f"EXPLAIN {query}"</span>)   <span class="cm"># errors on bad syntax OR unresolved table/column</span>
+        <span class="kw">return</span> {<span class="st">"ok"</span>: <span class="kw">True</span>}
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        <span class="kw">return</span> {<span class="st">"ok"</span>: <span class="kw">False</span>, <span class="st">"error"</span>: <span class="fn">str</span>(e)}   <span class="cm"># fed back as is_error → self-correction (D1)</span>
+
+<span class="kw">def</span> <span class="fn">run_sql</span>(query):                      <span class="cm"># read-only SP + LIMIT + timeout enforced at the engine</span>
+    <span class="kw">return</span> warehouse.<span class="fn">execute</span>(<span class="st">f"SELECT * FROM ({query}) LIMIT 200"</span>, timeout_s=30)</pre>
+
+    <div class="qa"><span class="q">Q: How do CLAUDE.md and Skills fit? (exam D2)</span></div>
+    <p>Two honest interpretations — know both for the exam:</p>
+    <ul>
+        <li><b>CLAUDE.md — a Claude Code (D2) feature</b> used while you <em>build</em> the agent: it lives in the repo and
+        guides Claude Code with conventions, how to run the eval harness, the UC connection setup, "never generate non-SELECT."
+        Its <em>runtime analog</em> in the Messages API is your <b>cached system prompt</b>: Spark/Databricks SQL dialect, the
+        3-level FQN rule, SELECT-only + always-LIMIT, prefer PK/FK joins, and the semantic glossary. Same idea — a stable,
+        cached instruction doc. <span class="feat">D2</span> <span class="feat">prompt caching</span></li>
+        <li><b>Agent Skills (SKILL.md)</b> package reusable expertise, model-invoked via <b>progressive disclosure</b> (loads
+        only when relevant → saves context). Build a <code>databricks-uc-sql</code> skill: dialect rules, common patterns
+        (windowing, date filters, region-code mapping), a checklist, plus bundled scripts (an EXPLAIN validator, a formatter).
+        On the Messages API, skills load via the <code>container</code> + code-execution + skills betas.
+        <span class="feat">Skills</span> <span class="feat">D2</span></li>
+    </ul>
+    <div class="tip"><b>Skills vs tools vs RAG</b> (a classic exam distinction): <b>Skills</b> = reusable <em>how-to</em> knowledge
+    (SQL patterns); <b>tools</b> = <em>actions</em> (describe/validate/run); <b>retrieval</b> = the specific <em>schema data</em>
+    for this question. Three different jobs.</div>
+
+    <div class="qa"><span class="q">Q: Error handling?</span> <span class="feat">D4/D5</span></div>
+    <ul>
+        <li><b>Tool errors</b> → <code>tool_result</code> with <code>is_error:true</code> (EXPLAIN failure, run error, permission denied, timeout) → the model reads it and fixes.</li>
+        <li><b>API errors</b> → SDK auto-retries 429/5xx with backoff; handle <b>all six <code>stop_reason</code>s</b>
+        (<code>tool_use / end_turn / max_tokens / refusal / stop_sequence / pause_turn</code>) — see the
+        <a href="p0-claude-api.html">Claude API build</a>; never fall through.</li>
+        <li><b>Guardrail denials</b> (non-SELECT, disallowed table) → return a clear message, don't execute.</li>
+        <li><b>Loop termination</b> — cap self-correction turns; on exhaustion, return the best SQL for a human to run (graceful degradation).</li>
+    </ul>
+
+    <!-- ============================ D. PRODUCTION ============================ -->
+    <h2><span class="chip idea">PART D</span> Production — cost, reliability, scale, observability</h2>
+
+    <div class="qa"><span class="q">Q: How do we bring the cost down?</span> <span class="feat">D5</span></div>
+    <ul>
+        <li><b>Prompt-cache</b> the stable system prompt + SQL guidelines + glossary (~90% cheaper cached reads; put volatile retrieved-schema after the last breakpoint).</li>
+        <li><b>Model tiering</b> — Haiku 4.5 for retrieval/routing &amp; simple SQL; Opus/Sonnet for hard multi-join reasoning. Route by question complexity.</li>
+        <li><b>Retrieval</b> keeps input tokens tiny (don't send the metastore).</li>
+        <li><b>Cache introspected metadata + sample values</b> — refresh only on DDL change, not per request.</li>
+        <li><b>EXPLAIN before run</b> — avoid paying <em>warehouse</em> compute for a wrong query (Databricks cost, and it's the bigger bill).</li>
+        <li><b>Batch API (~50% off)</b> for scheduled/offline report generation; <b>effort</b> low for simple SQL.</li>
+        <li>Bound self-correction retries (each is a full request).</li>
+    </ul>
+
+    <div class="qa"><span class="q">Q: How do we make it reliable?</span> <span class="feat">D5/D1</span></div>
+    <ul>
+        <li><b>Deterministic validation</b> (EXPLAIN) + bounded self-correction — the core reliability move.</li>
+        <li><b>Retries w/ backoff</b> on 429/5xx (SDK); <b>fallbacks</b> — model fallback on overload, and a degraded mode that returns the SQL for a human if execution keeps failing.</li>
+        <li><b>Warehouse timeouts + statement cancellation</b>; a <b>circuit breaker</b> if the warehouse is down.</li>
+        <li><b>Idempotency</b> is free — read-only queries are naturally safe to retry.</li>
+        <li>Least-privilege SP + LIMIT + row cap bound the blast radius.</li>
+    </ul>
+
+    <div class="qa"><span class="q">Q: How do we make it scalable?</span></div>
+    <ul>
+        <li><b>Stateless service</b> → scale horizontally (many workers); prompt cache is shared.</li>
+        <li><b>Vector index</b> scales to many tables; refresh incrementally on DDL/lineage changes.</li>
+        <li>Watch <b>ITPM/OTPM rate limits</b> — queue, and spread warehouse concurrency (serverless SQL, multiple warehouses).</li>
+        <li><b>Async / Batch</b> for heavy or scheduled loads; <b>per-tenant isolation</b> via the SP's grants (multi-catalog/workspace).</li>
+    </ul>
+
+    <div class="qa"><span class="q">Q: What observability do we build?</span> <span class="feat">D5</span></div>
+    <ul>
+        <li><b>Trace every request</b>: question → retrieved tables → generated SQL → EXPLAIN result → #retries → final SQL →
+        rows → latency → tokens (<code>input</code>/<code>cache_read</code>/<code>cache_creation</code>/<code>output</code>) →
+        cost → warehouse <b>bytes scanned</b> → success/fail. Use MLflow Tracing / Langfuse / Phoenix.</li>
+        <li><b>Usage fields</b> → cost per query + <b>cache hit-rate</b>; capture <code>request-id</code>/<code>_request_id</code> for support.</li>
+        <li><b>SLOs</b>: valid-SQL rate, execution accuracy (from evals), p50/p95 latency, cost/query, cache hit-rate, retry rate, refusal rate.</li>
+        <li><b>Databricks audit</b> — query history / system tables record the executed SQL; lineage shows what was touched.</li>
+        <li><b>Alert</b> on error-rate/cost spikes and <b>drift</b> (execution accuracy falling as the schema changes).</li>
+    </ul>
+
+    <!-- ============================ CERT MAP ============================ -->
+    <h2><span class="chip exam">CERT MAP</span> What this one project teaches for the exam</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern here</th><th>Claude feature</th><th>CCA domain</th></tr>
+        <tr><td>Search/describe/validate/run tools; is_error results; tool_choice; strict schemas; PTC; tool search</td><td>Native tool use</td><td><b>D4</b></td></tr>
+        <tr><td>Self-correcting loop, stop_reason routing, loop termination, single-vs-multi-agent, sub-agent verifier</td><td>Agentic loop</td><td><b>D1</b></td></tr>
+        <tr><td>System-prompt/glossary design, clarify-vs-guess, grounding, few-shot patterns</td><td>Prompt engineering</td><td><b>D3</b></td></tr>
+        <tr><td>Retrieval to bound context, prompt caching, context editing, model tiering, batch, cost, evals, observability</td><td>Context &amp; reliability</td><td><b>D5</b></td></tr>
+        <tr><td>CLAUDE.md (build-time), Agent Skills / SKILL.md (semantic layer as a skill)</td><td>Claude Code &amp; Skills</td><td><b>D2</b></td></tr>
+    </table>
+    </div>
+    <div class="good">One project, all five domains. Build the P0 loop first (it's the beating heart), then layer on
+    retrieval + EXPLAIN-validation + evals + caching — and you've rehearsed the whole exam in code.</div>
+
+    <div class="pager">
+        <a href="p0-claude-api.html"><span class="k">← Back</span>P0 · Claude API build</a>
+        <a class="next" href="../CCA-F/CCA-F_Study_Guide.html"><span class="k">Next →</span>CCA-F Study Guide</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · NL→SQL on Databricks Unity Catalog</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
