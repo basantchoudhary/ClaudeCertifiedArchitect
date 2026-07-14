@@ -20,6 +20,8 @@ practice questions.
 | 🧪 **CCA-F · Domain 2 — Mock Exam Bank** (8 sets + full mock, 121 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Claude-Code/quizzes/index.html) |
 | **CCA-F · Domain 3 — Prompt Engineering** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/index.html) |
 | 🧪 **CCA-F · Domain 3 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
+| **CCA-F · Domain 4 — Tool Design & MCP** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/index.html) |
+| 🧪 **CCA-F · Domain 4 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
 | CCA-F full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/CCA-F_Study_Guide.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
@@ -31,7 +33,7 @@ practice questions.
 | **D1** | Agentic Architecture & Orchestration | **27%** | Agentic loops, `stop_reason`, multi-agent patterns, orchestration | [Take quiz ›](CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
 | **D2** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents | [Take quiz ›](CCA-F/D2-Claude-Code/quizzes/index.html) |
 | **D3** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples | [Take quiz ›](CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
-| **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | _coming soon_ |
+| **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | [Take quiz ›](CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
 | **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability | _coming soon_ |
 | | **Total** | **100%** | | |
 
@@ -293,11 +295,87 @@ practice questions.
 
 ### D4 · Tool Design & MCP Integration (18%)
 
-| Subtopic | Focus |
-|----------|-------|
-| Tool definition quality | Clear descriptions > clever names; usage/anti-usage guidance |
-| MCP primitives | Tools, Resources, Prompts, Sampling |
-| Error handling | Graceful tool failures and result contracts |
+8 clusters · 40 subtopics · every field/block/MCP primitive verified against the tool-use docs, the Messages API, and the MCP spec. Full deep-dive: [Domain 4 curriculum hub](CCA-F/D4-Tool-Design-MCP/index.html).
+
+**Cluster 1 · Tool Use Fundamentals**
+
+| # | Subtopic |
+|:-:|----------|
+| 1.1 | [What Tool Use Is & the Request/Result Flow](CCA-F/D4-Tool-Design-MCP/subtopics/1-1-tool-use-flow.html) |
+| 1.2 | [The Tool Definition (name · description · input_schema)](CCA-F/D4-Tool-Design-MCP/subtopics/1-2-tool-definition-schema.html) |
+| 1.3 | [tool_use & tool_result Blocks (the Contract)](CCA-F/D4-Tool-Design-MCP/subtopics/1-3-tool-use-result-blocks.html) |
+| 1.4 | [tool_choice (auto / any / tool / none)](CCA-F/D4-Tool-Design-MCP/subtopics/1-4-tool-choice.html) |
+| 1.5 | [Client Tools vs Server Tools](CCA-F/D4-Tool-Design-MCP/subtopics/1-5-client-vs-server-tools.html) |
+
+**Cluster 2 · Designing Great Tools**
+
+| # | Subtopic |
+|:-:|----------|
+| 2.1 | [Writing Tool Descriptions (the #1 Lever)](CCA-F/D4-Tool-Design-MCP/subtopics/2-1-writing-descriptions.html) |
+| 2.2 | [Input Schema Design (JSON Schema, Enums)](CCA-F/D4-Tool-Design-MCP/subtopics/2-2-input-schema-design.html) |
+| 2.3 | [Naming & Granularity](CCA-F/D4-Tool-Design-MCP/subtopics/2-3-naming-granularity.html) |
+| 2.4 | [Namespacing & Avoiding Tool Overlap](CCA-F/D4-Tool-Design-MCP/subtopics/2-4-namespacing-overlap.html) |
+| 2.5 | [Token Efficiency & Tool-Set Size](CCA-F/D4-Tool-Design-MCP/subtopics/2-5-token-efficiency.html) |
+
+**Cluster 3 · Tool Results & Error Handling**
+
+| # | Subtopic |
+|:-:|----------|
+| 3.1 | [Returning Results (content, is_error)](CCA-F/D4-Tool-Design-MCP/subtopics/3-1-returning-results.html) |
+| 3.2 | [Error Handling Patterns](CCA-F/D4-Tool-Design-MCP/subtopics/3-2-error-handling.html) |
+| 3.3 | [Large / Structured Results & Truncation](CCA-F/D4-Tool-Design-MCP/subtopics/3-3-large-results-truncation.html) |
+| 3.4 | [Parallel Tool Calls & Result Ordering](CCA-F/D4-Tool-Design-MCP/subtopics/3-4-parallel-tool-calls.html) |
+| 3.5 | [Tool-Result Contract Failures (400s)](CCA-F/D4-Tool-Design-MCP/subtopics/3-5-contract-failures.html) |
+
+**Cluster 4 · Advanced Tool Use**
+
+| # | Subtopic |
+|:-:|----------|
+| 4.1 | [Tool Use with Extended Thinking](CCA-F/D4-Tool-Design-MCP/subtopics/4-1-thinking-with-tools.html) |
+| 4.2 | [Forcing Structured JSON via Tools](CCA-F/D4-Tool-Design-MCP/subtopics/4-2-structured-json-via-tools.html) |
+| 4.3 | [Streaming & Fine-Grained Tool Use](CCA-F/D4-Tool-Design-MCP/subtopics/4-3-streaming-fine-grained.html) |
+| 4.4 | [Programmatic Tool Calling & Code Execution](CCA-F/D4-Tool-Design-MCP/subtopics/4-4-programmatic-code-execution.html) |
+| 4.5 | [tool_choice Control & Parallel Toggle](CCA-F/D4-Tool-Design-MCP/subtopics/4-5-tool-choice-control.html) |
+
+**Cluster 5 · MCP Fundamentals**
+
+| # | Subtopic |
+|:-:|----------|
+| 5.1 | [What MCP Is & Why It Exists](CCA-F/D4-Tool-Design-MCP/subtopics/5-1-what-is-mcp.html) |
+| 5.2 | [Architecture (Host · Client · Server)](CCA-F/D4-Tool-Design-MCP/subtopics/5-2-mcp-architecture.html) |
+| 5.3 | [Transports (stdio · Streamable HTTP)](CCA-F/D4-Tool-Design-MCP/subtopics/5-3-mcp-transports.html) |
+| 5.4 | [Lifecycle & Capability Negotiation](CCA-F/D4-Tool-Design-MCP/subtopics/5-4-mcp-lifecycle.html) |
+| 5.5 | [MCP vs Plain Tool Use](CCA-F/D4-Tool-Design-MCP/subtopics/5-5-mcp-vs-tool-use.html) |
+
+**Cluster 6 · MCP Primitives**
+
+| # | Subtopic |
+|:-:|----------|
+| 6.1 | [Tools (Server-Exposed Functions)](CCA-F/D4-Tool-Design-MCP/subtopics/6-1-mcp-tools.html) |
+| 6.2 | [Resources (Readable Data)](CCA-F/D4-Tool-Design-MCP/subtopics/6-2-mcp-resources.html) |
+| 6.3 | [Prompts (Reusable Templates)](CCA-F/D4-Tool-Design-MCP/subtopics/6-3-mcp-prompts.html) |
+| 6.4 | [Sampling (Server → Client LLM Calls)](CCA-F/D4-Tool-Design-MCP/subtopics/6-4-mcp-sampling.html) |
+| 6.5 | [Roots & Elicitation](CCA-F/D4-Tool-Design-MCP/subtopics/6-5-mcp-roots-elicitation.html) |
+
+**Cluster 7 · Building & Consuming MCP Servers**
+
+| # | Subtopic |
+|:-:|----------|
+| 7.1 | [Building a Server (SDK)](CCA-F/D4-Tool-Design-MCP/subtopics/7-1-building-mcp-server.html) |
+| 7.2 | [The Claude API MCP Connector](CCA-F/D4-Tool-Design-MCP/subtopics/7-2-mcp-connector-api.html) |
+| 7.3 | [Remote MCP Servers & OAuth](CCA-F/D4-Tool-Design-MCP/subtopics/7-3-remote-mcp-auth.html) |
+| 7.4 | [MCP in Claude Code / Desktop](CCA-F/D4-Tool-Design-MCP/subtopics/7-4-mcp-in-claude-code.html) |
+| 7.5 | [Testing & Debugging (MCP Inspector)](CCA-F/D4-Tool-Design-MCP/subtopics/7-5-testing-mcp-inspector.html) |
+
+**Cluster 8 · MCP Security & Production**
+
+| # | Subtopic |
+|:-:|----------|
+| 8.1 | [Security Risks (Injection, Tool Poisoning)](CCA-F/D4-Tool-Design-MCP/subtopics/8-1-mcp-security-risks.html) |
+| 8.2 | [Authentication & Authorization](CCA-F/D4-Tool-Design-MCP/subtopics/8-2-mcp-auth.html) |
+| 8.3 | [Human-in-the-Loop & Permissioning](CCA-F/D4-Tool-Design-MCP/subtopics/8-3-human-in-the-loop.html) |
+| 8.4 | [Confused Deputy & Data Exfiltration](CCA-F/D4-Tool-Design-MCP/subtopics/8-4-confused-deputy-exfiltration.html) |
+| 8.5 | [Versioning, Observability & Ops](CCA-F/D4-Tool-Design-MCP/subtopics/8-5-versioning-observability.html) |
 
 ### D5 · Context Management & Reliability (15%)
 
@@ -329,7 +407,11 @@ CCA-F/                          Claude Certified Architect — Foundations
     subtopics/                  architect-level page per subtopic
     quizzes/                    interactive mock exam bank (120 questions)
     assets/style.css            shared styling
-  D4-Tool-Design-MCP/           (planned)
+  D4-Tool-Design-MCP/           Domain 4 deep-dive (18% of exam)
+    index.html                  curriculum hub — 40 subtopics, 8 clusters
+    subtopics/                  architect-level page per subtopic
+    quizzes/                    interactive mock exam bank (120 questions)
+    assets/style.css            shared styling
   D5-Context-Management/        (planned)
 CCAR-P/                         Claude Certified Architect — Professional
 Production-Projects/            hands-on build roadmap
