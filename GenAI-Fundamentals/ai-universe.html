@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The AI Universe · Gen AI Fundamentals</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    /* layer stack visual */
+    .stack { margin:18px 0; }
+    .layer { display:flex; align-items:stretch; border-radius:10px; overflow:hidden; margin:8px 0; box-shadow:0 2px 6px rgba(0,0,0,.07); }
+    .layer .lbl { flex:0 0 200px; background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:14px 16px; font-weight:600; display:flex; flex-direction:column; justify-content:center; }
+    .layer .lbl small { font-weight:400; opacity:.85; font-size:.78em; }
+    .layer .body { flex:1; background:#fff; padding:12px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .chip2 { background:#f3f0ff; color:#4a3b7a; border:1px solid #e0dcf5; border-radius:16px; padding:4px 12px; font-size:.86em; }
+    .chip2.real { background:#eef6ff; color:#1f5fa8; border-color:#cfe2f7; }
+    @media (max-width:640px){ .layer{flex-direction:column;} .layer .lbl{flex-basis:auto;} }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › The AI Universe</div>
+    <h1>🌌 The AI Universe — Who Does What</h1>
+    <div class="tag">One map of the whole landscape · concepts + the real players that fill each slot</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">BIG PICTURE</span> The problem: everyone seems to do everything</h2>
+    <p>Anthropic, OpenAI, Google, Databricks, Azure, Pinecone, LangChain, MCP… the names blur together because
+    each one lives on <strong>a different layer of the same stack</strong> — and some sit on several layers at once.
+    The trick to seeing clearly is to stop asking <em>"what is this company?"</em> and start asking
+    <em>"which layer is this thing on?"</em>. There are really only six layers, plus a set of cross-cutting concerns.</p>
+
+    <div class="note">🔑 <strong>Mental model:</strong> a Gen AI system is a <strong>stack</strong>. At the bottom is raw
+    compute; at the top is the app a human uses. Every product name you've heard slots into one (or more) of these layers.</div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> The six-layer stack (with real players)</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph L6["6 · APPLICATIONS (what a human uses)"]
+        A1["Claude Code · Cursor"]:::real
+        A2["ChatGPT · Copilot"]:::real
+        A3["Your custom app / agent"]:::real
+    end
+    subgraph L5["5 · ORCHESTRATION & CONTEXT (the glue)"]
+        O1["Prompting"]:::c
+        O2["RAG + Vector Store"]:::c
+        O3["Memory · Caching"]:::c
+        O4["Agents · Tools · MCP"]:::c
+    end
+    subgraph L4["4 · MODEL ACCESS (APIs & gateways)"]
+        G1["Anthropic API"]:::real
+        G2["AWS Bedrock"]:::real
+        G3["Azure AI Foundry"]:::real
+        G4["Google Vertex AI"]:::real
+    end
+    subgraph L3["3 · FOUNDATION MODELS (the LLMs)"]
+        M1["Claude"]:::real
+        M2["GPT · Gemini · Llama"]:::real
+        M3["Embedding models"]:::c
+    end
+    subgraph L2["2 · MODEL PROVIDERS / LABS (who trains them)"]
+        P1["Anthropic · OpenAI"]:::real
+        P2["Google · Meta · Mistral"]:::real
+    end
+    subgraph L1["1 · COMPUTE & CLOUD (where it all runs)"]
+        C1["AWS · Azure · GCP"]:::real
+        C2["Databricks · NVIDIA GPUs"]:::real
+    end
+    L6 --> L5 --> L4 --> L3
+    L2 -.trains.-> L3
+    L1 -.hosts.-> L3
+    L1 -.hosts.-> L4
+    classDef c fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef real fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    </div>
+    <p style="text-align:center;color:#888;font-size:.9em">Read it top-down: your <b>app</b> calls the <b>orchestration</b> layer,
+    which assembles context and calls a model through an <b>API/gateway</b>; the <b>model</b> was trained by a <b>lab</b> and runs on <b>cloud compute</b>.</p>
+
+    <h2><span class="chip concept">LAYERS</span> The stack in words</h2>
+    <div class="stack">
+        <div class="layer"><div class="lbl">6 · Applications<small>what a human touches</small></div>
+            <div class="body">
+                <span class="chip2">chatbots</span><span class="chip2">copilots</span><span class="chip2">agents</span>
+                <span class="chip2 real">Claude Code</span><span class="chip2 real">Cursor</span><span class="chip2 real">ChatGPT</span><span class="chip2 real">GitHub Copilot</span>
+            </div></div>
+        <div class="layer"><div class="lbl">5 · Orchestration & Context<small>the glue / "AI engineering"</small></div>
+            <div class="body">
+                <span class="chip2">prompting</span><span class="chip2">RAG</span><span class="chip2">vector store</span><span class="chip2">memory</span><span class="chip2">caching</span><span class="chip2">tool use</span><span class="chip2">MCP</span>
+                <span class="chip2 real">LangChain</span><span class="chip2 real">LlamaIndex</span><span class="chip2 real">Claude Agent SDK</span><span class="chip2 real">Pinecone</span>
+            </div></div>
+        <div class="layer"><div class="lbl">4 · Model Access<small>APIs & cloud gateways</small></div>
+            <div class="body">
+                <span class="chip2">REST APIs</span><span class="chip2">gateways</span>
+                <span class="chip2 real">Anthropic API</span><span class="chip2 real">AWS Bedrock</span><span class="chip2 real">Azure AI Foundry</span><span class="chip2 real">Google Vertex AI</span><span class="chip2 real">Databricks</span>
+            </div></div>
+        <div class="layer"><div class="lbl">3 · Foundation Models<small>the actual model weights</small></div>
+            <div class="body">
+                <span class="chip2">LLMs</span><span class="chip2">embedding models</span><span class="chip2">multimodal</span>
+                <span class="chip2 real">Claude</span><span class="chip2 real">GPT</span><span class="chip2 real">Gemini</span><span class="chip2 real">Llama</span><span class="chip2 real">Mistral</span><span class="chip2 real">Voyage (embeddings)</span>
+            </div></div>
+        <div class="layer"><div class="lbl">2 · Providers / Labs<small>who trains the models</small></div>
+            <div class="body">
+                <span class="chip2">frontier labs</span>
+                <span class="chip2 real">Anthropic</span><span class="chip2 real">OpenAI</span><span class="chip2 real">Google DeepMind</span><span class="chip2 real">Meta</span><span class="chip2 real">Mistral</span><span class="chip2 real">xAI</span>
+            </div></div>
+        <div class="layer"><div class="lbl">1 · Compute & Cloud<small>where it physically runs</small></div>
+            <div class="body">
+                <span class="chip2">GPUs / TPUs</span><span class="chip2">hyperscalers</span><span class="chip2">data platforms</span>
+                <span class="chip2 real">AWS</span><span class="chip2 real">Azure</span><span class="chip2 real">GCP</span><span class="chip2 real">Databricks</span><span class="chip2 real">NVIDIA</span>
+            </div></div>
+    </div>
+
+    <h2><span class="chip exam">KEY IDEA</span> One player, many hats</h2>
+    <p>The confusion comes from companies that operate on <strong>several layers at once</strong>. That's normal —
+    it's vertical integration. Here's how the big names spread across the stack:</p>
+    <div class="tradeoff">
+        <div class="pro"><h4>🟣 Anthropic (a lab, integrated upward)</h4>
+            <ul>
+                <li><b>Layer 2</b> — the lab that trains the models</li>
+                <li><b>Layer 3</b> — <b>Claude</b> is the model family</li>
+                <li><b>Layer 4</b> — the <b>Anthropic API</b> (Messages API)</li>
+                <li><b>Layer 5</b> — <b>MCP</b> (the protocol) + the Agent SDK</li>
+                <li><b>Layer 6</b> — <b>Claude Code</b> &amp; the Claude apps</li>
+            </ul></div>
+        <div class="con"><h4>🔵 Microsoft / Azure (a cloud, integrated downward)</h4>
+            <ul>
+                <li><b>Layer 1</b> — Azure cloud + GPUs</li>
+                <li><b>Layer 4</b> — <b>Azure AI Foundry</b> hosts many models (OpenAI, Anthropic, Meta, …)</li>
+                <li><b>Layer 5/6</b> — Copilot Studio, GitHub Copilot</li>
+                <li>Note: Microsoft doesn't (mostly) train frontier models — it <em>hosts and packages</em> others'</li>
+            </ul></div>
+    </div>
+    <div class="note">So "Claude" (a model, layer 3) can be reached through the <b>Anthropic API</b> (layer 4)
+    <em>or</em> through <b>AWS Bedrock</b>, <b>Google Vertex AI</b>, <b>Azure AI Foundry</b>, or <b>Databricks</b> — all layer-4
+    gateways. Same model, different front door. That's why the same name shows up in many places.</div>
+
+    <h2><span class="chip concept">WHO'S WHO</span> The players, decoded</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Player</th><th>Layer(s)</th><th>What it actually provides</th><th>One-line analogy</th></tr>
+        <tr><td><b>Anthropic</b></td><td>2·3·4·5·6</td><td>Trains Claude; runs the Anthropic API; created MCP; ships Claude Code</td><td>A car maker that also runs its own dealerships</td></tr>
+        <tr><td><b>Claude</b></td><td>3</td><td>The LLM family (Opus / Sonnet / Haiku) — the "brain"</td><td>The engine, not the car</td></tr>
+        <tr><td><b>OpenAI · GPT</b></td><td>2·3·4</td><td>Lab + GPT models + the OpenAI API</td><td>Anthropic's closest analogue</td></tr>
+        <tr><td><b>Google · Gemini</b></td><td>1·2·3·4·6</td><td>Cloud (GCP), lab (DeepMind), Gemini models, Vertex AI, the Gemini app</td><td>Full stack, top to bottom</td></tr>
+        <tr><td><b>Meta · Llama</b></td><td>2·3</td><td>Trains open-weight Llama models you can self-host</td><td>Open-source engine you download</td></tr>
+        <tr><td><b>Mistral</b></td><td>2·3</td><td>European lab; open + commercial models</td><td>Lean challenger lab</td></tr>
+        <tr><td><b>AWS Bedrock</b></td><td>1·4</td><td>A managed gateway to many models (incl. Claude) on AWS</td><td>An app store for models</td></tr>
+        <tr><td><b>Azure AI Foundry</b></td><td>1·4</td><td>Microsoft's model platform — host, deploy &amp; govern many models</td><td>An app store for models (MS edition)</td></tr>
+        <tr><td><b>Google Vertex AI</b></td><td>1·4</td><td>GCP's managed model platform (Gemini + partners incl. Claude)</td><td>An app store for models (Google edition)</td></tr>
+        <tr><td><b>Databricks</b></td><td>1·4·5</td><td>Data + AI platform: your data lakehouse, model serving, RAG, governance</td><td>Where your data and the models meet</td></tr>
+        <tr><td><b>Snowflake</b></td><td>1·4·5</td><td>Data cloud with hosted models + RAG (Cortex)</td><td>Databricks' data-cloud rival</td></tr>
+        <tr><td><b>Pinecone · Weaviate · pgvector · Milvus</b></td><td>5</td><td>Vector databases that store &amp; search embeddings for RAG</td><td>The searchable long-term memory</td></tr>
+        <tr><td><b>Voyage AI · Cohere Embed</b></td><td>3</td><td>Embedding models that turn text into vectors</td><td>The translator: words → numbers</td></tr>
+        <tr><td><b>LangChain · LlamaIndex</b></td><td>5</td><td>Frameworks that wire prompts, RAG, tools &amp; agents together</td><td>The wiring harness</td></tr>
+        <tr><td><b>MCP (Model Context Protocol)</b></td><td>5</td><td>An open <em>standard</em> for connecting models to tools &amp; data — not a company</td><td>The USB-C port for AI</td></tr>
+        <tr><td><b>Hugging Face</b></td><td>3·5</td><td>A hub to find, share &amp; run open models and datasets</td><td>GitHub for models</td></tr>
+        <tr><td><b>NVIDIA</b></td><td>1</td><td>The GPUs that train and run nearly everything</td><td>The picks-and-shovels supplier</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> How one request actually flows</h2>
+    <p>Put the layers in motion. A user asks a question in an app; here's the journey and where each buzzword lives:</p>
+    <div class="mermaid">
+flowchart LR
+    U["👤 User"] --> APP["App / UI<br/>(layer 6)"]
+    APP --> ORCH["Orchestrator / Agent<br/>(layer 5)"]
+    ORCH -->|"embed the query"| EMB["Embedding model"]
+    EMB --> VDB[("Vector store<br/>RAG retrieve")]
+    VDB -->|"relevant chunks"| ORCH
+    ORCH -->|"check"| CACHE["Prompt cache"]
+    ORCH -->|"recall"| MEM["Memory"]
+    ORCH -->|"assembled prompt + tools"| API["Model API / Gateway<br/>(layer 4)"]
+    API --> LLM["🧠 LLM · inference<br/>(layer 3)"]
+    LLM -->|"wants a tool"| MCP["Tools via MCP"]
+    MCP --> LLM
+    LLM -->|"answer"| API --> ORCH --> APP --> U
+    classDef s fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    class APP,ORCH,API,LLM,MCP s;
+    </div>
+    <ol>
+        <li><b>Prompting</b> — the app + orchestrator write the instructions and assemble context.</li>
+        <li><b>RAG</b> — the query is turned into an <b>embedding</b>, matched against a <b>vector store</b>, and the top chunks are pulled into the prompt so the model answers from <em>your</em> data.</li>
+        <li><b>Caching</b> — a stable prompt prefix is reused to cut cost &amp; latency; <b>memory</b> carries facts across turns/sessions.</li>
+        <li><b>Inference</b> — the <b>LLM</b> runs (through an API/gateway) and generates a response.</li>
+        <li><b>Tools / MCP</b> — if it needs live data or actions, it calls tools, often over <b>MCP</b>, then continues.</li>
+    </ol>
+
+    <h2><span class="chip concept">GLOSSARY</span> The acronyms, fast</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Term</th><th>In one sentence</th></tr>
+        <tr><td><b>LLM</b></td><td>Large Language Model — a neural net trained to predict the next token; the "brain."</td></tr>
+        <tr><td><b>Foundation model</b></td><td>A large, general model trained on broad data, adaptable to many tasks (LLMs are one kind).</td></tr>
+        <tr><td><b>Token</b></td><td>A chunk of text (~¾ of a word) — the unit models read, generate, and are billed on.</td></tr>
+        <tr><td><b>Context window</b></td><td>The max tokens a model can consider at once (input + output).</td></tr>
+        <tr><td><b>Inference</b></td><td>Running a trained model to produce output (vs. training, which creates it).</td></tr>
+        <tr><td><b>Embedding</b></td><td>A vector of numbers representing meaning, so similar text sits close together.</td></tr>
+        <tr><td><b>Vector store</b></td><td>A database that stores embeddings and finds the most similar ones fast.</td></tr>
+        <tr><td><b>RAG</b></td><td>Retrieval-Augmented Generation — fetch relevant data and feed it to the model at query time.</td></tr>
+        <tr><td><b>Prompt</b></td><td>The instructions + context you send the model to steer its output.</td></tr>
+        <tr><td><b>Fine-tuning</b></td><td>Further-training a model on your data to change its behavior (heavier than prompting/RAG).</td></tr>
+        <tr><td><b>Agent</b></td><td>An LLM that decides and acts in a loop, calling tools until a task is done.</td></tr>
+        <tr><td><b>MCP</b></td><td>Model Context Protocol — an open standard for plugging tools &amp; data into any model/app.</td></tr>
+        <tr><td><b>Tool / function calling</b></td><td>Letting the model invoke your code (search, DB, API) and use the result.</td></tr>
+        <tr><td><b>Prompt caching</b></td><td>Reusing a processed prompt prefix to cut cost &amp; latency on repeated requests.</td></tr>
+    </table>
+    </div>
+
+    <div class="good">➡️ Next: see how these pieces assemble into a real product on the
+    <a href="genai-app-components.html">Anatomy of a Gen AI Application</a> page — then you're ready for the
+    <a href="../CCA-F/CCA-F_Study_Guide.html">CCA-F study material</a>.</div>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Gen AI Fundamentals</a>
+        <a class="next" href="genai-app-components.html"><span class="k">Next →</span>Anatomy of a Gen AI App</a>
+    </div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · The AI Universe</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

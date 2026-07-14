@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of a Gen AI Application · Gen AI Fundamentals</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Anatomy of a Gen AI App</div>
+    <h1>🧩 Anatomy of a Gen AI Application</h1>
+    <div class="tag">The major components of a real product — and how they fit together</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">BIG PICTURE</span> An LLM alone is not an application</h2>
+    <p>A raw model just turns tokens into tokens. A <strong>production Gen AI application</strong> wraps that model
+    in a set of components that give it <em>your</em> data, <em>memory</em>, <em>tools</em>, <em>guardrails</em>, and
+    <em>reliability</em>. Almost every serious app — a support bot, a coding agent, a research assistant — is built
+    from the same handful of building blocks.</p>
+
+    <h2><span class="chip diagram">DIAGRAM</span> Reference architecture</h2>
+    <div class="mermaid">
+flowchart TB
+    UI["👤 Client / UI"] --> ORCH
+    subgraph CORE["Application core"]
+        ORCH["🧭 Orchestrator / Agent loop"]
+        PROMPT["📝 Prompt & context assembly"]
+        ORCH <--> PROMPT
+    end
+    PROMPT -->|"query"| RAG
+    subgraph KNOW["Knowledge (RAG)"]
+        EMB["Embedding model"] --> VDB[("Vector store")]
+    end
+    RAG["Retriever"] --> EMB
+    VDB -->|"chunks"| PROMPT
+    PROMPT --> LLM["🧠 LLM (inference)"]
+    LLM <-->|"tool calls"| TOOLS["🔧 Tools / MCP"]
+    ORCH <--> MEM["💾 Memory (short + long term)"]
+    ORCH <--> CACHE["⚡ Prompt cache"]
+    LLM --> GUARD["🛡️ Guardrails / validation"] --> UI
+    ORCH -.emits.-> OBS["📊 Eval & observability"]
+    DATA[("📚 Your data sources")] -.ingest / chunk / embed.-> VDB
+    classDef core fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef ext fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    class ORCH,PROMPT core; class LLM,TOOLS,VDB,EMB,MEM,CACHE,GUARD,OBS ext;
+    </div>
+
+    <h2><span class="chip concept">COMPONENTS</span> The building blocks</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>#</th><th>Component</th><th>What it does</th><th>Example tech</th><th>Maps to CCA domain</th></tr>
+        <tr><td>1</td><td><b>Client / UI</b></td><td>Where the user types and sees results (chat, IDE, API)</td><td>Web app, CLI, Slack, IDE</td><td>—</td></tr>
+        <tr><td>2</td><td><b>Orchestrator / Agent loop</b></td><td>The control flow: decides steps, calls the model &amp; tools until done</td><td>Agent SDK, LangChain, custom loop</td><td>D1 · Agentic Architecture</td></tr>
+        <tr><td>3</td><td><b>Prompt &amp; context assembly</b></td><td>Builds the system prompt, few-shot examples, and injects retrieved data</td><td>Templates, XML tags</td><td>D3 · Prompt Engineering</td></tr>
+        <tr><td>4</td><td><b>LLM (inference)</b></td><td>The reasoning engine that generates responses</td><td>Claude, GPT, Gemini, Llama</td><td>D1 · D3</td></tr>
+        <tr><td>5</td><td><b>Embeddings + Vector store (RAG)</b></td><td>Turns data into vectors and retrieves the relevant chunks at query time</td><td>Voyage/Cohere + Pinecone/pgvector</td><td>D5 · Context Management</td></tr>
+        <tr><td>6</td><td><b>Memory</b></td><td>Carries facts across turns (short-term) and sessions (long-term)</td><td>Summaries, memory tool, DB</td><td>D5 · Context Management</td></tr>
+        <tr><td>7</td><td><b>Tools / MCP</b></td><td>Lets the model fetch live data &amp; take actions (search, DB, APIs)</td><td>Function calling, MCP servers</td><td>D4 · Tool Design &amp; MCP</td></tr>
+        <tr><td>8</td><td><b>Caching</b></td><td>Reuses stable prompt prefixes to cut cost &amp; latency</td><td>Prompt caching</td><td>D5 · Context Management</td></tr>
+        <tr><td>9</td><td><b>Guardrails / validation</b></td><td>Checks inputs &amp; outputs: safety, format, permissions, spend caps</td><td>Classifiers, schemas, policies</td><td>D2 · D4 · D5</td></tr>
+        <tr><td>10</td><td><b>Eval &amp; observability</b></td><td>Measures quality, cost, latency; catches regressions &amp; drift</td><td>Eval suites, tracing, logs</td><td>D5 · Observability</td></tr>
+        <tr><td>11</td><td><b>Data pipeline</b></td><td>Ingests, chunks, cleans &amp; embeds source data into the vector store</td><td>ETL, Databricks, chunkers</td><td>D5 · Context Management</td></tr>
+    </table>
+    </div>
+    <div class="note">Notice the right column: <strong>the components of a Gen AI app line up almost one-to-one with the
+    five CCA-F domains.</strong> That's the bridge — learn the building blocks here, then go deep on each in the CCA material.</div>
+
+    <h2><span class="chip trade">TRADE-OFFS</span> Three ways to give a model your knowledge</h2>
+    <p>A recurring architecture decision: how do you get the model to know things it wasn't trained on? Three levers,
+    increasing in weight:</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Approach</th><th>How</th><th>Best for</th><th>Cost / effort</th></tr>
+        <tr><td><b>Prompting / in-context</b></td><td>Put the info directly in the prompt</td><td>Small, per-request context</td><td>🟢 Lowest</td></tr>
+        <tr><td><b>RAG</b></td><td>Retrieve relevant chunks from a vector store at query time</td><td>Large, changing knowledge bases</td><td>🟡 Medium</td></tr>
+        <tr><td><b>Fine-tuning</b></td><td>Further-train the model weights on your data</td><td>Fixed style/format or narrow domain</td><td>🔴 Highest</td></tr>
+    </table>
+    </div>
+    <div class="good">Rule of thumb: <b>start with prompting</b>, add <b>RAG</b> when knowledge is large or changes often,
+    and reach for <b>fine-tuning</b> only when prompting + RAG can't get the behavior you need.</div>
+
+    <h2><span class="chip concept">DATA FLOW</span> Two phases: ingestion vs. query</h2>
+    <p>RAG has two separate timelines that beginners often conflate:</p>
+    <div class="tradeoff">
+        <div class="pro"><h4>🗂️ Ingestion (offline, ahead of time)</h4>
+            <ul><li>Load source docs</li><li>Chunk into passages</li><li>Embed each chunk → vectors</li><li>Store in the vector DB</li></ul></div>
+        <div class="con"><h4>⚡ Query (online, per request)</h4>
+            <ul><li>Embed the user's question</li><li>Search the vector DB for nearest chunks</li><li>Inject chunks into the prompt</li><li>Model answers, grounded in them</li></ul></div>
+    </div>
+
+    <h2><span class="chip exam">TAKEAWAYS</span></h2>
+    <div class="trap"><b>Remember:</b> the <b>LLM is one component</b>, not the whole app — most engineering effort goes into the layers <em>around</em> it.</div>
+    <div class="trap"><b>Remember:</b> <b>RAG ≠ fine-tuning.</b> RAG adds knowledge at query time without changing the model; fine-tuning changes the weights.</div>
+    <div class="trap"><b>Remember:</b> <b>tools/MCP</b> give the model <em>actions &amp; live data</em>; <b>RAG</b> gives it <em>relevant documents</em>; <b>memory</b> gives it <em>continuity</em>. Different jobs.</div>
+
+    <div class="pager">
+        <a href="ai-universe.html"><span class="k">← Back</span>The AI Universe</a>
+        <a class="next" href="index.html"><span class="k">Next →</span>Fundamentals hub</a>
+    </div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · Anatomy of a Gen AI Application</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

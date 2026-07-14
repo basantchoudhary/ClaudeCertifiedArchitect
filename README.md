@@ -4,6 +4,10 @@ Study material for Anthropic's **Claude Certified Architect** exams — CCA-F (F
 CCAR-P (Professional). Interactive HTML pages with diagrams, runnable code, flashcards, and
 practice questions.
 
+New to Gen AI? Start with **[Gen AI Fundamentals](GenAI-Fundamentals/index.html)** — plain-English,
+big-picture concept pages (the "AI Universe" landscape map, the anatomy of a Gen AI app) that make the
+exam-focused CCA material land more easily.
+
 ## 🌐 View the live site (rendered)
 
 > GitHub shows `.html` files as source. To see them **rendered** (styling + Mermaid diagrams),
@@ -13,6 +17,7 @@ practice questions.
 
 | Section | Live link |
 |---------|-----------|
+| 🧠 **Gen AI Fundamentals** (new here? start with the big-picture "AI Universe") | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/GenAI-Fundamentals/index.html) |
 | **CCA-F · Domain 1 — Agentic Architecture** (curriculum hub) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/index.html) |
 | CCA-F · Domain 1 — visual overview & flashcards | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/overview.html) |
 | 🧪 **CCA-F · Domain 1 — Mock Exam Bank** (7 sets + full mock, 118 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
@@ -466,6 +471,10 @@ practice questions.
 ## Repository layout
 
 ```
+GenAI-Fundamentals/             plain-English concept pages (on-ramp)
+  index.html                    hub
+  ai-universe.html              the big-picture landscape map
+  genai-app-components.html     anatomy of a Gen AI application
 CCA-F/                          Claude Certified Architect — Foundations
   CCA-F_Study_Guide.html        full study guide
   D1-Agentic-Architecture/      Domain 1 deep-dive (27% of exam)
