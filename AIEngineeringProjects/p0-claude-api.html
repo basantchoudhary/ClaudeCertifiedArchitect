@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P0 (Claude API) · Text-to-SQL Agent · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .certmap { background:#faf9ff; border:1px solid #e6e1f7; border-left:4px solid #764ba2; border-radius:0 6px 6px 0; padding:8px 14px; margin:8px 0; font-size:.92em; }
+    .certmap b { color:#5a4a8a; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="p0-text-to-sql-agent.html">P0</a> › Build it with the Claude API</div>
+    <h1>🟣 P0 · Building the Agent with the Claude API</h1>
+    <div class="tag">The same self-correcting loop — now with native tool use · your CCA rehearsal in code</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">WHY THIS VERSION</span> The exam is about <em>this</em> loop</h2>
+    <p>The <a href="p0-text-to-sql-agent.html">free local build</a> uses a local model and parses SQL out of a text
+    reply. That teaches the <em>shape</em> of an agent. This page rebuilds the exact same agent on the
+    <strong>Claude Messages API with native tool use</strong> — and <strong>that</strong> is what the Claude Certified
+    Architect exam actually tests: the <code>stop_reason</code> loop (D1), the <code>tool_use</code> / <code>tool_result</code>
+    contract (D4), prompt caching (D5), and adaptive thinking (D3). Build this once and the D1/D4 questions become muscle memory.</p>
+    <div class="note">💡 Same problem, same loop, two front doors. Local = free &amp; string-parsed. Claude API = paid &amp; <em>structured</em> — the model returns a typed <code>tool_use</code> block instead of a string you have to scrape.</div>
+
+    <h2><span class="chip concept">LOCAL vs CLAUDE API</span> What changes</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>💻 Local (Ollama)</th><th>🟣 Claude API (native tool use)</th></tr>
+        <tr><td>How the model asks to run SQL</td><td>Returns SQL as <em>text</em>; you regex/parse it</td><td>Returns a typed <code>tool_use</code> block with validated <code>input</code></td></tr>
+        <tr><td>How you feed the result back</td><td>Stuff it into the next prompt string</td><td>A <code>tool_result</code> block (user turn) with matching <code>tool_use_id</code></td></tr>
+        <tr><td>How you know it's done</td><td>Heuristic ("looks like an answer")</td><td><code>stop_reason == "end_turn"</code> — explicit</td></tr>
+        <tr><td>Errors</td><td>Append error text</td><td><code>tool_result</code> with <code>is_error: true</code> — a first-class signal</td></tr>
+        <tr><td>Cost / auth</td><td>$0, offline</td><td>Paid API key (<code>ANTHROPIC_API_KEY</code> or <code>ant auth login</code>)</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> The Messages API tool loop</h2>
+    <div class="mermaid">
+sequenceDiagram
+    actor U as User
+    participant AG as Your loop
+    participant M as Claude (Messages API)
+    participant DB as DuckDB
+    U->>AG: "How many EU orders last quarter?"
+    loop until stop_reason == end_turn (or max turns)
+        AG->>M: messages + tools + system(schema, cached)
+        alt stop_reason == "tool_use"
+            M-->>AG: assistant turn: [thinking?] + tool_use{run_sql, query}
+            AG->>AG: append the WHOLE assistant turn
+            AG->>DB: run_sql(query)
+            alt query errors
+                DB-->>AG: exception
+                AG-->>M: user turn: tool_result{is_error:true, error}
+            else rows
+                DB-->>AG: rows
+                AG-->>M: user turn: tool_result{tool_use_id, rows}
+            end
+        else stop_reason == "end_turn"
+            M-->>AG: final text answer
+            AG-->>U: answer
+        else stop_reason == "refusal" / "max_tokens"
+            M-->>AG: handle explicitly
+        end
+    end
+    </div>
+
+    <h2><span class="chip code">CODE</span> The whole agent, on the Claude API</h2>
+    <p>One tool (<code>run_sql</code>), the schema cached in the system prompt, a manual loop that routes on
+    <code>stop_reason</code>. Every line is annotated with the CCA concept it embodies.</p>
+<pre><span class="cm"># pip install anthropic duckdb   ·   export ANTHROPIC_API_KEY=sk-ant-...  (or: ant auth login)</span>
+<span class="kw">import</span> anthropic, duckdb
+
+client = anthropic.<span class="fn">Anthropic</span>()                 <span class="cm"># reads ANTHROPIC_API_KEY or an `ant auth login` profile</span>
+con = duckdb.<span class="fn">connect</span>(<span class="st">"demo.duckdb"</span>, read_only=<span class="kw">True</span>)  <span class="cm"># GUARDRAIL: read-only engine — DROP is impossible</span>
+
+<span class="kw">def</span> <span class="fn">get_schema</span>():
+    <span class="kw">return</span> con.<span class="fn">sql</span>(<span class="st">"""SELECT table_name, column_name, data_type
+                      FROM information_schema.columns ORDER BY table_name"""</span>).df().<span class="fn">to_string</span>()
+
+<span class="kw">def</span> <span class="fn">run_sql</span>(query):                        <span class="cm"># the tool Claude calls</span>
+    <span class="kw">return</span> con.<span class="fn">sql</span>(<span class="st">f"SELECT * FROM ({query}) LIMIT 100"</span>).df().<span class="fn">to_string</span>()  <span class="cm"># GUARDRAIL: row cap</span>
+
+<span class="cm"># --- D4: the tool definition. The DESCRIPTION is the #1 lever — say when to use it. ---</span>
+TOOLS = [{
+    <span class="st">"name"</span>: <span class="st">"run_sql"</span>,
+    <span class="st">"description"</span>: <span class="st">"Run a read-only SQL SELECT against the DuckDB database and return the rows. "</span>
+                   <span class="st">"Use this to answer the user's question. Only SELECT is allowed."</span>,
+    <span class="st">"input_schema"</span>: {<span class="st">"type"</span>: <span class="st">"object"</span>,
+        <span class="st">"properties"</span>: {<span class="st">"query"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"description"</span>: <span class="st">"One DuckDB SELECT statement."</span>}},
+        <span class="st">"required"</span>: [<span class="st">"query"</span>]},
+}]
+
+<span class="cm"># --- D3 + D5: schema lives in the system prompt, marked for prompt caching (stable prefix). ---</span>
+SYSTEM = [{
+    <span class="st">"type"</span>: <span class="st">"text"</span>,
+    <span class="st">"text"</span>: <span class="st">"You are a careful DuckDB analyst. Write ONE SELECT to answer the question and call "</span>
+            <span class="st">"run_sql. If it errors, read the error and fix the query. Then answer in one sentence.\n\n"</span>
+            <span class="st">f"Schema:\n{get_schema()}"</span>,
+    <span class="st">"cache_control"</span>: {<span class="st">"type"</span>: <span class="st">"ephemeral"</span>},   <span class="cm"># D5: cache the stable schema prefix (~90% cheaper reads)</span>
+}]
+
+<span class="kw">def</span> <span class="fn">agent</span>(question, max_turns=6):          <span class="cm"># D1: loop termination — never loop forever</span>
+    messages = [{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: question}]  <span class="cm"># D1: API is stateless — you resend history</span>
+    <span class="kw">for</span> _ <span class="kw">in</span> range(max_turns):
+        resp = client.messages.<span class="fn">create</span>(
+            model=<span class="st">"claude-opus-4-8"</span>,            <span class="cm"># D5: model tier by task (Haiku 4.5 is cheaper for SQL)</span>
+            max_tokens=16000,
+            system=SYSTEM, tools=TOOLS,
+            thinking={<span class="st">"type"</span>: <span class="st">"adaptive"</span>},     <span class="cm"># D3/D1: adaptive thinking (NOT budget_tokens on 4.8)</span>
+            messages=messages,
+        )
+        <span class="kw">if</span> resp.stop_reason == <span class="st">"refusal"</span>:       <span class="cm"># D1: handle every stop_reason, not just end_turn</span>
+            <span class="kw">return</span> <span class="st">"Request was declined."</span>
+        <span class="kw">if</span> resp.stop_reason == <span class="st">"end_turn"</span>:      <span class="cm"># done → return the final text</span>
+            <span class="kw">return</span> <span class="fn">next</span>(b.text <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="st">"text"</span>)
+        <span class="kw">if</span> resp.stop_reason == <span class="st">"tool_use"</span>:
+            messages.<span class="fn">append</span>({<span class="st">"role"</span>: <span class="st">"assistant"</span>, <span class="st">"content"</span>: resp.content})  <span class="cm"># D1: append the WHOLE turn (thinking + tool_use)</span>
+            results = []
+            <span class="kw">for</span> block <span class="kw">in</span> resp.content:
+                <span class="kw">if</span> block.type == <span class="st">"tool_use"</span>:
+                    <span class="kw">try</span>:
+                        out = <span class="fn">run_sql</span>(block.input[<span class="st">"query"</span>])
+                        results.<span class="fn">append</span>({<span class="st">"type"</span>: <span class="st">"tool_result"</span>, <span class="st">"tool_use_id"</span>: block.id, <span class="st">"content"</span>: out})
+                    <span class="kw">except</span> Exception <span class="kw">as</span> e:            <span class="cm"># D4: return the error, don't throw — Claude recovers</span>
+                        results.<span class="fn">append</span>({<span class="st">"type"</span>: <span class="st">"tool_result"</span>, <span class="st">"tool_use_id"</span>: block.id,
+                                        <span class="st">"content"</span>: <span class="st">f"SQL error: {e}"</span>, <span class="st">"is_error"</span>: <span class="kw">True</span>})
+            messages.<span class="fn">append</span>({<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: results})  <span class="cm"># D4: ALL results, in ONE user turn</span>
+    <span class="kw">return</span> <span class="st">"Could not answer within the turn budget."</span>
+
+<span class="fn">print</span>(<span class="fn">agent</span>(<span class="st">"How many orders were placed in 2024?"</span>))</pre>
+
+    <h2><span class="chip exam">CERT MAP</span> Every API line ↔ an exam concept</h2>
+    <p>This is why it's the perfect rehearsal — each mechanic above is a place the exam probes:</p>
+    <div class="certmap"><b>stop_reason routing</b> (end_turn / tool_use / refusal / max_tokens) → <b>D1 · Stop Reasons</b>. Trap: handling only <code>end_turn</code> and missing <code>refusal</code> or <code>max_tokens</code>.</div>
+    <div class="certmap"><b>Append the whole assistant turn</b> — including thinking + tool_use blocks — before returning results → <b>D1 · Foundations</b>. Trap: appending only the text.</div>
+    <div class="certmap"><b>tool_result in a USER turn, matching <code>tool_use_id</code>, all results in one message, <code>is_error</code> for failures</b> → <b>D4 · Tool Results</b>. Getting any of these wrong is a 400 (the classic contract failure).</div>
+    <div class="certmap"><b>Tool definition</b> (name · description · input_schema; description is the lever) → <b>D4 · Designing Tools</b>.</div>
+    <div class="certmap"><b>Adaptive thinking</b> <code>{"type":"adaptive"}</code>, not <code>budget_tokens</code> → <b>D3/D1</b>. Trap: <code>budget_tokens</code> returns a 400 on Opus 4.8 / 4.7 / Sonnet 5.</div>
+    <div class="certmap"><b>Prompt caching the schema prefix</b> (<code>cache_control</code>, order tools→system→messages, byte-stable) → <b>D5 · Prompt Caching</b>. Trap: the min cacheable prefix on Opus 4.8 is ~4096 tokens — a tiny schema silently won't cache.</div>
+    <div class="certmap"><b>Statelessness</b> — you resend the full <code>messages</code> list every turn → <b>D1 / D5</b>. Trap: assuming the API "remembers" prior calls.</div>
+    <div class="certmap"><b>Loop termination</b> (<code>max_turns</code>) → <b>D1 · Autonomy &amp; Guardrails</b>. Trap: no cap → runaway/cost.</div>
+    <div class="certmap"><b>Security at the tool layer</b> (read-only DB grant + <code>LIMIT</code>) not the prompt → <b>D1/D4</b>. The prompt can be jailbroken; the grant cannot.</div>
+
+    <h2><span class="chip trade">TRADE-OFFS</span> Manual loop vs the Tool Runner</h2>
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ Manual loop (shown above)</h4>
+            <ul><li>You <em>see</em> every mechanic — this is what the exam tests</li>
+            <li>Full control over gating, logging, retries</li>
+            <li>No beta dependency</li></ul></div>
+        <div class="con"><h4>⚙️ Tool Runner (production shortcut)</h4>
+            <ul><li><code>client.beta.messages.tool_runner(...)</code> drives the loop for you — you write only the tool functions</li>
+            <li>Less code; per-turn hooks for approval/interception</li>
+            <li>Great for prod — but learn the manual loop <em>first</em></li></ul></div>
+    </div>
+    <div class="good">For the exam, hand-write the loop until the <code>stop_reason</code> → <code>tool_use</code> → <code>tool_result</code> cycle is automatic. For production, reach for the Tool Runner.</div>
+
+    <h2><span class="chip concept">SWAP-INS</span> The same code, bigger</h2>
+    <ul>
+        <li><b>Warehouse instead of DuckDB</b> → point <code>run_sql</code> at Databricks SQL / BigQuery / Athena. The loop is identical.</li>
+        <li><b>Structured final answer</b> → add <code>output_config.format</code> (a JSON schema) so the answer is machine-parseable (D3).</li>
+        <li><b>Cheaper</b> → <code>model="claude-haiku-4-5"</code> for the SQL step; keep Opus for hard reconciliation (D5 model tiering).</li>
+        <li><b>Long outputs</b> → stream with <code>client.messages.stream(...)</code> and <code>get_final_message()</code> (D5).</li>
+        <li><b>A verification step</b> → after success, ask Claude to check the SQL matches the question — the seed of every bigger agent's parity harness.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="p0-text-to-sql-agent.html"><span class="k">← Back</span>P0 · Local build</a>
+        <a class="next" href="../CCA-F/D4-Tool-Design-MCP/index.html"><span class="k">Next →</span>CCA-F Domain 4 · Tool Design</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · P0 · Building with the Claude API</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

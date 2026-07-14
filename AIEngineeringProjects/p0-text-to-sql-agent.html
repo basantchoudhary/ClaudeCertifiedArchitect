@@ -164,6 +164,10 @@ flowchart LR
     <p style="font-size:.9em;color:#777">Since this repo is Claude-focused: in a real build you'd point the same code at Claude via the
     Anthropic API (or Bedrock/Vertex/Foundry). The client is swappable — only the endpoint changes. Free-tier hosted alternatives to
     Ollama: Google AI Studio, Groq, or OpenRouter <code>:free</code> models.</p>
+    <div class="good">🟣 <b>Preparing for the Claude Certified Architect exam?</b> The companion page
+    <a href="p0-claude-api.html">Building the Agent with the Claude API</a> rebuilds this exact agent with the Messages API
+    and <em>native tool use</em> — the <code>stop_reason</code> loop, the <code>tool_use</code>/<code>tool_result</code> contract,
+    prompt caching, and adaptive thinking — each line mapped to a CCA domain. That's the version the exam tests.</div>
 
     <h3>The whole agent (minimal, real)</h3>
 <pre><span class="cm"># pip install duckdb requests   ·   ollama pull qwen2.5-coder:7b</span>
