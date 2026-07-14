@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P0 · Self-Correcting Text-to-SQL Agent · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .homes { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .home { background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:16px; padding:4px 12px; font-size:.85em; font-weight:600; }
+    table.map td:first-child, table.map th:first-child { position:sticky; left:0; background:inherit; }
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › P0 · Text-to-SQL Agent</div>
+    <h1>🔁 P0 · Self-Correcting Text-to-SQL Agent</h1>
+    <div class="tag">The smallest <em>pure</em> agent · one loop, every core concept · runs free on your laptop</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE PROJECT</span> One line, and why it's the teaching agent</h2>
+    <p>Ask a question in English → the agent writes SQL, <strong>runs it</strong>, and if it errors, <strong>reads the
+    database error and fixes the query</strong>, looping until it works — then answers. It's the smallest thing that is
+    <em>genuinely</em> agentic: you cannot know the SQL is correct without running it, so the <b>decide → act → observe →
+    adjust</b> loop is unavoidable (not a workflow you could hardcode). Read-only, ~100 lines, one dataset — so you learn the
+    <b>loop</b> and the <b>tool contract</b> with nothing else in the way.</p>
+    <div class="note">🎯 Everything bigger (the DQ agent, the UC-migration agent, RCA agents) is <em>this loop + more tools + a verification step.</em> Master it here.</div>
+
+    <!-- ============ CONCEPTUAL ============ -->
+    <h2><span class="chip concept">1 · CONCEPTUAL DESIGN</span> The logic, no infrastructure</h2>
+    <p>Conceptual design answers <em>"what are the moving parts and how do they interact?"</em> — independent of where it runs.
+    There are only four logical roles plus a loop:</p>
+    <table>
+        <tr><th>Logical role</th><th>Responsibility</th></tr>
+        <tr><td><b>Agent / Orchestrator</b></td><td>Owns the loop: prompt the model, execute its tool calls, feed results back, decide when to stop</td></tr>
+        <tr><td><b>LLM (reasoner)</b></td><td>Turns question + schema (+ prior errors) into a SQL query; later, turns rows into a plain answer</td></tr>
+        <tr><td><b>Tools</b></td><td><code>get_schema()</code> and <code>run_sql(query)</code> — the agent's only ways to touch the world</td></tr>
+        <tr><td><b>Data (SQL engine)</b></td><td>Executes the query, returns rows <em>or</em> an error message (the crucial feedback signal)</td></tr>
+    </table>
+
+    <h3>The loop, as a sequence</h3>
+    <div class="mermaid">
+sequenceDiagram
+    actor U as User
+    participant AG as Agent (loop)
+    participant M as LLM
+    participant DB as SQL engine
+    U->>AG: "How many EU orders last quarter?"
+    AG->>DB: get_schema()
+    DB-->>AG: tables & columns
+    loop until success or max_tries
+        AG->>M: question + schema (+ last error)
+        M-->>AG: SQL query
+        AG->>DB: run_sql(query)
+        alt query errors
+            DB-->>AG: error message
+            Note over AG,M: feed the error back → model fixes it
+        else query runs
+            DB-->>AG: rows
+            AG->>M: rows → summarize
+            M-->>AG: plain-English answer
+            AG-->>U: answer (+ the SQL)
+        end
+    end
+    </div>
+
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ What makes this an <em>agent</em></h4>
+            <ul><li>The next action depends on the <b>observed result</b> (the error), not a fixed script</li>
+            <li>The model, not your code, decides the fix</li>
+            <li>There's a real <b>feedback loop</b> and a <b>terminal condition</b></li></ul></div>
+        <div class="con"><h4>⚠️ Design decisions to make now</h4>
+            <ul><li><b>Loop termination</b>: cap at N tries (D1) — never loop forever</li>
+            <li><b>Tool contract</b>: how errors are returned to the model (D4)</li>
+            <li><b>Guardrails</b>: read-only, row limit, timeout (built in, not prompted)</li></ul></div>
+    </div>
+
+    <!-- ============ PHYSICAL ============ -->
+    <h2><span class="chip diagram">2 · PHYSICAL DESIGN</span> Same agent, five homes</h2>
+    <p>Physical design maps each <em>logical role</em> onto <em>concrete technology</em>. The beautiful part: <strong>the agent
+    logic never changes</strong> — only the boxes it plugs into. Here's the reference shape, then the same four roles realized
+    on each platform:</p>
+    <div class="homes">
+        <span class="home">💻 Laptop + Docker</span><span class="home">🧱 Databricks</span><span class="home">🟧 AWS</span><span class="home">🔷 Azure</span><span class="home">🔴 GCP</span>
+    </div>
+    <div class="mermaid">
+flowchart LR
+    U["Client"] --> APP["Agent process<br/>(container / function)"]
+    APP -->|"inference"| LLM["LLM endpoint"]
+    APP -->|"get_schema / run_sql"| SQL["SQL engine + data"]
+    APP -.logs.-> LOG["Logging"]
+    APP -.traces/metrics.-> OBS["Observability"]
+    APP -.reads.-> SEC["Secrets"]
+    classDef core fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class APP core;
+    </div>
+
+    <h3>The "flavour of each cloud" map</h3>
+    <div style="overflow-x:auto">
+    <table class="map">
+        <tr><th>Role</th><th>💻 Local (Docker)</th><th>🧱 Databricks</th><th>🟧 AWS</th><th>🔷 Azure</th><th>🔴 GCP</th></tr>
+        <tr><td><b>Where the agent runs</b></td><td>Python in a container (Docker Compose)</td><td>Job / notebook / Databricks App</td><td>Lambda or ECS/Fargate</td><td>Functions or Container Apps</td><td>Cloud Run</td></tr>
+        <tr><td><b>LLM (inference)</b></td><td>Ollama (local open model)</td><td>Mosaic AI Model Serving / Foundation Model APIs</td><td>Amazon Bedrock</td><td>Azure AI Foundry / Azure OpenAI</td><td>Vertex AI (Gemini + Model Garden)</td></tr>
+        <tr><td><b>SQL engine + data</b></td><td>DuckDB (embedded)</td><td>Databricks SQL / Spark on Unity Catalog</td><td>Athena (S3) / Redshift</td><td>Synapse / Fabric / Azure SQL</td><td>BigQuery</td></tr>
+        <tr><td><b>Container registry/runtime</b></td><td>Docker Desktop</td><td>Managed (or Container Services)</td><td>ECR + ECS/EKS</td><td>ACR + Container Apps/AKS</td><td>Artifact Registry + Cloud Run/GKE</td></tr>
+        <tr><td><b>Secrets</b></td><td>.env + dotenv</td><td>Databricks Secret Scopes</td><td>Secrets Manager / SSM</td><td>Key Vault</td><td>Secret Manager</td></tr>
+        <tr><td><b>Logging</b></td><td>stdout / JSON file</td><td>Driver logs + system tables</td><td>CloudWatch Logs</td><td>Azure Monitor / Log Analytics</td><td>Cloud Logging</td></tr>
+        <tr><td><b>Observability / tracing</b></td><td>Phoenix / Langfuse (self-host)</td><td>MLflow Tracing + AI Gateway</td><td>CloudWatch + X-Ray; Bedrock invocation logs</td><td>Application Insights; Foundry tracing</td><td>Cloud Monitoring + Cloud Trace</td></tr>
+        <tr><td><b>Identity / access</b></td><td>local user</td><td>Unity Catalog + workspace IAM</td><td>IAM roles</td><td>Entra ID + managed identity</td><td>IAM + service accounts</td></tr>
+        <tr><td><b>Orchestration (if scheduled)</b></td><td>cron / plain script</td><td>Databricks Workflows</td><td>Step Functions / EventBridge</td><td>Logic Apps / Durable Functions</td><td>Workflows / Cloud Scheduler</td></tr>
+    </table>
+    </div>
+    <div class="note">Read a <em>column</em> to learn a cloud's Gen-AI toolkit; read a <em>row</em> to see how one responsibility is
+    solved everywhere. This is the <a href="../GenAI-Fundamentals/ai-universe.html">AI Universe</a> layer map made concrete — the
+    <b>gateway</b> layer is Bedrock / Foundry / Vertex / Model Serving; on your laptop it's Ollama.</div>
+
+    <!-- ============ CROSS-CUTTING ============ -->
+    <h2><span class="chip trade">3 · CROSS-CUTTING CONCERNS</span> The stuff that decides if it's real</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>What it means for <em>this</em> agent</th><th>Levers / practices</th></tr>
+        <tr><td><b>💰 Cost</b></td><td>The schema is re-sent on <em>every</em> retry; each attempt = input tokens + output SQL. Retries multiply it.</td><td>Cache the schema prompt · cap max-tries (2–4) · use a small SQL-tuned model · trim schema to relevant tables</td></tr>
+        <tr><td><b>📊 Observability</b></td><td>You need to <em>see the agent think</em>: each iteration's SQL, the error, the fix, tokens, latency, #retries, success/fail.</td><td>Trace every loop step (Phoenix/Langfuse/MLflow) · a run-id per request · dashboards on success-rate &amp; avg-retries</td></tr>
+        <tr><td><b>🔐 Security</b></td><td>User text is untrusted (prompt injection) and SQL can be destructive. "Please DROP TABLE" must be <em>impossible</em>, not just discouraged.</td><td>Enforce at the <b>DB layer</b>: read-only role, no DDL/DML, allow-listed schemas · statement timeout · <code>LIMIT</code> · redact PII in logs · never trust the prompt for safety</td></tr>
+        <tr><td><b>📝 Logging</b></td><td>Reproduce and debug any run; prove what happened; don't leak data.</td><td>Structured JSON logs (prompt, SQL, result-shape, tokens) · correlation id · scrub secrets/PII · log levels</td></tr>
+        <tr><td><b>🛡️ Reliability</b></td><td>Model errors, DB timeouts, no-valid-SQL-found.</td><td>Loop cap + graceful "I couldn't answer" · retry model calls with backoff · timeouts on every tool</td></tr>
+        <tr><td><b>✅ Evals</b></td><td>"Did it work?" is measurable here — the query runs and returns the right answer, or not.</td><td><b>Execution accuracy</b> (does it run?) + <b>result match</b> vs gold queries + avg #self-corrections · run on every prompt/model change</td></tr>
+    </table>
+    </div>
+    <div class="bad"><b>The #1 real-world failure:</b> relying on the <em>prompt</em> ("only write SELECT queries") for safety. A read-only
+    database grant enforces it even if the model is tricked. <b>Security lives in the tool/permission layer, never in the prompt.</b></div>
+
+    <!-- ============ OSS ============ -->
+    <h2><span class="chip concept">4 · OPEN-SOURCE TOOLBOX</span> A free option for every responsibility</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Responsibility</th><th>Open-source options</th></tr>
+        <tr><td>Local LLM serving</td><td><b>Ollama</b>, llama.cpp, vLLM, LM Studio</td></tr>
+        <tr><td>SQL engine</td><td><b>DuckDB</b>, PostgreSQL, Trino/Presto, Apache Spark</td></tr>
+        <tr><td>Agent orchestration</td><td>Plain Python (recommended for learning), LangGraph, LangChain, LlamaIndex</td></tr>
+        <tr><td>Tracing / observability</td><td><b>Arize Phoenix</b>, <b>Langfuse</b>, OpenLLMetry, OpenTelemetry</td></tr>
+        <tr><td>Metrics &amp; dashboards</td><td>Prometheus + Grafana; Loki (logs), Tempo (traces)</td></tr>
+        <tr><td>Evals</td><td><b>promptfoo</b>, Phoenix Evals, DeepEval, Ragas (for RAG)</td></tr>
+        <tr><td>Guardrails</td><td>Guardrails AI, NeMo Guardrails, LLM Guard</td></tr>
+        <tr><td>Secrets</td><td>dotenv (local), SOPS, HashiCorp Vault</td></tr>
+        <tr><td>Containerization</td><td>Docker + Docker Compose, Podman</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ FREE LOCAL BUILD ============ -->
+    <h2><span class="chip code">5 · BUILD IT FREE &amp; LOCAL</span> $0, offline, on your machine</h2>
+    <p>What we'll actually run — every piece free and local:</p>
+    <div class="free">
+        <b>🧠 Model</b> — <b>Ollama</b> with an open SQL/coder model (<code>qwen2.5-coder</code>, <code>llama3.1</code>, or <code>sqlcoder</code>). Free, offline. <br>
+        <b>🗄️ Data</b> — <b>DuckDB</b> (embedded, zero-setup, reads CSV/Parquet). <br>
+        <b>🔁 Agent</b> — plain <b>Python</b> (no framework — you see every step). <br>
+        <b>📊 Tracing</b> — <b>Arize Phoenix</b> (<code>pip install</code>, runs locally). <br>
+        <b>📦 Containers</b> — optional <b>Docker Compose</b> to practice the deployment shape.
+    </div>
+    <p style="font-size:.9em;color:#777">Since this repo is Claude-focused: in a real build you'd point the same code at Claude via the
+    Anthropic API (or Bedrock/Vertex/Foundry). The client is swappable — only the endpoint changes. Free-tier hosted alternatives to
+    Ollama: Google AI Studio, Groq, or OpenRouter <code>:free</code> models.</p>
+
+    <h3>The whole agent (minimal, real)</h3>
+<pre><span class="cm"># pip install duckdb requests   ·   ollama pull qwen2.5-coder:7b</span>
+<span class="kw">import</span> duckdb, requests, json
+
+<span class="cm"># --- Data: open READ-ONLY so DROP/DELETE are impossible at the engine layer ---</span>
+con = duckdb.connect(<span class="st">"demo.duckdb"</span>, read_only=<span class="kw">True</span>)
+
+<span class="kw">def</span> <span class="fn">get_schema</span>():
+    <span class="kw">return</span> con.sql(<span class="st">"""SELECT table_name, column_name, data_type
+                      FROM information_schema.columns ORDER BY table_name"""</span>).df().to_string()
+
+<span class="kw">def</span> <span class="fn">run_sql</span>(q):                       <span class="cm"># the tool the model calls</span>
+    <span class="kw">return</span> con.sql(<span class="st">f"SELECT * FROM ({q}) LIMIT 100"</span>).df()   <span class="cm"># guardrail: cap rows</span>
+
+<span class="kw">def</span> <span class="fn">ask</span>(prompt):                        <span class="cm"># call the local model (Ollama)</span>
+    r = requests.post(<span class="st">"http://localhost:11434/api/generate"</span>,
+                      json={<span class="st">"model"</span>:<span class="st">"qwen2.5-coder:7b"</span>, <span class="st">"prompt"</span>:prompt, <span class="st">"stream"</span>:<span class="kw">False</span>})
+    <span class="kw">return</span> r.json()[<span class="st">"response"</span>].strip()
+
+<span class="kw">def</span> <span class="fn">agent</span>(question, max_tries=4):        <span class="cm"># THE LOOP — this is the whole agent</span>
+    schema, err = <span class="fn">get_schema</span>(), <span class="st">""</span>
+    <span class="kw">for</span> attempt <span class="kw">in</span> range(max_tries):
+        sql = <span class="fn">ask</span>(<span class="st">f"DuckDB schema:\n{schema}\nQuestion: {question}\n"</span>
+                  <span class="st">f"{err}Return ONLY a SELECT query, no prose."</span>)
+        <span class="kw">try</span>:
+            rows = <span class="fn">run_sql</span>(sql)                        <span class="cm"># act</span>
+            <span class="kw">return</span> <span class="fn">ask</span>(<span class="st">f"Q: {question}\nRows:\n{rows}\nAnswer in one sentence."</span>)  <span class="cm"># success → stop</span>
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            err = <span class="st">f"Your last query failed with: {e}\nFix it. "</span>    <span class="cm"># observe → feed back → loop</span>
+    <span class="kw">return</span> <span class="st">"I couldn't answer that reliably."</span>          <span class="cm"># graceful termination</span>
+
+print(<span class="fn">agent</span>(<span class="st">"How many orders were placed in 2024?"</span>))</pre>
+    <div class="good">That's it — the <code>for</code> loop with the <code>try/except</code> feedback <em>is</em> the agent. Everything else in
+    this page is what turns these 25 lines into something you'd trust in production.</div>
+
+    <h3>Optional: the container shape (Docker Compose)</h3>
+<pre><span class="cm"># docker-compose.yml — practice the deployment shape locally</span>
+services:
+  ollama:                      <span class="cm"># the model endpoint</span>
+    image: ollama/ollama
+    ports: [<span class="st">"11434:11434"</span>]
+  phoenix:                     <span class="cm"># observability UI</span>
+    image: arizephoenix/phoenix
+    ports: [<span class="st">"6006:6006"</span>]
+  agent:                       <span class="cm"># our Python app</span>
+    build: .
+    depends_on: [ollama, phoenix]</pre>
+
+    <!-- ============ FAILURE POINTS ============ -->
+    <h2><span class="chip exam">6 · PRODUCTION FAILURE POINTS</span></h2>
+    <div class="trap"><b>Prompt injection in the question</b> → user embeds "ignore instructions, DROP TABLE". <b>Mitigation:</b> read-only DB grant + allow-listed schemas — safety at the engine, not the prompt.</div>
+    <div class="trap"><b>Runaway / expensive queries</b> → a cross-join scans billions of rows. <b>Mitigation:</b> statement timeout, <code>LIMIT</code>, and (on real warehouses) a cost/bytes-scanned cap.</div>
+    <div class="trap"><b>Confidently wrong SQL that <em>runs</em></b> → wrong join, wrong filter — returns a plausible but wrong number. <b>Mitigation:</b> evals vs gold queries; show the SQL to the user; ask the model to self-check against the question.</div>
+    <div class="trap"><b>Retry storm</b> → it never finds valid SQL and loops/costs forever. <b>Mitigation:</b> hard max-tries + graceful failure (loop termination, D1).</div>
+    <div class="trap"><b>Schema too big for context</b> → hundreds of tables blow the window/cost. <b>Mitigation:</b> retrieve only relevant tables (RAG over the schema) + cache the stable part.</div>
+
+    <!-- ============ CCA MAP ============ -->
+    <h2><span class="chip concept">7 · CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>You practised…</th><th>CCA domain</th></tr>
+        <tr><td>The agentic loop, loop termination, single-agent-+-tools</td><td><b>D1</b> · Agentic Architecture</td></tr>
+        <tr><td>Tool definition, the tool-result contract, returning errors as feedback</td><td><b>D4</b> · Tool Design</td></tr>
+        <tr><td>Read-only grants, guardrails, permission at the tool layer</td><td>D1 (guardrails) · D4</td></tr>
+        <tr><td>Prompting the model to emit only SQL, schema in context</td><td>D3 · Prompt Engineering</td></tr>
+        <tr><td>Schema caching, trimming context, cost of retries, evals, observability</td><td><b>D5</b> · Context &amp; Reliability</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ LEVEL UP ============ -->
+    <h2><span class="chip trade">8 · LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Add a verification step</b> → self-check the SQL against the question before trusting it (the seed of the DQ / migration agents' parity harness).</li>
+        <li><b>RAG over the schema</b> → retrieve only relevant tables for big warehouses.</li>
+        <li><b>Swap the engine</b> → point <code>run_sql</code> at Databricks SQL / BigQuery / Athena — same loop, new home.</li>
+        <li><b>Swap the model</b> → point <code>ask</code> at Claude via the Anthropic API or a cloud gateway.</li>
+        <li><b>Add tracing</b> → wire Phoenix/Langfuse and watch every loop iteration.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Projects catalog</a>
+        <a class="next" href="../CCA-F/D1-Agentic-Architecture/index.html"><span class="k">Next →</span>CCA-F Domain 1</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · P0 · Self-Correcting Text-to-SQL Agent</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
