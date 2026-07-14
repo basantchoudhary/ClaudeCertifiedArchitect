@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training vs Inference · Gen AI Fundamentals</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Training vs Inference</div>
+    <h1>⚙️ Training vs Inference — Building a Model vs Using One</h1>
+    <div class="tag">One is how a model is made · the other is how you run it every day</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">BIG IDEA</span> Two completely different phases</h2>
+    <p>People blur "training" and "running" a model, but they're worlds apart. <strong>Training</strong> is the giant,
+    one-time process that <em>creates</em> the model by learning its weights from data. <strong>Inference</strong> is what
+    happens every time you send a prompt — the finished model, weights frozen, produces an answer. As an app builder you
+    live almost entirely in inference; training is done by the labs.</p>
+    <div class="tradeoff">
+        <div class="pro"><h4>🏗️ Training (make the model)</h4>
+            <ul><li>Done <b>once</b> by the lab (Anthropic, OpenAI…)</li><li>Huge cost: thousands of GPUs, weeks–months</li><li>Sets the <b>weights</b></li><li>Result: a reusable model</li></ul></div>
+        <div class="con"><h4>⚡ Inference (use the model)</h4>
+            <ul><li>Happens on <b>every request</b></li><li>Cost = tokens × price, milliseconds–seconds</li><li>Weights are <b>frozen</b> — read-only</li><li>What your app and this study material are about</li></ul></div>
+    </div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> The model lifecycle</h2>
+    <div class="mermaid">
+flowchart LR
+    D["📚 Huge text corpus"] --> PT["Pre-training<br/>next-token prediction"]
+    PT --> BASE["Base model<br/>(knows language, raw)"]
+    BASE --> POST["Post-training<br/>SFT + RLHF / alignment"]
+    POST --> ALIGN["Aligned model<br/>(helpful, safe, follows instructions)"]
+    ALIGN --> DEP["Deploy behind an API"]
+    DEP --> INF["⚡ Inference<br/>your prompt → answer"]
+    U["👤 You"] --> INF --> U
+    classDef train fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef run fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    class PT,POST train; class DEP,INF run;
+    </div>
+    <ul>
+        <li><b>Pre-training</b> — the model reads a vast corpus and learns to predict the next token. This is where most compute goes and where raw knowledge/skills form. Output: a <b>base (foundation) model</b>.</li>
+        <li><b>Post-training</b> — the base model is refined to be useful and safe: <b>SFT</b> (supervised fine-tuning on good examples) and <b>RLHF</b> (learning from human preference feedback / alignment). This is what turns a raw text predictor into a helpful assistant.</li>
+        <li><b>Deploy &amp; inference</b> — the finished, frozen model is served behind an API; your prompts run through it.</li>
+    </ul>
+
+    <h2><span class="chip concept">KEY POINT</span> At inference, the model does not learn</h2>
+    <p>This trips up almost everyone: when you chat with a model, <strong>it is not learning from you</strong>. The weights
+    are fixed. Any "memory" of your earlier messages exists only because <em>the conversation is re-sent</em> with each call
+    (the API is <a href="bite-sized-basics.html#deeper">stateless</a>). To actually change what a model knows or how it
+    behaves, you must go back to a training step — or, far more commonly, work <em>around</em> it with prompting and RAG.</p>
+    <div class="warn">⚠️ Separate from weights: providers have <b>data-use policies</b> about whether your inputs may be stored or used to train <em>future</em> models. That's a policy/contract matter — it doesn't mean the model you're calling learns live.</div>
+
+    <h2><span class="chip trade">THE LADDER</span> Four ways to adapt a model — cheapest to heaviest</h2>
+    <p>When you need a model to know or do something new, climb only as high as you must:</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Method</th><th>What it changes</th><th>Effort / cost</th><th>When to use</th></tr>
+        <tr><td><b>Prompting</b></td><td>Just the input — no model change</td><td>🟢 Instant</td><td>Steering behavior, small per-request context</td></tr>
+        <tr><td><b>RAG</b></td><td>Adds retrieved data at query time</td><td>🟡 Moderate (build a pipeline)</td><td>Large or changing private knowledge</td></tr>
+        <tr><td><b>Fine-tuning</b></td><td>Adjusts the weights on your examples</td><td>🟠 Heavier, slower to update</td><td>A fixed style/format the base won't hold</td></tr>
+        <tr><td><b>Pre-training</b></td><td>Builds a model from scratch</td><td>🔴 Enormous (labs only)</td><td>Almost never — you buy this, not build it</td></tr>
+    </table>
+    </div>
+    <div class="good">Practical order: <b>prompt → add RAG → consider fine-tuning</b>. 90%+ of real apps never need to touch the weights at all.</div>
+
+    <h2><span class="chip concept">COST</span> Why inference cost is the one you manage</h2>
+    <p>Training cost is the lab's problem, amortized into the per-token price you pay. <strong>Inference is your recurring
+    bill</strong>, and it scales with usage — so the whole of <a href="../CCA-F/D5-Context-Management/index.html">CCA Domain 5</a>
+    (caching, batching, model tiers, token efficiency) is really about optimizing inference. Training a model is like building
+    a factory; inference is paying for each item it makes.</p>
+
+    <h2><span class="chip exam">TAKEAWAYS</span></h2>
+    <div class="trap"><b>Remember:</b> <b>training creates weights; inference uses them.</b> You do inference.</div>
+    <div class="trap"><b>Remember:</b> the model <b>doesn't learn from your prompts</b> at inference — "memory" is just re-sent context.</div>
+    <div class="trap"><b>Remember:</b> to add <em>knowledge</em>, reach for <b>RAG</b> before fine-tuning; to change <em>behavior/style</em>, try prompting/examples before fine-tuning.</div>
+
+    <h2><span class="chip concept">GLOSSARY</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Term</th><th>In one sentence</th></tr>
+        <tr><td><b>Training</b></td><td>The process that sets a model's weights by learning from data.</td></tr>
+        <tr><td><b>Inference</b></td><td>Running the finished model to answer a prompt.</td></tr>
+        <tr><td><b>Pre-training</b></td><td>The large first phase: learn language/knowledge via next-token prediction.</td></tr>
+        <tr><td><b>Fine-tuning</b></td><td>A lighter follow-up that adapts a base model to a task or style.</td></tr>
+        <tr><td><b>SFT</b></td><td>Supervised fine-tuning — training on curated good input→output examples.</td></tr>
+        <tr><td><b>RLHF</b></td><td>Reinforcement Learning from Human Feedback — aligning a model to human preferences.</td></tr>
+        <tr><td><b>Base vs aligned model</b></td><td>Raw text predictor vs the helpful, instruction-following assistant.</td></tr>
+        <tr><td><b>Foundation model</b></td><td>A large general model you adapt, rather than train yourself.</td></tr>
+    </table>
+    </div>
+
+    <div class="good">➡️ You've now got the core mental models. Head back to the
+    <a href="index.html">Fundamentals hub</a> or dive into the <a href="../CCA-F/CCA-F_Study_Guide.html">CCA-F material</a>.</div>
+
+    <div class="pager">
+        <a href="transformers-attention.html"><span class="k">← Back</span>Transformers &amp; Attention</a>
+        <a class="next" href="index.html"><span class="k">Next →</span>Fundamentals hub</a>
+    </div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · Training vs Inference</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

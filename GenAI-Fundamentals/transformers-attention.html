@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformers & Attention · Gen AI Fundamentals</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Transformers &amp; Attention</div>
+    <h1>🤖 What's Inside an LLM — Transformers &amp; Attention</h1>
+    <div class="tag">Tokens → embeddings → attention → next token, on repeat</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">BIG IDEA</span> An LLM is a next-token predictor</h2>
+    <p>Strip away the mystique and a large language model does <strong>one thing</strong>: given a sequence of tokens,
+    it predicts the <em>probability of the next token</em>. It picks one, appends it, and predicts again — over and over.
+    That loop is called <strong>autoregressive generation</strong>. Everything impressive an LLM does — answering,
+    coding, reasoning — emerges from doing this next-token guess extremely well, at massive scale.</p>
+    <div class="note">🔑 The architecture that made this work well is the <strong>Transformer</strong> (2017, "Attention Is All You Need").
+    The <strong>GPT</strong> in ChatGPT literally stands for <em>Generative Pre-trained Transformer</em>. Claude, Gemini, and Llama are all Transformers too.</div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> The pipeline, end to end</h2>
+    <div class="mermaid">
+flowchart TB
+    T["Input text"] --> TK["1 · Tokenize<br/>text → tokens"]
+    TK --> EM["2 · Embed<br/>each token → a vector"]
+    EM --> PE["+ position info"]
+    PE --> BLK
+    subgraph BLK["3 · Transformer blocks (stacked ×N)"]
+        direction TB
+        AT["Self-attention<br/>(tokens look at each other)"] --> FF["Feed-forward<br/>(think about each token)"]
+    end
+    BLK --> LG["4 · Logits<br/>a score for every possible next token"]
+    LG --> SM["5 · Softmax + sample<br/>pick the next token"]
+    SM --> OUT["Next token"]
+    OUT -.append &amp; repeat.-> TK
+    classDef hi fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class AT,FF,SM hi;
+    </div>
+    <ol>
+        <li><b>Tokenize</b> — split text into tokens (see <a href="bite-sized-basics.html#tokens">tokens</a>).</li>
+        <li><b>Embed</b> — turn each token into a vector of numbers that captures meaning, plus its position in the sequence.</li>
+        <li><b>Transformer blocks</b> — stacked layers (dozens to 100+) that repeatedly mix information between tokens (attention) and process each token (feed-forward).</li>
+        <li><b>Logits</b> — the final layer outputs a score for every token in the vocabulary.</li>
+        <li><b>Sample</b> — convert scores to probabilities (softmax) and pick one — how "random" depends on <a href="bite-sized-basics.html#deeper">temperature</a>. Append it and go again.</li>
+    </ol>
+
+    <h2><span class="chip concept">ATTENTION</span> The key trick: tokens look at each other</h2>
+    <p><strong>Attention</strong> is what lets the model understand context. When processing a word, the model
+    <em>attends</em> to the other words that matter for its meaning — no matter how far away they are. Take:</p>
+    <div class="good">"The <b>trophy</b> didn't fit in the <b>suitcase</b> because <b>it</b> was too big."</div>
+    <p>To resolve "<b>it</b>," the model attends back to "trophy" (not "suitcase"). Attention computes, for every token, <em>how
+    much each other token should influence it</em>, and blends them accordingly. Doing this across many layers and many
+    parallel "<b>attention heads</b>" (each learning different relationships — grammar, references, topic) is what builds
+    rich understanding.</p>
+    <div class="note">This is why the <a href="bite-sized-basics.html#models">context window</a> matters and why long prompts get pricey:
+    every token attends to every other token, so cost grows <strong>quadratically</strong> with sequence length. Longer context = a lot more attention math.</div>
+
+    <h2><span class="chip concept">SCALE</span> Why "just predicting the next token" is so powerful</h2>
+    <p>To predict the next token well across the entire internet, a model is <em>forced</em> to learn grammar, facts,
+    translation, code, and reasoning patterns — because all of those help it guess better. Push three dials up together —
+    more <b>parameters</b> (the learned weights, the "B" in "70B"), more <b>data</b>, more <b>compute</b> — and new
+    capabilities appear. That's the "<b>scaling</b>" story behind modern LLMs.</p>
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ What the Transformer gave us</h4>
+            <ul><li>Handles long-range context via attention</li><li>Processes a sequence in parallel (fast to train)</li><li>Scales smoothly with size &amp; data</li></ul></div>
+        <div class="con"><h4>⚠️ The costs</h4>
+            <ul><li>Attention is quadratic in length → long context is expensive</li><li>Huge models need huge compute to train &amp; run</li><li>It predicts <em>plausible</em> text — hence <a href="bite-sized-basics.html#reliability">hallucination</a></li></ul></div>
+    </div>
+
+    <h2><span class="chip exam">TAKEAWAYS</span></h2>
+    <div class="trap"><b>Remember:</b> an LLM generates <b>one token at a time</b>, feeding its own output back in — that's why output is the slow, costly part.</div>
+    <div class="trap"><b>Remember:</b> <b>attention</b> is how the model uses context; it's also why doubling your prompt length more-than-doubles the work.</div>
+    <div class="trap"><b>Remember:</b> the model has <b>no database of facts</b> — knowledge is baked into weights as statistical patterns, which is why it can be confidently wrong (ground it with <a href="bite-sized-basics.html#rag">RAG</a>).</div>
+
+    <h2><span class="chip concept">GLOSSARY</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Term</th><th>In one sentence</th></tr>
+        <tr><td><b>Transformer</b></td><td>The neural-network architecture behind modern LLMs, built around attention.</td></tr>
+        <tr><td><b>Self-attention</b></td><td>Each token weighs how much every other token should influence it.</td></tr>
+        <tr><td><b>Attention head</b></td><td>One of many parallel attention mechanisms, each learning a different kind of relationship.</td></tr>
+        <tr><td><b>Autoregressive</b></td><td>Generating one token at a time, each conditioned on all previous ones.</td></tr>
+        <tr><td><b>Parameters / weights</b></td><td>The billions of learned numbers that store what the model "knows."</td></tr>
+        <tr><td><b>Logits → softmax</b></td><td>Raw next-token scores turned into probabilities to sample from.</td></tr>
+        <tr><td><b>Embedding</b></td><td>A vector representing a token's meaning (also used in <a href="bite-sized-basics.html#rag">RAG</a>).</td></tr>
+    </table>
+    </div>
+
+    <div class="good">➡️ Next: how these weights are created and then used — <a href="training-vs-inference.html">Training vs Inference</a>.</div>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Gen AI Fundamentals</a>
+        <a class="next" href="training-vs-inference.html"><span class="k">Next →</span>Training vs Inference</a>
+    </div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · Transformers &amp; Attention</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

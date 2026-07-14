@@ -38,6 +38,7 @@
         <a href="#agents">⑦ Agents, tools &amp; MCP</a>
         <a href="#training">⑧ Training vs inference</a>
         <a href="#reliability">⑨ Reliability &amp; safety</a>
+        <a href="#deeper">⑩ A bit deeper</a>
     </div>
 
     <!-- ================= TOKENS ================= -->
@@ -135,6 +136,17 @@
     <details><summary>What is a rate limit?</summary><p class="answer">A cap on how much you can call the API in a window — typically <b>requests per minute</b> and <b>tokens per minute</b>. Exceed it and you get a <code>429</code> error; the fix is to back off and retry, and to spread or queue load.</p></details>
     <details><summary>What are guardrails?</summary><p class="answer">Checks around the model that keep it safe and on-spec: <b>input/output validation, moderation, permission gates on tools, spend/rate caps, and human approval</b> for risky actions. The model is powerful but not trusted blindly — guardrails bound what it can do.</p></details>
     <details><summary>What is an eval?</summary><p class="answer">A repeatable test of model quality: a set of representative cases plus a grading method (code checks, an LLM-as-judge, or humans). Evals let you compare models, catch regressions when you change a prompt or model, and prove something actually got better.</p></details>
+    </div>
+
+    <!-- ================= DEEPER ================= -->
+    <h2 class="qcat" id="deeper"><span class="chip concept">⑩</span> A bit deeper</h2>
+    <div class="qa">
+    <details><summary>What is "temperature" (and top-p)?</summary><p class="answer"><b>Temperature</b> controls randomness in how the model picks the next token: low (near 0) = focused, deterministic, repeatable; higher = more varied and creative. <b>top-p</b> (nucleus sampling) is a related dial that limits choices to the most probable options. Use low temperature for facts/code/extraction, higher for brainstorming.</p></details>
+    <details><summary>What does a "stateless" API really mean?</summary><p class="answer">The model keeps <b>no memory between calls</b> — every request must include the full conversation you want it to see. It doesn't "remember" your last message unless you resend it. That's why <em>you</em> own history management, and why longer conversations cost more (you re-send and re-pay for the history each turn).</p></details>
+    <details><summary>Streaming vs non-streaming — what's the difference?</summary><p class="answer"><b>Non-streaming</b>: you wait for the whole response, then get it at once. <b>Streaming</b>: tokens arrive as they're generated, so the user sees text appear immediately (lower perceived latency) and long outputs avoid timeouts. Same total tokens and cost — it just changes <em>when</em> you receive them.</p></details>
+    <details><summary>What are "structured outputs" / JSON mode?</summary><p class="answer">Ways to force the model to return data in an exact shape (e.g. valid JSON matching a schema) instead of free text, so your code can parse it reliably. Approaches include tool/function calling, prefilling, and a dedicated structured-output feature. Essential when the model's answer feeds another system.</p></details>
+    <details><summary>Where does my data go — is it private?</summary><p class="answer">When you call a hosted API your prompt leaves your machine to the provider (or the cloud gateway) to run inference. <b>Weights don't learn from it</b>, but whether inputs may be retained or used to improve models is governed by the provider's <b>data-use and retention policy</b> — read it, and for strict requirements use a cloud gateway (data stays in your cloud) or self-hosted open models.</p></details>
+    <details><summary>What does a multi-agent system look like?</summary><p class="answer">Instead of one agent doing everything, a <b>coordinator</b> delegates sub-tasks to specialized sub-agents (e.g. researcher, writer, checker), each with its own focused context and tools, then merges their results. It helps when tasks are separable or need different expertise — at the cost of more complexity and tokens. (This is the heart of CCA Domain 1.)</p></details>
     </div>
 
     <h2 class="qcat"><span class="chip trade">CHEAT SHEETS</span></h2>
