@@ -115,11 +115,8 @@ SYSTEM = [{
             thinking={<span class="st">"type"</span>: <span class="st">"adaptive"</span>},     <span class="cm"># D3/D1: adaptive thinking (NOT budget_tokens on 4.8)</span>
             messages=messages,
         )
-        <span class="kw">if</span> resp.stop_reason == <span class="st">"refusal"</span>:       <span class="cm"># D1: handle every stop_reason, not just end_turn</span>
-            <span class="kw">return</span> <span class="st">"Request was declined."</span>
-        <span class="kw">if</span> resp.stop_reason == <span class="st">"end_turn"</span>:      <span class="cm"># done → return the final text</span>
-            <span class="kw">return</span> <span class="fn">next</span>(b.text <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="st">"text"</span>)
-        <span class="kw">if</span> resp.stop_reason == <span class="st">"tool_use"</span>:
+        sr = resp.stop_reason                    <span class="cm"># D1: ROUTE on stop_reason — handle every value, never fall through</span>
+        <span class="kw">if</span> sr == <span class="st">"tool_use"</span>:                    <span class="cm"># Claude wants the tool → run it, feed results back, continue</span>
             messages.<span class="fn">append</span>({<span class="st">"role"</span>: <span class="st">"assistant"</span>, <span class="st">"content"</span>: resp.content})  <span class="cm"># D1: append the WHOLE turn (thinking + tool_use)</span>
             results = []
             <span class="kw">for</span> block <span class="kw">in</span> resp.content:
@@ -131,9 +128,41 @@ SYSTEM = [{
                         results.<span class="fn">append</span>({<span class="st">"type"</span>: <span class="st">"tool_result"</span>, <span class="st">"tool_use_id"</span>: block.id,
                                         <span class="st">"content"</span>: <span class="st">f"SQL error: {e}"</span>, <span class="st">"is_error"</span>: <span class="kw">True</span>})
             messages.<span class="fn">append</span>({<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: results})  <span class="cm"># D4: ALL results, in ONE user turn</span>
-    <span class="kw">return</span> <span class="st">"Could not answer within the turn budget."</span>
+            <span class="kw">continue</span>
+        <span class="kw">if</span> sr == <span class="st">"end_turn"</span>:                    <span class="cm"># normal finish → return the answer text</span>
+            <span class="kw">return</span> <span class="fn">next</span>((b.text <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="st">"text"</span>), <span class="st">""</span>)
+        <span class="kw">if</span> sr == <span class="st">"max_tokens"</span>:                  <span class="cm"># response was CUT OFF — NOT complete; don't treat as done</span>
+            <span class="kw">return</span> <span class="st">"Answer was truncated (max_tokens). Raise max_tokens or stream, then retry."</span>
+        <span class="kw">if</span> sr == <span class="st">"refusal"</span>:                    <span class="cm"># safety classifier declined (HTTP 200; content empty or partial)</span>
+            <span class="kw">return</span> <span class="st">"Request was declined for safety reasons."</span>
+        <span class="kw">if</span> sr == <span class="st">"stop_sequence"</span>:               <span class="cm"># only fires if you set stop_sequences (we don't) → treat as done</span>
+            <span class="kw">return</span> <span class="fn">next</span>((b.text <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="st">"text"</span>), <span class="st">""</span>)
+        <span class="kw">if</span> sr == <span class="st">"pause_turn"</span>:                  <span class="cm"># only with SERVER tools (web search/code exec); resend to resume</span>
+            messages.<span class="fn">append</span>({<span class="st">"role"</span>: <span class="st">"assistant"</span>, <span class="st">"content"</span>: resp.content}); <span class="kw">continue</span>
+        <span class="kw">return</span> <span class="st">f"Unexpected stop_reason: {sr}"</span>   <span class="cm"># future-proof: never silently loop on an unknown reason</span>
+    <span class="kw">return</span> <span class="st">"Could not answer within the turn budget."</span>  <span class="cm"># D1: loop cap hit (loop termination)</span>
 
 <span class="fn">print</span>(<span class="fn">agent</span>(<span class="st">"How many orders were placed in 2024?"</span>))</pre>
+
+    <h2><span class="chip concept">STOP REASONS</span> Handle all six — never fall through</h2>
+    <p>Every response carries a <code>stop_reason</code>. Routing on it is the heart of the agentic loop (D1) — and a
+    favourite exam trap. If you handle only <code>end_turn</code> and <code>tool_use</code>, an unhandled value (like
+    <code>max_tokens</code>) silently re-sends the same request and burns your turn budget. Here's the full set and how
+    <em>this</em> agent handles each:</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>stop_reason</th><th>Means</th><th>This agent does</th></tr>
+        <tr><td><code>tool_use</code></td><td>Claude wants to call <code>run_sql</code></td><td>Append the whole turn, run the tool, return <code>tool_result</code>(s), <code>continue</code></td></tr>
+        <tr><td><code>end_turn</code></td><td>Finished naturally</td><td>Return the final answer text</td></tr>
+        <tr><td><code>max_tokens</code></td><td>Output was <b>cut off</b> — incomplete</td><td>Stop and report — raise <code>max_tokens</code> or stream, then retry (do <b>not</b> treat as done)</td></tr>
+        <tr><td><code>refusal</code></td><td>Safety classifier declined (HTTP 200, empty/partial)</td><td>Return a graceful "declined" message</td></tr>
+        <tr><td><code>stop_sequence</code></td><td>Hit a custom stop string</td><td>N/A here (we set none) — treat as done if it ever fires</td></tr>
+        <tr><td><code>pause_turn</code></td><td>A long <b>server-side</b> tool loop paused</td><td>N/A here (client tool) — but resend to resume if you add server tools</td></tr>
+    </table>
+    </div>
+    <div class="warn"><b>Two the exam loves:</b> <code>max_tokens</code> (truncated ≠ finished) and <code>refusal</code>
+    (a successful HTTP 200 you must still check). Always add a catch-all <code>else</code> so an unknown future value
+    can't put you in a silent loop.</div>
 
     <h2><span class="chip exam">CERT MAP</span> Every API line ↔ an exam concept</h2>
     <p>This is why it's the perfect rehearsal — each mechanic above is a place the exam probes:</p>
