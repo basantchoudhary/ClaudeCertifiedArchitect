@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Second-Brain Assistant · Tiered Memory & Context Engineering · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .qa { background:#faf9ff; border:1px solid #e6e1f7; border-left:4px solid #764ba2; border-radius:0 6px 6px 0; padding:10px 16px; margin:12px 0; }
+    .qa .q { font-weight:700; color:#4a3b7a; }
+    .feat { display:inline-block; background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:12px; padding:1px 9px; font-size:.75em; font-weight:600; margin:1px 2px; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › Second-Brain Assistant (tiered memory)</div>
+    <h1>🧠 Second-Brain Assistant — Tiered Memory &amp; Context Engineering</h1>
+    <div class="tag">A toy that forces every memory store + context technique to earn its place · Claude-native</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE PROJECT</span> Why this one teaches everything</h2>
+    <p>A long-running personal assistant you talk to across many sessions. It <strong>remembers facts</strong>, <strong>recalls
+    your notes semantically</strong>, <strong>knows how people/projects relate</strong>, and <strong>manages long
+    conversations</strong>. Each capability maps to a <em>distinct, justified</em> store — so you learn <em>when</em> to reach for
+    each, not just how. The dialogue itself is where every context-bloat technique lives.</p>
+    <div class="note">Deliberately toy &amp; <b>light/embedded</b> (SQLite + Chroma + Kùzu in-process; Redis via brew or
+    fakeredis) so you learn the concepts and APIs with almost no RAM/CPU cost — no Docker/Neo4j/Postgres tax.</div>
+
+    <!-- ============ A. CONCEPTUAL ============ -->
+    <h2><span class="chip diagram">PART A</span> Conceptual architecture — the memory tiers</h2>
+    <table>
+        <tr><th>Tier</th><th>Store</th><th>Holds</th><th>Retrieval</th><th>Teaches</th></tr>
+        <tr><td><b>Working / session</b></td><td>Redis</td><td>current session state, scratchpad, response cache, rate-limit</td><td>by session key + TTL</td><td>short-term memory, caching, eviction</td></tr>
+        <tr><td><b>Profile / facts</b></td><td>SQLite</td><td>profile, preferences, durable key facts</td><td>exact key / SQL</td><td>structured memory, write-vs-skip</td></tr>
+        <tr><td><b>Episodic / semantic</b></td><td>Vector (Chroma)</td><td>past notes, chat snippets, docs</td><td>similarity (RAG)</td><td>embeddings, chunking, recall</td></tr>
+        <tr><td><b>Relational</b></td><td>Graph (Kùzu)</td><td>people · projects · entities &amp; links</td><td>traversal / Cypher</td><td>graph memory, multi-hop</td></tr>
+        <tr><td><b>In-conversation</b></td><td>the Claude API</td><td>the live dialogue</td><td>—</td><td>compaction · context editing · caching · truncation</td></tr>
+    </table>
+
+    <h3>The turn lifecycle (this is the whole design)</h3>
+    <div class="mermaid">
+flowchart TB
+    U["User message"] --> RT{"Route: which memories matter?"}
+    RT -->|"facts/prefs"| SQ[("SQLite")]
+    RT -->|"'what did I say about…'"| VEC[("Vector / Chroma")]
+    RT -->|"'who works with…'"| GR[("Graph / Kùzu")]
+    RT -->|"session state"| RED[("Redis")]
+    SQ --> FUSE
+    VEC --> FUSE
+    GR --> FUSE
+    RED --> FUSE
+    FUSE["Fuse → a small, bounded MEMORY CONTEXT block"] --> PROMPT["Assemble prompt:<br/>[cached persona/tools] + memory block + dialogue"]
+    PROMPT --> LLM["Claude (adaptive thinking, tools)"]
+    LLM --> ANS["Reply to user"]
+    LLM -.reflect.-> WR{"Anything worth remembering?"}
+    WR -->|"durable fact"| SQ
+    WR -->|"note/episode"| VEC
+    WR -->|"new entity/link"| GR
+    classDef s fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    class FUSE,PROMPT,LLM s;
+    </div>
+    <p>Two halves: <b>read</b> (route → retrieve → fuse → prompt) before the model answers, and <b>write</b> (reflect → persist)
+    after. Keeping the <em>fuse</em> step small is the entire context-engineering game.</p>
+
+    <!-- ============ B. STACK ============ -->
+    <h2><span class="chip concept">PART B</span> The light/embedded stack</h2>
+    <table>
+        <tr><th>Responsibility</th><th>Pick</th><th>Why (footprint)</th></tr>
+        <tr><td>LLM</td><td><b>Claude API</b> — Opus 4.8 main, Haiku 4.5 for routing/extraction</td><td>Claude-native; tier by task</td></tr>
+        <tr><td>Working/session + cache</td><td><b>Redis</b> (brew) or <code>fakeredis</code> (in-process)</td><td>tiny native, or zero-server for pure learning</td></tr>
+        <tr><td>Structured facts</td><td><b>SQLite</b> (stdlib)</td><td>no server</td></tr>
+        <tr><td>Vector / embeddings</td><td><b>Chroma</b> (embedded) + <code>sentence-transformers</code> (local, free) or Voyage (prod)</td><td>Claude has no embedding model — use a separate embedder</td></tr>
+        <tr><td>Graph</td><td><b>Kùzu</b> (embedded, Cypher-like)</td><td>no JVM/Neo4j server</td></tr>
+        <tr><td>Orchestration</td><td>plain Python + Anthropic SDK (manual loop)</td><td>see the agent loop lessons (D1/D4)</td></tr>
+    </table>
+
+    <!-- ============ C. MEMORY IMPL ============ -->
+    <h2><span class="chip rule">PART C</span> Memory implementation — per store</h2>
+
+    <div class="qa"><span class="q">Redis — working/session memory + cache</span> <span class="feat">D5</span></div>
+    <ul>
+        <li>Keys: <code>session:{id}:messages</code> (recent turns), <code>session:{id}:scratch</code>, <code>cache:{hash(query+memory_ver)}</code>.</li>
+        <li><b>TTL</b> on everything ephemeral (session expires; cache expires) — teaches eviction.</li>
+        <li>Also: a per-user <b>rate limiter</b> and the <b>response/semantic cache</b> (skip the LLM for repeats).</li>
+        <li>Failure: Redis down → degrade to stateless (rebuild session from durable stores); never hard-fail.</li>
+    </ul>
+
+    <div class="qa"><span class="q">SQLite — structured facts &amp; preferences</span></div>
+    <ul>
+        <li>Tables: <code>facts(user_id, key, value, confidence, source, updated_at)</code>, <code>preferences(...)</code>.</li>
+        <li><b>Upsert by key</b> so a changed preference overwrites (latest-wins) instead of accumulating contradictions.</li>
+        <li>Retrieval is exact/SQL — cheap, deterministic; great for "what's my timezone / default project".</li>
+        <li>Store <b>provenance + timestamp + confidence</b> so you can trust, age, and audit a fact.</li>
+    </ul>
+
+    <div class="qa"><span class="q">Vector (Chroma) — episodic / semantic recall</span> <span class="feat">RAG</span></div>
+    <ul>
+        <li>Write each note / meaningful chat snippet / doc chunk → embed → store with metadata (user, timestamp, type).</li>
+        <li>Recall by <b>similarity</b> to the question; cap to top-K with a <b>score threshold</b> (below it, retrieve nothing).</li>
+        <li>Chunk size/overlap matter; dedup near-identical memories; this is memory-as-RAG.</li>
+        <li>The raw episodic record here is also your <b>safety net for compaction</b> (see Part D): summarise the dialogue, but the detail still lives in the vector store.</li>
+    </ul>
+
+    <div class="qa"><span class="q">Graph (Kùzu) — relationships &amp; multi-hop</span></div>
+    <ul>
+        <li>Nodes: <code>Person</code>, <code>Project</code>, <code>Task</code>; edges: <code>WORKS_ON</code>, <code>REPORTS_TO</code>, <code>MENTIONED_IN</code>.</li>
+        <li>Answers "who works with Priya on GSK?", "what's blocked on the demo?" — questions a vector store can't (they need <b>traversal</b>, not similarity).</li>
+        <li>Extract entities/links from conversations (an LLM extraction step) and <b>MERGE</b> by a canonical id to avoid duplicate nodes.</li>
+        <li>Return a small <b>k-hop neighbourhood</b>, summarised — never the whole graph.</li>
+    </ul>
+
+    <!-- ============ D. CONTEXT ENGINEERING ============ -->
+    <h2><span class="chip rule">PART D</span> Context engineering — the heart of it</h2>
+    <table>
+        <tr><th>Lever</th><th>What you build</th><th>Claude / CCA</th></tr>
+        <tr><td><b>Memory routing</b></td><td>A cheap classifier (rules or Haiku) decides which stores a turn needs — or query all in parallel and fuse. Skipping stores saves tokens &amp; latency.</td><td><span class="feat">D1/D5</span></td></tr>
+        <tr><td><b>What to remember</b> (write policy)</td><td>A "reflect" step after each turn extracts <em>durable</em> facts/entities and routes them to the right store — and <em>skips</em> the ephemeral chatter. Not everything is worth remembering.</td><td><span class="feat">D3</span></td></tr>
+        <tr><td><b>Retrieval fusion</b></td><td>Merge results from 4 stores into ONE small <b>memory context block</b> with a per-store token budget (e.g. top-3 vector, N facts, a summarised graph neighbourhood). Place it AFTER the cached prefix.</td><td><span class="feat">D5</span></td></tr>
+        <tr><td><b>Prompt caching</b></td><td>Cache the stable persona + instructions + tool defs (byte-stable prefix); the volatile memory block &amp; user turn go after the last breakpoint.</td><td><span class="feat">prompt caching</span> <span class="feat">D5</span></td></tr>
+        <tr><td><b>Context editing</b></td><td>Tool calls (web fetch, doc read) return big payloads → clear stale <code>tool_result</code>s while keeping the dialogue.</td><td><span class="feat">context editing</span> <span class="feat">D5</span></td></tr>
+        <tr><td><b>Compaction</b></td><td>When a single long session nears the window, summarise the dialogue (append <code>response.content</code>!). The detail is safe in the vector store.</td><td><span class="feat">compaction</span> <span class="feat">D5</span></td></tr>
+        <tr><td><b>Safe truncation</b></td><td>Fallback sliding window that never orphans <code>tool_use</code>/<code>tool_result</code> pairs.</td><td><span class="feat">D5</span></td></tr>
+    </table>
+    <div class="tip">Golden rule of the design: <b>durable knowledge lives in the stores; the context window holds only a small,
+    fused, per-turn slice.</b> The window is a workspace, not a filing cabinet.</div>
+
+    <!-- ============ E. FAILURE POINTS ============ -->
+    <h2><span class="chip exam">PART E</span> Failure points &amp; challenges</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Failure</th><th>Cause</th><th>Mitigation</th></tr>
+        <tr><td><b>Memory poisoning</b></td><td>The model writes a wrong/harmful "fact" — recalled forever</td><td>Validate on write · store confidence + provenance · confirm high-stakes writes · decay/TTL low-confidence memories</td></tr>
+        <tr><td><b>Stale / conflicting facts</b></td><td>A preference changed but the old one lingers</td><td>Upsert by key (latest-wins) · timestamps · contradiction detection at write</td></tr>
+        <tr><td><b>Wrong-memory recall</b></td><td>Vector returns off-topic snippets → distraction &amp; hallucination</td><td>Similarity threshold · rerank · cap count · relevance filter before injecting</td></tr>
+        <tr><td><b>PII / secrets leak</b></td><td>Sensitive data written to memory, replayed into every session</td><td>Never store secrets · redact/classify on write · encrypt at rest · per-user isolation</td></tr>
+        <tr><td><b>Cross-store inconsistency</b></td><td>Same entity in SQLite, graph, and vector diverges</td><td>A canonical entity id · one source of truth per fact type · write-through / reconciliation</td></tr>
+        <tr><td><b>Stale cache</b></td><td>Response cache returns an answer after memory changed</td><td>Key the cache by (query + <b>memory version</b>); bump the version on any write</td></tr>
+        <tr><td><b>Compaction loss</b></td><td>The summary drops a detail you needed</td><td>Compact only the dialogue; keep raw episodes in the vector store; verify</td></tr>
+        <tr><td><b>Latency</b></td><td>Querying 4 stores every turn</td><td>Route (skip stores) · query in parallel · cache · async writes (reflect after replying)</td></tr>
+        <tr><td><b>Cost / unbounded growth</b></td><td>Embeddings + storage grow forever</td><td>Model-tier (Haiku for routing/extraction) · dedup · decay/evict low-value memories · cache</td></tr>
+        <tr><td><b>Cold start</b></td><td>Empty memory for a new user</td><td>Degrade gracefully; don't fabricate; ask &amp; learn</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ F. CROSS-CUTTING ============ -->
+    <h2><span class="chip trade">PART F</span> Cross-cutting design</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>Here</th></tr>
+        <tr><td><b>Security &amp; privacy</b></td><td>Per-user memory isolation, PII redaction on write, encryption at rest, a "forget me" path (GDPR-style delete across all four stores).</td></tr>
+        <tr><td><b>Cost</b></td><td>Prompt-cache the persona; Haiku for routing/extraction; dedup + decay memories; response cache; bounded per-store retrieval budget.</td></tr>
+        <tr><td><b>Latency</b></td><td>Parallel store reads; route to skip stores; write memories <em>asynchronously</em> after the reply; cache.</td></tr>
+        <tr><td><b>Reliability</b></td><td>Any store down → degrade (skip that memory tier, don't fail the turn); retries/backoff on the API; loop termination.</td></tr>
+        <tr><td><b>Observability</b></td><td>Trace each turn: which stores hit, what was retrieved &amp; injected, tokens (incl. cache_read), what was written, latency per store.</td></tr>
+        <tr><td><b>Evals</b></td><td>"Did it remember correctly?" — a golden set of (setup writes → later question → expected recall); measure recall precision, wrong-memory injection rate, and answer quality.</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ CERT MAP ============ -->
+    <h2><span class="chip exam">CERT MAP</span> Claude features this exercises</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>In this project</th><th>Claude feature</th><th>CCA</th></tr>
+        <tr><td>The read→generate→write loop, routing, reflect step, graceful degradation</td><td>Agentic loop</td><td><b>D1</b></td></tr>
+        <tr><td>Memory read/write tools; the Claude memory tool as one write path; is_error handling</td><td>Tool use / memory tool</td><td><b>D4/D5</b></td></tr>
+        <tr><td>Persona &amp; instruction design; write-vs-skip; clarify; extraction prompts</td><td>Prompt engineering</td><td><b>D3</b></td></tr>
+        <tr><td>Prompt caching · context editing · compaction · truncation · retrieval fusion · evals · observability</td><td>Context &amp; reliability</td><td><b>D5</b></td></tr>
+    </table>
+    </div>
+    <div class="good">This project is the perfect companion to the D5 material:
+    <a href="../CCA-F/D5-Context-Management/caching-and-memory.html">Caching &amp; Memory</a> ·
+    <a href="../CCA-F/D5-Context-Management/cheatsheet-context-bloat.html">Context-bloat cheat sheet</a> ·
+    <a href="../CCA-F/D5-Context-Management/examples/context_bloat_techniques.py">runnable techniques script</a>.</div>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Projects catalog</a>
+        <a class="next" href="../CCA-F/D5-Context-Management/index.html"><span class="k">Next →</span>CCA-F Domain 5</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · Second-Brain Assistant — Tiered Memory</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
