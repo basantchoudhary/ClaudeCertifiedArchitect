@@ -60,13 +60,13 @@
     <span class="st ctx">Context</span></p>
 
     <div class="turnhdr">Session 1 · Monday · Turn 1</div>
-    <div class="msg user"><span class="who">You</span>I'm kicking off the GSK observability demo with Priya and Rahul. Priya's leading it; target is next Friday.</div>
+    <div class="msg user"><span class="who">You</span>I'm kicking off the ABCCompany observability demo with Priya and Rahul. Priya's leading it; target is next Friday.</div>
     <div class="bts"><b>App reads:</b> fresh context — the router finds little to recall (facts/graph near-empty). → prompt = <i>cached persona</i> + (empty memory) + your turn.</div>
-    <div class="msg bot"><span class="who">Assistant (Claude)</span>Got it — GSK observability demo, Priya leading, Rahul on it, due next Friday. Want me to track blockers as they surface?</div>
+    <div class="msg bot"><span class="who">Assistant (Claude)</span>Got it — ABCCompany observability demo, Priya leading, Rahul on it, due next Friday. Want me to track blockers as they surface?</div>
     <div class="bts"><b>Reflect &amp; write (async, after replying):</b><br>
-      <span class="st graph">Graph</span> nodes <code>Priya</code>, <code>Rahul</code>, <code>Project "GSK observability demo"</code>; edges <code>Priya-LEADS→</code>, <code>Rahul-WORKS_ON→</code>, due=next&nbsp;Fri — <i>why: roles/links you'll traverse later</i>.<br>
-      <span class="st vec">Vector</span> episode "kicked off GSK demo — Priya lead, Rahul, due next Fri" — <i>why: semantic recall of the note later</i>.<br>
-      <span class="st sql">SQLite</span> fact <code>current_focus = "GSK observability demo"</code> — <i>why: cheap exact lookup</i>.<br>
+      <span class="st graph">Graph</span> nodes <code>Priya</code>, <code>Rahul</code>, <code>Project "ABCCompany observability demo"</code>; edges <code>Priya-LEADS→</code>, <code>Rahul-WORKS_ON→</code>, due=next&nbsp;Fri — <i>why: roles/links you'll traverse later</i>.<br>
+      <span class="st vec">Vector</span> episode "kicked off ABCCompany demo — Priya lead, Rahul, due next Fri" — <i>why: semantic recall of the note later</i>.<br>
+      <span class="st sql">SQLite</span> fact <code>current_focus = "ABCCompany observability demo"</code> — <i>why: cheap exact lookup</i>.<br>
       <span class="st redis">Redis</span> session turn appended with a TTL — <i>why: fast working memory</i>.</div>
 
     <div class="turnhdr">Turn 2</div>
@@ -75,19 +75,19 @@
     <div class="bts"><b>Write:</b> <span class="st sql">SQLite</span> <code>preferences.output_format = "dashboard"</code> — an explicit "remember" → a durable preference, <b>upserted by key</b> so a later change overrides it (no contradictions). <i>why structured: exact, deterministic, shapes every future output</i>.</div>
 
     <div class="turnhdr">Turn 3</div>
-    <div class="msg user"><span class="who">You</span>Pull the latest error logs for the GSK ingestion job and summarise.</div>
+    <div class="msg user"><span class="who">You</span>Pull the latest error logs for the ABCCompany ingestion job and summarise.</div>
     <div class="bts"><b>Tool use:</b> Claude calls <code>fetch_logs</code> → the tool returns a <b>large payload</b> (context bloat).</div>
     <div class="msg bot"><span class="who">Assistant</span>The job is failing on a null <code>customer_id</code> at line 42 — 3 rows affected.</div>
     <div class="bts"><b>Manage &amp; write:</b><br>
       <span class="st ctx">Context</span> the big <code>fetch_logs</code> tool_result is <b>cleared after use (context editing)</b> — the dialogue stays intact. <i>why: tool-result bloat</i>.<br>
-      <span class="st vec">Vector</span> episode "GSK ingestion failing: null customer_id, line 42 (Mon)".<br>
+      <span class="st vec">Vector</span> episode "ABCCompany ingestion failing: null customer_id, line 42 (Mon)".<br>
       <span class="st redis">Redis</span> the summary is <b>cached</b>, key = <code>hash(query + memory_version)</code> — <i>why: skip re-running an identical ask</i>.</div>
 
     <div class="note">— session ends — <span class="st redis">Redis</span> working memory <b>expires (TTL)</b>. Durable memory
     (<span class="st sql">SQLite</span>, <span class="st vec">Vector</span>, <span class="st graph">Graph</span>) <b>persists</b>.</div>
 
     <div class="turnhdr">Session 2 · Thursday (new session — working memory gone, durable memory persists)</div>
-    <div class="msg user"><span class="who">You</span>Who's on the GSK demo again, and when's it due?</div>
+    <div class="msg user"><span class="who">You</span>Who's on the ABCCompany demo again, and when's it due?</div>
     <div class="bts"><b>Reads:</b> router → <span class="st graph">Graph</span> (who) + <span class="st sql">SQLite</span> (due date). Graph traversal returns Priya (lead), Rahul; due = Friday. Fused into a small memory block placed <b>after</b> the cached persona.</div>
     <div class="msg bot"><span class="who">Assistant</span>Priya's leading it, Rahul's on it, and it's due this Friday.</div>
     <div class="bts"><i>why graph:</i> "who's on X" needs <b>traversal</b>, not similarity — a vector store can't answer it.</div>
@@ -103,7 +103,7 @@
 
     <div class="turnhdr">Turn 7</div>
     <div class="msg user"><span class="who">You</span>Actually the demo moved to the following Monday.</div>
-    <div class="msg bot"><span class="who">Assistant</span>Updated — the GSK demo is now due Monday.</div>
+    <div class="msg bot"><span class="who">Assistant</span>Updated — the ABCCompany demo is now due Monday.</div>
     <div class="bts"><b>Write (handle staleness):</b> <span class="st sql">SQLite</span> due_date <b>upserted</b> (Friday → Monday, latest-wins, not appended) · <span class="st graph">Graph</span> edge due_date updated · <b><code>memory_version</code> bumped</b> → any <span class="st redis">cached</span> answer about the due date is invalidated. <i>why: you must never get the stale Friday date back.</i></div>
 
     <h3>So — what lives where, and why (from this flow)</h3>
@@ -196,7 +196,7 @@ flowchart TB
     <div class="qa"><span class="q">Graph (Kùzu) — relationships &amp; multi-hop</span></div>
     <ul>
         <li>Nodes: <code>Person</code>, <code>Project</code>, <code>Task</code>; edges: <code>WORKS_ON</code>, <code>REPORTS_TO</code>, <code>MENTIONED_IN</code>.</li>
-        <li>Answers "who works with Priya on GSK?", "what's blocked on the demo?" — questions a vector store can't (they need <b>traversal</b>, not similarity).</li>
+        <li>Answers "who works with Priya on ABCCompany?", "what's blocked on the demo?" — questions a vector store can't (they need <b>traversal</b>, not similarity).</li>
         <li>Extract entities/links from conversations (an LLM extraction step) and <b>MERGE</b> by a canonical id to avoid duplicate nodes.</li>
         <li>Return a small <b>k-hop neighbourhood</b>, summarised — never the whole graph.</li>
     </ul>
