@@ -44,6 +44,11 @@
     <a class="examcta" href="memory-agent.html" style="display:block;background:#f6fef9;color:#166534;text-decoration:none;border:1.5px solid #22c55e;border-radius:10px;padding:14px 24px;margin-bottom:16px">
         <b>🧠 Design ready → Second-Brain Assistant (tiered memory)</b> — a toy that forces every memory store (Redis · SQLite · vector · graph) and context technique (routing, fusion, caching, context editing, compaction) to earn its place. Architecture, per-store memory design, failure points &amp; cross-cutting.
     </a>
+    <a class="examcta" href="#gskops" style="display:block;background:#f4f6ff;color:#26346b;text-decoration:none;border:1.5px solid #3b5bdb;border-radius:10px;padding:14px 24px;margin-bottom:16px">
+        <b>🏭 Real-world track → Ops Innovation for Azure Databricks (G1–G11)</b> — AI agents + deterministic automation to make a
+        regulated Databricks Ops function robust &amp; self-observing: health/RCA agents, FinOps, data quality, GxP governance — each
+        placed on a read-only→approve→act autonomy ladder.
+    </a>
 
     <div class="card" style="margin-bottom:16px">
         <p>Reading about agentic architecture only gets you so far. This is a curated shortlist of <strong>real
@@ -175,6 +180,179 @@ flowchart LR
             <div class="fail">⚠ Prod failures: judge bias/same-model · flaky evals · no drift detection · unmeasured cost</div>
         </div>
     </div>
+    </div>
+
+    <!-- ================= GSK OPS PORTFOLIO ================= -->
+    <div class="tier" id="gskops" style="margin-top:40px;border-top:3px dashed #cdbff0;padding-top:26px">
+    <div class="tierhead">
+      <h2 style="margin:0;border:none">🏭 Ops Innovation Portfolio · AI + Automation for Azure Databricks Operations</h2>
+      <span class="tierbadge" style="background:#eef2ff;color:#3b5bdb">for an Ops Director · GxP-aware</span>
+    </div>
+    <p>A dedicated track for making a <strong>Databricks operations function more robust, reliable, and self-observing</strong>
+    — the kind of platform-Ops org that owns pipelines, clusters, cost, data quality, and incident response. It's built for a
+    <strong>regulated (pharma / GxP) environment</strong>, so the guiding rule is: <em>deterministic where correctness must be
+    guaranteed, AI where judgment and language help</em> — never the other way round.</p>
+
+    <div class="note" style="background:#eef2ff;border-left-color:#3b5bdb;color:#26346b">
+      <strong>🧭 Operating principles (read these first — they shape every project below)</strong>
+      <ul style="margin:8px 0 0 18px">
+        <li><strong>Read-only first.</strong> Every agent starts as an <em>observer &amp; advisor</em>. It earns write/act
+        permissions only after it's been trusted for weeks — climb the autonomy ladder, don't skip it.</li>
+        <li><strong>Human-in-the-loop for any change.</strong> AI <em>proposes</em>; a human <em>approves</em>; a
+        <em>deterministic</em> tool <em>executes</em>. No agent mutates prod, cost, or access on its own.</li>
+        <li><strong>Deterministic guardrails, not prompts, for the rules that must hold.</strong> Idle-cluster kill, budget
+        caps, access policy — these are code/policy-as-code, never "please remember to…" in a prompt.</li>
+        <li><strong>Everything is audited &amp; reproducible (GxP).</strong> Every recommendation and action logs its inputs,
+        evidence, model version, and the approver — audit-ready by design.</li>
+        <li><strong>Mock-data-first.</strong> Build and demo against synthetic system-table / job-run data, so nothing
+        touches real GSK infrastructure until it's validated and signed off.</li>
+      </ul>
+    </div>
+
+    <h3 style="margin-top:22px">The autonomy ladder — where each project should sit</h3>
+    <div class="mermaid">
+flowchart LR
+    O["1 · OBSERVE<br/>collect signals<br/>(read-only)"]:::a --> E["2 · EXPLAIN<br/>plain-English RCA<br/>&amp; digests"]:::a
+    E --> R["3 · RECOMMEND<br/>propose a fix<br/>+ evidence"]:::b
+    R --> A["4 · APPROVE<br/>human signs off<br/>(HITL gate)"]:::b
+    A --> X["5 · ACT<br/>deterministic tool<br/>executes + logs"]:::c
+    classDef a fill:#e6fcf0,stroke:#2b8a3e,color:#155724;
+    classDef b fill:#fff4e0,stroke:#b5691a,color:#7a4a0a;
+    classDef c fill:#fdeaf0,stroke:#b0296b,color:#7a1f4a;
+    </div>
+    <p style="text-align:center;color:#888;font-size:.9em">Start every capability at stage 1–2. Most value (and safety) is
+    in <em>Observe → Explain → Recommend</em>; only mature, low-risk actions graduate to stage 5.</p>
+
+    <h3 style="margin-top:22px">Deterministic vs AI — how to decide what to build</h3>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>If the task is…</th><th>Build it as…</th><th>Why</th></tr>
+        <tr><td>A rule that must <b>always</b> hold (kill idle clusters &gt; 30 min, block untagged jobs, enforce a budget cap)</td><td><span class="tag2" style="background:#e6fcf0;color:#2b8a3e">Deterministic automation</span></td><td>Guaranteed, auditable, cheap, no hallucination surface. An LLM here only adds risk.</td></tr>
+        <tr><td>Structured detection with clear thresholds (freshness SLA breach, failure-rate spike, cost anomaly)</td><td><span class="tag2" style="background:#e6fcf0;color:#2b8a3e">Deterministic</span> + <span class="tag2" style="background:#e7ecff;color:#3b5bdb">AI summary</span></td><td>Detection is math; AI only writes the human-readable narrative on top.</td></tr>
+        <tr><td>Correlating messy signals &amp; explaining <b>why</b> (root-cause across logs, config changes, metrics)</td><td><span class="tag2" style="background:#f3e8ff;color:#7048e8">AI agent</span> (read-only tools)</td><td>Judgment + language over heterogeneous evidence — exactly where an agent earns its keep.</td></tr>
+        <tr><td>Answering "how do we handle X?" from runbooks &amp; past incidents</td><td><span class="tag2" style="background:#e0f2fe;color:#0369a1">RAG</span></td><td>Grounded, cited retrieval — no autonomy needed, low risk, fast MTTR win.</td></tr>
+        <tr><td>A recommendation a human will apply (right-size a cluster, add a DQ rule, tighten a grant)</td><td><span class="tag2" style="background:#fff4e0;color:#b5691a">Hybrid</span> (AI proposes → human approves → deterministic applies)</td><td>AI's reasoning + a human gate + a deterministic executor = safe change management.</td></tr>
+    </table>
+    </div>
+
+    <!-- Theme A -->
+    <h3 style="margin-top:24px">🩺 Theme A · Observability &amp; Reliability — <span style="font-weight:400;color:#777">know before it breaks</span></h3>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">G1</span> · Pipeline &amp; Job Health Sentinel <span class="tag2" style="background:#f3e8ff;color:#7048e8">AI Agent · read-only</span> <span class="tag2" style="background:#e6fcf0;color:#2b8a3e">★ start here</span></h4>
+            <div class="prob">Continuously watch Databricks Jobs, DLT pipelines &amp; streaming from the <b>system tables + Jobs API</b>. Deterministic core detects failures/latency/retry spikes; an agent <em>clusters recurring failures</em>, explains each in plain English, and points to the likely cause &amp; runbook.</div>
+            <div class="tags"><span class="tag2">system.lakeflow job runs</span><span class="tag2">Spark metrics</span><span class="tag2">failure clustering</span><span class="tag2">RCA narrative</span><span class="tag2">read-only</span></div>
+            <div class="meta">Autonomy: <b>Observe → Explain</b> · Deterministic detection + AI triage</div>
+            <div class="fail">⚠ Watch: alert fatigue / noisy signals · hallucinated causes → always cite the evidence row · flapping jobs</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G2</span> · SLA &amp; Data-Freshness Watchdog <span class="tag2" style="background:#e6fcf0;color:#2b8a3e">Deterministic</span> <span class="tag2" style="background:#e7ecff;color:#3b5bdb">+ AI digest</span></h4>
+            <div class="prob">Declarative SLAs per Unity Catalog table ("gold.sales refreshed by 06:00, &lt; 2h lag"). Deterministic checks fire on breach; a weekly <em>AI reliability digest</em> summarizes what slipped, trends, and the worst offenders for the Ops review.</div>
+            <div class="tags"><span class="tag2">freshness/lag SLOs</span><span class="tag2">policy-as-code</span><span class="tag2">weekly digest</span><span class="tag2">trend narrative</span></div>
+            <div class="meta">Autonomy: <b>Observe → Explain</b> · Detection is pure code</div>
+            <div class="fail">⚠ Watch: SLA definitions drifting from reality · timezone/holiday calendars · digest that's ignored if too long</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G3</span> · Capacity &amp; Saturation Forecaster <span class="tag2" style="background:#e6fcf0;color:#2b8a3e">Deterministic ML</span> <span class="tag2" style="background:#e7ecff;color:#3b5bdb">+ AI narrative</span></h4>
+            <div class="prob">Forecast job durations, warehouse queueing, and DBU demand from historical run data; warn <em>before</em> saturation (month-end loads, study data spikes). Classical forecasting; AI writes the "here's what's coming and why" brief.</div>
+            <div class="tags"><span class="tag2">time-series forecast</span><span class="tag2">queue depth</span><span class="tag2">what-if</span><span class="tag2">early warning</span></div>
+            <div class="meta">Autonomy: <b>Observe → Recommend</b></div>
+            <div class="fail">⚠ Watch: over-trusting the forecast · regime changes after a platform migration · seasonality misread</div>
+        </div>
+    </div>
+
+    <!-- Theme B -->
+    <h3 style="margin-top:20px">🚨 Theme B · Incident Response &amp; Knowledge — <span style="font-weight:400;color:#777">cut MTTR</span></h3>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">G4</span> · Incident RCA Copilot <span class="tag2" style="background:#f3e8ff;color:#7048e8">AI Agent · read-only tools</span></h4>
+            <div class="prob">On a job/pipeline failure, the agent gathers evidence with <em>deterministic read-only tools</em> — error logs, Spark UI metrics, the failing query plan, recent notebook/config/permission changes — correlates them, and drafts a structured RCA + a pre-filled <b>ServiceNow</b> ticket. A human reviews before anything is filed or actioned.</div>
+            <div class="tags"><span class="tag2">evidence-gathering tools</span><span class="tag2">correlation</span><span class="tag2">ServiceNow draft</span><span class="tag2">HITL</span><span class="tag2">audit trail</span></div>
+            <div class="meta">Autonomy: <b>Explain → Recommend</b> · never auto-resolves · Maps to <b>D1/D2</b></div>
+            <div class="fail">⚠ Watch: confident-but-wrong RCA (silent failure) → verifier pass + cite every fact · over-broad tool scope · injected log content</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G5</span> · Runbook &amp; Tribal-Knowledge Agent <span class="tag2" style="background:#e0f2fe;color:#0369a1">RAG</span></h4>
+            <div class="prob">Grounded Q&amp;A over runbooks, past incident RCAs, architecture decisions, and platform docs — "how do we recover a failed DLT checkpoint?" answered with citations. Turns tribal knowledge into an always-on on-call assistant and slashes MTTR for known issues.</div>
+            <div class="tags"><span class="tag2">retrieval</span><span class="tag2">citations</span><span class="tag2">grounding</span><span class="tag2">on-call assist</span></div>
+            <div class="meta">Autonomy: <b>Explain</b> only · zero write access · Maps to <b>D5</b></div>
+            <div class="fail">⚠ Watch: stale runbooks → freshness policy · confident hallucination without a source · access-scoping the corpus</div>
+        </div>
+    </div>
+
+    <!-- Theme C -->
+    <h3 style="margin-top:20px">💰 Theme C · Cost / FinOps — <span style="font-weight:400;color:#777">DBU discipline</span></h3>
+    <div class="pgrid">
+        <div class="pcard rec">
+            <h4><span class="num0">G6</span> · DBU Cost &amp; Cluster Right-Sizing Advisor <span class="tag2" style="background:#fff4e0;color:#b5691a">Hybrid</span></h4>
+            <div class="prob">Deterministic cost attribution from <b>system.billing.usage</b> (by workspace, job, team, tag); an agent then recommends right-sizing — autoscaling bounds, Photon, spot/on-demand mix, serverless vs classic, SQL-warehouse sizing — as a <em>change proposal with projected savings</em>. A human applies it via a cluster-policy PR.</div>
+            <div class="tags"><span class="tag2">system.billing.usage</span><span class="tag2">cost attribution</span><span class="tag2">right-sizing</span><span class="tag2">savings estimate</span><span class="tag2">approval PR</span></div>
+            <div class="meta">Autonomy: <b>Recommend → Approve → Act</b> · Maps to <b>D5</b></div>
+            <div class="fail">⚠ Watch: recommendation that hurts SLA to save cost · unattributed spend (untagged) · savings claims not verified after</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G7</span> · Waste &amp; Idle Guardrails <span class="tag2" style="background:#e6fcf0;color:#2b8a3e">Deterministic automation</span></h4>
+            <div class="prob">Pure policy-as-code — auto-terminate idle/orphaned clusters, enforce cluster policies &amp; mandatory cost tags, block oversized all-purpose clusters, and fire budget alerts. <em>No AI at all</em>: this is the textbook case where determinism is safer, cheaper, and audit-clean.</div>
+            <div class="tags"><span class="tag2">cluster policies</span><span class="tag2">auto-termination</span><span class="tag2">budget alerts</span><span class="tag2">tag enforcement</span></div>
+            <div class="meta">Autonomy: <b>Act</b> (bounded, rule-based) · teaches "not everything needs an agent"</div>
+            <div class="fail">⚠ Watch: killing a legitimately long job · policy too strict blocks teams · needs a documented exception path</div>
+        </div>
+    </div>
+
+    <!-- Theme D -->
+    <h3 style="margin-top:20px">🧪 Theme D · Data Quality &amp; Change Safety — <span style="font-weight:400;color:#777">trust the data &amp; the deploys</span></h3>
+    <div class="pgrid">
+        <div class="pcard">
+            <h4><span class="num0">G8</span> · Data-Quality &amp; Anomaly Sentinel <span class="tag2" style="background:#fff4e0;color:#b5691a">Hybrid</span></h4>
+            <div class="prob">Deterministic DQ rules (row counts, nulls, schema, referential integrity) via <b>Lakehouse Monitoring</b> / Great Expectations / DQX; an agent triages anomalies, explains likely drift causes, and <em>proposes new rules</em> from recurring patterns for a human to accept.</div>
+            <div class="tags"><span class="tag2">Lakehouse Monitoring</span><span class="tag2">DQX / GE</span><span class="tag2">drift triage</span><span class="tag2">rule suggestions</span></div>
+            <div class="meta">Autonomy: <b>Observe → Recommend</b></div>
+            <div class="fail">⚠ Watch: rule sprawl / noisy DQ · schema-valid-but-wrong values slipping through · alerting on expected variance</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G9</span> · Pipeline Change-Risk Reviewer <span class="tag2" style="background:#f3e8ff;color:#7048e8">AI Agent · CI</span></h4>
+            <div class="prob">Runs in <b>Azure DevOps / GitHub</b> CI on every PR to notebooks, DLT, dbt or SQL. Deterministic linters catch the mechanical issues; an agent reviews for <em>breaking schema changes, missing tests, cost regressions, and non-idempotent writes</em>, and posts a structured review. Risky changes gate the merge.</div>
+            <div class="tags"><span class="tag2">CI review</span><span class="tag2">schema-break detection</span><span class="tag2">cost regression</span><span class="tag2">merge gate</span><span class="tag2">headless</span></div>
+            <div class="meta">Autonomy: <b>Recommend</b> (blocks merge) · Maps to <b>D2/D3</b></div>
+            <div class="fail">⚠ Watch: false-positive blocks eroding trust · reviewing generated/vendored code · secrets in diffs</div>
+        </div>
+    </div>
+
+    <!-- Theme E -->
+    <h3 style="margin-top:20px">🛡️ Theme E · Governance &amp; Compliance — <span style="font-weight:400;color:#777">GxP &amp; least privilege</span></h3>
+    <div class="pgrid">
+        <div class="pcard">
+            <h4><span class="num0">G10</span> · Unity Catalog Governance &amp; Access Auditor <span class="tag2" style="background:#fff4e0;color:#b5691a">Hybrid · read-only</span></h4>
+            <div class="prob">Deterministic scans of <b>Unity Catalog</b> grants, <b>system.access.audit</b>, lineage, external locations and PII tags; an agent produces <em>audit-ready summaries</em>, flags least-privilege violations &amp; dormant access, and drafts the remediation for a data owner to approve. Evidence packaged for GxP review.</div>
+            <div class="tags"><span class="tag2">system.access.audit</span><span class="tag2">grant review</span><span class="tag2">least privilege</span><span class="tag2">lineage/PII</span><span class="tag2">GxP evidence</span></div>
+            <div class="meta">Autonomy: <b>Observe → Recommend</b> · never changes a grant itself</div>
+            <div class="fail">⚠ Watch: over-revoking breaks a pipeline · audit summary must be verifiable, not just plausible · PII in the agent's own logs</div>
+        </div>
+        <div class="pcard">
+            <h4><span class="num0">G11</span> · Weekly Ops Reliability Brief <span class="tag2" style="background:#e7ecff;color:#3b5bdb">AI over deterministic metrics</span></h4>
+            <div class="prob">The capstone read-out: an agent assembles one exec-ready brief from all the above — reliability, cost, DQ, incidents, access posture — with trends, top risks, and recommended focus for the week. Deterministic metrics in; a crisp narrative out, for the Ops leadership review.</div>
+            <div class="tags"><span class="tag2">exec digest</span><span class="tag2">multi-source synthesis</span><span class="tag2">trends</span><span class="tag2">prioritization</span></div>
+            <div class="meta">Autonomy: <b>Explain</b> · Maps to <b>D1</b> (synthesis)</div>
+            <div class="fail">⚠ Watch: numbers in the narrative not matching the source of truth → compute deterministically, let AI only phrase</div>
+        </div>
+    </div>
+
+    <div class="good" style="margin-top:18px">
+        <strong>🎯 Where she should start (lowest risk, fastest value):</strong>
+        <b>G5 · Runbook Agent</b> (pure RAG, zero autonomy, instant MTTR win) + <b>G1 · Health Sentinel</b> (read-only observe/explain).
+        Together they prove the pattern — grounded answers &amp; safe observation — with no ability to touch production. From there,
+        climb the ladder: <b>G6</b> cost recommendations, then <b>G7</b> deterministic guardrails, then the GxP auditor <b>G10</b>.
+    </div>
+    <div class="note">
+        <strong>Reference stack (all mock-data-first):</strong> Databricks <b>system tables</b> (billing/usage, access audit, job runs,
+        query history) + <b>Jobs/REST API &amp; SDK</b> for read-only signals · <b>Unity Catalog</b> for governance/lineage ·
+        <b>Lakehouse Monitoring</b> / DQX for data quality · <b>ServiceNow</b> for ITSM tickets · optionally <b>Sedai</b> for autonomous
+        cost/perf optimization · <b>Azure DevOps</b> for CI · the <b>Claude API</b> (native tool use, adaptive thinking, structured
+        outputs) for every agent. Nothing writes to real infra until validated and signed off.
+    </div>
+    <p style="text-align:center;color:#888;margin:18px 0">👉 Tell me which of <strong>G1–G11</strong> to design first — I'll produce
+    the full deep-dive (architecture, deterministic-vs-AI split, read-only tool contracts, guardrails, GxP audit trail, mock-data
+    harness, and a runnable skeleton), same anatomy as the projects above.</p>
     </div>
 
     <!-- ================= ANATOMY ================= -->
