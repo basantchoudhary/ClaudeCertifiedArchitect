@@ -119,6 +119,10 @@ flowchart TD
     • SDKs retry <b>429/5xx</b>, never <b>400</b>.
     </div>
 
+    <div class="warn">These are all the <b>loud</b> failures — a signal fires. The far more dangerous class is the
+    <b>silent</b> one: a valid request that returns <b>200 + <code>end_turn</code> with no flag, and a wrong answer</b>.
+    → <a href="silent-failures-wrong-but-valid.html"><b>Silent failures — passes but wrong</b></a>.</div>
+
     <div class="good">Related: <a href="../D1-Agentic-Architecture/subtopics/2-1-stop-reason-overview.html">D1 · stop_reason values</a> ·
     <a href="../D4-Tool-Design-MCP/subtopics/3-5-contract-failures.html">D4 · tool-result 400s</a> ·
     <a href="subtopics/5-1-error-codes.html">D5 · API error codes</a> ·
