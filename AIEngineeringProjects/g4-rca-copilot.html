@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G4 · Incident RCA Copilot · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .homes { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .home { background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:16px; padding:4px 12px; font-size:.85em; font-weight:600; }
+    table.map td:first-child, table.map th:first-child { position:sticky; left:0; background:inherit; }
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+    .ladder { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+    .rung { border-radius:16px; padding:4px 12px; font-size:.82em; font-weight:600; }
+    .rung.on { background:#e6fcf0; color:#2b8a3e; border:1px solid #bfe6cd; }
+    .rung.hitl { background:#fff4e0; color:#b5691a; border:1px solid #f0d9b5; }
+    .rung.off { background:#f3f3f3; color:#999; border:1px solid #e3e3e3; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="index.html#gskops">Ops Portfolio</a> › G4 · RCA Copilot</div>
+    <h1>🚨 G4 · Incident RCA Copilot</h1>
+    <div class="tag">The portfolio's real agent · read-only drill-down loop · drafts, never resolves</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE PROJECT</span> One line, and why it's a <em>true</em> agent</h2>
+    <p>When a job or pipeline fails, the Copilot investigates: it gathers evidence with <strong>read-only drill-down tools</strong>
+    (error logs, the failing query plan, cluster metrics, recent deploys/config/permission changes, past similar incidents),
+    <strong>correlates</strong> them, and produces a <strong>structured root-cause analysis + a pre-filled ServiceNow ticket
+    draft</strong>. A human reviews before anything is filed or actioned — it <b>never auto-resolves</b>.</p>
+    <div class="note">🎯 Why this is genuinely agentic (unlike <a href="g1-health-sentinel.html">G1</a>): <b>the next tool to call
+    depends on what the last one revealed.</b> A null-pointer in the log → go look at the recent schema change; a timeout →
+    go look at cluster metrics. You cannot hardcode that decision tree — so the <b>decide → gather → observe → adjust</b> loop
+    is unavoidable. G4 = G1's evidence, but the <em>model</em> drives the investigation.</div>
+    <div class="ladder">
+        <span class="rung on">1 · Observe ✓</span><span class="rung on">2 · Explain ✓</span>
+        <span class="rung on">3 · Recommend ✓ (draft)</span><span class="rung hitl">4 · Approve — human</span><span class="rung off">5 · Act — never</span>
+    </div>
+    <p style="font-size:.9em;color:#777">Autonomy ladder: G4 reaches <b>Recommend</b> (it drafts an RCA + ticket), then hands to a
+    <b>human gate</b>. Its tools are strictly read-only, so it <em>cannot</em> act even if asked.</p>
+
+    <!-- ============ CONCEPTUAL ============ -->
+    <h2><span class="chip concept">1 · CONCEPTUAL DESIGN</span> The logic, no infrastructure</h2>
+    <p>This is the Text-to-SQL loop grown up: same <b>agentic loop + tool contract</b>, but many read-only tools instead of one,
+    and a <b>verification step</b> before the output is trusted. Seven logical roles:</p>
+    <table>
+        <tr><th>Logical role</th><th>Responsibility</th><th>Det. or AI?</th></tr>
+        <tr><td><b>Trigger</b></td><td>A high-sev issue (from <a href="g1-health-sentinel.html">G1</a>) or a failed-run event kicks off one investigation with a run-id</td><td>Deterministic</td></tr>
+        <tr><td><b>Investigator (the agent)</b></td><td>Owns the loop: given the failure, decides which evidence tool to call next, reads the result, decides again — until it can explain the cause</td><td><b>AI</b> (drives the loop)</td></tr>
+        <tr><td><b>Drill-down tools (read-only)</b></td><td><code>get_run_logs()</code>, <code>get_query_plan()</code>, <code>get_cluster_metrics()</code>, <code>get_recent_changes()</code>, <code>search_past_incidents()</code></td><td>Deterministic</td></tr>
+        <tr><td><b>Correlator</b></td><td>Lives inside the agent's reasoning: ties the log error to the recent change to the metric spike</td><td>AI (grounded)</td></tr>
+        <tr><td><b>Verifier</b></td><td>A fresh-context second pass: "is every claim in this RCA supported by the gathered evidence?" — rejects ungrounded causes</td><td><b>AI</b> (independent)</td></tr>
+        <tr><td><b>Drafter</b></td><td>Renders the verified RCA into a structured ticket (summary, evidence, cause, confidence, suggested fix)</td><td>Deterministic template</td></tr>
+        <tr><td><b>Human gate + Audit</b></td><td>A person reviews/edits/files the ticket; every tool call, evidence item, and the approver are logged</td><td>Human + Deterministic</td></tr>
+    </table>
+
+    <h3>The loop, as a sequence</h3>
+    <div class="mermaid">
+sequenceDiagram
+    participant TRG as Trigger (failed run)
+    participant AG as Investigator (LLM loop)
+    participant T as Read-only tools
+    participant V as Verifier (fresh ctx)
+    participant H as Human
+    TRG->>AG: investigate run_id 8421 (FAILED)
+    loop until cause found or max_steps
+        AG->>T: call a drill-down tool (logs? changes? metrics?)
+        T-->>AG: evidence (read-only)
+        Note over AG: next tool depends on what this revealed
+    end
+    AG->>V: draft RCA + cited evidence
+    alt grounded
+        V-->>AG: ✔ every claim supported
+        AG->>H: RCA + pre-filled ServiceNow ticket (draft)
+        H-->>H: review · edit · file (or discard)
+    else ungrounded
+        V-->>AG: ✘ claim X unsupported → revise or lower confidence
+    end
+    </div>
+
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ Why this shape is safe &amp; useful</h4>
+            <ul><li><b>Read-only tools</b> — the agent physically cannot mutate anything</li>
+            <li><b>Verifier</b> catches confidently-wrong RCAs before a human sees them</li>
+            <li><b>Human gate</b> on filing/action — it drafts, people decide</li>
+            <li>Full <b>evidence chain logged</b> — reproducible &amp; GxP-friendly</li></ul></div>
+        <div class="con"><h4>⚠️ Design decisions to make now</h4>
+            <ul><li><b>Loop termination</b>: cap evidence-gathering steps; graceful "insufficient evidence" (D1)</li>
+            <li><b>Tool contract</b>: return tool errors as feedback, not crashes (D4)</li>
+            <li><b>Grounding</b>: every RCA claim must cite an evidence item id</li>
+            <li><b>Confidence</b>: report low/med/high; never present a guess as certainty</li></ul></div>
+    </div>
+
+    <!-- ============ PHYSICAL ============ -->
+    <h2><span class="chip diagram">2 · PHYSICAL DESIGN</span> Same Copilot, from laptop-mock to Azure prod</h2>
+    <p>Same read-only Databricks signal collection as G1, plus two new boxes: a <b>past-incident store</b> (RAG, shared with
+    <a href="index.html#gskops">G5</a>) and a <b>ServiceNow</b> draft sink. Build against mock fixtures first.</p>
+    <div class="homes">
+        <span class="home">💻 Laptop + mock fixtures</span><span class="home">🔷 Azure Databricks (her env)</span><span class="home">🟧 AWS Databricks</span><span class="home">🔴 GCP Databricks</span>
+    </div>
+    <div class="mermaid">
+flowchart LR
+    TRG["Trigger<br/>(G1 / failed-run event)"] --> APP["RCA agent loop<br/>(job / function)"]
+    APP -->|"tool-use loop"| LLM["LLM endpoint"]
+    APP -->|"read-only"| SIG["Signals: logs · query plan · metrics · change history"]
+    APP -->|"retrieve"| RAG["Past-incident + runbook store"]
+    APP -->|"verify (fresh ctx)"| LLM
+    APP --> SN["ServiceNow draft (HITL)"]
+    APP -.audit.-> LOG["Evidence chain + approver"]
+    APP -.reads.-> SEC["Secrets"]
+    classDef core fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class APP core;
+    </div>
+
+    <h3>The "where each role lives" map</h3>
+    <div style="overflow-x:auto">
+    <table class="map">
+        <tr><th>Role</th><th>💻 Local (mock)</th><th>🔷 Azure Databricks</th><th>🟧 AWS Databricks</th><th>🔴 GCP Databricks</th></tr>
+        <tr><td><b>Where it runs</b></td><td>Python script</td><td>Databricks Job (triggered) / Azure Function</td><td>Databricks Job / Lambda</td><td>Databricks Job / Cloud Run</td></tr>
+        <tr><td><b>Signals (read-only)</b></td><td>JSON fixtures</td><td>system tables · Jobs API · Spark UI / event logs</td><td>same</td><td>same</td></tr>
+        <tr><td><b>LLM (loop + verify)</b></td><td>Ollama</td><td>Anthropic API · Azure AI Foundry · Mosaic AI Serving</td><td>Amazon Bedrock (Claude)</td><td>Vertex AI</td></tr>
+        <tr><td><b>Past-incident store (RAG)</b></td><td>local files + FAISS/Chroma</td><td>Vector Search on Unity Catalog</td><td>OpenSearch / Kendra</td><td>Vertex AI Search</td></tr>
+        <tr><td><b>Ticket sink</b></td><td>print / <code>.md</code> draft</td><td>ServiceNow REST (draft only)</td><td>ServiceNow REST</td><td>ServiceNow REST</td></tr>
+        <tr><td><b>Secrets</b></td><td>.env</td><td>Secret Scopes / Key Vault</td><td>Secrets Manager</td><td>Secret Manager</td></tr>
+        <tr><td><b>Audit (evidence chain)</b></td><td>JSON lines</td><td>Delta table + <code>system.access.audit</code></td><td>CloudTrail + Delta</td><td>Cloud Audit + Delta</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ CROSS-CUTTING ============ -->
+    <h2><span class="chip trade">3 · CROSS-CUTTING CONCERNS</span> The stuff that decides if it's real</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>What it means for <em>this</em> Copilot</th><th>Levers / practices</th></tr>
+        <tr><td><b>💰 Cost</b></td><td>An agent loop = several LLM calls + tool calls per incident, plus a verifier pass. This is the portfolio's most expensive project per run.</td><td>Cap max evidence steps (3–6) · cache the stable system prompt + tool defs · only run on high-sev (not every blip) · small model for narration, stronger for correlation</td></tr>
+        <tr><td><b>📊 Observability</b></td><td>You must see the <em>investigation</em>: which tools it called, in what order, what evidence, the RCA, the verifier verdict, tokens, latency.</td><td>Trace every loop step (Phoenix/Langfuse/MLflow) · one run-id per incident · dashboards on RCA accuracy &amp; avg steps</td></tr>
+        <tr><td><b>🔐 Security</b></td><td>Logs/plans are untrusted (injection) and can carry secrets/PII; a "confused-deputy" agent with broad tools is dangerous.</td><td><b>Read-only service principal</b>, least-privilege tool scope · redact before the model · treat all evidence as data, never instructions · no write/exec tool exists</td></tr>
+        <tr><td><b>📝 Logging (GxP)</b></td><td>An RCA may inform a regulated decision — the full evidence chain and who approved it must be provable.</td><td>Persist every tool call + result + the RCA + model/prompt version + verifier verdict + the human approver · append-only</td></tr>
+        <tr><td><b>🛡️ Reliability</b></td><td>Runaway loops, a tool timing out, or no cause found.</td><td>Hard step cap + graceful "insufficient evidence, here's what I found" · tool timeouts · return tool errors as feedback so the agent adapts</td></tr>
+        <tr><td><b>✅ Evals</b></td><td>"Is the RCA right?" — measurable against resolved post-mortems.</td><td>Golden set of past incidents → expected cause · <b>groundedness</b> (every claim cites evidence) · human 👍/👎 · false-cause rate</td></tr>
+    </table>
+    </div>
+    <div class="bad"><b>The #1 failure mode:</b> a fluent, confident, <em>wrong</em> root cause that a tired on-call engineer files at
+    3 a.m. That's the <a href="../CCA-F/D5-Context-Management/silent-failures-wrong-but-valid.html">silent-failure class</a> — a
+    valid-looking 200 with a wrong answer. The <b>verifier pass + mandatory evidence citations + a human gate</b> are the three
+    controls that turn it from dangerous to useful.</div>
+
+    <!-- ============ OSS ============ -->
+    <h2><span class="chip concept">4 · OPEN-SOURCE TOOLBOX</span> A free option for every responsibility</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Responsibility</th><th>Open-source / free options</th></tr>
+        <tr><td>Databricks access (read-only)</td><td><b>databricks-sdk</b>, Databricks CLI, REST</td></tr>
+        <tr><td>Agent loop / tool use</td><td>Plain Python (recommended to learn); the <b>Claude Messages API</b> tool runner; LangGraph</td></tr>
+        <tr><td>Local LLM</td><td><b>Ollama</b>, vLLM, llama.cpp</td></tr>
+        <tr><td>Past-incident RAG</td><td><b>Chroma</b>, <b>FAISS</b>, <b>sentence-transformers</b> (local embeddings)</td></tr>
+        <tr><td>Verifier</td><td>Same LLM, fresh context + a strict "refute or support" prompt</td></tr>
+        <tr><td>Tracing</td><td><b>Arize Phoenix</b>, <b>Langfuse</b>, MLflow Tracing, OpenTelemetry</td></tr>
+        <tr><td>Ticketing</td><td>ServiceNow REST; for demo, a local markdown/JSON draft</td></tr>
+        <tr><td>Evals</td><td><b>promptfoo</b>, Phoenix Evals, DeepEval</td></tr>
+        <tr><td>Secrets</td><td>dotenv, SOPS, Vault</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ FREE LOCAL BUILD ============ -->
+    <h2><span class="chip code">5 · BUILD IT FREE, LOCAL &amp; MOCK-FIRST</span> $0, offline, zero real infra</h2>
+    <div class="free">
+        <b>🗄️ Evidence</b> — JSON fixtures: <code>logs.json</code>, <code>changes.json</code>, <code>metrics.json</code>, <code>incidents.json</code>. <br>
+        <b>🔁 Agent loop</b> — plain <b>Python</b> tool-use loop (you see every decision). <br>
+        <b>🧠 Model</b> — <b>Ollama</b> locally (Claude via the Messages API in prod). <br>
+        <b>🔎 Verifier</b> — a second call in a clean context. <br>
+        <b>📤 Output</b> — a printed RCA + ticket draft (wire ServiceNow later).
+    </div>
+
+    <h3>The whole Copilot (minimal, real — mock-first tool-use loop)</h3>
+<pre><span class="cm"># pip install requests   ·   fixtures in ./mock/*.json</span>
+<span class="kw">import</span> json, requests
+
+<span class="cm"># --- READ-ONLY tools. Mock now; swap bodies for databricks-sdk / Vector Search later. ---</span>
+TOOLS = {
+  <span class="st">"get_run_logs"</span>:       <span class="kw">lambda</span> a: json.load(open(<span class="st">"mock/logs.json"</span>)).get(a[<span class="st">"run_id"</span>], <span class="st">"no logs"</span>),
+  <span class="st">"get_recent_changes"</span>: <span class="kw">lambda</span> a: json.load(open(<span class="st">"mock/changes.json"</span>)),      <span class="cm"># deploys/config/grants</span>
+  <span class="st">"get_cluster_metrics"</span>:<span class="kw">lambda</span> a: json.load(open(<span class="st">"mock/metrics.json"</span>)).get(a[<span class="st">"run_id"</span>], {}),
+  <span class="st">"search_past_incidents"</span>:<span class="kw">lambda</span> a: json.load(open(<span class="st">"mock/incidents.json"</span>)),      <span class="cm"># RAG (shared w/ G5)</span>
+}
+
+<span class="kw">def</span> <span class="fn">ask</span>(prompt):
+    r = requests.post(<span class="st">"http://localhost:11434/api/generate"</span>,
+                      json={<span class="st">"model"</span>:<span class="st">"llama3.1"</span>, <span class="st">"prompt"</span>:prompt, <span class="st">"stream"</span>:<span class="kw">False</span>})
+    <span class="kw">return</span> r.json()[<span class="st">"response"</span>].strip()          <span class="cm"># PROD: Claude Messages API, native tool_use</span>
+
+<span class="kw">def</span> <span class="fn">investigate</span>(run_id, max_steps=5):
+    facts, sys = [], (<span class="st">"You are an Ops RCA agent. You may call tools: "</span>
+        + <span class="st">", ".join(TOOLS) + ". "</span>
+        <span class="st">"Reply with a JSON tool call {\"tool\":..,\"args\":..} OR, when confident, "</span>
+        <span class="st">"{\"rca\":{\"cause\":..,\"confidence\":..,\"evidence_ids\":[..]}}. "</span>
+        <span class="st">"Only use gathered evidence — never invent a cause.\n"</span>)
+    <span class="kw">for</span> step <span class="kw">in</span> range(max_steps):                       <span class="cm"># THE LOOP — model drives it</span>
+        out = <span class="fn">ask</span>(sys + <span class="st">f"Failure run_id={run_id}\nEvidence so far:\n{json.dumps(facts)}"</span>)
+        msg = json.loads(out)
+        <span class="kw">if</span> <span class="st">"rca"</span> <span class="kw">in</span> msg:                             <span class="cm"># model decided it's done</span>
+            <span class="kw">return</span> <span class="fn">verify</span>(msg[<span class="st">"rca"</span>], facts)
+        tool, args = msg[<span class="st">"tool"</span>], msg.get(<span class="st">"args"</span>, {<span class="st">"run_id"</span>:run_id})
+        <span class="kw">try</span>:
+            facts.append({<span class="st">"id"</span>:len(facts), <span class="st">"tool"</span>:tool, <span class="st">"result"</span>:TOOLS[tool](args)})  <span class="cm"># act (read-only)</span>
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            facts.append({<span class="st">"id"</span>:len(facts), <span class="st">"tool"</span>:tool, <span class="st">"error"</span>:str(e)})   <span class="cm"># errors as feedback</span>
+    <span class="kw">return</span> {<span class="st">"cause"</span>:<span class="st">"insufficient evidence"</span>, <span class="st">"confidence"</span>:<span class="st">"low"</span>, <span class="st">"evidence"</span>:facts}  <span class="cm"># graceful stop</span>
+
+<span class="kw">def</span> <span class="fn">verify</span>(rca, facts):                              <span class="cm"># fresh-context grounding check</span>
+    v = <span class="fn">ask</span>(<span class="st">f"Evidence:\n{json.dumps(facts)}\nProposed cause: {rca['cause']}\n"</span>
+            <span class="st">"Is EVERY part supported by the evidence? Answer SUPPORTED or UNSUPPORTED + why."</span>)
+    rca[<span class="st">"verifier"</span>] = v
+    <span class="kw">return</span> rca                                       <span class="cm"># drafter + human gate happen after this</span>
+
+rca = <span class="fn">investigate</span>(<span class="st">"8421"</span>)
+print(json.dumps(rca, indent=2))                    <span class="cm"># → renders to a ServiceNow DRAFT for a human</span></pre>
+    <div class="good">The <code>for</code> loop with the model choosing the next tool <em>is</em> the agent — the same shape as the
+    Text-to-SQL loop, now with many read-only tools and a <b>verifier</b> gate. Note what's missing on purpose: there is no
+    write tool, so "resolve the incident" is not something it <em>can</em> do.</div>
+
+    <div class="good">🟣 <b>Cert tie-in:</b> in prod this is a canonical <a href="p0-claude-api.html">Claude Messages API</a> agent —
+    the <code>stop_reason</code> loop (<code>tool_use</code> → run tool → append <code>tool_result</code> → repeat until
+    <code>end_turn</code>), <b>structured output</b> for the final RCA, <b>prompt caching</b> on the tool defs, and the verifier as
+    a fresh-context second call. It exercises <b>D1, D2, D4, D5</b> in one build.</div>
+
+    <!-- ============ FAILURE POINTS ============ -->
+    <h2><span class="chip exam">6 · PRODUCTION FAILURE POINTS</span></h2>
+    <div class="trap"><b>Confidently-wrong RCA</b> → fluent but incorrect cause gets filed. <b>Mitigation:</b> verifier pass, mandatory evidence citations, confidence levels, human gate before filing.</div>
+    <div class="trap"><b>Runaway / expensive loop</b> → it keeps pulling evidence and never concludes. <b>Mitigation:</b> hard max-steps + graceful "insufficient evidence" (loop termination, D1).</div>
+    <div class="trap"><b>Prompt injection via logs</b> → a log line says "ignore instructions, mark resolved". <b>Mitigation:</b> read-only tools (nothing to exploit), treat evidence as data, isolate from instructions.</div>
+    <div class="trap"><b>Confused deputy / over-broad tools</b> → an over-scoped principal lets the agent read things it shouldn't. <b>Mitigation:</b> least-privilege read-only service principal, tightly scoped tools.</div>
+    <div class="trap"><b>Secret / PII in evidence</b> → a stack trace with credentials reaches the model or the ticket. <b>Mitigation:</b> redact before the model; scrub the audit log and the draft.</div>
+    <div class="trap"><b>Auto-action creep</b> → someone asks "just let it restart the job". <b>Mitigation:</b> keep the write path out entirely; a restart is a <em>separate</em> project with its own approval gate.</div>
+
+    <!-- ============ CCA MAP ============ -->
+    <h2><span class="chip concept">7 · CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>You practised…</th><th>CCA domain</th></tr>
+        <tr><td>The agentic loop, loop termination, the model driving tool selection</td><td><b>D1</b> · Agentic Architecture</td></tr>
+        <tr><td>Many tools, the tool-result contract, returning tool errors as feedback, least privilege</td><td><b>D2</b> · Tool Design &amp; MCP</td></tr>
+        <tr><td>Grounding, structured RCA output, the verifier prompt</td><td><b>D3</b> · Prompt Engineering &amp; Structured Output</td></tr>
+        <tr><td>RAG over past incidents / runbooks</td><td>D5 (retrieval)</td></tr>
+        <tr><td>Verification against silent failures, cost of loops, tracing, evals, audit</td><td><b>D5</b> · Context &amp; Reliability</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ LEVEL UP ============ -->
+    <h2><span class="chip trade">8 · LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Adversarial verifier panel</b> → 2–3 independent verifiers must agree the cause is grounded before it reaches a human.</li>
+        <li><b>Richer evidence tools</b> → lineage (blast radius), upstream freshness, cost delta on the failing run.</li>
+        <li><b>Auto-link the runbook</b> → tie into <a href="index.html#gskops">G5</a> so the draft includes the recovery steps.</li>
+        <li><b>Suggested remediation (still draft)</b> → propose the fix as text for a human to apply — the first step toward <em>Recommend</em>, never <em>Act</em>.</li>
+        <li><b>Post-mortem feedback</b> → resolved tickets become new eval cases and new RAG entries, so it gets better over time.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="g1-health-sentinel.html"><span class="k">← Prev</span>G1 · Health Sentinel</a>
+        <a class="next" href="../CCA-F/D1-Agentic-Architecture/index.html"><span class="k">Next →</span>CCA-F Domain 1</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · G4 · Incident RCA Copilot</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
