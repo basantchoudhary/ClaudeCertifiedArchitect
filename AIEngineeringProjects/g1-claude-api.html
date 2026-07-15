@@ -140,6 +140,33 @@ digest = <span class="fn">triage</span>(<span class="fn">detect</span>(runs))   
     still don't fully trust</b> — the <code>ground()</code> step proves the exam's favourite lesson that <em>schema-valid ≠
     correct</em>.</div>
 
+    <h2><span class="chip diagram">DEPLOY ON AZURE DATABRICKS</span> Same code, routed through Model Serving</h2>
+    <p>In her environment the LLM call goes through <strong>Mosaic AI Model Serving</strong>, not straight to Anthropic. The
+    good news: Databricks serves Claude via the <strong>native Anthropic Messages API</strong>, so <em>only the client wiring
+    changes</em> — the entire <code>messages.create(...)</code> call (adaptive thinking, <code>output_config.format</code>,
+    <code>stop_reason</code>, grounding) is <strong>byte-for-byte identical</strong>. Three lines move:</p>
+<pre><span class="cm"># pip install anthropic   (on the Databricks compute)</span>
+<span class="kw">import</span> anthropic, os
+
+<span class="cm"># DIRECT (what the exam code shows):</span>
+<span class="cm"># client = anthropic.Anthropic()                      # → api.anthropic.com, ANTHROPIC_API_KEY</span>
+
+<span class="cm"># THROUGH AZURE DATABRICKS (Model Serving, native Anthropic Messages API):</span>
+client = anthropic.<span class="fn">Anthropic</span>(
+    base_url = <span class="st">f"https://{os.environ['DATABRICKS_HOST']}/serving-endpoints"</span>,  <span class="cm"># workspace serving URL</span>
+    api_key  = os.environ[<span class="st">"DATABRICKS_TOKEN"</span>],                              <span class="cm"># Databricks token, not an Anthropic key</span>
+)
+<span class="cm"># ...and `model` becomes the SERVING-ENDPOINT name you configured, e.g. "claude-opus-4-8-endpoint".</span>
+<span class="cm"># Everything else — system(cached), thinking:adaptive, output_config.format, stop_reason — is UNCHANGED.</span></pre>
+    <div class="good">Why this is the right call for her: <b>centralized credential management</b> — the Anthropic key lives once
+    in Databricks, never sprayed across jobs (better security &amp; GxP posture), plus per-endpoint governance, rate limits,
+    and usage tracking in the workspace. And because it's the <b>native Messages API</b>, you keep every Claude feature the
+    exam tests.</div>
+    <div class="note">There's also an <b>OpenAI-compatible</b> path (<code>databricks-openai</code> / the OpenAI client against the
+    same endpoint). It works, but it reshapes the request/response into the OpenAI schema — so native bits like
+    <code>output_config.format</code>, adaptive <code>thinking</code>, and typed <code>tool_use</code> blocks look different.
+    For <em>both</em> cert prep and feature parity, prefer the <b>Anthropic Messages API</b> route shown above.</div>
+
     <h2><span class="chip concept">STOP REASONS</span> Yes — even a single call</h2>
     <p>The loop version routes on <code>stop_reason</code> to keep going. Here there's no loop — but you <strong>still</strong>
     check it, because a one-shot call can come back <code>refusal</code> (HTTP 200, no answer) or <code>max_tokens</code>
