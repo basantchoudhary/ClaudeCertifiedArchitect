@@ -59,6 +59,10 @@ details[open] summary { margin-bottom: 10px; }
 .chip.trade   { background:#fff9db; color:#b08900; }
 .chip.exam    { background:#ffe8cc; color:#d9480f; }
 .chip.practice{ background:#f3e8ff; color:#7048e8; }
+.chip.rule    { background:#ede9fe; color:#6d28d9; }
+.chip.idea    { background:#e0f2fe; color:#0369a1; }
+.chip.venn    { background:#fef3c7; color:#b45309; }
+.chip.solve   { background:#ffe4e6; color:#be123c; }
 
 /* prev/next nav */
 .pager { display:flex; justify-content:space-between; margin-top:26px; gap:12px; }

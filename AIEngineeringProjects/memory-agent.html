@@ -9,6 +9,19 @@
     .qa { background:#faf9ff; border:1px solid #e6e1f7; border-left:4px solid #764ba2; border-radius:0 6px 6px 0; padding:10px 16px; margin:12px 0; }
     .qa .q { font-weight:700; color:#4a3b7a; }
     .feat { display:inline-block; background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:12px; padding:1px 9px; font-size:.75em; font-weight:600; margin:1px 2px; }
+    .turnhdr { font-size:.8em; font-weight:700; color:#64748b; letter-spacing:.03em; margin:18px 0 4px; text-transform:uppercase; }
+    .msg { border-radius:12px; padding:9px 14px; margin:6px 0; max-width:90%; line-height:1.55; }
+    .msg.user { background:#e0e7ff; color:#1e293b; margin-left:auto; }
+    .msg.bot { background:#eef2f7; color:#1e293b; }
+    .msg .who { font-size:.7em; font-weight:700; opacity:.65; display:block; margin-bottom:2px; }
+    .bts { background:#fafafa; border:1px dashed #cbd5e1; border-radius:8px; padding:8px 12px; margin:6px 0 12px; font-size:.88em; color:#475569; }
+    .bts b { color:#334155; }
+    .st { display:inline-block; border-radius:9px; padding:0 8px; font-size:.82em; font-weight:700; }
+    .st.sql { background:#dbeafe; color:#1e40af; }
+    .st.vec { background:#dcfce7; color:#15803d; }
+    .st.graph { background:#ede9fe; color:#6d28d9; }
+    .st.redis { background:#fee2e2; color:#b91c1c; }
+    .st.ctx { background:#e2e8f0; color:#475569; }
 </style>
 </head>
 <body>
@@ -28,6 +41,82 @@
     each, not just how. The dialogue itself is where every context-bloat technique lives.</p>
     <div class="note">Deliberately toy &amp; <b>light/embedded</b> (SQLite + Chroma + Kùzu in-process; Redis via brew or
     fakeredis) so you learn the concepts and APIs with almost no RAM/CPU cost — no Docker/Neo4j/Postgres tax.</div>
+
+    <!-- ============ WHAT PROBLEM ============ -->
+    <h2><span class="chip idea">WHAT IS THIS?</span> The problem it solves</h2>
+    <p>It's a <strong>personal work assistant — a "chief of staff" / second brain</strong> for one knowledge worker (you).
+    A plain chatbot <em>forgets everything</em> when a session ends, so you re-explain your projects, people, and preferences
+    every time. This assistant gives you <strong>continuity</strong>: it remembers your <em>facts &amp; preferences</em>, recalls
+    your <em>past notes</em>, tracks the <em>people/projects</em> you work with and how they connect, and keeps long conversations
+    coherent. The value is <b>recall across time</b> — not a smarter single answer.</p>
+    <div class="note">Not customer-facing — a <b>private companion</b> that keeps your working context so you never start
+    from zero. The same shape generalises (a support agent = per-customer memory; a research assistant = a knowledge base),
+    but here the "user" is one person, over months.</div>
+
+    <!-- ============ WORKED EXAMPLE ============ -->
+    <h2><span class="chip venn">WALK-THROUGH</span> A real conversation — what's stored where, and why</h2>
+    <p>Two sessions, a few days apart. Watch each memory tier earn its place. <span class="st sql">SQLite</span>
+    <span class="st vec">Vector</span> <span class="st graph">Graph</span> <span class="st redis">Redis</span>
+    <span class="st ctx">Context</span></p>
+
+    <div class="turnhdr">Session 1 · Monday · Turn 1</div>
+    <div class="msg user"><span class="who">You</span>I'm kicking off the GSK observability demo with Priya and Rahul. Priya's leading it; target is next Friday.</div>
+    <div class="bts"><b>App reads:</b> fresh context — the router finds little to recall (facts/graph near-empty). → prompt = <i>cached persona</i> + (empty memory) + your turn.</div>
+    <div class="msg bot"><span class="who">Assistant (Claude)</span>Got it — GSK observability demo, Priya leading, Rahul on it, due next Friday. Want me to track blockers as they surface?</div>
+    <div class="bts"><b>Reflect &amp; write (async, after replying):</b><br>
+      <span class="st graph">Graph</span> nodes <code>Priya</code>, <code>Rahul</code>, <code>Project "GSK observability demo"</code>; edges <code>Priya-LEADS→</code>, <code>Rahul-WORKS_ON→</code>, due=next&nbsp;Fri — <i>why: roles/links you'll traverse later</i>.<br>
+      <span class="st vec">Vector</span> episode "kicked off GSK demo — Priya lead, Rahul, due next Fri" — <i>why: semantic recall of the note later</i>.<br>
+      <span class="st sql">SQLite</span> fact <code>current_focus = "GSK observability demo"</code> — <i>why: cheap exact lookup</i>.<br>
+      <span class="st redis">Redis</span> session turn appended with a TTL — <i>why: fast working memory</i>.</div>
+
+    <div class="turnhdr">Turn 2</div>
+    <div class="msg user"><span class="who">You</span>Remember I prefer metrics dashboards over PDF reports.</div>
+    <div class="msg bot"><span class="who">Assistant</span>Noted — I'll default to dashboards.</div>
+    <div class="bts"><b>Write:</b> <span class="st sql">SQLite</span> <code>preferences.output_format = "dashboard"</code> — an explicit "remember" → a durable preference, <b>upserted by key</b> so a later change overrides it (no contradictions). <i>why structured: exact, deterministic, shapes every future output</i>.</div>
+
+    <div class="turnhdr">Turn 3</div>
+    <div class="msg user"><span class="who">You</span>Pull the latest error logs for the GSK ingestion job and summarise.</div>
+    <div class="bts"><b>Tool use:</b> Claude calls <code>fetch_logs</code> → the tool returns a <b>large payload</b> (context bloat).</div>
+    <div class="msg bot"><span class="who">Assistant</span>The job is failing on a null <code>customer_id</code> at line 42 — 3 rows affected.</div>
+    <div class="bts"><b>Manage &amp; write:</b><br>
+      <span class="st ctx">Context</span> the big <code>fetch_logs</code> tool_result is <b>cleared after use (context editing)</b> — the dialogue stays intact. <i>why: tool-result bloat</i>.<br>
+      <span class="st vec">Vector</span> episode "GSK ingestion failing: null customer_id, line 42 (Mon)".<br>
+      <span class="st redis">Redis</span> the summary is <b>cached</b>, key = <code>hash(query + memory_version)</code> — <i>why: skip re-running an identical ask</i>.</div>
+
+    <div class="note">— session ends — <span class="st redis">Redis</span> working memory <b>expires (TTL)</b>. Durable memory
+    (<span class="st sql">SQLite</span>, <span class="st vec">Vector</span>, <span class="st graph">Graph</span>) <b>persists</b>.</div>
+
+    <div class="turnhdr">Session 2 · Thursday (new session — working memory gone, durable memory persists)</div>
+    <div class="msg user"><span class="who">You</span>Who's on the GSK demo again, and when's it due?</div>
+    <div class="bts"><b>Reads:</b> router → <span class="st graph">Graph</span> (who) + <span class="st sql">SQLite</span> (due date). Graph traversal returns Priya (lead), Rahul; due = Friday. Fused into a small memory block placed <b>after</b> the cached persona.</div>
+    <div class="msg bot"><span class="who">Assistant</span>Priya's leading it, Rahul's on it, and it's due this Friday.</div>
+    <div class="bts"><i>why graph:</i> "who's on X" needs <b>traversal</b>, not similarity — a vector store can't answer it.</div>
+
+    <div class="turnhdr">Turn 5</div>
+    <div class="msg user"><span class="who">You</span>What did I say was breaking in that ingestion job?</div>
+    <div class="bts"><b>Reads:</b> router → <span class="st vec">Vector</span> (semantic recall). Top-K returns Monday's episode "null customer_id, line 42" above the similarity threshold.</div>
+    <div class="msg bot"><span class="who">Assistant</span>You noted it was failing on a null <code>customer_id</code> at line 42.</div>
+    <div class="bts"><i>why vector:</i> similarity recall of a past note — no exact key, no relationship to traverse.</div>
+
+    <div class="turnhdr">Turn 6 · (many turns later in this session)</div>
+    <div class="bts"><span class="st ctx">Context</span> the dialogue has grown long → <b>compaction</b> summarises the earlier turns into a summary block (the full <code>response.content</code> is appended back). The <em>detail</em> is still safe in the <span class="st vec">Vector</span> store. <i>why: keep the window under the limit without losing recall</i>.</div>
+
+    <div class="turnhdr">Turn 7</div>
+    <div class="msg user"><span class="who">You</span>Actually the demo moved to the following Monday.</div>
+    <div class="msg bot"><span class="who">Assistant</span>Updated — the GSK demo is now due Monday.</div>
+    <div class="bts"><b>Write (handle staleness):</b> <span class="st sql">SQLite</span> due_date <b>upserted</b> (Friday → Monday, latest-wins, not appended) · <span class="st graph">Graph</span> edge due_date updated · <b><code>memory_version</code> bumped</b> → any <span class="st redis">cached</span> answer about the due date is invalidated. <i>why: you must never get the stale Friday date back.</i></div>
+
+    <h3>So — what lives where, and why (from this flow)</h3>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Store</th><th>Earned its place at</th><th>Because</th></tr>
+        <tr><td><span class="st sql">SQLite</span></td><td>pref (T2), due date (T4, updated T7)</td><td>exact facts you look up by key and <b>overwrite</b></td></tr>
+        <tr><td><span class="st vec">Vector</span></td><td>recall (T5)</td><td>"what did I say about…" — <b>similarity</b> recall of notes</td></tr>
+        <tr><td><span class="st graph">Graph</span></td><td>who's-on (T4)</td><td><b>traversal</b> over people/projects — not similarity</td></tr>
+        <tr><td><span class="st redis">Redis</span></td><td>session &amp; cache (T1, T3)</td><td>fast ephemeral working memory + response cache with <b>TTL</b></td></tr>
+        <tr><td><span class="st ctx">Context (API)</span></td><td>big logs (T3), long session (T6)</td><td><b>context editing</b> (tool bloat) + <b>compaction</b> (dialogue)</td></tr>
+    </table>
+    </div>
 
     <!-- ============ A. CONCEPTUAL ============ -->
     <h2><span class="chip diagram">PART A</span> Conceptual architecture — the memory tiers</h2>
