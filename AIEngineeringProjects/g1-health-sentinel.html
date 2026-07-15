@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G1 · Pipeline &amp; Job Health Sentinel · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .homes { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+    .home { background:#eef6ff; color:#1f5fa8; border:1px solid #cfe2f7; border-radius:16px; padding:4px 12px; font-size:.85em; font-weight:600; }
+    table.map td:first-child, table.map th:first-child { position:sticky; left:0; background:inherit; }
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+    .ladder { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+    .rung { border-radius:16px; padding:4px 12px; font-size:.82em; font-weight:600; }
+    .rung.on { background:#e6fcf0; color:#2b8a3e; border:1px solid #bfe6cd; }
+    .rung.off { background:#f3f3f3; color:#999; border:1px solid #e3e3e3; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="index.html#gskops">Ops Portfolio</a> › G1 · Health Sentinel</div>
+    <h1>🩺 G1 · Pipeline &amp; Job Health Sentinel</h1>
+    <div class="tag">Read-only observer · deterministic detection + AI triage · the safest first Ops agent</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE PROJECT</span> One line, and why it's the first Ops build</h2>
+    <p>Every few minutes, read Databricks job &amp; pipeline run history, <strong>deterministically detect</strong> what's
+    unhealthy (failures, retry spikes, latency blowups, missed schedules), then let an <strong>agent cluster the noise,
+    explain each problem in plain English, and point at the likely cause &amp; runbook</strong> — delivered as one digest.
+    It <b>never touches production</b>: read-only signals in, a human-readable brief out.</p>
+    <div class="note">🎯 This is the portfolio's "hello world": it proves the two patterns everything else reuses —
+    <b>deterministic detection</b> (the math you can trust) and <b>AI narration grounded on evidence</b> (the language layer,
+    never the safety layer). <a href="index.html#gskops">G4 (RCA Copilot)</a> is this + drill-down tools; the weekly brief
+    (<a href="index.html#gskops">G11</a>) is this across every signal.</p>
+    <div class="ladder">
+        <span class="rung on">1 · Observe ✓</span><span class="rung on">2 · Explain ✓</span>
+        <span class="rung off">3 · Recommend</span><span class="rung off">4 · Approve</span><span class="rung off">5 · Act</span>
+    </div>
+    <p style="font-size:.9em;color:#777">Autonomy ladder: G1 lives entirely at <b>Observe → Explain</b>. It has no write path at all — that's the point.</p>
+
+    <!-- ============ CONCEPTUAL ============ -->
+    <h2><span class="chip concept">1 · CONCEPTUAL DESIGN</span> The logic, no infrastructure</h2>
+    <p>The teaching insight here is the opposite of the Text-to-SQL agent: this is <em>mostly a deterministic workflow with one
+    agentic step</em>, not an open loop. Detection is arithmetic (trustworthy, cheap, auditable); the LLM only enters to
+    <b>triage &amp; narrate</b>. Six logical roles:</p>
+    <table>
+        <tr><th>Logical role</th><th>Responsibility</th><th>Deterministic or AI?</th></tr>
+        <tr><td><b>Collectors (read-only tools)</b></td><td><code>get_job_runs()</code>, <code>get_run_logs()</code>, <code>get_cluster_metrics()</code>, <code>get_recent_changes()</code> — the only ways it touches the world, all read-only</td><td>Deterministic</td></tr>
+        <tr><td><b>Detector</b></td><td>Applies rules/thresholds to the signals → a list of <em>candidate issues</em> with evidence (run_id, metric, threshold)</td><td><b>Deterministic</b> (the part you must trust)</td></tr>
+        <tr><td><b>Deduper / State</b></td><td>Suppresses issues already reported; tracks flapping; remembers what was acknowledged</td><td>Deterministic</td></tr>
+        <tr><td><b>Triager (the agent)</b></td><td>Clusters related failures, ranks severity, explains the likely cause <em>grounded on the evidence rows</em>, links a runbook</td><td><b>AI</b> (narration only)</td></tr>
+        <tr><td><b>Composer</b></td><td>Renders the ranked, deduped, explained issues into one digest (markdown → Teams/email)</td><td>Deterministic</td></tr>
+        <tr><td><b>Scheduler</b></td><td>Runs the whole thing every N minutes; owns the run-id &amp; the audit log</td><td>Deterministic</td></tr>
+    </table>
+
+    <h3>The flow, as a sequence</h3>
+    <div class="mermaid">
+sequenceDiagram
+    participant SCH as Scheduler
+    participant COL as Collectors (read-only)
+    participant DET as Detector (rules)
+    participant ST as State (dedup)
+    participant AG as Triager (LLM)
+    participant OUT as Digest / Teams
+    SCH->>COL: pull last-window job runs, logs, metrics
+    COL-->>DET: normalized run records
+    DET->>DET: apply thresholds → candidate issues (+ evidence)
+    DET->>ST: filter already-reported / flapping
+    alt new issues exist
+        ST-->>AG: fresh issues + their evidence rows
+        AG-->>AG: cluster · rank · explain (grounded, cited to run_id)
+        AG-->>OUT: ranked narrative digest
+        OUT-->>SCH: posted + logged (audit trail)
+    else nothing new
+        ST-->>SCH: quiet run — log "all healthy"
+    end
+    </div>
+
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ Why this shape is safe &amp; useful</h4>
+            <ul><li><b>Detection is deterministic</b> — the "is it broken?" decision never depends on an LLM</li>
+            <li><b>Read-only</b>: no tool can mutate a job, cluster, or grant</li>
+            <li>The agent is <b>grounded</b> — it explains evidence it's handed, it doesn't go fishing</li>
+            <li>Every digest is <b>logged &amp; reproducible</b> (GxP-friendly)</li></ul></div>
+        <div class="con"><h4>⚠️ Design decisions to make now</h4>
+            <ul><li><b>Thresholds</b>: static vs baseline-relative (start static, add baselines later)</li>
+            <li><b>Dedup key</b>: (job_id + error-signature) so you don't re-alert the same fire</li>
+            <li><b>Grounding rule</b>: the triager must cite a run_id for every claim (kills hallucinated causes)</li>
+            <li><b>Noise budget</b>: cap issues-per-digest; everything else rolls up to a count</li></ul></div>
+    </div>
+
+    <!-- ============ PHYSICAL ============ -->
+    <h2><span class="chip diagram">2 · PHYSICAL DESIGN</span> Same sentinel, from laptop-mock to Azure prod</h2>
+    <p>Databricks is multi-cloud, so the <em>signal collection</em> is nearly identical everywhere — only the glue (secrets,
+    notify, schedule, LLM endpoint) is cloud-specific. Reference shape, then the mapping. Note the <b>mock lane</b>: you build
+    and demo entirely against synthetic fixtures before any real connection.</p>
+    <div class="homes">
+        <span class="home">💻 Laptop + mock fixtures</span><span class="home">🔷 Azure Databricks (her env)</span><span class="home">🟧 AWS Databricks</span><span class="home">🔴 GCP Databricks</span>
+    </div>
+    <div class="mermaid">
+flowchart LR
+    SCH["Scheduler<br/>(Workflow / cron)"] --> APP["Sentinel process<br/>(job / function)"]
+    APP -->|"read-only"| SIG["Signals:<br/>system tables · Jobs API · Spark UI"]
+    APP -->|"triage narration"| LLM["LLM endpoint"]
+    APP -->|"dedup state"| ST["State store<br/>(Delta / file)"]
+    APP --> OUT["Digest → Teams / email"]
+    APP -.audit.-> LOG["Audit log (who/what/when)"]
+    APP -.reads.-> SEC["Secrets"]
+    classDef core fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class APP core;
+    </div>
+
+    <h3>The "where each role lives" map</h3>
+    <div style="overflow-x:auto">
+    <table class="map">
+        <tr><th>Role</th><th>💻 Local (mock)</th><th>🔷 Azure Databricks</th><th>🟧 AWS Databricks</th><th>🔴 GCP Databricks</th></tr>
+        <tr><td><b>Where it runs</b></td><td>Python script / cron</td><td>Databricks Workflow (or Azure Function / Container App)</td><td>Databricks Workflow (or Lambda/Fargate)</td><td>Databricks Workflow (or Cloud Run)</td></tr>
+        <tr><td><b>Signals (read-only)</b></td><td>JSON fixtures in <code>/mock</code></td><td>system tables (<code>system.lakeflow.*</code>, <code>system.compute</code>) + Jobs REST API 2.2</td><td>same system tables + Jobs API</td><td>same system tables + Jobs API</td></tr>
+        <tr><td><b>LLM (triage)</b></td><td>Ollama, or skip (template digest)</td><td>Anthropic API · Azure AI Foundry · or Mosaic AI Model Serving</td><td>Amazon Bedrock (Claude)</td><td>Vertex AI</td></tr>
+        <tr><td><b>State / dedup</b></td><td>local <code>state.json</code></td><td>a Delta table in Unity Catalog</td><td>Delta table</td><td>Delta table</td></tr>
+        <tr><td><b>Notify</b></td><td>print to stdout / write <code>.md</code></td><td>Teams webhook / Logic Apps; email via Graph</td><td>SNS / SES</td><td>Pub/Sub / email</td></tr>
+        <tr><td><b>Secrets</b></td><td>.env + dotenv</td><td>Databricks Secret Scopes / Azure Key Vault</td><td>Secrets Manager</td><td>Secret Manager</td></tr>
+        <tr><td><b>Schedule</b></td><td>cron</td><td>Databricks Workflows (every N min)</td><td>Workflows / EventBridge</td><td>Workflows / Cloud Scheduler</td></tr>
+        <tr><td><b>Audit log</b></td><td>JSON lines file</td><td>Delta table + workspace audit (<code>system.access.audit</code>)</td><td>CloudTrail + Delta</td><td>Cloud Audit Logs + Delta</td></tr>
+    </table>
+    </div>
+    <div class="note">Read a <em>row</em> to see how one responsibility is solved everywhere; the signal rows barely change across
+    clouds because Databricks system tables are the same — <b>that's the payoff of building on the platform's own telemetry.</b></div>
+
+    <!-- ============ CROSS-CUTTING ============ -->
+    <h2><span class="chip trade">3 · CROSS-CUTTING CONCERNS</span> The stuff that decides if it's real</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>What it means for <em>this</em> sentinel</th><th>Levers / practices</th></tr>
+        <tr><td><b>💰 Cost</b></td><td>Reading system tables is cheap; the LLM triage is the only real cost, and only when there's something new to explain.</td><td>Only call the LLM on <em>fresh</em> issues (dedup first) · batch all new issues into one call · cache the stable system-prompt · a small model is fine for narration</td></tr>
+        <tr><td><b>📊 Observability</b></td><td>The watcher must itself be watched: is it running, is it silently missing failures (false negatives)?</td><td>Heartbeat metric per run · count of issues detected vs suppressed · alert if the sentinel hasn't run · track digest→ack rate</td></tr>
+        <tr><td><b>🔐 Security</b></td><td>It reads operational metadata and logs, which can contain secrets/PII; and log text is <em>untrusted</em> (prompt injection).</td><td><b>Read-only service principal</b> scoped to system tables only · redact secrets/PII before the LLM sees logs · treat log content as data, never instructions</td></tr>
+        <tr><td><b>📝 Logging (GxP)</b></td><td>You must be able to prove what was detected, what was said, and on what evidence.</td><td>Persist every run: inputs hash, issues, evidence run_ids, model + prompt version, the digest, run-id · immutable/append-only</td></tr>
+        <tr><td><b>🛡️ Reliability</b></td><td>A missed failure (false negative) is worse than a false alarm here — the whole point is catching problems.</td><td>Fail-open on the LLM (if triage errors, still send the raw deterministic list) · idempotent runs · never let a narration failure swallow a real detection</td></tr>
+        <tr><td><b>✅ Evals</b></td><td>"Is the triage any good?" — is the explanation correct, is severity right, is it deduping properly?</td><td>Golden set of past incidents → expected cluster/severity · precision/recall on detection · human 👍/👎 on each digest item feeding a review set</td></tr>
+    </table>
+    </div>
+    <div class="bad"><b>The #1 failure mode:</b> letting the LLM decide <em>whether</em> something is broken. Detection must be
+    deterministic and grounded in numbers; the model only ever explains issues it was <em>handed</em>. A confidently-worded but
+    wrong root cause is the <a href="../CCA-F/D5-Context-Management/silent-failures-wrong-but-valid.html">silent-failure class</a> —
+    mitigate by forcing every claim to cite a run_id.</div>
+
+    <!-- ============ OSS ============ -->
+    <h2><span class="chip concept">4 · OPEN-SOURCE TOOLBOX</span> A free option for every responsibility</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Responsibility</th><th>Open-source / free options</th></tr>
+        <tr><td>Databricks access (read-only)</td><td><b>databricks-sdk</b> (Python), Databricks CLI, plain REST</td></tr>
+        <tr><td>Local LLM for triage</td><td><b>Ollama</b>, llama.cpp, vLLM (or skip the LLM and ship a template digest)</td></tr>
+        <tr><td>Detection / rules</td><td>Plain Python; <b>pandas</b>/<b>Polars</b> for the windowed metrics; <b>DuckDB</b> over exported system-table Parquet</td></tr>
+        <tr><td>Scheduling</td><td>cron, <b>APScheduler</b> (local); Databricks Workflows (prod)</td></tr>
+        <tr><td>State / dedup</td><td>SQLite / a JSON file (local); Delta (prod)</td></tr>
+        <tr><td>Tracing / observability</td><td><b>Arize Phoenix</b>, <b>Langfuse</b>, OpenTelemetry; Prometheus + Grafana</td></tr>
+        <tr><td>Notify</td><td>Teams/Slack incoming webhooks; <b>Apprise</b> (one lib, many channels)</td></tr>
+        <tr><td>Evals</td><td><b>promptfoo</b>, Phoenix Evals, DeepEval</td></tr>
+        <tr><td>Secrets</td><td>dotenv (local), SOPS, HashiCorp Vault</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ FREE LOCAL BUILD ============ -->
+    <h2><span class="chip code">5 · BUILD IT FREE, LOCAL &amp; MOCK-FIRST</span> $0, offline, zero real infra</h2>
+    <p>The whole point of <em>mock-data-first</em>: build and demo the entire sentinel against synthetic run records that match
+    the real system-table shape, so nothing touches ABCCompany infrastructure until it's validated and signed off. Swapping to
+    live is one function.</p>
+    <div class="free">
+        <b>🗄️ Signals</b> — JSON fixtures in <code>/mock</code> shaped like <code>system.lakeflow.job_run_timeline</code>. <br>
+        <b>🧠 Triage</b> — <b>Ollama</b> locally (or Claude via the Anthropic API in prod). <br>
+        <b>🔁 Detector + loop</b> — plain <b>Python</b> (you see every rule). <br>
+        <b>💾 State</b> — a local <code>state.json</code>. <br>
+        <b>📤 Digest</b> — printed markdown (wire a Teams webhook later).
+    </div>
+
+    <h3>The whole sentinel (minimal, real — mock-first)</h3>
+<pre><span class="cm"># pip install requests   ·   fixtures in ./mock/runs.json (shaped like system.lakeflow)</span>
+<span class="kw">import</span> json, hashlib, requests, datetime <span class="kw">as</span> dt
+
+<span class="cm"># --- 1. COLLECTOR (read-only). Mock now; swap body for databricks-sdk later. ---</span>
+<span class="kw">def</span> <span class="fn">get_job_runs</span>(window_min=60):
+    <span class="kw">return</span> json.load(open(<span class="st">"mock/runs.json"</span>))          <span class="cm"># PROD: system.lakeflow / Jobs API 2.2</span>
+
+<span class="cm"># --- 2. DETECTOR (deterministic — the part you MUST trust, no LLM here) ---</span>
+<span class="kw">def</span> <span class="fn">detect</span>(runs):
+    issues = []
+    <span class="kw">for</span> r <span class="kw">in</span> runs:
+        <span class="kw">if</span> r[<span class="st">"state"</span>] == <span class="st">"FAILED"</span>:
+            issues.append({<span class="st">"kind"</span>:<span class="st">"failure"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>],
+                           <span class="st">"evidence"</span>:r[<span class="st">"error"</span>], <span class="st">"sev"</span>:<span class="st">"high"</span>})
+        <span class="kw">elif</span> r[<span class="st">"retries"</span>] &gt;= 3:
+            issues.append({<span class="st">"kind"</span>:<span class="st">"retry_spike"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>],
+                           <span class="st">"evidence"</span>:<span class="st">f"{r['retries']} retries"</span>, <span class="st">"sev"</span>:<span class="st">"med"</span>})
+        <span class="kw">elif</span> r[<span class="st">"duration_min"</span>] &gt; 3 * r[<span class="st">"baseline_min"</span>]:
+            issues.append({<span class="st">"kind"</span>:<span class="st">"slow"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>],
+                           <span class="st">"evidence"</span>:<span class="st">f"{r['duration_min']}m vs {r['baseline_min']}m baseline"</span>, <span class="st">"sev"</span>:<span class="st">"med"</span>})
+    <span class="kw">return</span> issues
+
+<span class="cm"># --- 3. DEDUP (don't re-alert the same fire) ---</span>
+<span class="kw">def</span> <span class="fn">key</span>(i): <span class="kw">return</span> hashlib.md5(<span class="st">f"{i['job']}|{i['kind']}|{i['evidence'][:40]}"</span>.encode()).hexdigest()
+<span class="kw">def</span> <span class="fn">fresh</span>(issues):
+    seen = set(json.load(open(<span class="st">"state.json"</span>))) <span class="kw">if</span> __import__(<span class="st">"os"</span>).path.exists(<span class="st">"state.json"</span>) <span class="kw">else</span> set()
+    new = [i <span class="kw">for</span> i <span class="kw">in</span> issues <span class="kw">if</span> <span class="fn">key</span>(i) <span class="kw">not in</span> seen]
+    json.dump(list(seen | {<span class="fn">key</span>(i) <span class="kw">for</span> i <span class="kw">in</span> new}), open(<span class="st">"state.json"</span>,<span class="st">"w"</span>))
+    <span class="kw">return</span> new
+
+<span class="cm"># --- 4. TRIAGER (AI — narration only, GROUNDED: must cite run_id) ---</span>
+<span class="kw">def</span> <span class="fn">triage</span>(issues):
+    <span class="kw">if</span> <span class="kw">not</span> issues: <span class="kw">return</span> <span class="st">"✅ All pipelines healthy this window."</span>
+    prompt = (<span class="st">"You are an Ops triage assistant. For EACH issue, write one line: "</span>
+              <span class="st">"severity, job, plain-English likely cause, and cite the run_id. "</span>
+              <span class="st">"Only use the evidence given — never invent a cause.\n\n"</span>
+              + json.dumps(issues, indent=2))
+    r = requests.post(<span class="st">"http://localhost:11434/api/generate"</span>,
+                      json={<span class="st">"model"</span>:<span class="st">"llama3.1"</span>, <span class="st">"prompt"</span>:prompt, <span class="st">"stream"</span>:<span class="kw">False</span>})
+    <span class="kw">return</span> r.json()[<span class="st">"response"</span>].strip()          <span class="cm"># PROD: Claude Messages API + structured output</span>
+
+<span class="cm"># --- 5. COMPOSE + LOG (audit trail) ---</span>
+<span class="kw">def</span> <span class="fn">run</span>():
+    runs   = <span class="fn">get_job_runs</span>()
+    issues = <span class="fn">fresh</span>(<span class="fn">detect</span>(runs))        <span class="cm"># deterministic first, then dedup</span>
+    digest = <span class="fn">triage</span>(issues)               <span class="cm"># LLM only narrates what's left</span>
+    stamp  = dt.datetime.utcnow().isoformat()
+    print(<span class="st">f"# Ops Health Digest — {stamp}\n\n{digest}"</span>)
+    open(<span class="st">"audit.log"</span>,<span class="st">"a"</span>).write(json.dumps({<span class="st">"ts"</span>:stamp, <span class="st">"n_issues"</span>:len(issues), <span class="st">"issues"</span>:issues})+<span class="st">"\n"</span>)
+
+<span class="fn">run</span>()</pre>
+    <div class="good">Notice the ordering: <b>detect → dedup → triage</b>. The LLM is the <em>last</em> and <em>cheapest-guarded</em>
+    step, it runs only on fresh issues, and it's told to cite the run_id for every claim. That single discipline is what keeps a
+    read-only observer trustworthy in a regulated shop.</div>
+
+    <p style="font-size:.9em;color:#777">Going live is one swap: replace <code>get_job_runs()</code>'s body with a
+    <code>databricks-sdk</code> call (or a <code>SELECT</code> over <code>system.lakeflow.job_run_timeline</code>) using a
+    <b>read-only service principal</b>, and point <code>triage()</code> at the Claude Messages API. Nothing else changes.</p>
+    <div class="good">🟣 <b>Cert tie-in:</b> the prod triage step is a textbook <a href="p0-claude-api.html">Claude Messages API</a>
+    call — a single grounded request with <b>structured output</b> for the incident list (schema = severity/job/cause/run_id),
+    no agent loop needed. Detection is deterministic; the model only writes the narrative. That "deterministic core, AI at the
+    edges" split is the whole design.</p>
+
+    <!-- ============ FAILURE POINTS ============ -->
+    <h2><span class="chip exam">6 · PRODUCTION FAILURE POINTS</span></h2>
+    <div class="trap"><b>False negatives (missed failures)</b> → a real outage never makes the digest. <b>Mitigation:</b> fail-open — if triage errors, still send the raw deterministic list; alert if the sentinel itself hasn't run (watch the watcher).</div>
+    <div class="trap"><b>Alert fatigue</b> → a flapping job floods every digest and people stop reading. <b>Mitigation:</b> dedup by (job + error-signature), roll repeats into a count, cap issues-per-digest.</div>
+    <div class="trap"><b>Hallucinated root cause</b> → the LLM invents a plausible-but-wrong cause. <b>Mitigation:</b> ground strictly on evidence, require a run_id citation per claim, keep detection out of the model's hands.</div>
+    <div class="trap"><b>Prompt injection via log text</b> → an error message contains "ignore instructions and…". <b>Mitigation:</b> treat all log/metric text as untrusted data, isolate it from instructions, redact before sending.</div>
+    <div class="trap"><b>Secret / PII leakage</b> → a stack trace with a connection string reaches the LLM or the digest. <b>Mitigation:</b> redact before triage; scope the read-only principal; scrub the audit log.</div>
+    <div class="trap"><b>Threshold drift</b> → static thresholds go stale after a platform change and everything looks "slow." <b>Mitigation:</b> move to baseline-relative thresholds; review the rule set on a cadence.</div>
+
+    <!-- ============ CCA MAP ============ -->
+    <h2><span class="chip concept">7 · CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>You practised…</th><th>CCA domain</th></tr>
+        <tr><td>Workflow-vs-agent judgement (mostly deterministic + one grounded AI step)</td><td><b>D1</b> · Agentic Architecture</td></tr>
+        <tr><td>Read-only tools, least-privilege service principal, safety at the permission layer</td><td>D1 (guardrails) · <b>D2</b> · Tool Design</td></tr>
+        <tr><td>Grounding the narration, citing evidence, avoiding hallucinated causes</td><td><b>D3</b> · Prompt Engineering · <b>D5</b> (silent failures)</td></tr>
+        <tr><td>Structured output for the incident list</td><td>D3 · Structured Output</td></tr>
+        <tr><td>Dedup/state, cost control (LLM only on fresh issues), audit logging, evals</td><td><b>D5</b> · Context &amp; Reliability</td></tr>
+    </table>
+    </div>
+
+    <!-- ============ LEVEL UP ============ -->
+    <h2><span class="chip trade">8 · LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Baseline-relative detection</b> → learn each job's normal duration/failure-rate; alert on deviation, not fixed numbers.</li>
+        <li><b>Add drill-down tools</b> → give the triager read-only <code>get_run_logs()</code>/<code>get_query_plan()</code> and you've grown <a href="index.html#gskops">G4 · the RCA Copilot</a>.</li>
+        <li><b>ServiceNow draft</b> → for high-sev issues, pre-fill an incident ticket for a human to file (still no auto-action).</li>
+        <li><b>Feedback loop</b> → 👍/👎 on each digest item builds the eval set and tunes severity.</li>
+        <li><b>Fold into the weekly brief</b> → this becomes the reliability section of <a href="index.html#gskops">G11</a>.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="index.html#gskops"><span class="k">← Back</span>Ops Portfolio</a>
+        <a class="next" href="../CCA-F/D1-Agentic-Architecture/index.html"><span class="k">Next →</span>CCA-F Domain 1</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · G1 · Pipeline &amp; Job Health Sentinel</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
