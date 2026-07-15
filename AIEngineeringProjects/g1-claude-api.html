@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G1 (Claude API) · Health Sentinel · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .certmap { background:#faf9ff; border:1px solid #e6e1f7; border-left:4px solid #764ba2; border-radius:0 6px 6px 0; padding:8px 14px; margin:8px 0; font-size:.92em; }
+    .certmap b { color:#5a4a8a; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="g1-health-sentinel.html">G1</a> › Build it with the Claude API</div>
+    <h1>🟣 G1 · Building the Health Sentinel with the Claude API</h1>
+    <div class="tag">The other canonical shape — one grounded, cached, <em>structured</em> call · your CCA rehearsal in code</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">WHY THIS VERSION</span> Not every Claude build is a loop</h2>
+    <p>The <a href="p0-claude-api.html">Text-to-SQL companion</a> taught the <strong>agent loop</strong> (<code>stop_reason</code>
+    → <code>tool_use</code> → <code>tool_result</code>). G1 deliberately teaches the <strong>other half of the exam</strong>: a
+    <strong>single, grounded, structured, cached Messages API call</strong> — <em>no tools, no loop</em>. Detection stays
+    <strong>deterministic</strong>; Claude only <em>narrates</em>. Knowing <em>when not</em> to build a loop is itself a D1
+    judgement the exam probes.</p>
+    <div class="note">💡 The cert concepts here are the ones the loop version doesn't stress: <b>structured outputs</b>
+    (<code>output_config.format</code>), <b>grounding / shape-vs-truth</b>, <b>prompt caching a system prefix</b>, and the trap
+    that <b>you must still check <code>stop_reason</code> even on a one-shot call.</b></div>
+
+    <h2><span class="chip concept">LOOP vs SINGLE-CALL</span> Which shape, and why G1 is the right call</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Question</th><th>🔁 Agent loop (Text-to-SQL / G4)</th><th>🟣 Single structured call (G1)</th></tr>
+        <tr><td>Who decides the next action?</td><td>The model, from observed tool results</td><td>Nobody — there's one step; the model only narrates</td></tr>
+        <tr><td>Does correctness need running something?</td><td>Yes — you can't know the SQL works without executing it</td><td>No — "is it broken?" is deterministic math, done <em>before</em> the call</td></tr>
+        <tr><td>Tools?</td><td>Yes (<code>run_sql</code>, drill-downs)</td><td><b>None.</b> Evidence is passed in the prompt</td></tr>
+        <tr><td>Output</td><td>Free-text answer at <code>end_turn</code></td><td><b>Schema-constrained JSON</b> (an incident list)</td></tr>
+        <tr><td>Main exam surface</td><td>D1 loop · D4 tool contract</td><td><b>D3/D4 structured output · D5 caching &amp; grounding</b></td></tr>
+    </table>
+    </div>
+    <div class="good">Rule of thumb: reach for a <b>loop</b> only when the next step depends on an <em>observed result</em>. G1's
+    detection is deterministic, so a loop would add cost and failure surface for nothing — a <b>single call</b> is the correct,
+    cheaper design.</div>
+
+    <h2><span class="chip diagram">DIAGRAM</span> Deterministic detect → one grounded call</h2>
+    <div class="mermaid">
+flowchart LR
+    R["job runs<br/>(system tables)"] --> D{"detect()<br/>DETERMINISTIC"}
+    D -->|"no issues"| Q["✅ quiet — no LLM call"]:::ok
+    D -->|"issues + evidence"| C["ONE Messages API call<br/>system(cached) · adaptive thinking<br/>output_config.format(schema)"]:::core
+    C --> S{"check stop_reason"}
+    S -->|"refusal / max_tokens"| H["handle explicitly"]:::warn
+    S -->|"end_turn"| P["parse JSON"]
+    P --> G["ground(): drop any run_id<br/>not in the evidence"]:::core
+    G --> OUT["digest"]:::ok
+    classDef core fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef ok fill:#dcfce7,stroke:#15803d,color:#14532d;
+    classDef warn fill:#fef3c7,stroke:#b45309,color:#7c2d12;
+    </div>
+
+    <h2><span class="chip code">CODE</span> The whole sentinel, on the Claude API</h2>
+    <p>Deterministic detection, then <em>one</em> structured call with the instructions cached and the output constrained to a
+    schema. Every line is annotated with the CCA concept it embodies.</p>
+<pre><span class="cm"># pip install anthropic   ·   export ANTHROPIC_API_KEY=sk-ant-...  (or: ant auth login)</span>
+<span class="kw">import</span> anthropic, json
+client = anthropic.<span class="fn">Anthropic</span>()
+
+<span class="cm"># --- 1. DETERMINISTIC detection (NO Claude). "Is it broken?" NEVER touches the model. ---</span>
+<span class="kw">def</span> <span class="fn">detect</span>(runs):
+    issues = []
+    <span class="kw">for</span> r <span class="kw">in</span> runs:
+        <span class="kw">if</span> r[<span class="st">"state"</span>] == <span class="st">"FAILED"</span>:
+            issues.<span class="fn">append</span>({<span class="st">"kind"</span>:<span class="st">"failure"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>], <span class="st">"evidence"</span>:r[<span class="st">"error"</span>]})
+        <span class="kw">elif</span> r[<span class="st">"retries"</span>] &gt;= 3:
+            issues.<span class="fn">append</span>({<span class="st">"kind"</span>:<span class="st">"retry_spike"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>], <span class="st">"evidence"</span>:<span class="st">f"{r['retries']} retries"</span>})
+        <span class="kw">elif</span> r[<span class="st">"duration_min"</span>] &gt; 3 * r[<span class="st">"baseline_min"</span>]:
+            issues.<span class="fn">append</span>({<span class="st">"kind"</span>:<span class="st">"slow"</span>, <span class="st">"job"</span>:r[<span class="st">"job_name"</span>], <span class="st">"run_id"</span>:r[<span class="st">"run_id"</span>], <span class="st">"evidence"</span>:<span class="st">f"{r['duration_min']}m vs {r['baseline_min']}m"</span>})
+    <span class="kw">return</span> issues
+
+<span class="cm"># --- D3/D4: STRUCTURED OUTPUT — the model must return THIS shape, nothing else. ---</span>
+TRIAGE_FORMAT = {<span class="st">"format"</span>: {
+    <span class="st">"type"</span>: <span class="st">"json_schema"</span>,
+    <span class="st">"schema"</span>: {
+        <span class="st">"type"</span>: <span class="st">"object"</span>,
+        <span class="st">"properties"</span>: {<span class="st">"incidents"</span>: {<span class="st">"type"</span>: <span class="st">"array"</span>, <span class="st">"items"</span>: {
+            <span class="st">"type"</span>: <span class="st">"object"</span>,
+            <span class="st">"properties"</span>: {
+                <span class="st">"run_id"</span>:      {<span class="st">"type"</span>: <span class="st">"string"</span>},
+                <span class="st">"job"</span>:         {<span class="st">"type"</span>: <span class="st">"string"</span>},
+                <span class="st">"severity"</span>:    {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"enum"</span>: [<span class="st">"low"</span>, <span class="st">"med"</span>, <span class="st">"high"</span>]},
+                <span class="st">"likely_cause"</span>:{<span class="st">"type"</span>: <span class="st">"string"</span>},
+                <span class="st">"cited_run_id"</span>:{<span class="st">"type"</span>: <span class="st">"string"</span>},      <span class="cm"># it MUST cite the evidence it used</span>
+            },
+            <span class="st">"required"</span>: [<span class="st">"run_id"</span>,<span class="st">"job"</span>,<span class="st">"severity"</span>,<span class="st">"likely_cause"</span>,<span class="st">"cited_run_id"</span>],
+            <span class="st">"additionalProperties"</span>: <span class="kw">False</span>,
+        }}},
+        <span class="st">"required"</span>: [<span class="st">"incidents"</span>], <span class="st">"additionalProperties"</span>: <span class="kw">False</span>,
+    }}}
+
+<span class="cm"># --- D5: stable instructions marked for PROMPT CACHING; the grounding rule lives here. ---</span>
+SYSTEM = [{
+    <span class="st">"type"</span>: <span class="st">"text"</span>,
+    <span class="st">"text"</span>: (<span class="st">"You are an Ops triage assistant. Cluster and rank ONLY the issues you are given. "</span>
+            <span class="st">"For each, set a severity and a plain-English likely cause, and cite the run_id of the "</span>
+            <span class="st">"evidence you used. NEVER invent a cause, a job, or a run_id that is not in the input."</span>),
+    <span class="st">"cache_control"</span>: {<span class="st">"type"</span>: <span class="st">"ephemeral"</span>},     <span class="cm"># D5: cache the stable prefix (mind the min-token floor)</span>
+}]
+
+<span class="kw">def</span> <span class="fn">triage</span>(issues):
+    <span class="kw">if</span> <span class="kw">not</span> issues:                             <span class="cm"># D5/cost: never call the model with nothing to say</span>
+        <span class="kw">return</span> {<span class="st">"incidents"</span>: []}
+    resp = client.messages.<span class="fn">create</span>(
+        model=<span class="st">"claude-opus-4-8"</span>,              <span class="cm"># D5: model tier by task — Haiku 4.5 is plenty for narration</span>
+        max_tokens=4000,
+        system=SYSTEM,
+        thinking={<span class="st">"type"</span>: <span class="st">"adaptive"</span>},       <span class="cm"># D3/D1: adaptive thinking for clustering (NOT budget_tokens → 400)</span>
+        output_config=TRIAGE_FORMAT,          <span class="cm"># D3/D4: constrain the response to the schema (deprecated: output_format)</span>
+        messages=[{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: json.<span class="fn">dumps</span>(issues)}],  <span class="cm"># D1: stateless — evidence goes in every call</span>
+    )
+    sr = resp.stop_reason                     <span class="cm"># D1: CHECK stop_reason even with NO loop — a single call can still fail</span>
+    <span class="kw">if</span> sr == <span class="st">"refusal"</span>:    <span class="kw">return</span> {<span class="st">"error"</span>: <span class="st">"declined for safety"</span>}       <span class="cm"># HTTP 200, but not an answer</span>
+    <span class="kw">if</span> sr == <span class="st">"max_tokens"</span>: <span class="kw">return</span> {<span class="st">"error"</span>: <span class="st">"truncated — raise max_tokens"</span>}  <span class="cm"># cut off ≠ done</span>
+    <span class="kw">if</span> sr != <span class="st">"end_turn"</span>:  <span class="kw">return</span> {<span class="st">"error"</span>: <span class="st">f"unexpected stop_reason: {sr}"</span>}
+    data = json.<span class="fn">loads</span>(<span class="fn">next</span>(b.text <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="st">"text"</span>))
+    <span class="kw">return</span> <span class="fn">ground</span>(data, issues)               <span class="cm"># D5: schema guarantees SHAPE, not TRUTH — validate the VALUES</span>
+
+<span class="cm"># --- D5: structured output can't break the SHAPE, but it CAN invent VALUES. Enforce grounding in code. ---</span>
+<span class="kw">def</span> <span class="fn">ground</span>(data, issues):
+    real = {i[<span class="st">"run_id"</span>] <span class="kw">for</span> i <span class="kw">in</span> issues}
+    data[<span class="st">"incidents"</span>] = [c <span class="kw">for</span> c <span class="kw">in</span> data[<span class="st">"incidents"</span>] <span class="kw">if</span> c[<span class="st">"cited_run_id"</span>] <span class="kw">in</span> real]  <span class="cm"># drop invented run_ids</span>
+    <span class="kw">return</span> data
+
+runs   = json.<span class="fn">load</span>(open(<span class="st">"mock/runs.json"</span>))    <span class="cm"># PROD: SELECT system.lakeflow.job_run_timeline via databricks-sdk</span>
+digest = <span class="fn">triage</span>(<span class="fn">detect</span>(runs))                 <span class="cm"># detect (deterministic) → triage (one grounded, cached call)</span>
+<span class="fn">print</span>(json.<span class="fn">dumps</span>(digest, indent=2))</pre>
+    <div class="good">The whole design in one line: <b>detect deterministically, then make one structured call whose output you
+    still don't fully trust</b> — the <code>ground()</code> step proves the exam's favourite lesson that <em>schema-valid ≠
+    correct</em>.</div>
+
+    <h2><span class="chip concept">STOP REASONS</span> Yes — even a single call</h2>
+    <p>The loop version routes on <code>stop_reason</code> to keep going. Here there's no loop — but you <strong>still</strong>
+    check it, because a one-shot call can come back <code>refusal</code> (HTTP 200, no answer) or <code>max_tokens</code>
+    (truncated JSON that will fail to parse). Reading <code>content</code> before checking <code>stop_reason</code> is the trap.</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>stop_reason</th><th>On this single call it means…</th><th>This code does</th></tr>
+        <tr><td><code>end_turn</code></td><td>Finished — the JSON is complete</td><td>Parse it, then <code>ground()</code> the values</td></tr>
+        <tr><td><code>max_tokens</code></td><td>The JSON was <b>cut off</b> — parsing will fail</td><td>Return an error — raise <code>max_tokens</code> / stream, don't parse</td></tr>
+        <tr><td><code>refusal</code></td><td>Safety classifier declined (200, empty)</td><td>Return a graceful "declined"</td></tr>
+        <tr><td><code>pause_turn</code> / <code>stop_sequence</code> / other</td><td>Not expected here (no server tools / stop strings)</td><td>Catch-all error — never assume it's a valid answer</td></tr>
+    </table>
+    </div>
+    <div class="warn"><b>Exam trap:</b> "a single, non-agentic call can't fail interestingly." It can — <code>refusal</code> and
+    <code>max_tokens</code> are both HTTP 200 responses you must branch on <em>before</em> touching <code>content</code>.</div>
+
+    <h2><span class="chip exam">CERT MAP</span> Every API line ↔ an exam concept</h2>
+    <div class="certmap"><b>Structured outputs</b> (<code>output_config.format</code> → <code>json_schema</code> + <code>additionalProperties:false</code>) → <b>D3/D4</b>. Trap: the old <code>output_format</code> is deprecated; combining it with <code>citations</code> is a 400.</div>
+    <div class="certmap"><b>Shape ≠ truth</b> — the <code>ground()</code> step validates the <em>values</em> the schema can't → <b>D5 · Silent Failures</b>. Trap: trusting a parsed object because it validated.</div>
+    <div class="certmap"><b>Prompt caching a system prefix</b> (<code>cache_control</code>, order tools→system→messages, byte-stable) → <b>D5 · Prompt Caching</b>. Trap: the min cacheable prefix (~1024 Haiku / 2048 / 4096 Opus tokens) — a short instruction silently won't cache.</div>
+    <div class="certmap"><b>Adaptive thinking</b> <code>{"type":"adaptive"}</code>, not <code>budget_tokens</code> → <b>D3/D1</b>. Trap: <code>budget_tokens</code> is a 400 on Opus 4.8/4.7/Sonnet 5.</div>
+    <div class="certmap"><b>Check <code>stop_reason</code> even without a loop</b> (<code>refusal</code>, <code>max_tokens</code>) → <b>D1 · Stop Reasons</b>. Trap: reading <code>content</code> before branching.</div>
+    <div class="certmap"><b>Workflow vs agent</b> — deterministic detection + one call, no tools/loop → <b>D1</b>. Trap: over-engineering a loop where the model has nothing to decide.</div>
+    <div class="certmap"><b>Cost control</b> — skip the call when there are no fresh issues; batch all issues into one call → <b>D5</b>. Trap: one LLM call per issue.</div>
+    <div class="certmap"><b>Grounding &amp; least privilege</b> — evidence passed as data, injection-safe, read-only source → <b>D3/D2</b>. The prompt can be gamed; the read-only grant can't.</div>
+
+    <h2><span class="chip trade">TRADE-OFFS</span> Single structured call vs an agent loop</h2>
+    <div class="tradeoff">
+        <div class="pro"><h4>✅ Single structured call (G1)</h4>
+            <ul><li>Cheap, fast, deterministic-first — one call, capped</li>
+            <li>No tool-contract surface, no runaway loop</li>
+            <li>Machine-parseable output by construction</li>
+            <li>Correct when the model has nothing to <em>decide</em></li></ul></div>
+        <div class="con"><h4>🔁 Agent loop (G4 / Text-to-SQL)</h4>
+            <ul><li>Needed when the next action depends on an observed result</li>
+            <li>More power, more cost, more failure modes</li>
+            <li>Requires <code>stop_reason</code> routing + the tool contract</li>
+            <li>Use it for RCA drill-down, not for detection</li></ul></div>
+    </div>
+    <div class="good">For the exam, be able to <em>justify the shape</em>: G1 is a single grounded structured call; G4 is a loop. Picking
+    the wrong one is a classic D1 design miss.</div>
+
+    <h2><span class="chip concept">SWAP-INS</span> The same code, bigger</h2>
+    <ul>
+        <li><b>Go live</b> → replace the <code>runs</code> load with a <code>databricks-sdk</code> call / a <code>SELECT</code> over <code>system.lakeflow.job_run_timeline</code> using a read-only service principal. Nothing else changes.</li>
+        <li><b>Auto-validated parsing</b> → use the SDK helper <code>client.messages.parse(...)</code> with your schema instead of hand-parsing the JSON.</li>
+        <li><b>Nightly digest at scale</b> → run the triage over many workspaces via the <b>Batch API</b> (~50% cheaper, async) — D5 economics.</li>
+        <li><b>Cheaper</b> → <code>model="claude-haiku-4-5"</code> for narration; the detection is free either way.</li>
+        <li><b>Grow it into G4</b> → add read-only drill-down <em>tools</em> and a <code>stop_reason</code> loop and this becomes the <a href="g4-rca-copilot.html">RCA Copilot</a>.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="g1-health-sentinel.html"><span class="k">← Back</span>G1 · Health Sentinel (design)</a>
+        <a class="next" href="../CCA-F/D5-Context-Management/index.html"><span class="k">Next →</span>CCA-F Domain 5</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · G1 · Building the Health Sentinel with the Claude API</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
