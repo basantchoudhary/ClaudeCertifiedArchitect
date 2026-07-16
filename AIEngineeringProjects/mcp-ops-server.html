@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP · Lakehouse Ops Server — every aspect of MCP · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+    .who { font-size:.72em; font-weight:700; padding:2px 8px; border-radius:12px; }
+    .who.model { background:#f3e8ff; color:#7048e8; }
+    .who.app   { background:#e7ecff; color:#3b5bdb; }
+    .who.user  { background:#e6fcf5; color:#0ca678; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › MCP · Lakehouse Ops Server</div>
+    <h1>🔌 MCP · Lakehouse Ops Server — every aspect of MCP</h1>
+    <div class="tag">One tiny FastMCP server that exposes <em>all</em> of MCP · your D4 exam rehearsal · mock-first, no Docker</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE PROJECT</span> One small server, every MCP concept</h2>
+    <p>Build <strong>one local MCP server</strong> (FastMCP) that deliberately exposes <strong>every</strong> MCP feature —
+    the three primitives (<b>tools · resources · prompts</b>), both <b>transports</b> (stdio &amp; streamable HTTP), and the
+    advanced client-facing features (<b>sampling · roots · elicitation</b>) — then connect it to a host (Claude Code / Claude
+    Desktop). It's themed on Ops, so it <em>also</em> becomes the real MCP layer for <a href="g4-rca-copilot.html">G4</a> and
+    <a href="index.html#gskops">G5</a>. All data is mock; it's a few dozen lines.</p>
+    <div class="note">🎯 MCP is ~18% of the exam (D4). This one server touches every question they can ask: <em>what are the
+    primitives &amp; who controls each, stdio vs HTTP, discovery/handshake, sampling/elicitation/roots, MCP security, and
+    custom-tools-vs-MCP.</em></div>
+
+    <h2><span class="chip trade">WHICH PORTFOLIO PROJECTS USE MCP</span></h2>
+    <p>MCP fits wherever an agent must reach <em>external systems</em> through standardized, reusable tools/resources. Best-fit
+    first:</p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Project</th><th>MCP fit</th><th>What becomes MCP</th></tr>
+        <tr><td><b>G4 · RCA Copilot</b></td><td>★★★ (the showcase)</td><td>A <b>Databricks</b> MCP server (read-only tools) + a <b>ServiceNow</b> MCP server (draft ticket) + runbooks as <b>resources</b> + <code>/rca</code> as a <b>prompt</b> — uses all three primitives across two servers</td></tr>
+        <tr><td><b>G5 · Runbook Agent</b></td><td>★★★</td><td>Runbooks &amp; past incidents exposed as <b>resources</b>; search as a <b>tool</b></td></tr>
+        <tr><td><b>P4 · Support Agent</b></td><td>★★★</td><td>CRM / ticketing / knowledge-base via MCP servers (tools)</td></tr>
+        <tr><td><b>P0 · Text-to-SQL</b></td><td>★★</td><td>A database MCP server: <code>run_sql</code> <b>tool</b> + schema as a <b>resource</b></td></tr>
+        <tr><td><b>G6/G8/G9/G10</b></td><td>★★</td><td>Cost / DQ / Git-CI / Unity-Catalog MCP servers (read-only tools + resources)</td></tr>
+        <tr><td><b>G1 · Health Sentinel</b></td><td>★ (optional)</td><td>Could <em>consume</em> a Databricks read-only MCP server for signals — but G1 is a single call, so MCP is optional</td></tr>
+        <tr><td><b>Second-Brain</b></td><td>★</td><td>Memory exposed as an MCP server (tools to write, resources to read)</td></tr>
+    </table>
+    </div>
+    <div class="good"><b>Best teacher = G4</b> (multiple servers, all primitives, read-only + a human-gated draft). This page
+    builds the <em>server</em> side of exactly that, as a standalone toy.</div>
+
+    <h2><span class="chip diagram">MENTAL MODEL</span> Host · Client · Server</h2>
+    <p>MCP is an open protocol (JSON-RPC 2.0) with a strict topology: a <b>host</b> (the LLM app) runs one <b>client</b> per
+    <b>server</b>. Servers expose capabilities; the host decides what reaches the model.</p>
+    <div class="mermaid">
+flowchart LR
+    subgraph HOST["HOST — Claude Code / Desktop"]
+        LLM["Claude"]
+        C1["MCP client A"]
+        C2["MCP client B"]
+    end
+    C1 <-->|"JSON-RPC"| S1["MCP server: lakehouse-ops<br/>tools · resources · prompts"]
+    C2 <-->|"JSON-RPC"| S2["MCP server: servicenow"]
+    LLM -.->|"reverse: sampling / elicitation"| C1
+    classDef s fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class S1,S2 s;
+    </div>
+    <p>On connect there's an <b>initialization handshake</b> with <b>capability negotiation</b>, then the client <b>discovers</b>
+    what the server offers (<code>tools/list</code>, <code>resources/list</code>, <code>prompts/list</code>) — <em>dynamically</em>,
+    so a server can add a tool and emit a <code>list_changed</code> notification without a client redeploy.</p>
+
+    <h2><span class="chip concept">THE THREE PRIMITIVES</span> …and who controls each</h2>
+    <p>The single most-tested MCP fact: <b>each primitive is controlled by a different party.</b></p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Primitive</th><th>Controlled by</th><th>What it is</th><th>In this Ops server</th></tr>
+        <tr><td><b>Tools</b></td><td><span class="who model">MODEL</span></td><td>Actions the model chooses to call (like tool use). Can have side effects.</td><td><code>get_job_runs()</code>, <code>get_run_logs()</code> (read-only)</td></tr>
+        <tr><td><b>Resources</b></td><td><span class="who app">APP / HOST</span></td><td>Read-only context data addressed by URI; the host decides when to load it.</td><td><code>runbook://schema-drift</code>, <code>incident://INC-1042</code></td></tr>
+        <tr><td><b>Prompts</b></td><td><span class="who user">USER</span></td><td>Reusable templates / workflows, usually surfaced as slash commands.</td><td><code>/rca &lt;run_id&gt;</code>, <code>/weekly-brief</code></td></tr>
+    </table>
+    </div>
+    <div class="warn"><b>Exam trap:</b> "resources are things the model calls." No — <b>tools</b> are model-controlled;
+    <b>resources</b> are <em>application</em>-controlled context; <b>prompts</b> are <em>user</em>-invoked. Mixing up who
+    controls what is a classic D4 miss.</div>
+
+    <h2><span class="chip diagram">TRANSPORTS</span> Local (stdio) vs remote (streamable HTTP)</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th></th><th>stdio</th><th>Streamable HTTP</th></tr>
+        <tr><td>Where the server runs</td><td>Local subprocess of the host</td><td>A remote service (its own URL)</td></tr>
+        <tr><td>Transport</td><td>JSON-RPC over stdin/stdout</td><td>JSON-RPC over HTTP (SSE for streaming)</td></tr>
+        <tr><td>Auth</td><td>OS process / local trust</td><td><b>OAuth 2.1</b> (authorization)</td></tr>
+        <tr><td>Use when</td><td>Personal/local tools, filesystem, dev</td><td>Shared/hosted servers, multi-user, SaaS</td></tr>
+    </table>
+    </div>
+    <div class="note">Streamable HTTP is the current remote transport (it superseded the older HTTP+SSE transport). Same
+    protocol &amp; primitives on either — only the pipe changes.</div>
+
+    <h2><span class="chip concept">ADVANCED — the reverse direction</span> sampling · roots · elicitation</h2>
+    <p>Beyond exposing capabilities, a server can call <em>back</em> into the client. These are the features people forget:</p>
+    <ul>
+        <li><b>Sampling</b> — the server asks the <em>client's LLM</em> to generate something (<code>ctx.sample(...)</code>). The server needs <b>no API key of its own</b>; the host stays in control and can require approval.</li>
+        <li><b>Elicitation</b> — the server asks the <em>user</em> for structured input mid-operation (<code>ctx.elicit(...)</code>, with a JSON schema). E.g. "which environment — dev or prod?"</li>
+        <li><b>Roots</b> — the client tells the server the <b>filesystem/URI boundaries</b> it may operate within (a scoping guardrail).</li>
+    </ul>
+    <div class="mermaid">
+flowchart LR
+    S["MCP server"] -->|"tools/resources/prompts"| C["Client / Host"]
+    S -->|"sampling: ask the LLM"| C
+    S -->|"elicitation: ask the user"| C
+    C -->|"roots: here are your boundaries"| S
+    classDef s fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class S s;
+    </div>
+
+    <h2><span class="chip exam">SECURITY</span> the part the exam loves</h2>
+    <ul>
+        <li><b>MCP tool/resource output is UNTRUSTED</b> — it can carry prompt injection. Treat it as data, isolate it, least-privilege the tools. (Same lesson as <a href="../CCA-F/D5-Context-Management/guardrails.html">GR-INJ</a>.)</li>
+        <li><b>Human approval on tool execution</b> — the host should confirm before a server tool runs, especially write actions.</li>
+        <li><b>Allow-list servers</b> — only connect to trusted MCP servers; a malicious server is a supply-chain risk.</li>
+        <li><b>Remote auth = OAuth 2.1</b> — don't hand a server long-lived secrets.</li>
+        <li><b>Token pass-through is an anti-pattern</b> — a server must not blindly forward the client's token to a downstream API (confused-deputy / privilege-escalation risk). Scope credentials per server.</li>
+    </ul>
+
+    <h2><span class="chip code">BUILD IT</span> the whole server (FastMCP, mock-first)</h2>
+    <div class="free">
+        <b>🧩 SDK</b> — the official <code>mcp</code> Python package (FastMCP). <br>
+        <b>🗄️ Data</b> — mock JSON (job runs, runbooks, incidents). <br>
+        <b>🖥️ Host</b> — Claude Code or Claude Desktop via a tiny <code>.mcp.json</code>. <br>
+        <b>🚫 No Docker</b> — a local stdio subprocess.
+    </div>
+<pre><span class="cm"># pip install mcp   ·   run: python server.py   ·   host connects via .mcp.json</span>
+<span class="kw">from</span> mcp.server.fastmcp <span class="kw">import</span> FastMCP, Context
+<span class="kw">import</span> json
+
+mcp = <span class="fn">FastMCP</span>(<span class="st">"lakehouse-ops"</span>)
+
+<span class="cm"># 1) TOOL — MODEL-controlled action. The DESCRIPTION drives selection (D4). Read-only.</span>
+<span class="kw">@mcp.tool()</span>
+<span class="kw">def</span> <span class="fn">get_job_runs</span>(window_min: int = 60) -&gt; list[dict]:
+    <span class="st">"""Recent Databricks job runs (read-only). Use to check pipeline health."""</span>
+    <span class="kw">return</span> json.load(open(<span class="st">"mock/runs.json"</span>))
+
+<span class="cm"># 2) RESOURCE — APP/HOST-controlled context, addressed by URI. Read-only.</span>
+<span class="kw">@mcp.resource(</span><span class="st">"runbook://{name}"</span><span class="kw">)</span>
+<span class="kw">def</span> <span class="fn">runbook</span>(name: str) -&gt; str:
+    <span class="st">"""A runbook the host can pull into context on demand."""</span>
+    <span class="kw">return</span> open(<span class="st">f"mock/runbooks/{name}.md"</span>).read()
+
+<span class="cm"># 3) PROMPT — USER-controlled template, surfaced as a slash command.</span>
+<span class="kw">@mcp.prompt()</span>
+<span class="kw">def</span> <span class="fn">rca</span>(run_id: str) -&gt; str:
+    <span class="st">"""/rca — investigate a failed run using the tools and runbook resources."""</span>
+    <span class="kw">return</span> <span class="st">f"Investigate run {run_id}. Call get_job_runs, read the relevant runbook, cite evidence."</span>
+
+<span class="cm"># 4) SAMPLING — the server asks the CLIENT'S LLM (no server API key needed).</span>
+<span class="kw">@mcp.tool()</span>
+<span class="kw">async def</span> <span class="fn">summarize_health</span>(ctx: Context) -&gt; str:
+    <span class="st">"""One-line health summary — generated by the host's model via sampling."""</span>
+    runs = json.load(open(<span class="st">"mock/runs.json"</span>))
+    reply = <span class="kw">await</span> ctx.<span class="fn">sample</span>(<span class="st">f"Summarize pipeline health in one line:\n{runs}"</span>)
+    <span class="kw">return</span> reply.text
+
+<span class="cm"># 5) ELICITATION — the server asks the USER for structured input mid-call.</span>
+<span class="kw">@mcp.tool()</span>
+<span class="kw">async def</span> <span class="fn">health_check</span>(ctx: Context) -&gt; str:
+    <span class="st">"""Ask which environment, then report (human stays in the loop)."""</span>
+    answer = <span class="kw">await</span> ctx.<span class="fn">elicit</span>(<span class="st">"Which environment?"</span>, schema={<span class="st">"type"</span>:<span class="st">"string"</span>, <span class="st">"enum"</span>:[<span class="st">"dev"</span>,<span class="st">"prod"</span>]})
+    <span class="kw">return</span> <span class="st">f"Checked {answer} — all green (mock)."</span>
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    mcp.<span class="fn">run</span>()                                <span class="cm"># stdio (local). Remote: mcp.run(transport="streamable-http")</span></pre>
+
+    <h3>Connecting the host (<code>.mcp.json</code>)</h3>
+<pre><span class="cm"># .mcp.json (Claude Code) — how a host discovers &amp; launches the server</span>
+{
+  <span class="st">"mcpServers"</span>: {
+    <span class="st">"lakehouse-ops"</span>: { <span class="st">"command"</span>: <span class="st">"python"</span>, <span class="st">"args"</span>: [<span class="st">"server.py"</span>] }
+    <span class="cm">// remote instead:  "lakehouse-ops": { "url": "https://ops.internal/mcp" }</span>
+  }
+}</pre>
+    <div class="good">🟣 <b>Cert tie-in:</b> the model consumes an MCP <em>tool</em> exactly like a native tool — a typed
+    <code>tool_use</code> block, a <code>tool_result</code> back. MCP is the <b>standard packaging &amp; discovery layer</b>
+    around tools/resources/prompts, so many hosts can reuse one server. Everything you learned in
+    <a href="p0-claude-api.html">the Claude API tool loop (D4)</a> still applies.</div>
+
+    <h2><span class="chip trade">CUSTOM TOOLS vs MCP</span> when to use which</h2>
+    <div class="tradeoff">
+        <div class="pro"><h4>🔌 Reach for MCP when…</h4>
+            <ul><li>The integration should be <b>reusable across hosts</b> (Claude Code, Desktop, your app)</li>
+            <li>You want <b>standard discovery</b>, resources &amp; prompts, not just functions</li>
+            <li>It's a <b>shared/hosted</b> capability (a team Databricks or ServiceNow server)</li>
+            <li>A vendor already ships an MCP server you can plug in</li></ul></div>
+        <div class="con"><h4>🛠️ Just define API tools when…</h4>
+            <ul><li>The tools are <b>internal to one app</b> and won't be reused elsewhere</li>
+            <li>You want the <b>simplest</b> path — the Messages API tool loop / Tool Runner</li>
+            <li>No need for resources/prompts or cross-host sharing</li></ul></div>
+    </div>
+    <div class="note">Both end up as <code>tool_use</code>/<code>tool_result</code> to the model. MCP adds a <b>protocol &amp;
+    ecosystem</b>; custom tools add <b>nothing to learn</b>. The exam wants you to justify the choice.</div>
+
+    <h2><span class="chip exam">FAILURE POINTS</span></h2>
+    <div class="trap"><b>Injection via an MCP tool/resource</b> → server output says "ignore instructions…". <b>Mitigation:</b> treat as untrusted data, least-privilege tools, human approval on actions.</div>
+    <div class="trap"><b>Malicious / spoofed server</b> → you connect to an untrusted server. <b>Mitigation:</b> allow-list servers; review before adding to <code>.mcp.json</code>.</div>
+    <div class="trap"><b>Token pass-through</b> → the server forwards your token downstream (confused deputy). <b>Mitigation:</b> scope credentials per server; never blind-forward tokens.</div>
+    <div class="trap"><b>Tool-name collisions</b> across two servers → misrouting. <b>Mitigation:</b> distinct, descriptive names; namespacing.</div>
+    <div class="trap"><b>Over-broad tool scope</b> → a write tool where read-only would do. <b>Mitigation:</b> read-only by default; separate, gated write tools.</div>
+
+    <h2><span class="chip concept">CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>You practised…</th><th>CCA domain</th></tr>
+        <tr><td>MCP primitives (tools/resources/prompts) &amp; who controls each</td><td><b>D4</b> · Tool Design &amp; MCP</td></tr>
+        <tr><td>Transports (stdio / streamable HTTP), discovery, capability negotiation</td><td><b>D4</b></td></tr>
+        <tr><td>Sampling, elicitation, roots</td><td><b>D4</b></td></tr>
+        <tr><td>MCP security (untrusted output, OAuth, approval, token pass-through)</td><td><b>D4</b> · D5 (guardrails)</td></tr>
+        <tr><td>MCP vs custom tools; tool descriptions drive selection</td><td><b>D4</b> · D2 (Claude Code config)</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip trade">LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Second server</b> → add a ServiceNow MCP server and watch the host route across two — namespacing in practice.</li>
+        <li><b>Go remote</b> → run it as streamable HTTP with OAuth; feel the local-vs-remote difference.</li>
+        <li><b>Wire it into G4</b> → point the RCA Copilot's read-only tools at this server instead of local functions.</li>
+        <li><b>Add <code>list_changed</code></b> → mutate the toolset at runtime and see dynamic re-discovery.</li>
+        <li><b>Approval hook</b> → require host confirmation before any tool runs (guardrail in practice).</li>
+    </ul>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Projects catalog</a>
+        <a class="next" href="../CCA-F/D4-Tool-Design-MCP/index.html"><span class="k">Next →</span>CCA-F Domain 4</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · MCP · Lakehouse Ops Server</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
