@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyOwnAnthropicServer — what the Messages API server actually does · Deep Dive</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+    .stage { font-family:'Courier New',monospace; color:#764ba2; font-weight:700; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › MyOwnAnthropicServer</div>
+    <h1>🏗️ MyOwnAnthropicServer — what the Messages API server actually does</h1>
+    <div class="tag">Design your own minimal <code>POST /v1/messages</code> to see every responsibility Anthropic handles for you</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE IDEA</span> The model is one line; the rest is the server</h2>
+    <p>The best way to understand what the Anthropic server does is to <em>sketch your own</em>. When you do, the punchline
+    jumps out: <strong>calling the LLM is a single line in the middle</strong> — auth, rate limits, validation, prompt
+    assembly, caching, safety, response shaping, billing, and streaming are <strong>all the server's job</strong>, before and
+    after that line. This page designs that shell (not the transformer — that stays a black box) so you can <em>see</em> the
+    responsibilities.</p>
+    <div class="note">🎯 This is the synthesis of the whole D5/D4 error &amp; cost material: <a href="../CCA-F/D5-Context-Management/error-handling-who-catches-what.html">who catches what</a>,
+    <a href="../CCA-F/D5-Context-Management/cost-optimization.html">cost</a>, <a href="../CCA-F/D5-Context-Management/caching-and-memory.html">caching</a>, and stop-reasons — all visible as <em>stages of one request</em>.</p>
+
+    <h2><span class="chip diagram">THE BIG PICTURE</span> Three boxes, not one</h2>
+    <p>People imagine "the API = the model." It's really three responsibilities, and you only own the outer one:</p>
+    <div class="mermaid">
+flowchart LR
+    C["YOUR CLIENT<br/>build messages · resend history<br/>· loop on stop_reason · retry"]:::you
+    S["ANTHROPIC SERVER<br/>auth · limits · validate · assemble<br/>· cache · safety · meter · stream"]:::srv
+    M["THE MODEL<br/>prefill + decode<br/>(the transformer)"]:::mod
+    C -->|"POST /v1/messages"| S -->|"prompt"| M
+    M -->|"tokens"| S -->|"JSON response"| C
+    classDef you fill:#e7ecff,stroke:#3b5bdb,color:#1e3a8a;
+    classDef srv fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef mod fill:#dcfce7,stroke:#15803d,color:#14532d;
+    </div>
+    <p><b>MyOwnAnthropicServer is the middle box.</b> The client box is what you already build (see the
+    <a href="p0-claude-api.html">agent loop</a>); the model box we leave as <code>model.generate()</code>.</p>
+
+    <h2><span class="chip diagram">THE REQUEST LIFECYCLE</span> 13 stages of one call</h2>
+    <div class="mermaid">
+flowchart TD
+    R["POST /v1/messages"] --> T["1 · parse HTTP/JSON"] --> A{"2 · auth"}
+    A -->|bad| E401["401/403"]:::e
+    A -->|ok| RL{"3 · rate limit"}
+    RL -->|over| E429["429 +Retry-After"]:::e
+    RL -->|ok| SZ{"4 · size"}
+    SZ -->|too big| E413["413"]:::e
+    SZ -->|ok| V{"5 · validate"}
+    V -->|invalid| E400["400 (pre-model)"]:::e
+    V -->|ok| RT["6 · route model"] --> AS["7 · assemble prompt + count tokens"]
+    AS --> CA["8 · prompt cache lookup"] --> INF["9 · MODEL: prefill+decode"]:::m
+    INF --> SF["10 · safety classifiers"] --> RS["11 · build response + stop_reason + usage"]
+    RS --> MT["12 · meter + log"] --> OUT["13 · return / stream (SSE)"]:::ok
+    classDef e fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d;
+    classDef m fill:#dcfce7,stroke:#15803d,color:#14532d;
+    classDef ok fill:#dcfce7,stroke:#15803d,color:#14532d;
+    </div>
+
+    <h2><span class="chip code">THE MINIMAL SERVER</span> ~40 lines — one function per responsibility</h2>
+<pre><span class="cm"># MyOwnAnthropicServer — a teaching shell for POST /v1/messages.</span>
+<span class="cm"># The transformer is a black box (model.generate). Everything AROUND it is the server's job.</span>
+
+<span class="kw">def</span> <span class="fn">handle_messages</span>(http_request):
+    <span class="cm"># 1 · TRANSPORT — parse the HTTP body</span>
+    <span class="kw">try</span>:    body = json.<span class="fn">loads</span>(http_request.body)
+    <span class="kw">except</span>: <span class="kw">return</span> <span class="fn">err</span>(400, <span class="st">"invalid_request_error"</span>, <span class="st">"malformed JSON"</span>)
+
+    <span class="cm"># 2 · AUTH — who is this? (x-api-key, anthropic-version)  → 401 / 403</span>
+    org = <span class="fn">authenticate</span>(http_request.headers.get(<span class="st">"x-api-key"</span>))
+    <span class="kw">if</span> <span class="kw">not</span> org:                    <span class="kw">return</span> <span class="fn">err</span>(401, <span class="st">"authentication_error"</span>, <span class="st">"invalid key"</span>)
+    <span class="kw">if</span> <span class="kw">not</span> org.<span class="fn">can_use</span>(body.get(<span class="st">"model"</span>)): <span class="kw">return</span> <span class="fn">err</span>(403, <span class="st">"permission_error"</span>, <span class="st">"no access"</span>)
+
+    <span class="cm"># 3 · RATE LIMIT / QUOTA — token buckets per org (RPM/ITPM/OTPM)  → 429 + Retry-After</span>
+    <span class="kw">if</span> <span class="kw">not</span> rate_limiter.<span class="fn">allow</span>(org, body): <span class="kw">return</span> <span class="fn">err</span>(429, <span class="st">"rate_limit_error"</span>, retry_after=2)
+
+    <span class="cm"># 4 · SIZE — payload cap  → 413</span>
+    <span class="kw">if</span> <span class="fn">too_large</span>(body):        <span class="kw">return</span> <span class="fn">err</span>(413, <span class="st">"request_too_large"</span>, <span class="st">"body too large"</span>)
+
+    <span class="cm"># 5 · VALIDATE — the big 400 layer, BEFORE the model ever runs</span>
+    bad = <span class="fn">validate</span>(body)          <span class="cm"># required fields · role alternation · tool_use<->tool_result</span>
+    <span class="kw">if</span> bad: <span class="kw">return</span> <span class="fn">err</span>(400, <span class="st">"invalid_request_error"</span>, bad)  <span class="cm"># · max_tokens<=limit · no temperature/budget_tokens</span>
+
+    <span class="cm"># 6 · ROUTE — resolve model id -> engine; check the context window  → 404 if unknown</span>
+    model = <span class="fn">resolve_model</span>(body[<span class="st">"model"</span>])
+
+    <span class="cm"># 7 · ASSEMBLE PROMPT — render tools -> system -> messages into model format; count tokens</span>
+    prompt, n_in = <span class="fn">render</span>(body)     <span class="cm"># enforce max input (context-window-exceeded is a 400)</span>
+
+    <span class="cm"># 8 · PROMPT CACHE — hash the stable prefix; reuse KV on a hit (skip prefill)</span>
+    kv, cache_read, cache_new = prompt_cache.<span class="fn">lookup</span>(prompt, body)
+
+    <span class="cm"># 9 · INFER — the ONE line that is "the model" (prefill + autoregressive decode)</span>
+    out = model.<span class="fn">generate</span>(prompt, kv,
+        max_tokens      = body[<span class="st">"max_tokens"</span>],          <span class="cm"># → stop_reason "max_tokens"</span>
+        stop_sequences  = body.get(<span class="st">"stop_sequences"</span>),  <span class="cm"># → "stop_sequence"</span>
+        thinking        = body.get(<span class="st">"thinking"</span>),        <span class="cm"># adaptive reasoning (billed as output)</span>
+        tools           = body.get(<span class="st">"tools"</span>),           <span class="cm"># constrained decode → "tool_use"</span>
+        output_config   = body.get(<span class="st">"output_config"</span>))   <span class="cm"># schema-constrained JSON</span>
+
+    <span class="cm"># 10 · SAFETY — classifiers can override the output  → stop_reason "refusal"</span>
+    <span class="kw">if</span> safety.<span class="fn">blocks</span>(body, out): out = <span class="fn">refusal</span>()
+
+    <span class="cm"># 11 · RESPONSE — content blocks (text/thinking/tool_use) + stop_reason + usage</span>
+    resp = <span class="fn">build</span>(out, stop_reason=out.stop_reason,
+        usage=<span class="fn">usage</span>(n_in, out.n_out, cache_read, cache_new))  <span class="cm"># the 4 usage fields</span>
+
+    <span class="cm"># 12 · METER + LOG — record billing; attach request-id for tracing</span>
+    <span class="fn">meter</span>(org, resp.usage); <span class="fn">log</span>(http_request.id, org, resp)
+
+    <span class="cm"># 13 · RETURN — one JSON body, or a stream of SSE events if body["stream"]</span>
+    <span class="kw">return</span> <span class="fn">sse_stream</span>(resp) <span class="kw">if</span> body.get(<span class="st">"stream"</span>) <span class="kw">else</span> <span class="fn">json_response</span>(resp)</pre>
+    <div class="good">Read stages 1–8, then 10–13, and notice: <b>only stage 9 is "the model."</b> Everything else is the
+    responsibility you get for free — and exactly what an exam question about "where does X happen?" is testing.</div>
+
+    <h2><span class="chip exam">RESPONSIBILITY TABLE</span> stage → what it does → what breaks there</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>#</th><th>Server responsibility</th><th>Fails with</th><th>CCA tie-in</th></tr>
+        <tr><td>1</td><td>HTTP transport &amp; JSON parsing</td><td>400 (malformed JSON)</td><td>D4</td></tr>
+        <tr><td>2</td><td><b>Auth</b> — API key → org/workspace &amp; model access</td><td>401 / 403</td><td>D5 errors</td></tr>
+        <tr><td>3</td><td><b>Rate limiting</b> — per-org token buckets (RPM/TPM)</td><td>429 (+ Retry-After)</td><td>D5 · rate limits</td></tr>
+        <tr><td>4</td><td>Payload size limits</td><td>413</td><td>D5</td></tr>
+        <tr><td>5</td><td><b>Validation</b> — schema, message structure, tool contract, params</td><td><b>400 (pre-model, unbilled)</b></td><td>D4 · tool contract</td></tr>
+        <tr><td>6</td><td>Model routing &amp; capability/context-window check</td><td>404 / 400</td><td>D1</td></tr>
+        <tr><td>7</td><td><b>Prompt assembly</b> — render tools→system→messages; token counting</td><td>400 (context exceeded)</td><td>D5 · tokens</td></tr>
+        <tr><td>8</td><td><b>Prompt caching</b> — prefix hash, KV reuse, cache accounting</td><td>—</td><td>D5 · caching</td></tr>
+        <tr><td>9</td><td><b>Inference</b> — prefill + decode, stop conditions, tool/structured decode</td><td>200 + stop_reason</td><td>D1 · stop reasons</td></tr>
+        <tr><td>10</td><td><b>Safety</b> — input/output classifiers</td><td>200 + refusal</td><td>D5</td></tr>
+        <tr><td>11</td><td><b>Response assembly</b> — content blocks, stop_reason, usage</td><td>—</td><td>D1 · D5</td></tr>
+        <tr><td>12</td><td>Metering / billing / logging (request-id)</td><td>—</td><td>D5 · cost, obs</td></tr>
+        <tr><td>13</td><td>Serialization &amp; <b>streaming</b> (SSE events)</td><td>500 / 529 on failure</td><td>D5 · reliability</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip concept">ZOOM: STAGE 9</span> what "call the LLM" actually hides</h2>
+    <p>The one line <code>model.generate()</code> is itself a small pipeline — worth knowing for the exam even though you'd
+    never build it:</p>
+    <ul>
+        <li><b>Prefill</b> — process the whole prompt in one pass, building the <b>KV cache</b> (this is what prompt caching reuses → the ~0.1× cache-read).</li>
+        <li><b>Decode</b> — generate output tokens <em>one at a time</em>, autoregressively (this is why output is slow &amp; costs 5×).</li>
+        <li><b>Stop conditions</b> — halt on natural end (<code>end_turn</code>), the <code>max_tokens</code> cap, a <code>stop_sequence</code>, or a tool call (<code>tool_use</code>) → the server stamps the matching <code>stop_reason</code>.</li>
+        <li><b>Constrained decoding</b> — for <code>tools</code>/<code>output_config.format</code>, sampling is restricted to tokens valid under the schema/grammar (this is <em>why</em> structured outputs can't produce malformed JSON — the <em>shape</em> is guaranteed at decode time).</li>
+        <li><b>Thinking</b> — extra reasoning tokens generated before the answer, billed as output.</li>
+    </ul>
+
+    <h2><span class="chip trade">SCOPE</span> what we deliberately DON'T build</h2>
+    <div class="bad"><b>Not in scope:</b> the transformer itself (attention, weights, the KV cache internals). That's the model,
+    not the server — and reimplementing it teaches you nothing about the <em>API's</em> responsibilities. We keep it as an
+    opaque <code>model.generate()</code>, which is exactly the boundary Anthropic exposes to you.</div>
+
+    <h2><span class="chip concept">CLIENT vs SERVER</span> the responsibility split (and why statelessness)</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Your client does</th><th>The server does</th></tr>
+        <tr><td>Build &amp; <b>resend the full message history</b> every turn</td><td>Treat each request as <b>stateless</b> — no session memory</td></tr>
+        <tr><td>Loop on <code>stop_reason</code>, run tools, return <code>tool_result</code></td><td>Decode the tool call, stamp <code>tool_use</code>, validate the returned pairing</td></tr>
+        <tr><td>Retry 429/5xx with backoff; set idempotency</td><td>Enforce limits, return typed errors, meter usage</td></tr>
+        <tr><td>Decide model, max_tokens, caching breakpoints</td><td>Route, cache, assemble, infer, shape the response</td></tr>
+    </table>
+    </div>
+    <div class="note"><b>Statelessness is a server responsibility you feel as a client cost:</b> because the server keeps no
+    session, <em>you</em> resend the whole history — which is why long chats get expensive (every past token re-billed). Build
+    this shell and that trade-off stops being abstract.</div>
+
+    <h2><span class="chip concept">CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>You now understand…</th><th>CCA domain</th></tr>
+        <tr><td>Where 400 vs 401 vs 429 vs 200+stop_reason each originate</td><td><b>D5</b> · errors · <a href="../CCA-F/D5-Context-Management/error-handling-who-catches-what.html">who catches what</a></td></tr>
+        <tr><td>Why validation (incl. the tool contract) is pre-model &amp; unbilled</td><td><b>D4</b> · tool design</td></tr>
+        <tr><td>Prompt assembly order (tools→system→messages) &amp; caching</td><td><b>D5</b> · caching &amp; <a href="../CCA-F/D5-Context-Management/cost-optimization.html">cost</a></td></tr>
+        <tr><td>How stop_reason is decided; prefill vs decode</td><td><b>D1</b> · stop reasons</td></tr>
+        <tr><td>Statelessness, usage fields, streaming, metering</td><td><b>D1</b> · <b>D5</b></td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip trade">LEVEL IT UP</span> make the shell actually run</h2>
+    <ul>
+        <li><b>Wrap a local model</b> → replace <code>model.generate()</code> with an Ollama call and serve <code>POST /v1/messages</code> with FastAPI — a toy Messages-API-compatible server you can point the Anthropic SDK at (<code>base_url</code>).</li>
+        <li><b>Implement one real stage</b> → e.g. a genuine <code>validate()</code> that reproduces the 400 rules, or a real token-bucket rate limiter.</li>
+        <li><b>Add streaming</b> → emit the SSE event sequence (<code>message_start → content_block_delta → message_stop</code>).</li>
+        <li><b>Add a prefix cache</b> → hash the stable prefix and skip re-work on a hit; watch your own <code>cache_read</code> counter.</li>
+    </ul>
+    <div class="good">Doing even <em>one</em> stage for real turns the abstract "the API handles it" into muscle memory — which is
+    exactly the level the CCA exam probes.</div>
+
+    <div class="pager">
+        <a href="index.html"><span class="k">← Back</span>Projects catalog</a>
+        <a class="next" href="../CCA-F/D5-Context-Management/error-handling-who-catches-what.html"><span class="k">Next →</span>Who catches what</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · MyOwnAnthropicServer — the Messages API server, minimally</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
