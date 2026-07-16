@@ -61,6 +61,33 @@
         <a href="../GenAI-Fundamentals/index.html">Gen AI Fundamentals</a>.</p>
     </div>
 
+    <h2 id="atglance"><span class="chip concept">AT A GLANCE</span> Every project — one crisp table</h2>
+    <p>Design = the architecture deep-dive · Code = runnable implementation. <span style="color:#777">(P1–P10 are the
+    learning-path idea cards further down; the rows below are the built-out projects.)</span></p>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Domain</th><th>Theme</th><th>Project</th><th>What it does</th><th>AI part</th><th>Design</th><th>Code</th></tr>
+
+        <tr><td>Agentic core</td><td>NL→SQL</td><td><b>P0 · Text-to-SQL Agent</b></td><td>English → SQL, runs it, reads the DB error, fixes &amp; retries until it works</td><td>The self-correcting <b>agent loop</b> (writes/repairs SQL)</td><td><a href="p0-text-to-sql-agent.html">design</a> · <a href="p0-claude-api.html">Claude API</a> · <a href="p0-databricks-uc.html">UC</a></td><td><a href="https://github.com/basantchoudhary/nl2sql-uc-agent">repo</a></td></tr>
+        <tr><td>Advanced</td><td>Tiered memory</td><td><b>Second-Brain Assistant</b></td><td>Personal work assistant over Redis + SQLite + vector + graph memory</td><td>Memory routing, retrieval fusion &amp; all reasoning</td><td><a href="memory-agent.html">design</a></td><td>—</td></tr>
+
+        <tr><td>Ops</td><td>Observability</td><td><b>G1 · Health Sentinel</b></td><td>Watches Databricks jobs/pipelines; flags failures, retry spikes, slow runs</td><td>Triage narration, <b>grounded</b> (detection is deterministic)</td><td><a href="g1-health-sentinel.html">design</a> · <a href="g1-claude-api.html">Claude API</a></td><td><a href="https://github.com/basantchoudhary/databricks-ops-copilot">repo</a></td></tr>
+        <tr><td>Ops</td><td>Observability</td><td><b>G2 · SLA &amp; Freshness Watchdog</b></td><td>Per-table freshness/SLA checks + a weekly reliability digest</td><td>Weekly digest narrative (checks are deterministic)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Capacity</td><td><b>G3 · Capacity Forecaster</b></td><td>Forecasts DBU demand &amp; queueing; warns before saturation</td><td>Narrative brief over a classical forecast</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Incident</td><td><b>G4 · Incident RCA Copilot</b></td><td>On failure, gathers read-only evidence, correlates, drafts an RCA + ServiceNow ticket</td><td><b>Agent loop</b> over drill-down tools + verifier</td><td><a href="g4-rca-copilot.html">design</a></td><td><a href="https://github.com/basantchoudhary/databricks-ops-copilot">repo</a></td></tr>
+        <tr><td>Ops</td><td>Knowledge</td><td><b>G5 · Runbook Agent</b></td><td>Grounded Q&amp;A over runbooks &amp; past incidents to cut MTTR</td><td>RAG answer generation (cited)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>FinOps</td><td><b>G6 · Cost &amp; Right-Sizing Advisor</b></td><td>Attributes DBU cost, recommends cluster right-sizing as a proposal</td><td>Right-sizing recommendation (human approves)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>FinOps</td><td><b>G7 · Waste &amp; Idle Guardrails</b></td><td>Auto-kill idle clusters, enforce policies &amp; budgets</td><td><b>None</b> — pure deterministic automation</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Data quality</td><td><b>G8 · DQ &amp; Anomaly Sentinel</b></td><td>DQ rules + anomaly triage; proposes new rules from patterns</td><td>Anomaly triage &amp; rule suggestions</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Change safety</td><td><b>G9 · Change-Risk Reviewer</b></td><td>CI review of PRs to notebooks/DLT/dbt; gates risky merges</td><td>Risk review (schema break, cost, tests)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Governance</td><td><b>G10 · UC Access Auditor</b></td><td>Scans Unity Catalog grants/lineage/PII; flags least-privilege violations</td><td>Audit-ready summaries &amp; violation flags</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+        <tr><td>Ops</td><td>Exec brief</td><td><b>G11 · Weekly Reliability Brief</b></td><td>One exec read-out across reliability, cost, DQ, incidents, access</td><td>Multi-source synthesis (metrics are deterministic)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
+    </table>
+    </div>
+    <div class="note">🟣 <b>Cert note:</b> the AI-part column is deliberately narrow — most Ops value is <em>deterministic</em>, with
+    Claude at the edges (grounded narration, correlation, RAG). G7 uses <b>no AI at all</b>. Runnable code for G1 &amp; G4 lives
+    in <a href="https://github.com/basantchoudhary/databricks-ops-copilot"><b>databricks-ops-copilot</b></a>.</div>
+
     <h2><span class="chip diagram">LEARNING PATH</span> Build them in this order</h2>
     <div class="mermaid">
 flowchart LR
