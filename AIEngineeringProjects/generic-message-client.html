@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GenericAnthropicMessageClient — one robust client, every case · Design Study</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › GenericAnthropicMessageClient</div>
+    <h1>🧰 GenericAnthropicMessageClient — one robust client, every case</h1>
+    <div class="tag">A design-patterns study: handle every request/response permutation of the Messages API behind one interface</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE IDEA</span> The client-side twin of the server</h2>
+    <p>If <a href="my-own-anthropic-server.html">MyOwnAnthropicServer</a> is everything the <em>server</em> does, this is
+    everything the <em>caller</em> should do to be robust: handle all <b>6 stop reasons</b>, the full <b>error taxonomy</b>,
+    <b>retries + backoff + idempotency</b>, <b>rate limits</b>, <b>token counting → max_tokens fit</b>, <b>context-bloat</b>
+    (trim / edit / compact), <b>streaming</b>, <b>batch</b>, <b>structured outputs</b>, <b>tool loops</b>, <b>caching</b>, and
+    <b>multi-backend</b> routing — all behind <em>one</em> call. Your instinct is right: with <b>code-to-interface</b> design
+    this collapses into a small set of pluggable pieces.</p>
+    <div class="note">🎯 The lesson isn't "reinvent the SDK" — it's that a robust caller is a <b>pipeline of policies</b>,
+    and each policy is an <em>interface</em> you can swap. That framing is exactly what the exam's reliability questions reward.</div>
+
+    <h2><span class="chip exam">THE CASE MATRIX</span> everything one call must survive</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Dimension</th><th>The permutations to handle</th></tr>
+        <tr><td><b>stop_reason</b></td><td><code>tool_use</code> · <code>end_turn</code> · <code>max_tokens</code> · <code>stop_sequence</code> · <code>pause_turn</code> · <code>refusal</code></td></tr>
+        <tr><td><b>Errors</b></td><td>400 (never retry) · 401/403 · 413 · 429 (+Retry-After) · 500/529 (retry)</td></tr>
+        <tr><td><b>Retries</b></td><td>exponential backoff + jitter · honor Retry-After · idempotency on side effects</td></tr>
+        <tr><td><b>Token budget</b></td><td>count_tokens pre-flight · shrink input or lower max_tokens to fit the window</td></tr>
+        <tr><td><b>Context bloat</b></td><td>sliding window · context editing (clear tool results) · compaction</td></tr>
+        <tr><td><b>Execution mode</b></td><td>sync · streaming (SSE) · batch (~50%, async)</td></tr>
+        <tr><td><b>Output</b></td><td>free text · structured (<code>output_config.format</code>) · tool arguments</td></tr>
+        <tr><td><b>Cost levers</b></td><td>prompt caching breakpoints · model tier · effort / adaptive thinking</td></tr>
+        <tr><td><b>Backend</b></td><td>Anthropic direct · Databricks Model Serving · Bedrock · Vertex</td></tr>
+    </table>
+    </div>
+    <div class="bad">Try to handle all of this with <code>if/elif</code> in one function and you get a 400-line unmaintainable
+    blob. Code-to-interface turns each row into a <b>strategy</b> you plug in.</div>
+
+    <h2><span class="chip trade">DOES THIS EXIST?</span> yes — in layers (and Tool Runner is one slice)</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Layer</th><th>Already handles</th><th>Gap it leaves</th></tr>
+        <tr><td><b>Anthropic SDK</b></td><td>auto-retry 429/5xx + backoff · streaming helpers · <code>messages.parse()</code> · <code>count_tokens</code> · Batch API</td><td>you still orchestrate stop_reasons, context, budgets, fallbacks</td></tr>
+        <tr><td><b>Tool Runner</b> <code>beta.messages.tool_runner</code></td><td>the <b>agentic loop</b> — tool_use routing, execute, tool_result, per-turn hooks</td><td><em>only</em> the tool loop — not batch / context-bloat / multi-backend</td></tr>
+        <tr><td><b>LiteLLM · AI gateways</b> (Portkey, Cloudflare, Kong, Helicone)</td><td>retries · <b>fallbacks</b> · rate-limit handling · caching · unified multi-provider API</td><td>generic &amp; provider-agnostic — not Anthropic-shaped policies</td></tr>
+        <tr><td><b>Frameworks</b> (LangChain/LangGraph, Instructor)</td><td>orchestration, structured outputs, memory</td><td>heavy for "just a robust client"</td></tr>
+    </table>
+    </div>
+    <div class="good"><b>So:</b> the pieces exist; a thin <b>house Facade</b> that binds them to <em>your</em> policies (and treats all
+    6 stop_reasons + context-bloat + token-fit as first-class) is common in real codebases — and the best way to <em>learn</em>
+    the surface. <b>Tool Runner is the first-party attempt at the agentic-loop slice</b> of exactly this idea.</div>
+
+    <h2><span class="chip diagram">THE DESIGN</span> Facade + Middleware pipeline + Strategies</h2>
+    <p>Three patterns do the heavy lifting: a <b>Facade</b> (one entry point), a <b>Chain-of-Responsibility middleware
+    pipeline</b> (cross-cutting steps as an onion), and <b>Strategy</b> interfaces (each concern swappable).</p>
+    <div class="mermaid">
+flowchart LR
+    APP["your code"] --> F["MessageClient (Facade)<br/>send() · stream() · submit_batch()"]:::f
+    F --> P["Middleware pipeline"]:::p
+    subgraph P2["pipeline (onion order)"]
+        direction TB
+        m1["TokenBudget / ContextFit"] --> m2["CacheAnnotate"] --> m3["RateLimit"] --> m4["→ Backend.call ←"] --> m5["Retry"] --> m6["StopReasonRouter"] --> m7["OutputParser"]
+    end
+    P --> P2
+    P2 -. plugs in .-> STRAT["Strategies:<br/>RetryPolicy · ContextPolicy · StopReasonHandler<br/>OutputParser · BackendAdapter · ExecutionMode"]:::s
+    classDef f fill:#e7ecff,stroke:#3b5bdb,color:#1e3a8a;
+    classDef p fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef s fill:#fff4e0,stroke:#b5691a,color:#7a4a0a;
+    </div>
+
+    <h2><span class="chip concept">PATTERN MAP</span> concern → pattern</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>Design pattern</th></tr>
+        <tr><td>One entry point hiding all complexity</td><td><b>Facade</b></td></tr>
+        <tr><td>Cross-cutting steps (count, cache, rate-limit, retry, route, parse)</td><td><b>Chain of Responsibility</b> / middleware</td></tr>
+        <tr><td>Swappable retry / context / parse behaviour</td><td><b>Strategy</b></td></tr>
+        <tr><td>Wrapping the base client with retry/logging/cache</td><td><b>Decorator</b></td></tr>
+        <tr><td>The agent loop skeleton with hook points</td><td><b>Template Method</b> + <b>Observer</b> (hooks)</td></tr>
+        <tr><td>Routing on <code>stop_reason</code></td><td><b>State</b> / dispatch table</td></tr>
+        <tr><td>Many backends behind one interface</td><td><b>Adapter</b></td></tr>
+        <tr><td>Tool calls as first-class objects</td><td><b>Command</b></td></tr>
+        <tr><td>Choosing sync / stream / batch</td><td><b>Strategy</b> + <b>Factory</b></td></tr>
+        <tr><td>Fall back to another model/provider on failure</td><td><b>Chain of Responsibility</b></td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip code">THE INTERFACES</span> code-to-interface (Python Protocols)</h2>
+<pre><span class="kw">from</span> typing <span class="kw">import</span> Protocol, Iterator
+
+<span class="cm"># ADAPTER — one interface over every backend (Anthropic / Databricks / Bedrock).</span>
+<span class="kw">class</span> <span class="fn">Backend</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">create</span>(self, req) -&gt; <span class="st">"Response"</span>: ...
+    <span class="kw">def</span> <span class="fn">stream</span>(self, req) -&gt; Iterator[<span class="st">"Event"</span>]: ...
+    <span class="kw">def</span> <span class="fn">count_tokens</span>(self, req) -&gt; int: ...
+
+<span class="cm"># STRATEGY — retry (429/5xx only; NEVER 400), backoff + jitter, honor Retry-After.</span>
+<span class="kw">class</span> <span class="fn">RetryPolicy</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">should_retry</span>(self, err, attempt) -&gt; bool: ...
+    <span class="kw">def</span> <span class="fn">delay</span>(self, err, attempt) -&gt; float: ...
+
+<span class="cm"># STRATEGY — fit the request into the window BEFORE sending.</span>
+<span class="kw">class</span> <span class="fn">ContextPolicy</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">fit</span>(self, req, n_tokens, window) -&gt; <span class="st">"Request"</span>: ...   <span class="cm"># trim / clear tool_results / compact / lower max_tokens</span>
+
+<span class="cm"># STATE / dispatch — turn a stop_reason into the next Action.</span>
+<span class="kw">class</span> <span class="fn">StopReasonHandler</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">handle</span>(self, resp, ctx) -&gt; <span class="st">"Action"</span>: ...
+        <span class="cm"># tool_use   -> run tools, append tool_result, CONTINUE</span>
+        <span class="cm"># end_turn   -> DONE</span>
+        <span class="cm"># max_tokens -> CONTINUE (or raise cap) — not done!</span>
+        <span class="cm"># refusal    -> RETURN graceful decline</span>
+        <span class="cm"># pause_turn -> RESUME (resend)          | stop_sequence -> DONE</span>
+
+<span class="cm"># STRATEGY — text / structured(schema) / tool-args.</span>
+<span class="kw">class</span> <span class="fn">OutputParser</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">parse</span>(self, resp): ...
+
+<span class="cm"># CHAIN OF RESPONSIBILITY — each step wraps the next (onion).</span>
+<span class="kw">class</span> <span class="fn">Middleware</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">__call__</span>(self, req, nxt) -&gt; <span class="st">"Result"</span>: ...
+
+<span class="cm"># FACADE — one entry point; composes a backend + a pipeline + policies.</span>
+<span class="kw">class</span> <span class="fn">MessageClient</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, backend: Backend, pipeline: list[Middleware],
+                 retry: RetryPolicy, context: ContextPolicy,
+                 router: StopReasonHandler, parser: OutputParser): ...
+    <span class="kw">def</span> <span class="fn">send</span>(self, req) -&gt; <span class="st">"Result"</span>: ...        <span class="cm"># runs the pipeline; loops on the router until DONE</span>
+    <span class="kw">def</span> <span class="fn">stream</span>(self, req) -&gt; Iterator: ...       <span class="cm"># same policies, streamed</span>
+    <span class="kw">def</span> <span class="fn">submit_batch</span>(self, reqs) -&gt; <span class="st">"BatchHandle"</span>: ...  <span class="cm"># same request shape, async ~50% cost</span></pre>
+    <div class="good">Every hard case from the matrix is now a <b>named interface with one job</b>. Swapping "sliding window" for
+    "compaction" is a one-line policy change, not a rewrite — that's the whole point of coding to interfaces.</div>
+
+    <h2><span class="chip diagram">THE HEART</span> stop_reason as a state machine</h2>
+    <p>The messiest part — the loop — becomes a tiny dispatch once <code>StopReasonHandler</code> owns it:</p>
+    <div class="mermaid">
+stateDiagram-v2
+    [*] --> Call
+    Call --> Route: 200 + stop_reason
+    Route --> RunTools: tool_use
+    RunTools --> Call: append tool_result
+    Route --> Continue: max_tokens (truncated)
+    Continue --> Call
+    Route --> Resume: pause_turn
+    Resume --> Call
+    Route --> Done: end_turn / stop_sequence
+    Route --> Decline: refusal
+    Done --> [*]
+    Decline --> [*]
+    </div>
+    <div class="warn"><b>The exam trap this design kills:</b> forgetting a <code>stop_reason</code>. A dispatch table with a
+    <em>required</em> case for all six (and a catch-all) makes "silently loop on max_tokens" impossible by construction.</div>
+
+    <h2><span class="chip trade">VS TOOL RUNNER</span> what each covers</h2>
+    <div class="tradeoff">
+        <div class="pro"><h4>🛠️ Tool Runner (first-party)</h4>
+            <ul><li>Automates the <b>tool-use loop</b> for tools you define</li>
+            <li>Per-turn <b>hooks</b> (approval, interception, result edit, retries)</li>
+            <li>Streaming, compaction support</li>
+            <li>Zero loop code — great for production agents</li></ul></div>
+        <div class="con"><h4>🧰 GenericMessageClient (your Facade)</h4>
+            <ul><li><b>Superset scope</b>: also batch, context-fit, multi-backend, fallbacks, output-parse strategy</li>
+            <li>You own the policy interfaces — house rules in one place</li>
+            <li>More to build &amp; maintain</li>
+            <li>Best as a <em>thin wrapper</em> that <em>uses</em> the SDK/Tool Runner inside</li></ul></div>
+    </div>
+    <div class="note"><b>Recommended reality:</b> don't reimplement retries/streaming the SDK already does — <b>compose</b>. Let the
+    Facade delegate the tool loop to Tool Runner, retries to the SDK, and add only the policies they don't cover
+    (context-fit, batch routing, fallbacks, budget). Build-your-own is for <em>learning</em> the surface; ship a thin wrapper.</div>
+
+    <h2><span class="chip concept">CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>The client policy…</th><th>CCA domain</th></tr>
+        <tr><td>All 6 stop_reasons as a dispatch/state machine</td><td><b>D1</b> · stop reasons</td></tr>
+        <tr><td>Retry 429/5xx not 400 · backoff+jitter · idempotency</td><td><b>D5</b> · reliability</td></tr>
+        <tr><td>count_tokens → fit window; context editing / compaction</td><td><b>D5</b> · context &amp; tokens</td></tr>
+        <tr><td>Caching breakpoints · batch · model tier · effort</td><td><b>D5</b> · cost</td></tr>
+        <tr><td>Tool loop, structured outputs, the tool contract</td><td><b>D4</b> · tool design</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip trade">LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Build the vertical slice</b> → Facade + a <code>RetryPolicy</code> + a <code>StopReasonHandler</code> over the real SDK. That alone is a great portfolio piece.</li>
+        <li><b>Add a ContextPolicy</b> → plug in sliding-window, then swap to context-editing, then compaction — same interface.</li>
+        <li><b>Add a BackendAdapter</b> → one for Anthropic-direct, one for Databricks Model Serving (base_url) — prove the Adapter.</li>
+        <li><b>Add fallbacks</b> → a chain: Opus → Sonnet → cached — Chain of Responsibility in action.</li>
+        <li><b>Wrap Tool Runner</b> → let the Facade delegate the loop; you only own the policies around it.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="my-own-anthropic-server.html"><span class="k">← Prev</span>MyOwnAnthropicServer</a>
+        <a class="next" href="p0-claude-api.html"><span class="k">Next →</span>The agent loop (Claude API)</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · GenericAnthropicMessageClient — one robust client, every case</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

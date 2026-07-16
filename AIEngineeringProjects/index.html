@@ -54,10 +54,15 @@
         primitives (tools · resources · prompts), both transports (stdio · streamable HTTP), and sampling/elicitation/roots +
         MCP security. Your D4 rehearsal; also answers <em>which portfolio projects use MCP</em>.
     </a>
-    <a class="examcta" href="my-own-anthropic-server.html" style="display:block;background:#f5f3ff;color:#4a3b7a;text-decoration:none;border:1.5px solid #764ba2;border-radius:10px;padding:14px 24px;margin-bottom:16px">
+    <a class="examcta" href="my-own-anthropic-server.html" style="display:block;background:#f5f3ff;color:#4a3b7a;text-decoration:none;border:1.5px solid #764ba2;border-radius:10px;padding:14px 24px;margin-bottom:8px">
         <b>🏗️ Understand the API → MyOwnAnthropicServer (the Messages API, minimally)</b> — design your own
         <code>POST /v1/messages</code> shell to see every server responsibility (auth · limits · validation · prompt assembly ·
         caching · safety · usage · streaming) and how the LLM call is just one stage in the middle.
+    </a>
+    <a class="examcta" href="generic-message-client.html" style="display:block;background:#eef2ff;color:#26346b;text-decoration:none;border:1.5px solid #3b5bdb;border-radius:10px;padding:14px 24px;margin-bottom:16px">
+        <b>🧰 The caller's twin → GenericAnthropicMessageClient (design-patterns study)</b> — one robust client that handles
+        every case (6 stop reasons · errors · retries · rate limits · token-fit · context bloat · streaming · batch) via
+        Facade + middleware pipeline + Strategy interfaces. How Tool Runner fits.
     </a>
 
     <div class="card" style="margin-bottom:16px">
@@ -82,6 +87,7 @@
         <tr><td>Advanced</td><td>Tiered memory</td><td><b>Second-Brain Assistant</b></td><td>Personal work assistant over Redis + SQLite + vector + graph memory</td><td>Memory routing, retrieval fusion &amp; all reasoning</td><td><a href="memory-agent.html">design</a></td><td>—</td></tr>
         <tr><td>Integration</td><td>MCP</td><td><b>Lakehouse Ops MCP Server</b></td><td>One FastMCP server exposing every MCP aspect (tools · resources · prompts · transports · sampling/elicitation)</td><td>Host's model consumes the server's tools/resources</td><td><a href="mcp-ops-server.html">design</a></td><td><a href="https://github.com/basantchoudhary/databricks-ops-copilot/tree/main/mcp_server">repo</a></td></tr>
         <tr><td>Foundations</td><td>API internals</td><td><b>MyOwnAnthropicServer</b></td><td>A minimal <code>POST /v1/messages</code> shell to learn every server responsibility</td><td>The LLM call is one stage; the rest is the server</td><td><a href="my-own-anthropic-server.html">design</a></td><td>—</td></tr>
+        <tr><td>Foundations</td><td>Design patterns</td><td><b>GenericAnthropicMessageClient</b></td><td>One robust client for every request/response case via Facade + middleware + Strategy</td><td>Wraps the SDK/model calls; policies are pluggable</td><td><a href="generic-message-client.html">design</a></td><td>—</td></tr>
 
         <tr><td>Ops</td><td>Observability</td><td><b>G1 · Health Sentinel</b></td><td>Watches Databricks jobs/pipelines; flags failures, retry spikes, slow runs</td><td>Triage narration, <b>grounded</b> (detection is deterministic)</td><td><a href="g1-health-sentinel.html">design</a> · <a href="g1-claude-api.html">Claude API</a></td><td><a href="https://github.com/basantchoudhary/databricks-ops-copilot">repo</a></td></tr>
         <tr><td>Ops</td><td>Observability</td><td><b>G2 · SLA &amp; Freshness Watchdog</b></td><td>Per-table freshness/SLA checks + a weekly reliability digest</td><td>Weekly digest narrative (checks are deterministic)</td><td><a href="index.html#gskops">card</a></td><td>—</td></tr>
