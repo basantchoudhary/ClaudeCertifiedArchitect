@@ -45,6 +45,47 @@ flowchart LR
     <p><b>MyOwnAnthropicServer is the middle box.</b> The client box is what you already build (see the
     <a href="p0-claude-api.html">agent loop</a>); the model box we leave as <code>model.generate()</code>.</p>
 
+    <h2><span class="chip trade">DO YOU ALWAYS NEED THE SERVER?</span> Three deployment shapes</h2>
+    <p>Common question: <em>"can the agent talk to the LLM directly, with no Anthropic-style server?"</em> Yes — but be precise
+    about what "direct" means. The server is a <b>bundle of responsibilities</b>, not a mandatory box. Who performs them (and
+    whether you need them at all) depends on <em>where the model runs</em>:</p>
+    <div class="mermaid">
+flowchart TB
+    subgraph A["A · HOSTED API — the provider runs the server"]
+        direction LR
+        a1["Client / LangGraph"] --> a2["Provider server<br/>all 13 stages"]:::srv --> a3["Model"]:::mod
+    end
+    subgraph B["B · SELF-HOSTED SERVER — you run it"]
+        direction LR
+        b1["Client / LangGraph"] --> b2["Your server<br/>vLLM · TGI · Ollama"]:::srv --> b3["Model"]:::mod
+    end
+    subgraph C["C · IN-PROCESS — no server at all"]
+        direction LR
+        c1["Agent = the runtime<br/>transformers · llama.cpp"] --> c3["Model (same process)"]:::mod
+    end
+    classDef srv fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    classDef mod fill:#dcfce7,stroke:#15803d,color:#14532d;
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th></th><th>A · Hosted API</th><th>B · Self-hosted server</th><th>C · In-process / embedded</th></tr>
+        <tr><td><b>Backend examples</b></td><td>Anthropic, OpenAI, Bedrock, Vertex, Databricks Model Serving</td><td>vLLM, TGI, Ollama, LM Studio, Triton</td><td>HF <code>transformers</code>, <code>llama-cpp-python</code>, MLX</td></tr>
+        <tr><td><b>Who runs the "server"</b></td><td>the provider</td><td><b>you</b> (ops burden)</td><td>nobody — it's a function call</td></tr>
+        <tr><td><b>Auth · limits · billing · safety</b></td><td>provider handles it</td><td>you build/operate what you need</td><td>usually N/A (single user)</td></tr>
+        <tr><td><b>Client examples</b></td><td>LangGraph, your app, the Anthropic SDK</td><td>LangGraph, your app</td><td>your script</td></tr>
+        <tr><td><b>Truly "direct to the LLM"?</b></td><td><b>No</b> — HTTP to the provider's server</td><td>Sort of — your own local/edge server</td><td><b>Yes</b> — same process, <code>model.generate()</code></td></tr>
+        <tr><td><b>Trade-off</b></td><td>zero ops, pay per token, rate limits</td><td>control &amp; privacy, but you operate it</td><td>simplest, but you own scaling &amp; safety</td></tr>
+    </table>
+    </div>
+    <div class="warn"><b>LangGraph doesn't remove the server.</b> LangGraph / LangChain / CrewAI / LlamaIndex are <em>client-side
+    orchestrators</em> — they decide <em>what</em> to call, not <em>where the model runs</em>. <b>LangGraph → OpenAI is
+    shape A</b> (it calls OpenAI's API server over HTTP, which still does auth/limits/validation/safety). It only becomes
+    "direct" when you point it at a <b>local Ollama</b> (B) or an <b>in-process</b> model (C).</div>
+    <div class="good"><b>The punchline:</b> the 13 stages don't disappear in B and C — they either become <em>your</em> job
+    (self-hosted, multi-user) or become <em>unnecessary</em> (single-user local: no auth, no rate limits, no billing). That's
+    exactly why the hosted API exists — you rent those responsibilities instead of building them. MyOwnAnthropicServer is what
+    you'd have to write to turn shape C back into shape A.</div>
+
     <h2><span class="chip diagram">THE REQUEST LIFECYCLE</span> 13 stages of one call</h2>
     <div class="mermaid">
 flowchart TD
