@@ -29,7 +29,7 @@
     <a href="generic-message-client.html">GenericAnthropicMessageClient</a>.</p>
     <div class="note">🎯 Two rules make this work: (1) the core imports <em>interfaces</em>, never concrete sinks
     (Dependency-Inversion). (2) The concrete adapters are wired in <b>one place</b> — the <em>composition root</em>. Swapping
-    "log to file" for "log to CloudWatch" is then a one-line change, and tests inject fakes.</p>
+    "log to file" for "log to CloudWatch" is then a one-line change, and tests inject fakes.</div>
 
     <h2><span class="chip diagram">THE SHAPE</span> core depends on ports; adapters plug in</h2>
     <div class="mermaid">
