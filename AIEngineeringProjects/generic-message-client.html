@@ -199,6 +199,9 @@ stateDiagram-v2
         <li><b>Add fallbacks</b> → a chain: Opus → Sonnet → cached — Chain of Responsibility in action.</li>
         <li><b>Wrap Tool Runner</b> → let the Facade delegate the loop; you only own the policies around it.</li>
     </ul>
+    <div class="good">🧩 The <b>cross-cutting concerns</b> (logging, tracing, cost, redaction, caching, audit…) are the client's
+    constructor dependencies — each a pluggable port. Designed here:
+    <a href="cross-cutting-concerns.html"><b>Cross-Cutting Concerns — pluggable ports</b></a>.</div>
 
     <div class="pager">
         <a href="my-own-anthropic-server.html"><span class="k">← Prev</span>MyOwnAnthropicServer</a>

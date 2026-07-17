@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross-Cutting Concerns — pluggable ports for the message client · Design Study</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    table.map td:first-child, table.map th:first-child { position:sticky; left:0; background:inherit; }
+    .free { background:#e6fcf0; border-left:4px solid #28a745; padding:12px 16px; border-radius:4px; margin:14px 0; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">AI Engineering Projects</a> › <a href="generic-message-client.html">GenericMessageClient</a> › Cross-Cutting Concerns</div>
+    <h1>🧩 Cross-Cutting Concerns — pluggable ports</h1>
+    <div class="tag">Keep logging, tracing, cost, security &amp; more OUT of the core — behind interfaces, with swappable adapters</div>
+</header>
+
+<div class="wrap">
+<main class="card">
+
+    <h2><span class="chip concept">THE IDEA</span> A concern is cross-cutting when it touches every call but isn't the logic</h2>
+    <p>Logging, tracing, metrics, cost, redaction, caching, rate limits, audit — none of these are "call the model," yet
+    <em>every</em> request needs them. If you scatter them through the core you get an unmaintainable, untestable mess. The fix
+    is the same principle you liked: <b>code to interface</b>. The core <b>depends only on a port</b> (e.g. <code>LogSink</code>);
+    <em>where</em> it physically logs is a swappable <b>adapter</b> (stdout / CloudWatch / Azure Monitor). That's
+    <b>ports-and-adapters (hexagonal) architecture</b> + <b>dependency injection</b>, applied to
+    <a href="generic-message-client.html">GenericAnthropicMessageClient</a>.</p>
+    <div class="note">🎯 Two rules make this work: (1) the core imports <em>interfaces</em>, never concrete sinks
+    (Dependency-Inversion). (2) The concrete adapters are wired in <b>one place</b> — the <em>composition root</em>. Swapping
+    "log to file" for "log to CloudWatch" is then a one-line change, and tests inject fakes.</p>
+
+    <h2><span class="chip diagram">THE SHAPE</span> core depends on ports; adapters plug in</h2>
+    <div class="mermaid">
+flowchart LR
+    CORE["MessageClient CORE<br/>pure logic · depends only on PORTS"]:::core
+    CORE --> L["port: LogSink"]:::p --> LA["stdout · JSON file · CloudWatch · Azure Monitor · Loki"]
+    CORE --> T["port: Tracer"]:::p --> TA["Phoenix · Langfuse · MLflow · App Insights · X-Ray"]
+    CORE --> M["port: MetricSink"]:::p --> MA["Prometheus · StatsD · CloudWatch · Cloud Monitoring"]
+    CORE --> B["port: Budget"]:::p --> BA["in-mem counter · Redis · Delta ledger"]
+    CORE --> S["port: SecretProvider"]:::p --> SA["dotenv · Key Vault · Secrets Manager · secret scopes"]
+    CORE --> AU["port: AuditSink"]:::p --> AUA["JSONL · Log Analytics · CloudTrail · Delta"]
+    classDef core fill:#e7ecff,stroke:#3b5bdb,color:#1e3a8a;
+    classDef p fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    </div>
+    <p>The core never names a concrete sink. Point it at a different adapter and behaviour changes with zero core edits — the
+    Dependency-Inversion Principle in practice.</p>
+
+    <h2><span class="chip exam">THE FULL SET</span> every cross-cutting concern, as a port</h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>Concern</th><th>What it does on every call</th><th>Port interface</th><th>Pattern</th></tr>
+        <tr><td colspan="4" style="background:#eef2ff"><b>Observability</b></td></tr>
+        <tr><td>📝 Logging</td><td>Structured record of request/response/outcome</td><td><code>LogSink.emit()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🔎 Tracing</td><td>A span per request &amp; per loop step (parent/child)</td><td><code>Tracer.span()</code></td><td>Port + Observer</td></tr>
+        <tr><td>📊 Metrics</td><td>tokens, cost, latency, retries, cache-hit, success</td><td><code>MetricSink.incr/observe()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🧾 Audit (GxP)</td><td>Immutable, provable record (who/what/when + versions)</td><td><code>AuditSink.record()</code></td><td>Port/Adapter</td></tr>
+        <tr><td colspan="4" style="background:#eef2ff"><b>Cost &amp; governance</b></td></tr>
+        <tr><td>💰 Budget / cost accounting</td><td>Estimate + enforce per-request/session/tenant spend</td><td><code>Budget.check/record()</code></td><td>Strategy + Port</td></tr>
+        <tr><td>🚦 Rate limiting / concurrency</td><td>Client-side throttle so you don't self-inflict 429s</td><td><code>RateLimiter.acquire()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🎛️ Feature flags / kill switch</td><td>Enable/disable a model/tool/agent instantly</td><td><code>FlagSource.enabled()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🏷️ Prompt / model versioning</td><td>Pin &amp; log the exact prompt+model for reproducibility</td><td><code>PromptRegistry.get()</code></td><td>Port/Adapter</td></tr>
+        <tr><td colspan="4" style="background:#eef2ff"><b>Security &amp; safety</b></td></tr>
+        <tr><td>🔐 Secrets</td><td>Fetch keys/tokens from a vault, never hard-code</td><td><code>SecretProvider.get()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🩹 Redaction (PII/secrets)</td><td>Scrub sensitive data <em>before</em> log/trace/model</td><td><code>Redactor.scrub()</code></td><td>Port + Decorator</td></tr>
+        <tr><td>🛡️ Guardrails</td><td>Input/output moderation &amp; injection filtering</td><td><code>GuardrailPolicy.check_in/out()</code></td><td>Strategy + Port</td></tr>
+        <tr><td colspan="4" style="background:#eef2ff"><b>Resilience &amp; performance</b></td></tr>
+        <tr><td>♻️ Retry / circuit-breaker / fallback</td><td>Survive transient errors; degrade gracefully</td><td><code>RetryPolicy</code>, <code>Fallback</code></td><td>Strategy + Chain of Resp.</td></tr>
+        <tr><td>🔁 Idempotency</td><td>Keys so a retry can't double-execute a side effect</td><td><code>IdempotencyStore</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🗄️ Caching</td><td>Client-side response/semantic cache (beyond prompt caching)</td><td><code>CacheStore.get/put()</code></td><td>Port + Decorator</td></tr>
+        <tr><td colspan="4" style="background:#eef2ff"><b>Configuration</b></td></tr>
+        <tr><td>⚙️ Config source</td><td>Timeouts, model, budgets, TTLs — from env/file/vault/dynamic</td><td><code>ConfigSource.get()</code></td><td>Port/Adapter</td></tr>
+        <tr><td>🔌 Backend / identity</td><td>Which endpoint + how to auth (key / OAuth / cloud IAM)</td><td><code>Backend</code> (adapter)</td><td>Adapter</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip code">THE PORTS</span> interfaces the core depends on (Python Protocols)</h2>
+<pre><span class="kw">from</span> typing <span class="kw">import</span> Protocol, Any
+
+<span class="kw">class</span> <span class="fn">LogSink</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">emit</span>(self, record: dict) -&gt; None: ...        <span class="cm"># adapter decides WHERE (stdout/CloudWatch/...)</span>
+
+<span class="kw">class</span> <span class="fn">Tracer</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">span</span>(self, name: str, **attrs): ...             <span class="cm"># context manager; nests per loop step</span>
+
+<span class="kw">class</span> <span class="fn">MetricSink</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">incr</span>(self, name: str, value: float = 1, **tags): ...
+    <span class="kw">def</span> <span class="fn">observe</span>(self, name: str, value: float, **tags): ...
+
+<span class="kw">class</span> <span class="fn">Budget</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">check</span>(self, est_tokens: int) -&gt; bool: ...        <span class="cm"># deny before the call if over</span>
+    <span class="kw">def</span> <span class="fn">record</span>(self, usage) -&gt; None: ...              <span class="cm"># debit after</span>
+
+<span class="kw">class</span> <span class="fn">Redactor</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">scrub</span>(self, obj: Any) -&gt; Any: ...              <span class="cm"># PII/secrets out BEFORE anything logs it</span>
+
+<span class="kw">class</span> <span class="fn">SecretProvider</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">get</span>(self, name: str) -&gt; str: ...
+
+<span class="kw">class</span> <span class="fn">CacheStore</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">get</span>(self, key: str): ...
+    <span class="kw">def</span> <span class="fn">put</span>(self, key: str, value, ttl: int) -&gt; None: ...
+
+<span class="kw">class</span> <span class="fn">AuditSink</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">record</span>(self, event: dict) -&gt; None: ...          <span class="cm"># append-only, immutable</span>
+
+<span class="kw">class</span> <span class="fn">RateLimiter</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">acquire</span>(self, cost: int) -&gt; None: ...          <span class="cm"># block/throttle client-side</span>
+
+<span class="kw">class</span> <span class="fn">GuardrailPolicy</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">check_input</span>(self, req) -&gt; None: ...
+    <span class="kw">def</span> <span class="fn">check_output</span>(self, resp) -&gt; None: ...</pre>
+
+    <h2><span class="chip concept">HOW THEY WEAVE IN</span> the middleware order matters</h2>
+    <p>Cross-cutting behaviour applies as <b>middleware</b> around the core call (Decorator/Chain-of-Responsibility). Order is a
+    design decision, not an accident:</p>
+    <div class="mermaid">
+flowchart TB
+    R["request"] --> RD["Redact (scrub secrets/PII)"] --> BG["Budget.check"] --> RL["RateLimiter.acquire"]
+    RL --> CH["Cache.get (hit? short-circuit)"] --> GI["Guardrail.check_input"] --> TR["Tracer.span + Log start"]
+    TR --> CALL["→ Backend.call (+ Retry) ←"]:::c --> GO["Guardrail.check_output"] --> BR["Budget.record + Metrics"]
+    BR --> AU["Audit.record"] --> CP["Cache.put"] --> LOG["Log end"] --> OUT["result"]
+    classDef c fill:#dcfce7,stroke:#15803d,color:#14532d;
+    </div>
+    <div class="warn"><b>Ordering traps:</b> <b>Redact must run first</b> — before anything logs or traces the payload, or you
+    leak PII into your telemetry. <b>Budget/RateLimit before the call</b> (no point paying to reject later). <b>Cache before
+    Guardrail-input?</b> depends — cache the <em>validated</em> request. Getting the order right is half the design.</div>
+
+    <h2><span class="chip code">THE COMPOSITION ROOT</span> wire concrete adapters in ONE place</h2>
+<pre><span class="cm"># composition_root.py — the ONLY file that names concrete adapters (dependency injection)</span>
+client = <span class="fn">MessageClient</span>(
+    backend = <span class="fn">DatabricksBackend</span>(host=cfg.host, token=secrets.<span class="fn">get</span>(<span class="st">"DBX_TOKEN"</span>)),  <span class="cm"># Adapter</span>
+    ports   = <span class="fn">Ports</span>(
+        log    = <span class="fn">CloudWatchLog</span>()      <span class="kw">if</span> prod <span class="kw">else</span> <span class="fn">StdoutLog</span>(),        <span class="cm"># swap WHERE we log, 1 line</span>
+        tracer = <span class="fn">LangfuseTracer</span>()     <span class="kw">if</span> prod <span class="kw">else</span> <span class="fn">PhoenixTracer</span>(),
+        metric = <span class="fn">PrometheusMetrics</span>(),
+        budget = <span class="fn">RedisBudget</span>(cap_usd=cfg.daily_cap),
+        redact = <span class="fn">PIIRedactor</span>(),
+        cache  = <span class="fn">RedisCache</span>()          <span class="kw">if</span> prod <span class="kw">else</span> <span class="fn">InMemoryCache</span>(),
+        audit  = <span class="fn">DeltaAudit</span>()          <span class="kw">if</span> prod <span class="kw">else</span> <span class="fn">JsonlAudit</span>(),
+        limiter= <span class="fn">TokenBucket</span>(rpm=cfg.rpm),
+        guard  = <span class="fn">CompositeGuardrail</span>([<span class="fn">InjectionFilter</span>(), <span class="fn">Moderation</span>()]),
+    ),
+)
+<span class="cm"># Tests: pass FakeLog(), FakeBudget(), InMemoryCache() — no network, deterministic.</span></pre>
+    <div class="good">This is the payoff: the core logic is written once and never mentions CloudWatch, Redis, or Langfuse.
+    Dev vs prod, local vs Azure, real vs fake — all decided <em>here</em>. That's testability and portability by construction.</div>
+
+    <h2><span class="chip diagram">PHYSICAL ADAPTERS</span> the same port, per environment</h2>
+    <div style="overflow-x:auto">
+    <table class="map">
+        <tr><th>Port</th><th>💻 Local</th><th>🔷 Azure</th><th>🟧 AWS</th><th>🔴 GCP</th><th>🧱 Databricks</th></tr>
+        <tr><td><b>LogSink</b></td><td>stdout / JSON file</td><td>Azure Monitor / Log Analytics</td><td>CloudWatch Logs</td><td>Cloud Logging</td><td>driver logs / system tables</td></tr>
+        <tr><td><b>Tracer</b></td><td>Phoenix / Langfuse</td><td>App Insights</td><td>X-Ray + CloudWatch</td><td>Cloud Trace</td><td>MLflow Tracing</td></tr>
+        <tr><td><b>MetricSink</b></td><td>Prometheus + Grafana</td><td>Azure Monitor</td><td>CloudWatch</td><td>Cloud Monitoring</td><td>MLflow / Lakehouse</td></tr>
+        <tr><td><b>SecretProvider</b></td><td>dotenv</td><td>Key Vault</td><td>Secrets Manager</td><td>Secret Manager</td><td>Databricks secret scopes</td></tr>
+        <tr><td><b>CacheStore</b></td><td>in-memory / local Redis</td><td>Azure Cache for Redis</td><td>ElastiCache</td><td>Memorystore</td><td>Delta / Redis</td></tr>
+        <tr><td><b>AuditSink</b></td><td>JSONL file</td><td>Log Analytics</td><td>CloudTrail + S3</td><td>Cloud Audit Logs</td><td>Delta + <code>system.access.audit</code></td></tr>
+        <tr><td><b>ConfigSource</b></td><td>env / file</td><td>App Configuration</td><td>AppConfig / SSM</td><td>Runtime Config</td><td>job params / widgets</td></tr>
+    </table>
+    </div>
+    <div class="note">Read a <em>row</em> to pick an adapter per environment; the <b>core code is identical</b> across all columns.
+    This is the same "one interface, five homes" idea as the <a href="p0-text-to-sql-agent.html">Text-to-SQL physical design</a>.</div>
+
+    <h2><span class="chip concept">CONCEPTS → CCA MAP</span></h2>
+    <div style="overflow-x:auto">
+    <table>
+        <tr><th>The cross-cutting port…</th><th>CCA domain</th></tr>
+        <tr><td>Logging, tracing, metrics, request-id</td><td><b>D5</b> · observability</td></tr>
+        <tr><td>Budget, rate limiting, caching, prompt/model versioning</td><td><b>D5</b> · <a href="../CCA-F/D5-Context-Management/cost-optimization.html">cost</a></td></tr>
+        <tr><td>Secrets, redaction, guardrails (injection/moderation)</td><td><b>D5</b> · <a href="../CCA-F/D5-Context-Management/guardrails.html">guardrails</a> · D4</td></tr>
+        <tr><td>Retry / circuit-breaker / fallback / idempotency</td><td><b>D5</b> · reliability</td></tr>
+        <tr><td>Audit trail (GxP), kill switch</td><td><b>D5</b> · governance</td></tr>
+    </table>
+    </div>
+
+    <h2><span class="chip trade">LEVEL IT UP</span></h2>
+    <ul>
+        <li><b>Build two adapters per port</b> → e.g. <code>StdoutLog</code> + <code>JsonlAudit</code> locally, then a cloud one; prove the swap.</li>
+        <li><b>Order the middleware deliberately</b> → put <code>Redact</code> first and verify no PII reaches the log sink.</li>
+        <li><b>Inject fakes in tests</b> → assert the client logs/meters/audits correctly with zero network.</li>
+        <li><b>Add a kill switch</b> → a <code>FlagSource</code> that disables a model/tool instantly (a guardrail in practice).</li>
+        <li><b>Fold into <a href="generic-message-client.html">GenericMessageClient</a></b> → these ports are its constructor dependencies.</li>
+    </ul>
+
+    <div class="pager">
+        <a href="generic-message-client.html"><span class="k">← Prev</span>GenericMessageClient</a>
+        <a class="next" href="../CCA-F/D5-Context-Management/guardrails.html"><span class="k">Next →</span>Guardrails catalog</a>
+    </div>
+
+</main>
+</div>
+
+<footer>AI Engineering Projects · Cross-Cutting Concerns — pluggable ports</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
