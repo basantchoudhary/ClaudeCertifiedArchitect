@@ -51,17 +51,17 @@
 <header>
   <div class="crumb"><a href="../CCA-F_Study_Guide.html">CCA-F</a> › Timed Mock Exam #2</div>
   <h1>CCA-F Foundations — Timed Mock Exam #2</h1>
-  <div class="tag">60 questions · 120 minutes · pass ≥ 720/1000 · exam-format (no feedback until submit)</div>
+  <div class="tag">60 questions · 120-minute timer · instant feedback per question · pass ≥ 720/1000</div>
 </header>
 
 <div class="wrap">
 
   <div class="card" id="intro">
     <h2 style="color:#764ba2;margin-bottom:10px">Read before you start</h2>
-    <p>This mirrors the real exam: <strong>60 scenario questions, 120 minutes, single best answer</strong>, scaled 100–1000,
-    pass <strong>720</strong>. Unlike the practice bank, this one gives <strong>no feedback until you submit</strong> — just
-    like the real thing. The timer auto-submits at 0. Questions &amp; options reshuffle each attempt; these are
-    <strong>all-new questions</strong> (not the 77 from Mock #1), so it tests recall.</p>
+    <p><strong>60 scenario questions, 120-minute timer, single best answer</strong>, scaled 100–1000, pass <strong>720</strong>.
+    The moment you pick an option, this shows you <strong>whether you were right and the full explanation</strong> — so you learn
+    as you go. The timer auto-finishes at 0. Questions &amp; options reshuffle each attempt; these are <strong>all-new
+    questions</strong> (not the 77 from Mock #1), so it tests recall. A per-domain breakdown appears when you finish.</p>
     <p style="margin-top:10px">
       <span class="pill">D1 Agentic 27% · 16Q</span><span class="pill">D2 Tools &amp; MCP 18% · 11Q</span>
       <span class="pill">D3 Claude Code 20% · 12Q</span><span class="pill">D4 Prompting 20% · 12Q</span>
@@ -78,7 +78,7 @@
     <div class="card" id="results"></div>
     <div id="quiz"></div>
     <div class="controls">
-      <button class="btn" onclick="grade(false)">Submit exam</button>
+      <button class="btn" onclick="finishAll(false)">Finish &amp; see breakdown</button>
       <button class="btn ghost" onclick="location.reload()">Restart &amp; reshuffle</button>
     </div>
   </div>
@@ -184,12 +184,12 @@ function tick(){
   const t=document.getElementById("timer");
   t.textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
   if(remaining<=300) t.classList.add("low");
-  if(remaining<=0){clearInterval(timer); grade(true); return;}
+  if(remaining<=0){clearInterval(timer); finishAll(true); return;}
   remaining--;
 }
 function build(){
   const order=shuffle(QUESTIONS.map((_,i)=>i));
-  state=order.map(qi=>({qi, opt:shuffle(QUESTIONS[qi].o.map((_,i)=>i)), picked:null}));
+  state=order.map(qi=>({qi, opt:shuffle(QUESTIONS[qi].o.map((_,i)=>i)), picked:null, graded:false}));
   const wrap=document.getElementById("quiz"); wrap.innerHTML="";
   state.forEach((s,idx)=>{
     const q=QUESTIONS[s.qi];
@@ -199,29 +199,47 @@ function build(){
     h+='<div class="exp" id="exp'+idx+'"></div>';
     div.innerHTML=h; wrap.appendChild(div);
   });
-  wrap.addEventListener("change",function(e){ if(e.target && e.target.name){ const idx=+e.target.name.slice(1); state[idx].picked=+e.target.value; progress(); }});
+  // instant feedback: grade a question the moment it's answered
+  wrap.addEventListener("change",function(e){ if(e.target && e.target.name){ const idx=+e.target.name.slice(1); if(!state[idx].graded){ state[idx].picked=+e.target.value; gradeQuestion(idx); } }});
+}
+function gradeQuestion(idx){
+  const s=state[idx], q=QUESTIONS[s.qi];
+  const div=document.getElementById("q"+idx);
+  const inputs=div.querySelectorAll("input");
+  const correctDi=s.opt.indexOf(q.a);
+  inputs.forEach((inp,di)=>{ const lab=inp.closest("label");
+    if(di===correctDi) lab.classList.add("correct");
+    if(s.picked===di && di!==correctDi) lab.classList.add("wrong");
+    inp.disabled=true; });
+  s.graded=true;
+  const ok = s.opt[s.picked]===q.a;
+  const exp=document.getElementById("exp"+idx);
+  exp.style.display="block";
+  exp.innerHTML=(ok?'<b class="ok">✔ Correct.</b> ':'<b class="no">✘ Incorrect.</b> ')+esc(q.e);
+  progress();
 }
 function progress(){
-  const n=state.filter(s=>s.picked!==null).length;
-  document.getElementById("progress").textContent=n+" / 60 answered";
+  const graded=state.filter(s=>s.graded).length;
+  const correct=state.filter(s=>s.graded && s.opt[s.picked]===QUESTIONS[s.qi].a).length;
+  document.getElementById("progress").textContent=graded+" / 60 answered · "+correct+" correct";
 }
-function grade(auto){
+function finishAll(auto){
   if(timer){clearInterval(timer); timer=null;}
   let correct=0; const per={D1:[0,0],D2:[0,0],D3:[0,0],D4:[0,0],D5:[0,0]};
   state.forEach((s,idx)=>{
     const q=QUESTIONS[s.qi]; per[q.d][1]++;
-    const div=document.getElementById("q"+idx);
-    const inputs=div.querySelectorAll("input");
-    const correctDi=s.opt.indexOf(q.a);
-    inputs.forEach((inp,di)=>{ const lab=inp.closest("label");
-      if(di===correctDi) lab.classList.add("correct");
-      if(s.picked===di && di!==correctDi) lab.classList.add("wrong");
-      inp.disabled=true; });
+    if(!s.graded){ // reveal any skipped question's correct answer + explanation
+      const div=document.getElementById("q"+idx);
+      const inputs=div.querySelectorAll("input");
+      const correctDi=s.opt.indexOf(q.a);
+      inputs.forEach((inp,di)=>{ if(di===correctDi) inp.closest("label").classList.add("correct"); inp.disabled=true; });
+      s.graded=true;
+      const exp=document.getElementById("exp"+idx);
+      exp.style.display="block";
+      exp.innerHTML='<b class="no">Skipped.</b> '+esc(q.e);
+    }
     const ok = s.picked!==null && s.opt[s.picked]===q.a;
     if(ok){correct++; per[q.d][0]++;}
-    const exp=document.getElementById("exp"+idx);
-    exp.style.display="block";
-    exp.innerHTML=(ok?'<b class="ok">Correct.</b> ':'<b class="no">Incorrect.</b> ')+esc(q.e);
   });
   const scaled=100+Math.round((correct/60)*900);
   const pass=scaled>=720;
