@@ -31,6 +31,8 @@ exam-focused CCA material land more easily.
 | **CCA-F · Domain 5 — Context & Reliability** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/index.html) |
 | 🧪 **CCA-F · Domain 5 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/quizzes/index.html) |
 | CCA-F full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/CCA-F_Study_Guide.html) |
+| ⏱️ **CCA-F · Foundations Timed Mock Exam #1** (all 5 domains · 77 questions · 120-min timer · scaled scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam/index.html) |
+| ⏱️ **CCA-F · Foundations Timed Mock Exam #2** 🆕 (all 5 domains · 60 all-new questions · 120-min timer · per-domain breakdown) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-2/index.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
 
