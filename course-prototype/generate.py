@@ -16,6 +16,10 @@ from playwright.async_api import async_playwright
 # ---------------------------------------------------------------- paths / config
 ROOT   = "/Users/ishaan/ClaudeCertifiedArchitect/course-prototype"
 PAGE   = "file:///Users/ishaan/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/subtopics/1-1-agent-vs-workflow-vs-call.html"
+# output goes to out/<DOMAIN_DIR>/<LESSON_FILE>.mp4 — a per-domain tree with
+# Udemy-friendly filenames (filename becomes the default lecture title on upload)
+DOMAIN_DIR  = "D1-Agentic-Architecture"
+LESSON_FILE = "CCA-F D1 1.1 — Agent vs Workflow vs Single LLM Call"
 AUDIO  = os.path.join(ROOT, "audio")
 WORK   = os.path.join(ROOT, "work")
 OUT    = os.path.join(ROOT, "out")
@@ -444,7 +448,8 @@ async def main():
 
     # 6: mux audio + video into final mp4
     print(">> muxing final mp4 ...")
-    final = os.path.join(OUT, "CCA-F_1-1_agent-vs-workflow_1080p.mp4")
+    final = os.path.join(OUT, DOMAIN_DIR, LESSON_FILE + ".mp4")
+    os.makedirs(os.path.dirname(final), exist_ok=True)
     run_ffmpeg(["-i", webm, "-i", narration,
                 "-map", "0:v:0", "-map", "1:a:0",
                 "-c:v", "libx264", "-preset", "medium", "-crf", "18",
