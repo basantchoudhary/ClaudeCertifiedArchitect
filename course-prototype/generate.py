@@ -133,6 +133,237 @@ BEATS = [
    "look at the Messages API that every one of these tiers is built on. See you in the next lesson.")),
 ]
 
+SUB = "file:///Users/ishaan/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/subtopics/"
+
+# ---- 1.2 The Messages API as Substrate ----
+BEATS_12 = [
+ dict(kind="spotlight", sel="header", idx=0, text=(
+   "Everything you build on Claude — agents, tools, thinking, structured output — bottoms out at a "
+   "single endpoint. In this lesson we'll see why the Messages API is a substrate, not a menu of APIs, "
+   "and why that keeps your architecture simple and predictable.")),
+ dict(kind="spotlight", sel=".note", idx=0, text=(
+   "Here's the framing the exam rewards. The Messages API isn't a list of endpoints you pick from — "
+   "it's one substrate. When a question asks which API you call to use tools, the answer is always the "
+   "same: post slash v1 slash messages, with a tools field added.")),
+ dict(kind="spotlight", sel="main table", idx=0, text=(
+   "You might think there's a tools API, a thinking API, a structured-output API. There isn't. Each of "
+   "those is the same endpoint, plus a field in the request and a block type in the response. One shape, "
+   "toggled by what you send.")),
+ dict(kind="spotlight", sel=".mermaid", idx=0, fit=True, text=(
+   "Picture the whole call. On the left, the request body: model, max tokens, the system prompt, the "
+   "full messages history, and optionally tools. It hits one stateless endpoint and comes back as a "
+   "Message: a list of content blocks, a stop reason, and usage. Learn this one shape and you've "
+   "learned all of it.")),
+ dict(kind="spotlight", sel="main table", idx=1, text=(
+   "Five fields carry almost everything. Model, max tokens, and messages are required; system and tools "
+   "are optional. Two exam catches live here: max tokens caps the output, not the context window — and "
+   "system is a top-level field, not a message role.")),
+ dict(kind="code", sel="main pre", idx=0, text=(
+   "In code it's one call. Notice system is a named argument, not a message. And crucially, response "
+   "dot content is a list of blocks — never a string. We loop over the blocks and check each one's type "
+   "before touching its text.")),
+ dict(kind="spotlight", sel=".good", idx=0, text=(
+   "Because the endpoint is uniform, that same parsing loop works whether the call used tools, thinking, "
+   "or neither. You add features by adding fields, not by switching APIs. That's deterministic "
+   "simplicity — one shape you fully control.")),
+ dict(kind="spotlight", sel=".trap", idx=0, text=(
+   "The classic trap: which endpoint for tools, or thinking, or structured output? Always the same one — "
+   "post v1 messages. There is no separate API.")),
+ dict(kind="practice_q", sel="details", idx=0, pause=True, text=(
+   "A teammate asks: what's the U-R-L for the Claude tools API? Pause the lesson and answer it "
+   "yourself.")),
+ dict(kind="practice_a", sel="details", idx=0, text=(
+   "There isn't a separate one. Tool use rides on post v1 messages — you add a tools field, and the "
+   "model may return tool_use blocks. Tools, thinking, and structured output are all features of the "
+   "single Messages endpoint.")),
+ dict(kind="spotlight", sel=".pager", idx=0, text=(
+   "So: one endpoint, many features. Next we turn this single call into the agent loop. See you "
+   "there.")),
+]
+
+# ---- 1.3 The Loop Mechanics ----
+BEATS_13 = [
+ dict(kind="spotlight", sel="header", idx=0, text=(
+   "An agent isn't a special kind of call — it's a loop around an ordinary one. In this lesson we'll "
+   "build the canonical agent loop: call the model, look at stop reason, run a tool if asked, and repeat "
+   "until it's done. And you write this loop — which is exactly what keeps an agent controllable.")),
+ dict(kind="spotlight", sel=".note", idx=0, text=(
+   "Two conditions define the loop. It exits when stop reason is end turn. It continues when stop reason "
+   "is tool use: you run the requested tool, append the result as a user-role tool_result, and call "
+   "again.")),
+ dict(kind="spotlight", sel="main table", idx=0, text=(
+   "Here's how the loop branches on each stop reason. End turn: exit. Tool use: run the tool and loop. "
+   "Max tokens: the output was truncated — handle it, don't treat it as done. Pause turn: re-send the "
+   "assistant turn as-is.")),
+ dict(kind="spotlight", sel=".mermaid", idx=0, fit=True, text=(
+   "The whole loop on one screen. Seed the messages, call create, append the entire response as the "
+   "assistant turn, then branch on stop reason. End turn ends it; tool use runs the tool, appends a "
+   "tool_result, and loops back. That cycle is the entire agent.")),
+ dict(kind="code", sel="main pre", idx=0, text=(
+   "In code, watch the structure appear. The loop is bounded — range of ten, not an unguarded while "
+   "true. We append the whole turn, break only on end turn, and on tool use we run the tool and append "
+   "a user-role tool_result before looping.")),
+ dict(kind="spotlight", sel=".good", idx=0, text=(
+   "Two safeguards to notice: the loop is bounded, so it always terminates, and it only breaks on end "
+   "turn. Bounding the loop is deterministic-first thinking — you cap worst-case cost and never let the "
+   "model spin forever.")),
+ dict(kind="spotlight", sel=".trap", idx=0, text=(
+   "The number-one trap: calling create once, getting stop reason tool use, and returning that as the "
+   "answer. A tool use stop means the model is waiting on you to run the tool and call again. Treat it "
+   "as final and the task never finishes.")),
+ dict(kind="practice_q", sel="details", idx=0, pause=True, text=(
+   "Your agent returns immediately with 'I'll check the weather' and never actually answers. Why? "
+   "Pause and diagnose.")),
+ dict(kind="practice_a", sel="details", idx=0, text=(
+   "You returned on the first tool use stop instead of looping. The model emitted a tool_use block and "
+   "is waiting for you to run the tool, append a tool_result, and call again. Wrap it in the loop and "
+   "only stop on end turn.")),
+ dict(kind="spotlight", sel=".pager", idx=0, text=(
+   "That loop is the backbone of every agent. Next we go deeper on statelessness — why you must resend "
+   "the whole history each turn. See you there.")),
+]
+
+# ---- 1.4 Statelessness & Conversation State ----
+BEATS_14 = [
+ dict(kind="spotlight", sel="header", idx=0, text=(
+   "The Messages API remembers nothing. What feels like Claude remembering the last thing you said is "
+   "really just you resending it. In this lesson: statelessness, and why memory is something you "
+   "implement — by replaying history.")),
+ dict(kind="spotlight", sel=".note", idx=0, text=(
+   "There's no conversation I-D, no server session to attach to. Memory equals replay. What looks like "
+   "the model remembering turn one is you resending turn one on every call.")),
+ dict(kind="spotlight", sel="main table", idx=0, text=(
+   "Line up the assumptions against reality. The model remembers earlier turns? Only because you resent "
+   "them. You open a session and keep chatting? No sessions — every call is independent. The server "
+   "stores history? No — you store it; the server reads it and forgets it.")),
+ dict(kind="spotlight", sel=".warn", idx=0, text=(
+   "And here's the cost consequence. Because you resend everything, input tokens grow with the "
+   "conversation. A thirty-turn chat pays to re-read turns one through twenty-nine on turn thirty. "
+   "Managing that is pruning and compaction, in seven-point-five.")),
+ dict(kind="spotlight", sel=".mermaid", idx=0, fit=True, text=(
+   "Watch the pattern turn by turn. Turn one: you send the system prompt and the first user message. "
+   "Turn two: you resend everything, plus the new message. Turn three: resend it all again. The server "
+   "keeps nothing between calls — the growing list lives entirely on your side.")),
+ dict(kind="code", sel="main pre", idx=0, text=(
+   "A conversation manager is just this: hold a messages list, append the user turn, resend the system "
+   "prompt and the entire history, then append the whole assistant turn. On turn two the model knows "
+   "the name only because turn one was resent.")),
+ dict(kind="spotlight", sel=".good", idx=0, text=(
+   "Drop the history and the model is a blank slate again. That's the point — you own the context "
+   "completely. Total control over what the model sees is the deterministic foundation everything else "
+   "builds on.")),
+ dict(kind="spotlight", sel=".trap", idx=0, text=(
+   "The trap: assuming a server-side session or conversation I-D. There is none. Every call must carry "
+   "the full system prompt and messages. If you don't resend it, the model doesn't have it.")),
+ dict(kind="practice_q", sel="details", idx=0, pause=True, text=(
+   "A user gives their name in turn one; by turn five the model doesn't know it. Where's the bug? Pause "
+   "and think.")),
+ dict(kind="practice_a", sel="details", idx=0, text=(
+   "In your state handling, not the API. Turn one wasn't in the messages you sent on turn five — you "
+   "dropped or truncated it. The stateless server only knows what you resend.")),
+ dict(kind="spotlight", sel=".pager", idx=0, text=(
+   "So memory is your job, done by replay. Next: the structure of those messages — roles, alternation, "
+   "and the typed blocks inside. See you there.")),
+]
+
+# ---- 1.5 Message Structure & Content Blocks ----
+BEATS_15 = [
+ dict(kind="spotlight", sel="header", idx=0, text=(
+   "Two small structural rules trip up more people than anything else in the API: how messages "
+   "alternate, and the fact that content is a list of typed blocks — not a string. Let's nail both.")),
+ dict(kind="spotlight", sel="main ul", idx=0, text=(
+   "Three rules for messages. Roles alternate: user, assistant, user. The first message is always user. "
+   "And consecutive same-role messages get merged into one — you can't stack two user turns as separate "
+   "entries.")),
+ dict(kind="spotlight", sel=".note", idx=0, text=(
+   "Only two roles exist in the messages array: user and assistant. The system prompt is a separate "
+   "top-level field, not a role. And tool outputs come back as user-role tool_result blocks.")),
+ dict(kind="spotlight", sel="main table", idx=0, text=(
+   "Content is a list of typed blocks. Four types matter: text carries natural language; thinking "
+   "carries extended reasoning; tool use is the model's request to call a tool, with a name, input, and "
+   "I-D; and tool result — a user-role block — carries the tool's output back, keyed by tool use I-D.")),
+ dict(kind="spotlight", sel=".warn", idx=0, text=(
+   "So never read content-bracket-zero dot text blindly. A turn can lead with a thinking or tool use "
+   "block that has no text attribute at all. Always check block dot type first.")),
+ dict(kind="spotlight", sel=".mermaid", idx=0, fit=True, text=(
+   "Here's the shape as a tree. The messages array alternates user and assistant turns. A user turn "
+   "might hold a text block or a tool result. An assistant turn can hold thinking, then text, then tool "
+   "use — several blocks, in order.")),
+ dict(kind="code", sel="main pre", idx=0, text=(
+   "The safe pattern: iterate the blocks, dispatch on type, and collect text only from text blocks — "
+   "then join them for the visible answer. Feeding a result back? It's a user-role tool_result block, "
+   "keyed by the tool use I-D.")),
+ dict(kind="spotlight", sel=".good", idx=0, text=(
+   "This one loop is robust whether the model used thinking, tools, both, or neither — because it "
+   "dispatches on block type instead of assuming a shape. Predictable code that handles every case.")),
+ dict(kind="practice_q", sel="details", idx=0, pause=True, text=(
+   "Your code crashes with 'block has no attribute text' on some responses. What's the cause, and the "
+   "fix? Pause and answer.")),
+ dict(kind="practice_a", sel="details", idx=0, text=(
+   "You read dot text on a non-text block — likely a thinking or tool use block leading the turn. Fix: "
+   "iterate the content and only touch dot text when block dot type is text.")),
+ dict(kind="spotlight", sel=".pager", idx=0, text=(
+   "Roles alternate; content is typed blocks. Next, the single most common beginner bug: what you must "
+   "append after each turn. See you there.")),
+]
+
+# ---- 1.6 Appending the Whole Assistant Turn ----
+BEATS_16 = [
+ dict(kind="spotlight", sel="header", idx=0, text=(
+   "This lesson is one rule — but it's the single most common beginner bug, and the exam loves it. "
+   "After each model response, you must append the whole content back into history, not just the "
+   "text.")),
+ dict(kind="spotlight", sel=".warn", idx=0, text=(
+   "Here's the bug. The number-one beginner mistake is appending only the text — content-zero dot text — "
+   "instead of the full block list. That silently drops the model's tool use and thinking blocks, and "
+   "the very next call breaks.")),
+ dict(kind="spotlight", sel="main table", idx=0, text=(
+   "Wrong versus right. Append dot text only: you store a string, the tool use and thinking are lost, "
+   "and your next tool_result references a tool use the server can't see — the classic four-hundred "
+   "error. Append the whole content: the block list is preserved and the next call is valid.")),
+ dict(kind="spotlight", sel=".mermaid", idx=0, fit=True, text=(
+   "The fork on screen. From the response: append the whole list, and your later tool_result matches "
+   "its tool use — the next call is valid, the green path. Append only the text, and the tool use is "
+   "dropped, the tool_result is orphaned, and you get a four-hundred — the red path.")),
+ dict(kind="code", sel="main pre", idx=0, text=(
+   "The correct pattern is literally one line: append role assistant, content resp dot content. Pass "
+   "the block list straight through. The commented-out line at the bottom — appending content-zero dot "
+   "text — is the wrong version that drops blocks. Never do that.")),
+ dict(kind="spotlight", sel=".good", idx=0, text=(
+   "The rule: pass resp dot content straight into the assistant turn. It's already the correct shape — "
+   "don't unwrap it to a string.")),
+ dict(kind="spotlight", sel=".trap", idx=0, text=(
+   "The trap, stated plainly: appending only content-zero dot text. It drops tool use and thinking; the "
+   "next tool_result then references a missing tool use — classic four-hundred. Append the whole "
+   "content.")),
+ dict(kind="practice_q", sel="details", idx=0, pause=True, text=(
+   "After a tool call, your next request four-hundreds. The history was built by appending content-zero "
+   "dot text. Why? Pause and diagnose.")),
+ dict(kind="practice_a", sel="details", idx=0, text=(
+   "You dropped the assistant's tool use block by storing only its text. Your later tool_result, keyed "
+   "by tool use I-D, now references a tool use that isn't in the history — a malformed request, four-"
+   "hundred. Fix: append the whole resp dot content.")),
+ dict(kind="spotlight", sel=".pager", idx=0, text=(
+   "Append the whole turn, verbatim — and Cluster One is complete. You now understand the agentic loop "
+   "end to end: the endpoint, the loop, statelessness, message structure, and turn integrity. Next "
+   "cluster: stop reasons and turn control. See you there.")),
+]
+
+DOM = "D1-Agentic-Architecture"
+LESSONS = [
+ dict(page=PAGE, domain_dir=DOMAIN_DIR, out_name=LESSON_FILE, beats=BEATS),
+ dict(page=SUB+"1-2-messages-api-substrate.html",        domain_dir=DOM,
+      out_name="CCA-F D1 1.2 — The Messages API as Substrate", beats=BEATS_12),
+ dict(page=SUB+"1-3-loop-mechanics.html",                domain_dir=DOM,
+      out_name="CCA-F D1 1.3 — The Loop Mechanics", beats=BEATS_13),
+ dict(page=SUB+"1-4-statelessness-conversation-state.html", domain_dir=DOM,
+      out_name="CCA-F D1 1.4 — Statelessness & Conversation State", beats=BEATS_14),
+ dict(page=SUB+"1-5-message-structure-blocks.html",      domain_dir=DOM,
+      out_name="CCA-F D1 1.5 — Message Structure & Content Blocks", beats=BEATS_15),
+ dict(page=SUB+"1-6-appending-whole-turn.html",          domain_dir=DOM,
+      out_name="CCA-F D1 1.6 — Appending the Whole Assistant Turn", beats=BEATS_16),
+]
+
 # ---------------------------------------------------------------- browser-side JS
 SETUP_JS = r"""
 (zoom) => {
@@ -186,7 +417,8 @@ FIT_SPOT_JS = r"""
   el.style.transform = 'none';
   void el.offsetHeight;
   const rect = el.getBoundingClientRect();
-  const scale = Math.min(1, (window.innerHeight * fitFrac) / rect.height);
+  const scale = Math.min(1, (window.innerHeight * fitFrac) / rect.height,
+                            (window.innerWidth * fitFrac) / rect.width);
   el.style.transition = 'transform .5s ease, box-shadow .5s ease';
   el.style.transform = 'scale(' + scale + ')';
   el.style.boxShadow = '0 0 0 3px #764ba2, 0 10px 34px rgba(118,75,162,.55)';
@@ -331,8 +563,8 @@ def silence_frames(ms):
     n = int(ms / 1000 * SR)
     return b"\x00" * (n * 4)   # 2 channels * 2 bytes
 
-# ---------------------------------------------------------------- main
-async def main():
+# ---------------------------------------------------------------- render one lesson
+async def render_lesson(page_url, domain_dir, out_name, beats):
     for d in (AUDIO, WORK, OUT):
         os.makedirs(d, exist_ok=True)
 
@@ -340,7 +572,7 @@ async def main():
     print(">> generating voiceover ...")
     durations = []
     beat_wavs = []
-    for i, b in enumerate(BEATS):
+    for i, b in enumerate(beats):
         mp3 = os.path.join(AUDIO, f"beat{i}.mp3")
         wav = os.path.join(AUDIO, f"beat{i}.wav")
         await tts(b["text"], mp3)
@@ -370,7 +602,7 @@ async def main():
         page = await ctx.new_page()
         vid = page.video               # capture exact recording handle
         t0 = time.monotonic()          # ~= first video frame
-        await page.goto(PAGE, wait_until="load")
+        await page.goto(page_url, wait_until="load")
         await page.evaluate(SETUP_JS, PAGE_ZOOM)
         await page.wait_for_timeout(RENDER_MS)
         await page.wait_for_timeout(LEAD_MS)
@@ -378,7 +610,7 @@ async def main():
         def mark(i):
             placements.append((time.monotonic() - t0, beat_wavs[i]))
 
-        for i, b in enumerate(BEATS):
+        for i, b in enumerate(beats):
             dur = durations[i]
             if b["kind"] in ("spotlight", "code"):
                 dim = "0.66" if b["kind"] == "code" else "0.55"
@@ -448,7 +680,7 @@ async def main():
 
     # 6: mux audio + video into final mp4
     print(">> muxing final mp4 ...")
-    final = os.path.join(OUT, DOMAIN_DIR, LESSON_FILE + ".mp4")
+    final = os.path.join(OUT, domain_dir, out_name + ".mp4")
     os.makedirs(os.path.dirname(final), exist_ok=True)
     run_ffmpeg(["-i", webm, "-i", narration,
                 "-map", "0:v:0", "-map", "1:a:0",
@@ -456,6 +688,16 @@ async def main():
                 "-pix_fmt", "yuv420p", "-r", "30",
                 "-c:a", "aac", "-b:a", "192k", "-shortest", final])
     print(f"\nDONE -> {final}")
+
+async def main():
+    import sys
+    sel = sys.argv[1:]                       # optional filter by out_name substring(s)
+    todo = [L for L in LESSONS if not sel or any(s in L["out_name"] for s in sel)]
+    print(f">> {len(todo)} lesson(s) to render")
+    for L in todo:
+        print(f"\n############## {L['out_name']} ##############")
+        await render_lesson(L["page"], L["domain_dir"], L["out_name"], L["beats"])
+    print("\nALL DONE")
 
 if __name__ == "__main__":
     asyncio.run(main())
