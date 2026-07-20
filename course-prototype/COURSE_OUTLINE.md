@@ -1,0 +1,224 @@
+# CCA-F Course Outline
+
+5 domains · 205 subtopics
+
+
+## Domain 1 — Agentic Architecture & Orchestration  (44 lessons)
+
+- 1.1 · Agent vs. Workflow vs. Single LLM Call
+- 1.2 · The Messages API as Substrate
+- 1.3 · The Loop Mechanics
+- 1.4 · Statelessness & Conversation State
+- 1.5 · Message Structure & Content Blocks
+- 1.6 · Appending the Whole Assistant Turn
+- 2.1 · The Six stop_reason Values
+- 2.2 · Handling tool_use
+- 2.3 · max_tokens vs. Context-Window-Exceeded
+- 2.4 · pause_turn & Server-Side Tool Loops
+- 2.5 · refusal & stop_details
+- 2.6 · stop_sequence & Custom Protocols
+- 3.1 · The Tool Request/Result Cycle
+- 3.2 · The tool_result Contract
+- 3.3 · Parallel Tool Calls
+- 3.4 · tool_choice as a Control Lever
+- 3.5 · Tool Runner vs. Manual Loop
+- 3.6 · Human-in-the-Loop / Approval Gates
+- 4.1 · Single-Agent-+-Tools vs. Multi-Agent
+- 4.2 · Orchestration Patterns
+- 4.3 · Coordinator / Orchestrator Design
+- 4.4 · Sub-Agent Design & Context Isolation
+- 4.5 · Explicit State Passing
+- 4.6 · Parallel vs. Sequential Execution
+- 4.7 · Result Merging / Aggregation
+- 4.8 · Sub-Agents as a Cost/Cache Tactic
+- 4.9 · Managed Agents vs. Self-Orchestrated
+- 5.1 · Autonomy Levels
+- 5.2 · Permission Policies & Confirmation Gates
+- 5.3 · Loop Termination Conditions
+- 5.4 · Reversibility as a Design Axis
+- 6.1 · Failure Modes
+- 6.2 · Circuit Breakers
+- 6.3 · Retry with Backoff & Error Codes
+- 6.4 · Fallback Strategies
+- 6.5 · Escalation to Human
+- 6.6 · Idempotency & Side-Effect Safety
+- 6.7 · Timeouts (Per-Step & Chain)
+- 7.1 · Model Selection per Role
+- 7.2 · Adaptive Thinking & Effort as Knobs
+- 7.3 · Prompt Caching in Agent Loops
+- 7.4 · Streaming in Long Agentic Runs
+- 7.5 · Conversation-State Management
+- 7.6 · Observability & Agent Metrics
+
+## Domain 2 — Claude Code Configuration & Workflows  (41 lessons)
+
+- 1.1 · What CLAUDE.md Is & When It Loads
+- 1.2 · The Memory Hierarchy
+- 1.3 · Imports (@path) & Tree Lookup
+- 1.4 · Writing an Effective CLAUDE.md
+- 1.5 · Quick-Add (#) & the /memory Command
+- 1.6 · Nested / Sub-directory CLAUDE.md
+- 2.1 · settings.json & Its Precedence
+- 2.2 · Key Settings You Must Know
+- 2.3 · Environment Variables
+- 2.4 · The .claude Directory & /config
+- 3.1 · Permission Modes
+- 3.2 · Allow / Deny / Ask Rules
+- 3.3 · Directory Access & Working Dirs
+- 3.4 · Sandboxing & Bypassing Prompts
+- 3.5 · Enterprise Managed Policy
+- 4.1 · Built-in Slash Commands
+- 4.2 · Custom Slash Commands
+- 4.3 · Command Frontmatter
+- 4.4 · Arguments & Injection
+- 4.5 · Command Scopes
+- 5.1 · What Agent Skills Are
+- 5.2 · Progressive Disclosure & Invocation
+- 5.3 · Skill Structure & Bundled Resources
+- 5.4 · Skills vs Commands vs Subagents vs MCP
+- 5.5 · Distributing Skills (Plugins)
+- 6.1 · Hook Events Overview
+- 6.2 · Hook Configuration & Matchers
+- 6.3 · Hook Input & Output
+- 6.4 · Blocking & Decision Control
+- 6.5 · Hook Use Cases
+- 6.6 · Hook Security
+- 7.1 · What Subagents Are
+- 7.2 · Subagent Configuration
+- 7.3 · Context Isolation & Delegation
+- 7.4 · Invoking Subagents
+- 7.5 · Subagents vs Skills vs Commands
+- 8.1 · Headless Mode & Scripting
+- 8.2 · Adding MCP Servers
+- 8.3 · Using MCP in Claude Code
+- 8.4 · CI & GitHub Actions
+- 8.5 · IDE Integrations & the SDK
+
+## Domain 3 — Prompt Engineering & Structured Outputs  (40 lessons)
+
+- 1.1 · What Prompt Engineering Is & When to Use It
+- 1.2 · The Empirical, Iterative Loop
+- 1.3 · Be Clear and Direct
+- 1.4 · Sequential Steps & Numbered Instructions
+- 1.5 · The Prompt Anatomy (Element Order)
+- 2.1 · The System Parameter vs the User Turn
+- 2.2 · Giving Claude a Role (Persona)
+- 2.3 · What Belongs in System vs User
+- 2.4 · Tone, Character & Staying in Character
+- 2.5 · Prompt Templates & Variables
+- 3.1 · Why Examples Work (Multishot)
+- 3.2 · How Many Examples & Choosing Them
+- 3.3 · Formatting & Wrapping Examples
+- 3.4 · Covering Edge Cases with Examples
+- 3.5 · Example Pitfalls (Leakage, Over-fit)
+- 4.1 · Why XML Tags Reduce Ambiguity
+- 4.2 · Common Tag Patterns
+- 4.3 · Separating Data from Instructions
+- 4.4 · Nesting & Referencing Tags
+- 4.5 · Long-Context Structuring
+- 5.1 · Let Claude Think (CoT) — When It Helps
+- 5.2 · Structured Thinking with Tags
+- 5.3 · Extended Thinking vs Prompted CoT
+- 5.4 · Thinking with Tool Use
+- 5.5 · CoT Trade-offs & When Not to Use
+- 6.1 · Prefilling the Assistant Turn
+- 6.2 · Prefill to Control Format
+- 6.3 · Prefill to Steer & Stay in Character
+- 6.4 · Stop Sequences as Output Control
+- 6.5 · Prefill Constraints & Gotchas
+- 7.1 · Increasing Output Consistency
+- 7.2 · JSON via Prefill + Stop Sequence
+- 7.3 · Tool Use to Force a Schema
+- 7.4 · The Structured Outputs Feature
+- 7.5 · Streaming & Parsing Structured Output
+- 8.1 · Reducing Hallucinations
+- 8.2 · Grounding in Documents & Citations
+- 8.3 · Chaining Complex Prompts
+- 8.4 · Evaluating & Iterating (Success Criteria)
+- 8.5 · The Prompt Improver & Templates
+
+## Domain 4 — Tool Design & MCP Integration  (40 lessons)
+
+- 1.1 · What Tool Use Is & the Request/Result Flow
+- 1.2 · The Tool Definition (name · description · input_schema)
+- 1.3 · tool_use & tool_result Blocks (the Contract)
+- 1.4 · tool_choice (auto / any / tool / none)
+- 1.5 · Client Tools vs Server Tools
+- 2.1 · Writing Tool Descriptions (the #1 Lever)
+- 2.2 · Input Schema Design (JSON Schema, Enums)
+- 2.3 · Naming & Granularity
+- 2.4 · Namespacing & Avoiding Tool Overlap
+- 2.5 · Token Efficiency & Tool-Set Size
+- 3.1 · Returning Results (content, is_error)
+- 3.2 · Error Handling Patterns
+- 3.3 · Large / Structured Results & Truncation
+- 3.4 · Parallel Tool Calls & Result Ordering
+- 3.5 · Tool-Result Contract Failures (400s)
+- 4.1 · Tool Use with Extended Thinking
+- 4.2 · Forcing Structured JSON via Tools
+- 4.3 · Streaming & Fine-Grained Tool Use
+- 4.4 · Programmatic Tool Calling & Code Execution
+- 4.5 · tool_choice Control & Parallel Toggle
+- 5.1 · What MCP Is & Why It Exists
+- 5.2 · Architecture (Host · Client · Server)
+- 5.3 · Transports (stdio · Streamable HTTP)
+- 5.4 · Lifecycle & Capability Negotiation
+- 5.5 · MCP vs Plain Tool Use
+- 6.1 · Tools (Server-Exposed Functions)
+- 6.2 · Resources (Readable Data)
+- 6.3 · Prompts (Reusable Templates)
+- 6.4 · Sampling (Server → Client LLM Calls)
+- 6.5 · Roots & Elicitation
+- 7.1 · Building a Server (SDK)
+- 7.2 · The Claude API MCP Connector
+- 7.3 · Remote MCP Servers & OAuth
+- 7.4 · MCP in Claude Code / Desktop
+- 7.5 · Testing & Debugging (MCP Inspector)
+- 8.1 · Security Risks (Injection, Tool Poisoning)
+- 8.2 · Authentication & Authorization
+- 8.3 · Human-in-the-Loop & Permissioning
+- 8.4 · Confused Deputy & Data Exfiltration
+- 8.5 · Versioning, Observability & Ops
+
+## Domain 5 — Context Management & Reliability  (40 lessons)
+
+- 1.1 · The Context Window (Sizes, 1M)
+- 1.2 · Token Counting & the Count Endpoint
+- 1.3 · Input vs Output Tokens & max_tokens
+- 1.4 · Budgeting a Growing Conversation
+- 1.5 · Context-Window-Exceeded Handling
+- 2.1 · What Prompt Caching Is & Why
+- 2.2 · cache_control & Breakpoints
+- 2.3 · What's Cacheable & the Prefix Rule
+- 2.4 · Cache TTL (5m / 1h) & Hits/Misses
+- 2.5 · Caching in Multi-Turn / Agent Loops
+- 3.1 · Conversation State & Statelessness
+- 3.2 · Truncation / Sliding Window
+- 3.3 · Summarization / Compaction
+- 3.4 · Context Editing (Clearing Tool Results)
+- 3.5 · The Memory Tool / External Memory
+- 4.1 · Long-Context Prompting (Placement)
+- 4.2 · 'Lost in the Middle' & Attention
+- 4.3 · RAG vs Long Context
+- 4.4 · Citations & Grounding at Scale
+- 4.5 · Chunking & Context Assembly
+- 5.1 · API Error Codes (4xx vs 5xx, 429, 529)
+- 5.2 · Retryable vs Not & Idempotency
+- 5.3 · Exponential Backoff + Jitter
+- 5.4 · Rate Limits & Handling 429
+- 5.5 · Timeouts & Long Requests
+- 6.1 · Fallbacks (Model / Provider / Degraded)
+- 6.2 · Circuit Breakers
+- 6.3 · Graceful Degradation & Partial Results
+- 6.4 · max_tokens Truncation & Continuation
+- 6.5 · Streaming for Reliability
+- 7.1 · Cost Levers (Model, Cache, Batch)
+- 7.2 · The Batch API (async, ~50% off)
+- 7.3 · Reducing Latency
+- 7.4 · Token-Efficient Patterns
+- 7.5 · Caching + Batch Economics
+- 8.1 · Usage Metrics (Tokens, Cache, Cost)
+- 8.2 · Logging & Tracing (Request IDs)
+- 8.3 · Monitoring Reliability & SLOs
+- 8.4 · Evaluations in Production
+- 8.5 · Safety & Guardrails at Runtime

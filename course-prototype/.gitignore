@@ -1,0 +1,13 @@
+# build artifacts — never commit (huge / regenerable)
+.venv/
+out/
+work/
+audio/
+samples/
+frames/
+__pycache__/
+*.mp4
+*.webm
+*.wav
+*.mp3
+*.png

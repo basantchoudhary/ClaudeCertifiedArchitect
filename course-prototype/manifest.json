@@ -1,0 +1,1850 @@
+{
+  "lessons": [
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-1-agent-vs-workflow-vs-call",
+      "num": "1.1",
+      "title": "1.1 \u00b7 Agent vs. Workflow vs. Single LLM Call",
+      "youtube": "",
+      "status": "rendered",
+      "local": "course-prototype/out/CCA-F_1-1_agent-vs-workflow_1080p.mp4"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-2-messages-api-substrate",
+      "num": "1.2",
+      "title": "1.2 \u00b7 The Messages API as Substrate",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-3-loop-mechanics",
+      "num": "1.3",
+      "title": "1.3 \u00b7 The Loop Mechanics",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-4-statelessness-conversation-state",
+      "num": "1.4",
+      "title": "1.4 \u00b7 Statelessness & Conversation State",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-5-message-structure-blocks",
+      "num": "1.5",
+      "title": "1.5 \u00b7 Message Structure & Content Blocks",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "1-6-appending-whole-turn",
+      "num": "1.6",
+      "title": "1.6 \u00b7 Appending the Whole Assistant Turn",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-1-stop-reason-overview",
+      "num": "2.1",
+      "title": "2.1 \u00b7 The Six stop_reason Values",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-2-tool-use-handling",
+      "num": "2.2",
+      "title": "2.2 \u00b7 Handling tool_use",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-3-max-tokens-vs-context-window",
+      "num": "2.3",
+      "title": "2.3 \u00b7 max_tokens vs. Context-Window-Exceeded",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-4-pause-turn-server-tools",
+      "num": "2.4",
+      "title": "2.4 \u00b7 pause_turn & Server-Side Tool Loops",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-5-refusal-handling",
+      "num": "2.5",
+      "title": "2.5 \u00b7 refusal & stop_details",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "2-6-stop-sequence",
+      "num": "2.6",
+      "title": "2.6 \u00b7 stop_sequence & Custom Protocols",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-1-tool-request-result-cycle",
+      "num": "3.1",
+      "title": "3.1 \u00b7 The Tool Request/Result Cycle",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-2-tool-result-contract",
+      "num": "3.2",
+      "title": "3.2 \u00b7 The tool_result Contract",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-3-parallel-tool-calls",
+      "num": "3.3",
+      "title": "3.3 \u00b7 Parallel Tool Calls",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-4-tool-choice-control",
+      "num": "3.4",
+      "title": "3.4 \u00b7 tool_choice as a Control Lever",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-5-tool-runner-vs-manual-loop",
+      "num": "3.5",
+      "title": "3.5 \u00b7 Tool Runner vs. Manual Loop",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "3-6-human-in-the-loop-gates",
+      "num": "3.6",
+      "title": "3.6 \u00b7 Human-in-the-Loop / Approval Gates",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-1-single-vs-multi-agent",
+      "num": "4.1",
+      "title": "4.1 \u00b7 Single-Agent-+-Tools vs. Multi-Agent",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-2-orchestration-patterns",
+      "num": "4.2",
+      "title": "4.2 \u00b7 Orchestration Patterns",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-3-coordinator-design",
+      "num": "4.3",
+      "title": "4.3 \u00b7 Coordinator / Orchestrator Design",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-4-subagent-context-isolation",
+      "num": "4.4",
+      "title": "4.4 \u00b7 Sub-Agent Design & Context Isolation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-5-state-passing",
+      "num": "4.5",
+      "title": "4.5 \u00b7 Explicit State Passing",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-6-parallel-vs-sequential",
+      "num": "4.6",
+      "title": "4.6 \u00b7 Parallel vs. Sequential Execution",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-7-result-merging",
+      "num": "4.7",
+      "title": "4.7 \u00b7 Result Merging / Aggregation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-8-subagents-cost-cache",
+      "num": "4.8",
+      "title": "4.8 \u00b7 Sub-Agents as a Cost/Cache Tactic",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "4-9-managed-agents-awareness",
+      "num": "4.9",
+      "title": "4.9 \u00b7 Managed Agents vs. Self-Orchestrated",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "5-1-autonomy-levels",
+      "num": "5.1",
+      "title": "5.1 \u00b7 Autonomy Levels",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "5-2-permission-policies-gates",
+      "num": "5.2",
+      "title": "5.2 \u00b7 Permission Policies & Confirmation Gates",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "5-3-loop-termination",
+      "num": "5.3",
+      "title": "5.3 \u00b7 Loop Termination Conditions",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "5-4-reversibility",
+      "num": "5.4",
+      "title": "5.4 \u00b7 Reversibility as a Design Axis",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-1-failure-modes",
+      "num": "6.1",
+      "title": "6.1 \u00b7 Failure Modes",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-2-circuit-breakers",
+      "num": "6.2",
+      "title": "6.2 \u00b7 Circuit Breakers",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-3-retry-backoff-errors",
+      "num": "6.3",
+      "title": "6.3 \u00b7 Retry with Backoff & Error Codes",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-4-fallback-strategies",
+      "num": "6.4",
+      "title": "6.4 \u00b7 Fallback Strategies",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-5-escalation",
+      "num": "6.5",
+      "title": "6.5 \u00b7 Escalation to Human",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-6-idempotency-side-effects",
+      "num": "6.6",
+      "title": "6.6 \u00b7 Idempotency & Side-Effect Safety",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "6-7-timeouts",
+      "num": "6.7",
+      "title": "6.7 \u00b7 Timeouts (Per-Step & Chain)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-1-model-selection",
+      "num": "7.1",
+      "title": "7.1 \u00b7 Model Selection per Role",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-2-thinking-effort",
+      "num": "7.2",
+      "title": "7.2 \u00b7 Adaptive Thinking & Effort as Knobs",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-3-prompt-caching-loops",
+      "num": "7.3",
+      "title": "7.3 \u00b7 Prompt Caching in Agent Loops",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-4-streaming",
+      "num": "7.4",
+      "title": "7.4 \u00b7 Streaming in Long Agentic Runs",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-5-conversation-state-mgmt",
+      "num": "7.5",
+      "title": "7.5 \u00b7 Conversation-State Management",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 1,
+      "dir": "D1-Agentic-Architecture",
+      "slug": "7-6-observability-metrics",
+      "num": "7.6",
+      "title": "7.6 \u00b7 Observability & Agent Metrics",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-1-claude-md-what-and-when",
+      "num": "1.1",
+      "title": "1.1 \u00b7 What CLAUDE.md Is & When It Loads",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-2-memory-hierarchy",
+      "num": "1.2",
+      "title": "1.2 \u00b7 The Memory Hierarchy",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-3-imports-and-recursion",
+      "num": "1.3",
+      "title": "1.3 \u00b7 Imports (@path) & Tree Lookup",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-4-writing-effective-claude-md",
+      "num": "1.4",
+      "title": "1.4 \u00b7 Writing an Effective CLAUDE.md",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-5-quick-add-and-memory-command",
+      "num": "1.5",
+      "title": "1.5 \u00b7 Quick-Add (#) & the /memory Command",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "1-6-nested-scoping",
+      "num": "1.6",
+      "title": "1.6 \u00b7 Nested / Sub-directory CLAUDE.md",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "2-1-settings-json-hierarchy",
+      "num": "2.1",
+      "title": "2.1 \u00b7 settings.json & Its Precedence",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "2-2-key-settings",
+      "num": "2.2",
+      "title": "2.2 \u00b7 Key Settings You Must Know",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "2-3-env-vars",
+      "num": "2.3",
+      "title": "2.3 \u00b7 Environment Variables",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "2-4-claude-dir-layout",
+      "num": "2.4",
+      "title": "2.4 \u00b7 The .claude Directory & /config",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "3-1-permission-modes",
+      "num": "3.1",
+      "title": "3.1 \u00b7 Permission Modes",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "3-2-allow-deny-ask-rules",
+      "num": "3.2",
+      "title": "3.2 \u00b7 Allow / Deny / Ask Rules",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "3-3-directory-access",
+      "num": "3.3",
+      "title": "3.3 \u00b7 Directory Access & Working Dirs",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "3-4-sandboxing",
+      "num": "3.4",
+      "title": "3.4 \u00b7 Sandboxing & Bypassing Prompts",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "3-5-managed-policy",
+      "num": "3.5",
+      "title": "3.5 \u00b7 Enterprise Managed Policy",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "4-1-builtin-commands",
+      "num": "4.1",
+      "title": "4.1 \u00b7 Built-in Slash Commands",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "4-2-custom-commands",
+      "num": "4.2",
+      "title": "4.2 \u00b7 Custom Slash Commands",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "4-3-command-frontmatter",
+      "num": "4.3",
+      "title": "4.3 \u00b7 Command Frontmatter",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "4-4-arguments-injection",
+      "num": "4.4",
+      "title": "4.4 \u00b7 Arguments & Injection",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "4-5-command-scopes",
+      "num": "4.5",
+      "title": "4.5 \u00b7 Command Scopes",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "5-1-what-are-skills",
+      "num": "5.1",
+      "title": "5.1 \u00b7 What Agent Skills Are",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "5-2-progressive-disclosure",
+      "num": "5.2",
+      "title": "5.2 \u00b7 Progressive Disclosure & Invocation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "5-3-skill-structure",
+      "num": "5.3",
+      "title": "5.3 \u00b7 Skill Structure & Bundled Resources",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "5-4-skills-vs-others",
+      "num": "5.4",
+      "title": "5.4 \u00b7 Skills vs Commands vs Subagents vs MCP",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "5-5-distributing-skills",
+      "num": "5.5",
+      "title": "5.5 \u00b7 Distributing Skills (Plugins)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-1-hook-events",
+      "num": "6.1",
+      "title": "6.1 \u00b7 Hook Events Overview",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-2-hook-configuration",
+      "num": "6.2",
+      "title": "6.2 \u00b7 Hook Configuration & Matchers",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-3-hook-io",
+      "num": "6.3",
+      "title": "6.3 \u00b7 Hook Input & Output",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-4-blocking-decisions",
+      "num": "6.4",
+      "title": "6.4 \u00b7 Blocking & Decision Control",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-5-hook-use-cases",
+      "num": "6.5",
+      "title": "6.5 \u00b7 Hook Use Cases",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "6-6-hook-security",
+      "num": "6.6",
+      "title": "6.6 \u00b7 Hook Security",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "7-1-what-are-subagents",
+      "num": "7.1",
+      "title": "7.1 \u00b7 What Subagents Are",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "7-2-subagent-config",
+      "num": "7.2",
+      "title": "7.2 \u00b7 Subagent Configuration",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "7-3-context-isolation",
+      "num": "7.3",
+      "title": "7.3 \u00b7 Context Isolation & Delegation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "7-4-invoking-subagents",
+      "num": "7.4",
+      "title": "7.4 \u00b7 Invoking Subagents",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "7-5-subagents-vs-others",
+      "num": "7.5",
+      "title": "7.5 \u00b7 Subagents vs Skills vs Commands",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "8-1-headless-mode",
+      "num": "8.1",
+      "title": "8.1 \u00b7 Headless Mode & Scripting",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "8-2-mcp-in-claude-code",
+      "num": "8.2",
+      "title": "8.2 \u00b7 Adding MCP Servers",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "8-3-mcp-usage",
+      "num": "8.3",
+      "title": "8.3 \u00b7 Using MCP in Claude Code",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "8-4-ci-github-actions",
+      "num": "8.4",
+      "title": "8.4 \u00b7 CI & GitHub Actions",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 2,
+      "dir": "D2-Claude-Code",
+      "slug": "8-5-ide-integrations",
+      "num": "8.5",
+      "title": "8.5 \u00b7 IDE Integrations & the SDK",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "1-1-what-is-prompt-engineering",
+      "num": "1.1",
+      "title": "1.1 \u00b7 What Prompt Engineering Is & When to Use It",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "1-2-empirical-iterative-loop",
+      "num": "1.2",
+      "title": "1.2 \u00b7 The Empirical, Iterative Loop",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "1-3-be-clear-and-direct",
+      "num": "1.3",
+      "title": "1.3 \u00b7 Be Clear and Direct",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "1-4-sequential-steps",
+      "num": "1.4",
+      "title": "1.4 \u00b7 Sequential Steps & Numbered Instructions",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "1-5-prompt-anatomy",
+      "num": "1.5",
+      "title": "1.5 \u00b7 The Prompt Anatomy (Element Order)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "2-1-system-parameter",
+      "num": "2.1",
+      "title": "2.1 \u00b7 The System Parameter vs the User Turn",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "2-2-role-prompting",
+      "num": "2.2",
+      "title": "2.2 \u00b7 Giving Claude a Role (Persona)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "2-3-system-vs-user",
+      "num": "2.3",
+      "title": "2.3 \u00b7 What Belongs in System vs User",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "2-4-tone-and-character",
+      "num": "2.4",
+      "title": "2.4 \u00b7 Tone, Character & Staying in Character",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "2-5-prompt-templates-variables",
+      "num": "2.5",
+      "title": "2.5 \u00b7 Prompt Templates & Variables",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "3-1-why-examples-work",
+      "num": "3.1",
+      "title": "3.1 \u00b7 Why Examples Work (Multishot)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "3-2-how-many-examples",
+      "num": "3.2",
+      "title": "3.2 \u00b7 How Many Examples & Choosing Them",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "3-3-formatting-examples",
+      "num": "3.3",
+      "title": "3.3 \u00b7 Formatting & Wrapping Examples",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "3-4-edge-cases-examples",
+      "num": "3.4",
+      "title": "3.4 \u00b7 Covering Edge Cases with Examples",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "3-5-example-pitfalls",
+      "num": "3.5",
+      "title": "3.5 \u00b7 Example Pitfalls (Leakage, Over-fit)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "4-1-why-xml-tags",
+      "num": "4.1",
+      "title": "4.1 \u00b7 Why XML Tags Reduce Ambiguity",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "4-2-common-tag-patterns",
+      "num": "4.2",
+      "title": "4.2 \u00b7 Common Tag Patterns",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "4-3-separating-data-instructions",
+      "num": "4.3",
+      "title": "4.3 \u00b7 Separating Data from Instructions",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "4-4-nesting-referencing-tags",
+      "num": "4.4",
+      "title": "4.4 \u00b7 Nesting & Referencing Tags",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "4-5-long-context-structuring",
+      "num": "4.5",
+      "title": "4.5 \u00b7 Long-Context Structuring",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "5-1-let-claude-think",
+      "num": "5.1",
+      "title": "5.1 \u00b7 Let Claude Think (CoT) \u2014 When It Helps",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "5-2-structured-thinking-tags",
+      "num": "5.2",
+      "title": "5.2 \u00b7 Structured Thinking with Tags",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "5-3-extended-thinking",
+      "num": "5.3",
+      "title": "5.3 \u00b7 Extended Thinking vs Prompted CoT",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "5-4-thinking-with-tools",
+      "num": "5.4",
+      "title": "5.4 \u00b7 Thinking with Tool Use",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "5-5-cot-tradeoffs",
+      "num": "5.5",
+      "title": "5.5 \u00b7 CoT Trade-offs & When Not to Use",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "6-1-prefilling-basics",
+      "num": "6.1",
+      "title": "6.1 \u00b7 Prefilling the Assistant Turn",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "6-2-prefill-format-control",
+      "num": "6.2",
+      "title": "6.2 \u00b7 Prefill to Control Format",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "6-3-prefill-character-steering",
+      "num": "6.3",
+      "title": "6.3 \u00b7 Prefill to Steer & Stay in Character",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "6-4-stop-sequences",
+      "num": "6.4",
+      "title": "6.4 \u00b7 Stop Sequences as Output Control",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "6-5-prefill-constraints",
+      "num": "6.5",
+      "title": "6.5 \u00b7 Prefill Constraints & Gotchas",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "7-1-output-consistency",
+      "num": "7.1",
+      "title": "7.1 \u00b7 Increasing Output Consistency",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "7-2-json-prefill-stop",
+      "num": "7.2",
+      "title": "7.2 \u00b7 JSON via Prefill + Stop Sequence",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "7-3-tool-use-for-json",
+      "num": "7.3",
+      "title": "7.3 \u00b7 Tool Use to Force a Schema",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "7-4-structured-outputs-feature",
+      "num": "7.4",
+      "title": "7.4 \u00b7 The Structured Outputs Feature",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "7-5-streaming-parsing-json",
+      "num": "7.5",
+      "title": "7.5 \u00b7 Streaming & Parsing Structured Output",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "8-1-reduce-hallucinations",
+      "num": "8.1",
+      "title": "8.1 \u00b7 Reducing Hallucinations",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "8-2-grounding-citations",
+      "num": "8.2",
+      "title": "8.2 \u00b7 Grounding in Documents & Citations",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "8-3-chaining-prompts",
+      "num": "8.3",
+      "title": "8.3 \u00b7 Chaining Complex Prompts",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "8-4-evaluating-iterating",
+      "num": "8.4",
+      "title": "8.4 \u00b7 Evaluating & Iterating (Success Criteria)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 3,
+      "dir": "D3-Prompt-Engineering",
+      "slug": "8-5-prompt-improver-templates",
+      "num": "8.5",
+      "title": "8.5 \u00b7 The Prompt Improver & Templates",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "1-1-tool-use-flow",
+      "num": "1.1",
+      "title": "1.1 \u00b7 What Tool Use Is & the Request/Result Flow",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "1-2-tool-definition-schema",
+      "num": "1.2",
+      "title": "1.2 \u00b7 The Tool Definition (name \u00b7 description \u00b7 input_schema)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "1-3-tool-use-result-blocks",
+      "num": "1.3",
+      "title": "1.3 \u00b7 tool_use & tool_result Blocks (the Contract)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "1-4-tool-choice",
+      "num": "1.4",
+      "title": "1.4 \u00b7 tool_choice (auto / any / tool / none)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "1-5-client-vs-server-tools",
+      "num": "1.5",
+      "title": "1.5 \u00b7 Client Tools vs Server Tools",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "2-1-writing-descriptions",
+      "num": "2.1",
+      "title": "2.1 \u00b7 Writing Tool Descriptions (the #1 Lever)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "2-2-input-schema-design",
+      "num": "2.2",
+      "title": "2.2 \u00b7 Input Schema Design (JSON Schema, Enums)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "2-3-naming-granularity",
+      "num": "2.3",
+      "title": "2.3 \u00b7 Naming & Granularity",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "2-4-namespacing-overlap",
+      "num": "2.4",
+      "title": "2.4 \u00b7 Namespacing & Avoiding Tool Overlap",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "2-5-token-efficiency",
+      "num": "2.5",
+      "title": "2.5 \u00b7 Token Efficiency & Tool-Set Size",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "3-1-returning-results",
+      "num": "3.1",
+      "title": "3.1 \u00b7 Returning Results (content, is_error)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "3-2-error-handling",
+      "num": "3.2",
+      "title": "3.2 \u00b7 Error Handling Patterns",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "3-3-large-results-truncation",
+      "num": "3.3",
+      "title": "3.3 \u00b7 Large / Structured Results & Truncation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "3-4-parallel-tool-calls",
+      "num": "3.4",
+      "title": "3.4 \u00b7 Parallel Tool Calls & Result Ordering",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "3-5-contract-failures",
+      "num": "3.5",
+      "title": "3.5 \u00b7 Tool-Result Contract Failures (400s)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "4-1-thinking-with-tools",
+      "num": "4.1",
+      "title": "4.1 \u00b7 Tool Use with Extended Thinking",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "4-2-structured-json-via-tools",
+      "num": "4.2",
+      "title": "4.2 \u00b7 Forcing Structured JSON via Tools",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "4-3-streaming-fine-grained",
+      "num": "4.3",
+      "title": "4.3 \u00b7 Streaming & Fine-Grained Tool Use",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "4-4-programmatic-code-execution",
+      "num": "4.4",
+      "title": "4.4 \u00b7 Programmatic Tool Calling & Code Execution",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "4-5-tool-choice-control",
+      "num": "4.5",
+      "title": "4.5 \u00b7 tool_choice Control & Parallel Toggle",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "5-1-what-is-mcp",
+      "num": "5.1",
+      "title": "5.1 \u00b7 What MCP Is & Why It Exists",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "5-2-mcp-architecture",
+      "num": "5.2",
+      "title": "5.2 \u00b7 Architecture (Host \u00b7 Client \u00b7 Server)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "5-3-mcp-transports",
+      "num": "5.3",
+      "title": "5.3 \u00b7 Transports (stdio \u00b7 Streamable HTTP)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "5-4-mcp-lifecycle",
+      "num": "5.4",
+      "title": "5.4 \u00b7 Lifecycle & Capability Negotiation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "5-5-mcp-vs-tool-use",
+      "num": "5.5",
+      "title": "5.5 \u00b7 MCP vs Plain Tool Use",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "6-1-mcp-tools",
+      "num": "6.1",
+      "title": "6.1 \u00b7 Tools (Server-Exposed Functions)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "6-2-mcp-resources",
+      "num": "6.2",
+      "title": "6.2 \u00b7 Resources (Readable Data)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "6-3-mcp-prompts",
+      "num": "6.3",
+      "title": "6.3 \u00b7 Prompts (Reusable Templates)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "6-4-mcp-sampling",
+      "num": "6.4",
+      "title": "6.4 \u00b7 Sampling (Server \u2192 Client LLM Calls)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "6-5-mcp-roots-elicitation",
+      "num": "6.5",
+      "title": "6.5 \u00b7 Roots & Elicitation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "7-1-building-mcp-server",
+      "num": "7.1",
+      "title": "7.1 \u00b7 Building a Server (SDK)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "7-2-mcp-connector-api",
+      "num": "7.2",
+      "title": "7.2 \u00b7 The Claude API MCP Connector",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "7-3-remote-mcp-auth",
+      "num": "7.3",
+      "title": "7.3 \u00b7 Remote MCP Servers & OAuth",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "7-4-mcp-in-claude-code",
+      "num": "7.4",
+      "title": "7.4 \u00b7 MCP in Claude Code / Desktop",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "7-5-testing-mcp-inspector",
+      "num": "7.5",
+      "title": "7.5 \u00b7 Testing & Debugging (MCP Inspector)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "8-1-mcp-security-risks",
+      "num": "8.1",
+      "title": "8.1 \u00b7 Security Risks (Injection, Tool Poisoning)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "8-2-mcp-auth",
+      "num": "8.2",
+      "title": "8.2 \u00b7 Authentication & Authorization",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "8-3-human-in-the-loop",
+      "num": "8.3",
+      "title": "8.3 \u00b7 Human-in-the-Loop & Permissioning",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "8-4-confused-deputy-exfiltration",
+      "num": "8.4",
+      "title": "8.4 \u00b7 Confused Deputy & Data Exfiltration",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 4,
+      "dir": "D4-Tool-Design-MCP",
+      "slug": "8-5-versioning-observability",
+      "num": "8.5",
+      "title": "8.5 \u00b7 Versioning, Observability & Ops",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "1-1-context-window",
+      "num": "1.1",
+      "title": "1.1 \u00b7 The Context Window (Sizes, 1M)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "1-2-token-counting",
+      "num": "1.2",
+      "title": "1.2 \u00b7 Token Counting & the Count Endpoint",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "1-3-input-output-max-tokens",
+      "num": "1.3",
+      "title": "1.3 \u00b7 Input vs Output Tokens & max_tokens",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "1-4-budgeting-conversation",
+      "num": "1.4",
+      "title": "1.4 \u00b7 Budgeting a Growing Conversation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "1-5-context-exceeded-errors",
+      "num": "1.5",
+      "title": "1.5 \u00b7 Context-Window-Exceeded Handling",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "2-1-what-is-prompt-caching",
+      "num": "2.1",
+      "title": "2.1 \u00b7 What Prompt Caching Is & Why",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "2-2-cache-control-breakpoints",
+      "num": "2.2",
+      "title": "2.2 \u00b7 cache_control & Breakpoints",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "2-3-cacheable-prefix-rule",
+      "num": "2.3",
+      "title": "2.3 \u00b7 What's Cacheable & the Prefix Rule",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "2-4-cache-ttl-hits",
+      "num": "2.4",
+      "title": "2.4 \u00b7 Cache TTL (5m / 1h) & Hits/Misses",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "2-5-caching-in-loops",
+      "num": "2.5",
+      "title": "2.5 \u00b7 Caching in Multi-Turn / Agent Loops",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "3-1-conversation-state",
+      "num": "3.1",
+      "title": "3.1 \u00b7 Conversation State & Statelessness",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "3-2-truncation-sliding-window",
+      "num": "3.2",
+      "title": "3.2 \u00b7 Truncation / Sliding Window",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "3-3-summarization-compaction",
+      "num": "3.3",
+      "title": "3.3 \u00b7 Summarization / Compaction",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "3-4-context-editing",
+      "num": "3.4",
+      "title": "3.4 \u00b7 Context Editing (Clearing Tool Results)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "3-5-memory-tool",
+      "num": "3.5",
+      "title": "3.5 \u00b7 The Memory Tool / External Memory",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "4-1-long-context-prompting",
+      "num": "4.1",
+      "title": "4.1 \u00b7 Long-Context Prompting (Placement)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "4-2-lost-in-the-middle",
+      "num": "4.2",
+      "title": "4.2 \u00b7 'Lost in the Middle' & Attention",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "4-3-rag-vs-long-context",
+      "num": "4.3",
+      "title": "4.3 \u00b7 RAG vs Long Context",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "4-4-citations-grounding",
+      "num": "4.4",
+      "title": "4.4 \u00b7 Citations & Grounding at Scale",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "4-5-chunking-assembly",
+      "num": "4.5",
+      "title": "4.5 \u00b7 Chunking & Context Assembly",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "5-1-error-codes",
+      "num": "5.1",
+      "title": "5.1 \u00b7 API Error Codes (4xx vs 5xx, 429, 529)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "5-2-retryable-idempotency",
+      "num": "5.2",
+      "title": "5.2 \u00b7 Retryable vs Not & Idempotency",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "5-3-backoff-jitter",
+      "num": "5.3",
+      "title": "5.3 \u00b7 Exponential Backoff + Jitter",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "5-4-rate-limits",
+      "num": "5.4",
+      "title": "5.4 \u00b7 Rate Limits & Handling 429",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "5-5-timeouts-streaming",
+      "num": "5.5",
+      "title": "5.5 \u00b7 Timeouts & Long Requests",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "6-1-fallbacks",
+      "num": "6.1",
+      "title": "6.1 \u00b7 Fallbacks (Model / Provider / Degraded)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "6-2-circuit-breakers",
+      "num": "6.2",
+      "title": "6.2 \u00b7 Circuit Breakers",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "6-3-graceful-degradation",
+      "num": "6.3",
+      "title": "6.3 \u00b7 Graceful Degradation & Partial Results",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "6-4-max-tokens-continuation",
+      "num": "6.4",
+      "title": "6.4 \u00b7 max_tokens Truncation & Continuation",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "6-5-streaming-reliability",
+      "num": "6.5",
+      "title": "6.5 \u00b7 Streaming for Reliability",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "7-1-cost-levers",
+      "num": "7.1",
+      "title": "7.1 \u00b7 Cost Levers (Model, Cache, Batch)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "7-2-batch-api",
+      "num": "7.2",
+      "title": "7.2 \u00b7 The Batch API (async, ~50% off)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "7-3-reducing-latency",
+      "num": "7.3",
+      "title": "7.3 \u00b7 Reducing Latency",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "7-4-token-efficient-patterns",
+      "num": "7.4",
+      "title": "7.4 \u00b7 Token-Efficient Patterns",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "7-5-caching-batch-economics",
+      "num": "7.5",
+      "title": "7.5 \u00b7 Caching + Batch Economics",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "8-1-usage-metrics",
+      "num": "8.1",
+      "title": "8.1 \u00b7 Usage Metrics (Tokens, Cache, Cost)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "8-2-logging-tracing",
+      "num": "8.2",
+      "title": "8.2 \u00b7 Logging & Tracing (Request IDs)",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "8-3-monitoring-slos",
+      "num": "8.3",
+      "title": "8.3 \u00b7 Monitoring Reliability & SLOs",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "8-4-production-evals",
+      "num": "8.4",
+      "title": "8.4 \u00b7 Evaluations in Production",
+      "youtube": "",
+      "status": "planned"
+    },
+    {
+      "domain": 5,
+      "dir": "D5-Context-Management",
+      "slug": "8-5-runtime-guardrails",
+      "num": "8.5",
+      "title": "8.5 \u00b7 Safety & Guardrails at Runtime",
+      "youtube": "",
+      "status": "planned"
+    }
+  ]
+}
