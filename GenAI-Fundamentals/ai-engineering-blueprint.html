@@ -11,6 +11,26 @@
     .scroller table { margin: 0; box-shadow: none; min-width: 1180px; }
     .scroller th { position: sticky; top: 0; z-index: 2; font-size: .82em; }
     .scroller td { font-size: .85em; }
+
+    /* pin the requirement (first) and in-house (last) columns — the two you read together */
+    .pinned th:first-child, .pinned td:first-child {
+        position: sticky; left: 0; z-index: 3; background: #fff;
+        box-shadow: 2px 0 4px -2px rgba(0,0,0,.12);
+    }
+    .pinned th:last-child, .pinned td:last-child {
+        position: sticky; right: 0; z-index: 3; background: #fffdf5;
+        box-shadow: -2px 0 4px -2px rgba(0,0,0,.12);
+    }
+    .pinned th:first-child, .pinned th:last-child { z-index: 4; background: #667eea; }
+    .pinned tr.own td:first-child { background: #fff8e6; }
+    .pinned tr.own td:last-child  { background: #fff3d6; }
+    .pinned tr.grp td { position: static; }
+    @media (max-width: 760px) {
+        .pinned th:first-child, .pinned td:first-child,
+        .pinned th:last-child,  .pinned td:last-child { position: static; box-shadow: none; }
+    }
+    .hint { font-size:.86em; color:#a97a20; background:#fff8e6; border:1px solid #ffe0a3;
+            border-radius:8px; padding:8px 14px; margin:14px 0 -4px; font-weight:600; }
     .grp td { background: #efeaff !important; font-weight: 700; color: #4a3c78; font-size: .9em !important;
               letter-spacing: .04em; text-transform: uppercase; }
     .cap { font-weight: 600; color: #333; }
@@ -167,8 +187,12 @@ building a platform for a feature nobody has validated.</p>
 
 <h2>3 · Conceptual requirement → physical stack <span class="chip diagram">map</span></h2>
 
+<div class="hint">↔ This table scrolls sideways. The <strong>requirement</strong> and
+    <strong>you must build in-house</strong> columns stay pinned to the edges as you scroll through the
+    platform options.</div>
+
 <div class="scroller">
-<table>
+<table class="pinned">
     <thead>
         <tr>
             <th style="min-width:190px">Conceptual requirement</th>
