@@ -30,7 +30,7 @@
 <header class="page">
     <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Tooling Landscape</div>
     <h1>🧰 AI Tooling Landscape</h1>
-    <div class="tag">Observability · AI gateways · Orchestration frameworks · Graph &amp; memory — open source and commercial</div>
+    <div class="tag">Observability · AI gateways · Orchestration · Graph, memory &amp; code graphs — open source and commercial</div>
 </header>
 
 <div class="wrap wide">
@@ -57,6 +57,7 @@
     <a href="#gw">3 · AI gateways</a>
     <a href="#orch">4 · Orchestration &amp; agent frameworks</a>
     <a href="#graph">5 · Graph &amp; memory frameworks</a>
+    <a href="#code">6 · Code structure graphs</a>
 </div>
 
 <h2 id="obs">1 · Observability &amp; tracing <span class="chip diagram">landscape</span></h2>
@@ -486,6 +487,114 @@ for an agent, and the <strong>database</strong> underneath it. Choose them separ
     <em>"what were the themes across ten thousand tickets"</em>. If your real question is
     <em>"find me something similar"</em>, a hybrid vector + keyword search is cheaper, faster and easier to
     explain — and it is what most teams needed.
+</div>
+
+<h2 id="code">6 · Code structure graphs <span class="chip diagram">landscape</span></h2>
+
+<p>A knowledge graph of a codebase — files, symbols, calls, imports, inheritance, data flow. Distinct
+from document RAG, and increasingly the substrate that makes coding agents useful: it answers
+<strong>"what calls this?"</strong> and <strong>"what breaks if I change it?"</strong>, which similarity
+search cannot.</p>
+
+<div class="warn">
+    <strong>Name collision worth knowing.</strong> <a href="https://glean.software/">Glean</a> is Meta's
+    open-source <em>source-code indexing</em> system. It has nothing to do with the enterprise search
+    product of the same name. Say "Meta's Glean" or "Glean code indexing" in design discussions.
+</div>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:165px">Tool</th>
+        <th style="min-width:205px">What it produces</th>
+        <th style="min-width:150px">Coverage</th>
+        <th style="min-width:180px">Best for</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">Built for agents &amp; LLM consumption</td></tr>
+    <tr class="pick"><td><span class="nm">Blarify</span><span class="lic oss">OSS</span></td>
+        <td>Parses a repo into a Neo4j/FalkorDB graph of files, classes, functions and their relationships</td>
+        <td>Multi-language via tree-sitter + LSP</td>
+        <td>Giving an agent multi-hop code context — the closest thing to "graphify my codebase"</td></tr>
+    <tr><td><span class="nm">Potpie</span><span class="lic oss">OSS</span></td>
+        <td>Repo knowledge graph plus prebuilt agents over it</td>
+        <td>Multi-language</td>
+        <td>Q&amp;A and onboarding on an unfamiliar codebase</td></tr>
+    <tr><td><span class="nm">tree-sitter</span> + <span class="nm">tree-sitter-graph</span><span class="lic oss">OSS</span></td>
+        <td>Parse trees, and a DSL for turning them into graphs on your own schema</td>
+        <td>40+ grammars</td>
+        <td>Rolling your own — most custom tools start here</td></tr>
+    <tr><td><span class="nm">LlamaIndex CodeHierarchyNodeParser</span><span class="lic oss">OSS</span></td>
+        <td>Hierarchical code chunks preserving structure for retrieval</td>
+        <td>Multi-language</td>
+        <td>Code RAG without standing up a graph database</td></tr>
+    <tr><td>Repo maps — <span class="nm">Aider</span>, <span class="nm">Continue</span><span class="lic oss">OSS</span></td>
+        <td>Ranked symbol map of a repo, sized to a context window</td>
+        <td>Multi-language</td>
+        <td>Cheap context for a coding agent, no graph store at all</td></tr>
+
+    <tr class="grp"><td colspan="4">Precise code intelligence</td></tr>
+    <tr><td><span class="nm">SCIP</span> / <span class="nm">LSIF</span> (Sourcegraph)<span class="lic oss">OSS</span></td>
+        <td>Definitions, references and implementations as an index</td>
+        <td>Per-language indexers</td>
+        <td>Accurate cross-repo navigation at scale</td></tr>
+    <tr><td><span class="nm">Kythe</span> (Google)<span class="lic oss">OSS</span></td>
+        <td>Language-agnostic graph schema for cross-references</td>
+        <td>Several, via extractors</td>
+        <td>Very large monorepos</td></tr>
+    <tr><td><span class="nm">Stack Graphs</span> (GitHub)<span class="lic oss">OSS</span></td>
+        <td>Incremental name-binding graphs — resolves symbols without a full build</td>
+        <td>Growing set</td>
+        <td>Fast, incremental indexing</td></tr>
+    <tr><td><span class="nm">Glean</span> (Meta)<span class="lic oss">OSS</span></td>
+        <td>A queryable database of facts about source code</td>
+        <td>Multi-language via indexers</td>
+        <td>Building your own code-intelligence backend</td></tr>
+
+    <tr class="grp"><td colspan="4">Semantic &amp; data-flow analysis</td></tr>
+    <tr class="pick"><td><span class="nm">Joern</span><span class="lic oss">OSS</span></td>
+        <td><strong>Code Property Graph</strong> — AST + control flow + data flow in one queryable graph</td>
+        <td>C/C++, Java, Python, JS, Go and more</td>
+        <td>The richest structural graph available; security and impact analysis</td></tr>
+    <tr><td><span class="nm">CodeQL</span> (GitHub)<span class="lic free">free for OSS</span></td>
+        <td>Code as a relational database you query</td>
+        <td>Major languages</td>
+        <td>Vulnerability hunting and deep semantic queries</td></tr>
+    <tr><td><span class="nm">jQAssistant</span><span class="lic oss">OSS</span></td>
+        <td>Scans Java/Maven into <strong>Neo4j</strong> — architecture rules as Cypher</td>
+        <td>Java/JVM</td>
+        <td>Java estates; enforcing architecture constraints in CI</td></tr>
+    <tr><td><span class="nm">Moose</span> / <span class="nm">Pharo</span><span class="lic oss">OSS</span></td>
+        <td>Meta-model of a system for custom analyses</td>
+        <td>Many, via importers</td>
+        <td>Research-grade or bespoke analysis</td></tr>
+
+    <tr class="grp"><td colspan="4">Dependency &amp; architecture views</td></tr>
+    <tr><td><span class="nm">dependency-cruiser</span>, <span class="nm">madge</span>, <span class="nm">pydeps</span>, <span class="nm">jdeps</span>, <span class="nm">go-callvis</span><span class="lic oss">OSS</span></td>
+        <td>Module and call dependency graphs</td>
+        <td>One language each</td>
+        <td>Quick answers with no infrastructure</td></tr>
+    <tr><td><span class="nm">CodeScene</span>, <span class="nm">NDepend</span>, <span class="nm">Structure101</span>, <span class="nm">Understand</span>, <span class="nm">CAST Imaging</span><span class="lic paid">commercial</span></td>
+        <td>Architecture maps, coupling metrics, hotspots; CAST targets whole application portfolios</td>
+        <td>Broad</td>
+        <td>Legacy modernisation programmes and estate-wide assessment</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Picking one.</strong> Feeding an agent → <strong>Blarify</strong>, or tree-sitter into
+    <strong>Kùzu</strong>/<strong>FalkorDB</strong> if you want your own schema. Impact and data-flow
+    analysis → <strong>Joern</strong>. A Java estate → <strong>jQAssistant</strong> into Neo4j. Accurate
+    navigation across many repos → <strong>SCIP</strong>. Just enough context for a coding agent and
+    nothing more → a <strong>repo map</strong>, which needs no database at all.
+</div>
+
+<div class="trap">
+    <b>Start with the repo map.</b> A ranked tree-sitter symbol map solves most coding-agent context
+    problems for a fraction of the effort. Build the graph when you actually need <em>multi-hop</em>
+    answers — blast radius, transitive callers, dead code across module boundaries — because that is when
+    the traversal earns the pipeline you now have to maintain.
 </div>
 
 <div class="note">
