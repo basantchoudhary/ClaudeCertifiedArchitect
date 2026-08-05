@@ -60,6 +60,7 @@
     <a href="#orch">4 · Orchestration &amp; agent frameworks</a>
     <a href="#graph">5 · Graph &amp; memory frameworks</a>
     <a href="#code">6 · Code structure graphs</a>
+    <a href="#tokens">7 · Token efficiency on large codebases</a>
 </div>
 
 <h2 id="obs">1 · Observability &amp; tracing <span class="chip diagram">landscape</span></h2>
@@ -660,7 +661,11 @@ search cannot.</p>
     </tr></thead>
     <tbody>
     <tr class="grp"><td colspan="4">Built for agents &amp; LLM consumption</td></tr>
-    <tr class="pick"><td><span class="nm">Blarify</span><span class="lic oss">OSS</span></td>
+    <tr class="pick"><td><span class="nm">Graphify</span><span class="lic oss">Apache 2.0</span></td>
+        <td>On-device graph via tree-sitter; ships as an MCP server, slash command, pre-tool hook and memory-file directive</td>
+        <td>36 languages, plus SQL, Terraform, docs</td>
+        <td>Dropping a code graph straight into an AI coding assistant with no glue code</td></tr>
+    <tr><td><span class="nm">Blarify</span><span class="lic oss">OSS</span></td>
         <td>Parses a repo into a Neo4j/FalkorDB graph of files, classes, functions and their relationships</td>
         <td>Multi-language via tree-sitter + LSP</td>
         <td>Giving an agent multi-hop code context — the closest thing to "graphify my codebase"</td></tr>
@@ -743,6 +748,133 @@ search cannot.</p>
     problems for a fraction of the effort. Build the graph when you actually need <em>multi-hop</em>
     answers — blast radius, transitive callers, dead code across module boundaries — because that is when
     the traversal earns the pipeline you now have to maintain.
+</div>
+
+<h2 id="tokens">7 · Token efficiency on large codebases <span class="chip trade">practice</span></h2>
+
+<p>Working an AI coding assistant against a large repository is mostly a <strong>context problem</strong>,
+not a model problem. The levers below are ordered by impact, and the first four cost nothing.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:40px">#</th>
+        <th style="min-width:200px">Lever</th>
+        <th style="min-width:300px">Why it works</th>
+        <th style="min-width:110px">Cost</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><b>1</b></td><td><b>Delegate exploration to subagents</b></td>
+        <td>A subagent burns <em>its own</em> context reading twenty files and returns a paragraph. Your main window receives the conclusion, not the dumps. "Find where retry logic lives across the services" should almost never run in the main session.</td>
+        <td>Free</td></tr>
+    <tr class="pick"><td><b>2</b></td><td><b>Clear between unrelated tasks</b></td>
+        <td>Compaction is lossy and costs tokens to perform; clearing is clean. Check where the window is actually going before optimising anything else — the answer is usually surprising.</td>
+        <td>Free</td></tr>
+    <tr class="pick"><td><b>3</b></td><td><b>Keep the project memory file lean</b></td>
+        <td><code>CLAUDE.md</code> is prepended to <em>every</em> request. Point at files rather than inlining them. A 500-line memory file is a tax on every turn of every session.</td>
+        <td>Free</td></tr>
+    <tr class="pick"><td><b>4</b></td><td><b>Prune MCP servers</b></td>
+        <td>Every connected server's tool schemas sit in context on every request. Three chatty servers can cost more than the code you are reading. <b>The most common silent bloat.</b></td>
+        <td>Free</td></tr>
+    <tr><td><b>5</b></td><td>Reference files explicitly</td>
+        <td><code>@src/auth/session.py</code> skips an entire search-and-read cycle versus "find the session handling code".</td>
+        <td>Free</td></tr>
+    <tr><td><b>6</b></td><td>Skills instead of a large memory file</td>
+        <td>Skills load on demand; the memory file is always resident.</td>
+        <td>Free</td></tr>
+    <tr><td><b>7</b></td><td>Plan before executing</td>
+        <td>Design first, then act — avoids exploratory thrash filling the window with dead ends.</td>
+        <td>Free</td></tr>
+    <tr><td><b>8</b></td><td>Structural search over text search</td>
+        <td><code>ast-grep</code> matches code <em>shapes</em>; far fewer false positives than grep, so fewer files opened.</td>
+        <td>Install</td></tr>
+    <tr><td><b>9</b></td><td>Symbol-level retrieval</td>
+        <td>A language server returns one function, not one file.</td>
+        <td>Setup</td></tr>
+    <tr><td><b>10</b></td><td>A code knowledge graph</td>
+        <td>Structural questions answered as nodes and edges instead of file text. Worth it once the repo is large, unfamiliar and the questions are genuinely structural.</td>
+        <td>Setup + <b>upkeep</b></td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Do 1–4 first.</strong> They are free, take an afternoon, need no maintenance, and in most
+    codebases they deliver the bulk of the available saving. Tooling is the fourth step, not the first.
+</div>
+
+<h3 id="tokens-oss">Free and open-source options</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Tool</th>
+        <th style="min-width:95px">Licence</th>
+        <th style="min-width:250px">What it gives you</th>
+        <th style="min-width:190px">Best for</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">Built in — nothing to install</td></tr>
+    <tr class="pick"><td><span class="nm">Subagents</span></td><td>included</td>
+        <td>Isolated context for exploration; only the conclusion returns</td>
+        <td><b>Start here.</b> Biggest single win</td></tr>
+    <tr><td><span class="nm">Skills</span></td><td>included</td><td>Procedures loaded on demand rather than always resident</td><td>Conventions, checklists, workflows</td></tr>
+    <tr><td><span class="nm">Hooks</span></td><td>included</td><td>Intercept tool calls — e.g. consult an index before a broad search</td><td>Enforcing retrieval discipline</td></tr>
+
+    <tr class="grp"><td colspan="4">Search &amp; retrieval</td></tr>
+    <tr class="pick"><td><span class="nm">ripgrep</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>Fast literal and regex search, already used under the hood</td><td>Everything. Narrow before you read</td></tr>
+    <tr class="pick"><td><span class="nm">ast-grep</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>Structural search on the syntax tree — match code shapes, not strings</td><td>Refactors and pattern audits with far fewer false hits</td></tr>
+    <tr><td><span class="nm">Serena</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>MCP server over language servers — symbol-level reads and edits</td><td>Large repos where whole-file reads are the cost</td></tr>
+    <tr><td><span class="nm">Language-server MCPs</span><span class="lic oss">OSS</span></td><td>Varies</td>
+        <td>Go-to-definition, find-references, hover as callable tools</td><td>Typed languages with good LSP support</td></tr>
+    <tr><td><span class="nm">Zoekt</span> / <span class="nm">Sourcebot</span><span class="lic oss">OSS</span></td><td>Apache 2.0</td>
+        <td>Indexed cross-repo code search</td><td>Many repositories rather than one large one</td></tr>
+
+    <tr class="grp"><td colspan="4">Packing &amp; context shaping</td></tr>
+    <tr><td><span class="nm">Repomix</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>Packs a repo into one structured, compressible file with token counts</td><td>Handing a whole small repo over once</td></tr>
+    <tr><td><span class="nm">Aider repo map</span><span class="lic oss">Apache 2.0</span></td><td>Apache 2.0</td>
+        <td>Ranked tree-sitter symbol map sized to a context window</td><td><b>Cheapest useful whole-repo overview</b> — no database</td></tr>
+    <tr><td><span class="nm">Context7</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>Current library documentation on demand</td><td>Stopping guessed API signatures and the retries they cause</td></tr>
+
+    <tr class="grp"><td colspan="4">Code knowledge graphs</td></tr>
+    <tr class="pick"><td><span class="nm">Graphify</span><span class="lic oss">Apache 2.0</span></td><td>Apache 2.0</td>
+        <td>On-device graph over 36 languages via tree-sitter, no embeddings. Ships as an MCP server, a slash command, a pre-tool hook and a memory-file directive</td>
+        <td>Structural questions on a large, unfamiliar codebase</td></tr>
+    <tr><td><span class="nm">Blarify</span><span class="lic oss">MIT</span></td><td>MIT</td>
+        <td>Repo into Neo4j or FalkorDB; you own the schema</td><td>Building your own graph-backed tooling</td></tr>
+    <tr><td><span class="nm">Joern</span><span class="lic oss">Apache 2.0</span></td><td>Apache 2.0</td>
+        <td>Code Property Graph — AST plus control and data flow</td><td>Impact analysis and security, not day-to-day coding</td></tr>
+    <tr><td><span class="nm">Potpie</span><span class="lic oss">Apache 2.0</span></td><td>Apache 2.0</td>
+        <td>Repo knowledge graph with agents over it</td><td>Onboarding to an unfamiliar codebase</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    <strong>On the token-reduction numbers.</strong> Figures quoted around code-graph tooling — "49×",
+    "71.5×" — are <em>community-reported on particular workloads</em>, not independent benchmarks, and they
+    measure structural queries where a graph is inherently favourable. Expect a real but far smaller
+    average across a normal working session, and measure it on your own repo before quoting it to anyone.
+</div>
+
+<div class="trap">
+    <b>The staleness trap.</b> A code graph must be rebuilt after significant changes. A stale graph is
+    <em>worse than none</em>, because it is confidently wrong — and if a pre-tool hook makes the assistant
+    consult it before searching, wrong answers arrive first. <b>Wire the rebuild into a post-merge git hook
+    or CI.</b> Never rely on remembering to re-run it.
+</div>
+
+<div class="note">
+    <strong>An ontology is not the answer to this problem.</strong> An ontology encodes <em>business</em>
+    meaning — Study, Compound, Incident. A code graph encodes <em>structural</em> facts — this function
+    calls that one. Tools like Graphify derive the second automatically from source. Nothing about making
+    a coding assistant cheaper on your repository requires the first. See
+    <a href="ontology-builder.html">Ontology Builder</a> for where ontologies genuinely earn their cost.
 </div>
 
 <div class="note">
