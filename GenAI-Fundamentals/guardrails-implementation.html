@@ -71,9 +71,149 @@ slow and unsafe.</p>
         <span>Irreversible or regulated actions. Not a fallback for weak lower layers — a deliberate stop for decisions that should never be automatic.</span></div></div>
 </div>
 
+<h2 id="kinds">12 · What kinds of guardrails are there?</h2>
+
+<p>"Guardrail" covers about fifty distinct controls. Any one of them is pinned down by four
+questions, and answering all four is what turns a vague intention into something implementable.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:110px">Axis</th><th style="min-width:150px">The question</th><th style="min-width:330px">Options</th></tr></thead>
+    <tbody>
+        <tr><td><b>Stage</b></td><td>Where does it act?</td><td>Input · retrieval &amp; context · tool call · output · loop · human gate</td></tr>
+        <tr><td><b>Threat</b></td><td>What is it protecting against?</td><td>Misuse · leakage · inaccuracy · unsafe action · runaway cost · non-compliance</td></tr>
+        <tr><td><b>Decider</b></td><td>How does it decide?</td><td><b>Deterministic</b> (rule, schema, ACL) · <b>model-based</b> (classifier, judge) · <b>human</b></td></tr>
+        <tr><td><b>Response</b></td><td>What happens when it fires?</td><td><b>Block</b> · <b>transform</b> (redact, truncate) · <b>flag</b> for review · <b>log</b> only</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    Get the <b>response</b> axis wrong and you either break the product or create false comfort. Blocking
+    a summary because one phone number appeared is a bad trade — <em>transform</em> was the right answer.
+    Merely <em>logging</em> an attempted data exfiltration is not a guardrail, it is a diary.
+</div>
+
+<h3>The catalogue, by stage</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:165px">Guardrail</th>
+        <th style="min-width:95px">Decider</th>
+        <th style="min-width:100px">Response</th>
+        <th style="min-width:250px">Guards against</th>
+    </tr></thead>
+    <tbody>
+
+    <tr class="grp"><td colspan="4">Input</td></tr>
+    <tr><td>Prompt injection / jailbreak detection</td><td>Model</td><td>Block</td><td>Instructions smuggled in through user text or documents</td></tr>
+    <tr><td>Topic &amp; scope restriction</td><td>Model</td><td>Block</td><td>Answering outside the system's remit — legal advice from an IT assistant</td></tr>
+    <tr><td>PII detection &amp; redaction</td><td>Deterministic + model</td><td><b>Transform</b></td><td>Personal data leaving your boundary in a prompt</td></tr>
+    <tr><td>Secret &amp; credential detection</td><td>Deterministic</td><td>Transform + alert</td><td>Passwords and tokens pasted into tickets and chats</td></tr>
+    <tr><td>Encoding &amp; obfuscation checks</td><td>Deterministic</td><td>Block</td><td>Base64, homoglyphs, zero-width characters used to slip past filters</td></tr>
+    <tr><td>Length &amp; token caps</td><td>Deterministic</td><td>Block</td><td>Context exhaustion and cost attacks</td></tr>
+    <tr><td>Denylist / banned terms</td><td>Deterministic</td><td>Block</td><td>Known-bad phrases, competitor names, embargoed topics</td></tr>
+    <tr><td>Language detection</td><td>Model</td><td>Block</td><td>Answering in languages you have not evaluated</td></tr>
+    <tr><td>Attachment &amp; file scanning</td><td>Deterministic</td><td>Block</td><td>Malicious uploads, oversized documents</td></tr>
+
+    <tr class="grp"><td colspan="4">Retrieval &amp; context</td></tr>
+    <tr class="own"><td><b>Permission filtering at retrieval</b></td><td>Deterministic</td><td>Block</td><td><b>The single most important one.</b> Surfacing records this user may not see</td></tr>
+    <tr><td>Source allow-listing</td><td>Deterministic</td><td>Block</td><td>Grounding answers in unapproved or unvetted corpora</td></tr>
+    <tr><td>Provenance tagging</td><td>Deterministic</td><td>Transform</td><td>Untrusted retrieved text being read as instructions</td></tr>
+    <tr><td>Freshness limits</td><td>Deterministic</td><td>Flag</td><td>Confidently citing content that is years out of date</td></tr>
+    <tr><td>Context budget &amp; compaction</td><td>Deterministic</td><td>Transform</td><td>Window exhaustion mid-run; lost-in-the-middle degradation</td></tr>
+
+    <tr class="grp"><td colspan="4">Tool call</td></tr>
+    <tr class="own"><td><b>Tool allow-listing per user</b></td><td>Deterministic</td><td>Block</td><td>A tool the user could not invoke directly being invoked on their behalf</td></tr>
+    <tr><td>Parameter validation</td><td>Deterministic</td><td>Block</td><td>Out-of-range, malformed or injected arguments</td></tr>
+    <tr><td>Destructive-action blocking</td><td>Deterministic</td><td>Escalate</td><td>Deletes, drops, overwrites, credential rotation</td></tr>
+    <tr><td>Blast-radius limits</td><td>Deterministic</td><td>Escalate</td><td>Acting on 40,000 rows when the bound was 100</td></tr>
+    <tr><td>Sandbox isolation</td><td>Deterministic</td><td>Contain</td><td>Model-written code touching the host or the network</td></tr>
+    <tr><td>Egress restriction</td><td>Deterministic</td><td>Block</td><td>Data exfiltration through an outbound call</td></tr>
+    <tr><td>Idempotency keys</td><td>Deterministic</td><td>Dedupe</td><td>A retry performing the same side effect twice</td></tr>
+    <tr><td>Per-tool rate limits</td><td>Deterministic</td><td>Throttle</td><td>One agent overwhelming a downstream system</td></tr>
+
+    <tr class="grp"><td colspan="4">Output</td></tr>
+    <tr><td>Schema validation</td><td>Deterministic</td><td>Retry then fail</td><td>Unparseable responses breaking the caller</td></tr>
+    <tr class="own"><td><b>Citation validity</b></td><td>Deterministic</td><td>Block</td><td>Citing sources that were never retrieved, or do not exist. <b>Five lines of code, catches the worst failure</b></td></tr>
+    <tr><td>Groundedness scoring</td><td>Model</td><td>Flag or block</td><td>Claims the sources do not support</td></tr>
+    <tr><td>PII &amp; secret leakage scan</td><td>Deterministic</td><td>Transform</td><td>Sensitive data reaching the user or the logs</td></tr>
+    <tr><td>Content safety filters</td><td>Model</td><td>Block</td><td>Hate, violence, self-harm, sexual content</td></tr>
+    <tr><td>Regulated-advice detection</td><td>Model</td><td>Transform</td><td>Medical, legal or financial advice without the required framing</td></tr>
+    <tr><td>Brand &amp; competitor checks</td><td>Deterministic</td><td>Flag</td><td>Off-message or disparaging output</td></tr>
+    <tr><td>Generated-code scanning</td><td>Deterministic</td><td>Block</td><td>Insecure or destructive code shown as a suggestion</td></tr>
+    <tr><td>Over-refusal detection</td><td>Model</td><td>Flag</td><td>A system so cautious it has become useless — measured, not assumed</td></tr>
+
+    <tr class="grp"><td colspan="4">Loop &amp; runtime</td></tr>
+    <tr><td>Max turns</td><td>Deterministic</td><td>Stop</td><td>Unbounded iteration</td></tr>
+    <tr><td>Cost &amp; token budget</td><td>Deterministic</td><td>Stop</td><td>A single run consuming a month of budget</td></tr>
+    <tr><td>Wall-clock timeout</td><td>Deterministic</td><td>Stop</td><td>Runs that never return</td></tr>
+    <tr class="own"><td><b>No-progress detection</b></td><td>Deterministic</td><td>Stop</td><td>The same call repeated — thrash that turn caps alone will not catch</td></tr>
+    <tr><td>Recursion &amp; fan-out depth</td><td>Deterministic</td><td>Stop</td><td>Subagents spawning subagents</td></tr>
+    <tr><td>Repeat-action guard</td><td>Deterministic</td><td>Escalate</td><td>The same remediation applied twice — a defect, not a success</td></tr>
+
+    <tr class="grp"><td colspan="4">Human &amp; process</td></tr>
+    <tr><td>Approval gate by action class</td><td>Human</td><td>Suspend</td><td>Irreversible or regulated change happening unattended</td></tr>
+    <tr><td>Dual control (four eyes)</td><td>Human</td><td>Suspend</td><td>A single person authorising the highest-risk actions</td></tr>
+    <tr><td>Change-freeze awareness</td><td>Deterministic</td><td>Observe only</td><td>Automated change during a freeze or validation window</td></tr>
+    <tr><td>Kill switch</td><td>Human</td><td>Halt</td><td>Needing to stop everything, per workload or globally</td></tr>
+
+    <tr class="grp"><td colspan="4">System &amp; release</td></tr>
+    <tr><td>Model &amp; prompt version pinning</td><td>Deterministic</td><td>Block deploy</td><td>Behaviour changing underneath you unannounced</td></tr>
+    <tr><td>Eval thresholds in CI</td><td>Deterministic</td><td>Fail build</td><td>Quality regressions reaching production</td></tr>
+    <tr><td>Canary &amp; rollback</td><td>Deterministic</td><td>Revert</td><td>A bad release affecting everyone at once</td></tr>
+    <tr><td>Drift alerting</td><td>Deterministic</td><td>Alert</td><td>Slow quality decay nobody notices</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h3>Fail open, or fail closed?</h3>
+
+<p>Decide this per guardrail, in advance. It is the question that gets skipped and then answered
+badly at three in the morning.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:150px">Guardrail</th><th style="min-width:120px">If it is unavailable</th><th style="min-width:290px">Why</th></tr></thead>
+    <tbody>
+        <tr><td>Permission filtering</td><td><b>Fail closed</b></td><td>Never show data because the check was down</td></tr>
+        <tr><td>PII redaction</td><td><b>Fail closed</b></td><td>Better no answer than a leaked one</td></tr>
+        <tr><td>Tool authorisation</td><td><b>Fail closed</b></td><td>An unauthorised action cannot be un-taken</td></tr>
+        <tr><td>Budget &amp; loop limits</td><td><b>Fail closed</b></td><td>Runaway cost is unrecoverable spend</td></tr>
+        <tr><td>Injection detection</td><td>Fail closed on write paths, open on read</td><td>Read paths already have a small blast radius</td></tr>
+        <tr><td>Groundedness scoring</td><td>Fail open, flag</td><td>Advisory; blocking every answer on a scorer outage is worse</td></tr>
+        <tr><td>Brand &amp; tone checks</td><td>Fail open, log</td><td>Cosmetic — do not take the product down for it</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h3>The minimum set, by application shape</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:150px">Shape</th><th style="min-width:420px">The guardrails you cannot skip</th></tr></thead>
+    <tbody>
+        <tr><td><b>Single LLM call</b></td><td>Input length cap · PII redaction · output schema · content safety · rate limit</td></tr>
+        <tr><td><b>Grounded Q&amp;A / RAG</b></td><td>All of the above, plus <b>permission filtering at retrieval</b> · source allow-list · provenance tagging · <b>citation validity</b> · groundedness · injection detection</td></tr>
+        <tr><td><b>Agent</b></td><td>All of the above, plus <b>tool allow-listing</b> · parameter validation · blast-radius limits · action classes · loop budgets · <b>no-progress detection</b> · sandboxing · audit trail</td></tr>
+        <tr><td><b>Multi-agent</b></td><td>All of the above, plus recursion depth · shared budget across agents · escalation rules · per-agent tool scoping</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>If you implement only four,</b> make them: <b>permission filtering at retrieval</b>,
+    <b>tool authorisation at execution</b>, <b>citation validity</b>, and <b>loop budgets</b>. Three are
+    deterministic and nearly free, and between them they cover the failures that are unrecoverable —
+    data shown to the wrong person, an action that cannot be undone, a fabricated answer, and unbounded
+    spend. Everything else on this page is refinement.
+</div>
+
 <div class="toc">
-    <a href="#injection">2 · Prompt injection</a>
-    <a href="#pii">3 · PII &amp; redaction</a>
+    <a href="#kinds">2 · What kinds are there</a>
+    <a href="#injection">3 · Prompt injection</a>
+    <a href="#pii">10 · PII &amp; redaction</a>
     <a href="#authz">4 · Authorisation</a>
     <a href="#output">5 · Output validation</a>
     <a href="#grounding">6 · Grounding</a>
