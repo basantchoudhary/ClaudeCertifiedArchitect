@@ -145,6 +145,21 @@ building a platform for a feature nobody has validated.</p>
     <span><span class="sc off">·</span> not usually needed at that level</span>
 </div>
 
+<div class="legend" style="background:#fff8e6;border-color:#ffe0a3">
+    <span style="display:inline-block;width:26px;height:14px;background:#fff8e6;border:1px solid #e0c9a0;border-radius:3px"></span>
+    <span><strong>Shaded rows have no off-the-shelf answer</strong> for part of the requirement — the
+    <em>You must build in-house</em> column says which part. 24 of the 37 rows carry one.</span>
+</div>
+
+<div class="good" style="margin-top:14px">
+    <strong>The pattern across that column.</strong> There is almost nothing you build <em>entirely</em> —
+    but in two thirds of the table the <strong>judgement layer has no vendor</strong>. Vendors sell
+    mechanisms: a retrieval engine, a guardrail runtime, an eval runner, a graph database. What none of
+    them can supply is <em>your definition</em> — what counts as relevant, what is sensitive here, what a
+    good answer looks like, which action needs a signature. Buying the mechanism and never writing the
+    definition is the most common way an AI platform ends up impressive and useless.
+</div>
+
 <div class="warn">
     Product names move fast — treat the platform columns as <em>where to look</em>, not as a procurement
     list. Verify current naming and regional availability before you commit to a design.
@@ -163,11 +178,12 @@ building a platform for a feature nobody has validated.</p>
             <th style="min-width:170px">Azure</th>
             <th style="min-width:170px">AWS</th>
             <th style="min-width:170px">GCP</th>
+            <th style="min-width:215px">You must build in-house</th>
         </tr>
     </thead>
     <tbody>
 
-    <tr class="grp"><td colspan="7">A · Harness &amp; foundation</td></tr>
+    <tr class="grp"><td colspan="8">A · Harness &amp; foundation</td></tr>
     <tr>
         <td><span class="cap">Model access &amp; routing</span><span class="ask">Which model, and what happens when it is down?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
@@ -176,6 +192,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure AI Foundry, Azure OpenAI, API Management</td>
         <td>Amazon Bedrock, SageMaker</td>
         <td>Vertex AI, Model Garden</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Structured output &amp; schema enforcement</span><span class="ask">Will the answer parse, every time?</span></td>
@@ -185,8 +202,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure OpenAI structured outputs</td>
         <td>Bedrock tool use / converse API</td>
         <td>Vertex controlled generation</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Tool design &amp; registry (MCP)</span><span class="ask">What can it call, and who declared that?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>MCP SDKs, FastMCP, OpenAPI specs</td>
@@ -194,8 +212,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry tools, Logic Apps connectors</td>
         <td>Bedrock Agents action groups</td>
         <td>Vertex function calling, extensions</td>
+        <td><b>The tools themselves</b> — descriptions, schemas, granularity. No vendor knows your systems.</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Prompt versioning &amp; reproducibility</span><span class="ask">Which prompt produced that answer last March?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Git, promptfoo, Langfuse</td>
@@ -203,6 +222,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Prompt Flow, AI Foundry</td>
         <td>Bedrock prompt management</td>
         <td>Vertex AI prompt management</td>
+        <td>The prompt library and its conventions</td>
     </tr>
     <tr>
         <td><span class="cap">Config &amp; secrets</span><span class="ask">Where do keys live, and who can read them?</span></td>
@@ -212,10 +232,11 @@ building a platform for a feature nobody has validated.</p>
         <td>Key Vault, App Configuration</td>
         <td>Secrets Manager, Parameter Store</td>
         <td>Secret Manager</td>
+        <td style="color:#aaa">—</td>
     </tr>
 
-    <tr class="grp"><td colspan="7">B · Composition &amp; control flow</td></tr>
-    <tr>
+    <tr class="grp"><td colspan="8">B · Composition &amp; control flow</td></tr>
+    <tr class="own">
         <td><span class="cap">Orchestration (graph engineering)</span><span class="ask">What runs in what order, and can it resume?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>LangGraph, Temporal, Prefect, Airflow, Dagster</td>
@@ -223,8 +244,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Durable Functions, Logic Apps</td>
         <td>Step Functions</td>
         <td>Workflows, Cloud Composer</td>
+        <td><b>The topology</b> — where the step boundaries fall</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Agent loop &amp; termination</span><span class="ask">When does it stop, and how do we know it finished?</span></td>
         <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Claude Agent SDK, LangGraph, AutoGen, CrewAI</td>
@@ -232,6 +254,7 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry Agent Service</td>
         <td>Bedrock Agents</td>
         <td>Vertex AI Agent Engine / ADK</td>
+        <td><b>Stop conditions</b>, no-progress detection, budget caps</td>
     </tr>
     <tr>
         <td><span class="cap">State &amp; checkpointing</span><span class="ask">If it dies at step 7, where does it restart?</span></td>
@@ -241,6 +264,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Cosmos DB, Durable entities</td>
         <td>DynamoDB, S3</td>
         <td>Firestore, Spanner</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Concurrency, async &amp; streaming</span><span class="ask">Does it feel fast, and does it scale?</span></td>
@@ -250,8 +274,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure OpenAI streaming, Container Apps</td>
         <td>Bedrock streaming, Lambda</td>
         <td>Vertex streaming, Cloud Run</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Human-in-the-loop &amp; approval</span><span class="ask">Who signs before it acts?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Build — approval queue + callback</td>
@@ -259,10 +284,11 @@ building a platform for a feature nobody has validated.</p>
         <td>Logic Apps approvals, Durable Functions</td>
         <td>Step Functions callback pattern</td>
         <td>Workflows callbacks</td>
+        <td><b>The approval matrix</b> — which action needs whose signature</td>
     </tr>
 
-    <tr class="grp"><td colspan="7">C · Context &amp; knowledge</td></tr>
-    <tr>
+    <tr class="grp"><td colspan="8">C · Context &amp; knowledge</td></tr>
+    <tr class="own">
         <td><span class="cap">Context engineering &amp; token budget</span><span class="ask">What occupies the window, in what order?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Token counting APIs, compaction, summarisation</td>
@@ -270,8 +296,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry, Prompt Flow</td>
         <td>Bedrock converse token usage</td>
         <td>Vertex token counting</td>
+        <td><b>Everything.</b> What enters the window, in what order, what is dropped first — no product decides this</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Retrieval / RAG</span><span class="ask">Where does the grounding come from?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>LlamaIndex, Haystack, LangChain</td>
@@ -279,6 +306,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure AI Search (hybrid + semantic)</td>
         <td>Bedrock Knowledge Bases, Kendra</td>
         <td>Vertex AI Search</td>
+        <td><b>What counts as relevant</b> in your domain</td>
     </tr>
     <tr>
         <td><span class="cap">Vector store</span><span class="ask">Where do embeddings live?</span></td>
@@ -288,8 +316,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Search, Cosmos DB vector</td>
         <td>OpenSearch Serverless, Aurora pgvector</td>
         <td>Vertex Vector Search, AlloyDB</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Knowledge graph</span><span class="ask">What are the relationships, not just the text?</span></td>
         <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Neo4j, RDF/SPARQL, NetworkX, Apache AGE</td>
@@ -297,8 +326,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Cosmos DB Gremlin</td>
         <td>Amazon Neptune</td>
         <td>Spanner Graph</td>
+        <td><b>The ontology</b> — the entities and relationships that matter here</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Chunking &amp; indexing pipeline</span><span class="ask">How does source content become retrievable?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Unstructured, LlamaIndex parsers, Docling</td>
@@ -306,8 +336,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Search skillsets &amp; indexers</td>
         <td>Bedrock KB ingestion, Glue</td>
         <td>Vertex AI Search ingestion, Dataflow</td>
+        <td>Chunk boundaries and the metadata schema</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Memory (short &amp; long term)</span><span class="ask">What does it remember between turns and sessions?</span></td>
         <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Mem0, LangGraph memory, Redis, Zep</td>
@@ -315,8 +346,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Cosmos DB, Redis</td>
         <td>DynamoDB, ElastiCache</td>
         <td>Firestore, Memorystore</td>
+        <td><b>The retention policy</b> — what is kept, summarised, forgotten</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Caching (prompt &amp; semantic)</span><span class="ask">Are we paying twice for the same answer?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Prompt caching, GPTCache, Redis</td>
@@ -324,10 +356,11 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure Cache for Redis, AOAI prompt caching</td>
         <td>Bedrock prompt caching, ElastiCache</td>
         <td>Vertex context caching, Memorystore</td>
+        <td><b>Cache key design</b> — especially per-user partitioning</td>
     </tr>
 
-    <tr class="grp"><td colspan="7">D · Quality &amp; truth</td></tr>
-    <tr>
+    <tr class="grp"><td colspan="8">D · Quality &amp; truth</td></tr>
+    <tr class="own">
         <td><span class="cap">Offline eval</span><span class="ask">Did the change make it better or worse?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>promptfoo, Ragas, DeepEval, Inspect AI</td>
@@ -335,8 +368,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry evaluation SDK</td>
         <td>Bedrock model evaluation</td>
         <td>Vertex AI Evaluation service</td>
+        <td><b>The dataset and the graders.</b> The single largest in-house item, and the one that decides whether any of this works</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Online eval, A/B &amp; canary</span><span class="ask">Is it better for real users, not just the test set?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Feature flags, Statsig OSS, GrowthBook</td>
@@ -344,8 +378,9 @@ building a platform for a feature nobody has validated.</p>
         <td>App Configuration, AI Foundry</td>
         <td>CloudWatch Evidently</td>
         <td>Vertex experiments</td>
+        <td><b>The success metric</b></td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Hallucination control &amp; grounding</span><span class="ask">Can every claim be traced to a source?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Ragas faithfulness, citation enforcement, verifier pass</td>
@@ -353,8 +388,9 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry groundedness detection</td>
         <td>Bedrock Guardrails contextual grounding, KB citations</td>
         <td>Vertex grounding &amp; check-grounding API</td>
+        <td>The acceptance threshold — how grounded is grounded enough</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Feedback capture</span><span class="ask">Do users think it helped?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Build — thumbs + implicit signals</td>
@@ -362,8 +398,9 @@ building a platform for a feature nobody has validated.</p>
         <td>App Insights custom events</td>
         <td>CloudWatch, DynamoDB</td>
         <td>BigQuery, Firestore</td>
+        <td><b>The taxonomy</b> and what you do with it</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Regression testing in CI</span><span class="ask">Does the build fail when quality drops?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>pytest, promptfoo CI, GitHub Actions</td>
@@ -371,10 +408,11 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure DevOps / GitHub Actions</td>
         <td>CodeBuild, CodePipeline</td>
         <td>Cloud Build</td>
+        <td><b>The thresholds that fail the build</b></td>
     </tr>
 
-    <tr class="grp"><td colspan="7">E · Safety &amp; security</td></tr>
-    <tr>
+    <tr class="grp"><td colspan="8">E · Safety &amp; security</td></tr>
+    <tr class="own">
         <td><span class="cap">Prompt injection defence</span><span class="ask">What if the retrieved document gives instructions?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>LLM Guard, Rebuff, NeMo Guardrails</td>
@@ -382,8 +420,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure AI Content Safety — Prompt Shields</td>
         <td>Bedrock Guardrails</td>
         <td>Model Armor</td>
+        <td><b>Blast-radius limits</b> on the untrusted path — detection is the second line</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Guardrails (content, topic, policy)</span><span class="ask">What must it never say or do?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Guardrails AI, NeMo Guardrails</td>
@@ -391,8 +430,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure AI Content Safety</td>
         <td>Bedrock Guardrails</td>
         <td>Model Armor, safety filters</td>
+        <td><b>The policies</b> — what must never be said or done <em>here</em></td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">PII detection &amp; redaction</span><span class="ask">What leaves our boundary in the prompt?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Presidio, spaCy, regex rule sets</td>
@@ -400,8 +440,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Purview, Content Safety, Language PII</td>
         <td>Comprehend PII, Macie</td>
         <td>Sensitive Data Protection (DLP)</td>
+        <td><b>Which categories are sensitive</b> in your data</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Identity &amp; permission propagation</span><span class="ask">Does it see only what <em>this user</em> may see?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>OAuth2 / OIDC, Keycloak, on-behalf-of flows</td>
@@ -409,6 +450,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Entra ID OBO flow</td>
         <td>IAM, Cognito identity pools</td>
         <td>IAM, Workload Identity Federation</td>
+        <td>The on-behalf-of wiring and the <b>parity tests</b></td>
     </tr>
     <tr>
         <td><span class="cap">Data governance &amp; lineage</span><span class="ask">What data went into that answer?</span></td>
@@ -418,6 +460,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Microsoft Purview</td>
         <td>DataZone, Glue Data Catalog</td>
         <td>Dataplex</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Sandboxing &amp; code execution</span><span class="ask">Where does model-written code run?</span></td>
@@ -427,8 +470,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Container Apps dynamic sessions</td>
         <td>Bedrock code interpreter, Lambda</td>
         <td>Vertex code execution, Cloud Run</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Audit trail</span><span class="ask">Can we reconstruct this in three years?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>OpenTelemetry logs, append-only store</td>
@@ -436,10 +480,11 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure Monitor, Purview audit</td>
         <td>CloudTrail</td>
         <td>Cloud Audit Logs</td>
+        <td><b>What is recorded</b>, and for how long</td>
     </tr>
 
-    <tr class="grp"><td colspan="7">F · Operations</td></tr>
-    <tr>
+    <tr class="grp"><td colspan="8">F · Operations</td></tr>
+    <tr class="own">
         <td><span class="cap">Observability &amp; tracing</span><span class="ask">Why did <em>this</em> run behave that way?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>OpenTelemetry, OpenLLMetry, Langfuse, Phoenix</td>
@@ -447,6 +492,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Application Insights, AI Foundry tracing</td>
         <td>CloudWatch, X-Ray</td>
         <td>Cloud Trace, Cloud Monitoring</td>
+        <td><b>The span schema</b> — prompt version, model, cost, quality score</td>
     </tr>
     <tr>
         <td><span class="cap">Logging</span><span class="ask">What happened, in order, with correlation?</span></td>
@@ -456,6 +502,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure Monitor Logs</td>
         <td>CloudWatch Logs</td>
         <td>Cloud Logging</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Error handling, retries, circuit breakers</span><span class="ask">What happens on the bad path?</span></td>
@@ -465,6 +512,7 @@ building a platform for a feature nobody has validated.</p>
         <td>API Management policies, Durable Functions</td>
         <td>Step Functions retry / catch</td>
         <td>Workflows retry policies</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Rate limits &amp; quota</span><span class="ask">Who gets throttled first when we hit the ceiling?</span></td>
@@ -474,6 +522,7 @@ building a platform for a feature nobody has validated.</p>
         <td>API Management throttling, PTU</td>
         <td>Bedrock quotas, WAF</td>
         <td>Vertex quotas, Apigee</td>
+        <td style="color:#aaa">—</td>
     </tr>
     <tr>
         <td><span class="cap">Performance &amp; latency</span><span class="ask">Is it fast enough to be used?</span></td>
@@ -483,8 +532,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Provisioned throughput units (PTU)</td>
         <td>Bedrock provisioned throughput</td>
         <td>Vertex provisioned throughput</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Cost &amp; FinOps</span><span class="ask">What does one answer cost, and who pays?</span></td>
         <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>LiteLLM cost tracking, Langfuse, OpenCost</td>
@@ -492,6 +542,7 @@ building a platform for a feature nobody has validated.</p>
         <td>Cost Management, AOAI metrics</td>
         <td>Cost Explorer, Budgets</td>
         <td>Cloud Billing + BigQuery export</td>
+        <td><b>The attribution model</b> — spend to use case and business unit</td>
     </tr>
     <tr>
         <td><span class="cap">Deployment &amp; CI/CD for AI assets</span><span class="ask">How do prompts, tools and indexes ship?</span></td>
@@ -501,8 +552,9 @@ building a platform for a feature nobody has validated.</p>
         <td>Azure DevOps, AI Foundry deployments</td>
         <td>CodePipeline</td>
         <td>Cloud Build, Cloud Deploy</td>
+        <td style="color:#aaa">—</td>
     </tr>
-    <tr>
+    <tr class="own">
         <td><span class="cap">Drift &amp; production monitoring</span><span class="ask">Is quality decaying quietly?</span></td>
         <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
         <td>Evidently, Phoenix, Langfuse metrics</td>
@@ -510,6 +562,7 @@ building a platform for a feature nobody has validated.</p>
         <td>AI Foundry monitoring, App Insights</td>
         <td>SageMaker Model Monitor, CloudWatch</td>
         <td>Vertex Model Monitoring</td>
+        <td>The definition of drift and its alert thresholds</td>
     </tr>
 
     </tbody>
@@ -717,7 +770,7 @@ that AI is involved. Name the kind of memory first.</p>
 
 <h2>8 · What to build, and what to buy <span class="chip trade">trade-off</span></h2>
 
-<p>Most of the table above is a buying decision. A short list is not — and the test is simple:
+<p>The <em>You must build in-house</em> column marks this row by row. Summarised, the test is simple:
 <strong>you must own anything that encodes your organisation's judgement</strong>, because no vendor can
 supply it and it is the part that actually differentiates the system.</p>
 
