@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Engineering Blueprint · Conceptual Needs → Physical Stack</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .wrap.wide { max-width: 1400px; }
+    .scroller { overflow-x: auto; margin: 16px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.05); }
+    .scroller table { margin: 0; box-shadow: none; min-width: 1180px; }
+    .scroller th { position: sticky; top: 0; z-index: 2; font-size: .82em; }
+    .scroller td { font-size: .85em; }
+    .grp td { background: #efeaff !important; font-weight: 700; color: #4a3c78; font-size: .9em !important;
+              letter-spacing: .04em; text-transform: uppercase; }
+    .cap { font-weight: 600; color: #333; }
+    .ask { color: #777; font-size: .93em; display: block; margin-top: 2px; }
+    .own { background: #fff8e6 !important; }
+
+    .sc { display:inline-block; width:19px; height:19px; line-height:19px; text-align:center;
+          border-radius:5px; font-size:.72em; font-weight:700; margin-right:2px; }
+    .sc.on { background:#667eea; color:#fff; }
+    .sc.off { background:#eee; color:#bbb; }
+
+    .five th:first-child { width: 15%; }
+    .five td:first-child { font-weight:700; color:#5a4a8a; }
+
+    .legend { display:flex; flex-wrap:wrap; gap:18px; align-items:center; background:#faf9ff;
+              border:1px solid #e6e1f7; border-radius:8px; padding:12px 16px; margin:14px 0; font-size:.9em; }
+    .buildbuy { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0; }
+    .buildbuy > div { border-radius:8px; padding:14px 18px; }
+    .buildbuy .build { background:#fff8e6; border:1px solid #ffe0a3; }
+    .buildbuy .buy { background:#eef4ff; border:1px solid #cfd9f5; }
+    .buildbuy h4 { margin-bottom:8px; }
+    .buildbuy .build h4 { color:#a97a20; } .buildbuy .buy h4 { color:#3b5bdb; }
+    @media (max-width: 800px) { .buildbuy { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › AI Engineering Blueprint</div>
+    <h1>🗺️ AI Engineering Blueprint</h1>
+    <div class="tag">Every conceptual requirement, and the physical stack that satisfies it — open source, Databricks, Azure, AWS, GCP</div>
+</header>
+
+<div class="wrap wide">
+
+<main class="card">
+
+<div class="note">
+    <strong>What this page is for.</strong> When you design an AI system, the hard part is not choosing a
+    model — it is knowing <em>what concerns exist at all</em>, which ones apply at your scale, and what
+    you would actually deploy for each. This is that checklist: <strong>conceptual requirement on the
+    left, physical options across the platforms on the right</strong>. Use it as an architect's mind map
+    and as a gap-finder in design reviews.
+</div>
+
+<h2>1 · Five kinds of engineering <span class="chip concept">concept</span></h2>
+
+<p>These get used interchangeably and they are not the same thing. The clean way to tell them apart is
+to ask <strong>what unit you are designing</strong>, and <strong>which decision you are taking away from
+the model</strong>.</p>
+
+<div class="scroller">
+<table class="five">
+    <thead>
+        <tr>
+            <th>Discipline</th>
+            <th>Unit of design</th>
+            <th>You control</th>
+            <th>Main levers</th>
+            <th>Fails as</th>
+            <th>Needed when</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Prompt Engineering</td>
+            <td>One message</td>
+            <td>How you <em>ask</em></td>
+            <td>System prompt, role, few-shot examples, XML structure, chain-of-thought, prefill, output format</td>
+            <td>Ambiguous instruction, wrong shape of answer, inconsistent tone</td>
+            <td>Always — from the very first call</td>
+        </tr>
+        <tr>
+            <td>Context Engineering</td>
+            <td>The context window</td>
+            <td>What it <em>sees</em></td>
+            <td>Retrieval, chunking, ordering, compaction, summarisation, memory, cache breakpoints, token budget</td>
+            <td>Context bloat, lost-in-the-middle, budget exhaustion, retrieved-but-irrelevant</td>
+            <td>As soon as inputs exceed a hand-written prompt</td>
+        </tr>
+        <tr>
+            <td>Harness Engineering</td>
+            <td>The runtime around the model</td>
+            <td>What it <em>can do</em></td>
+            <td>Tool definitions, schema enforcement, validation, retries, circuit breakers, sandboxing, permissions, evals in CI</td>
+            <td>Brittle integration, unbounded actions, no recovery path, silent failure</td>
+            <td>The moment it touches production or real tools</td>
+        </tr>
+        <tr>
+            <td>Loop Engineering</td>
+            <td>One iteration</td>
+            <td>When it <em>stops</em></td>
+            <td>Termination conditions, max turns, budget caps, progress detection, self-verification, escalation</td>
+            <td>Infinite loops, thrash, cost blow-up, confident stop before the job is done</td>
+            <td>Anything agentic — the model decides its own next step</td>
+        </tr>
+        <tr>
+            <td>Graph Engineering</td>
+            <td>The topology of steps</td>
+            <td>Which <em>path</em> it takes</td>
+            <td>Node decomposition, conditional edges, parallel branches, fan-out/fan-in, checkpoints, human-in-the-loop nodes, reusable subgraphs</td>
+            <td>Hidden coupling, non-resumable runs, decomposition at the wrong altitude</td>
+            <td>Multi-step or multi-agent, or when a run must survive a restart</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The pattern to notice.</strong> Reading down that list, each discipline moves one more decision
+    <em>away from the model and into your system</em>. Prompt engineering leaves almost everything to the
+    model; graph engineering leaves it almost nothing but the judgement you cannot encode. Maturity in AI
+    engineering is mostly about moving decisions leftward — <strong>deterministic by default, model by
+    exception</strong> — and reaching for the next discipline only when the previous one genuinely runs out.
+</div>
+
+<div class="trap">
+    <b>Common mistake:</b> jumping to Graph and Loop engineering for a problem a good prompt and a schema
+    would have solved. Every step down that ladder costs latency, money and debuggability. Earn it.
+</div>
+
+<h2>2 · How to read the mapping <span class="chip concept">concept</span></h2>
+
+<p>The <strong>Need at</strong> column says at which level of ambition each concern becomes real. Not
+everything is required for a single LLM call, and pretending otherwise is how teams spend six months
+building a platform for a feature nobody has validated.</p>
+
+<div class="legend">
+    <span><span class="sc on">1</span> <strong>Single call</strong> — one request, one response</span>
+    <span><span class="sc on">W</span> <strong>Workflow</strong> — fixed, predetermined steps</span>
+    <span><span class="sc on">S</span> <strong>Skill</strong> — a packaged, reusable capability</span>
+    <span><span class="sc on">A</span> <strong>Agent</strong> — the model chooses its own next step</span>
+    <span><span class="sc off">·</span> not usually needed at that level</span>
+</div>
+
+<div class="warn">
+    Product names move fast — treat the platform columns as <em>where to look</em>, not as a procurement
+    list. Verify current naming and regional availability before you commit to a design.
+</div>
+
+<h2>3 · Conceptual requirement → physical stack <span class="chip diagram">map</span></h2>
+
+<div class="scroller">
+<table>
+    <thead>
+        <tr>
+            <th style="min-width:190px">Conceptual requirement</th>
+            <th style="min-width:88px">Need at</th>
+            <th style="min-width:170px">Open source</th>
+            <th style="min-width:170px">Databricks</th>
+            <th style="min-width:170px">Azure</th>
+            <th style="min-width:170px">AWS</th>
+            <th style="min-width:170px">GCP</th>
+        </tr>
+    </thead>
+    <tbody>
+
+    <tr class="grp"><td colspan="7">A · Harness &amp; foundation</td></tr>
+    <tr>
+        <td><span class="cap">Model access &amp; routing</span><span class="ask">Which model, and what happens when it is down?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>LiteLLM, OpenRouter, vLLM, Ollama</td>
+        <td>Mosaic AI Gateway, Model Serving, external models</td>
+        <td>Azure AI Foundry, Azure OpenAI, API Management</td>
+        <td>Amazon Bedrock, SageMaker</td>
+        <td>Vertex AI, Model Garden</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Structured output &amp; schema enforcement</span><span class="ask">Will the answer parse, every time?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Pydantic, Instructor, Outlines, JSON Schema</td>
+        <td>Tool calling on Model Serving, UC functions</td>
+        <td>Azure OpenAI structured outputs</td>
+        <td>Bedrock tool use / converse API</td>
+        <td>Vertex controlled generation</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Tool design &amp; registry (MCP)</span><span class="ask">What can it call, and who declared that?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>MCP SDKs, FastMCP, OpenAPI specs</td>
+        <td>UC functions, MCP on Databricks Apps</td>
+        <td>AI Foundry tools, Logic Apps connectors</td>
+        <td>Bedrock Agents action groups</td>
+        <td>Vertex function calling, extensions</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Prompt versioning &amp; reproducibility</span><span class="ask">Which prompt produced that answer last March?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Git, promptfoo, Langfuse</td>
+        <td>MLflow prompt registry, model versions</td>
+        <td>Prompt Flow, AI Foundry</td>
+        <td>Bedrock prompt management</td>
+        <td>Vertex AI prompt management</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Config &amp; secrets</span><span class="ask">Where do keys live, and who can read them?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Vault, SOPS, dotenv</td>
+        <td>Databricks Secrets, Unity Catalog</td>
+        <td>Key Vault, App Configuration</td>
+        <td>Secrets Manager, Parameter Store</td>
+        <td>Secret Manager</td>
+    </tr>
+
+    <tr class="grp"><td colspan="7">B · Composition &amp; control flow</td></tr>
+    <tr>
+        <td><span class="cap">Orchestration (graph engineering)</span><span class="ask">What runs in what order, and can it resume?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>LangGraph, Temporal, Prefect, Airflow, Dagster</td>
+        <td>Workflows / Jobs, Delta Live Tables</td>
+        <td>Durable Functions, Logic Apps</td>
+        <td>Step Functions</td>
+        <td>Workflows, Cloud Composer</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Agent loop &amp; termination</span><span class="ask">When does it stop, and how do we know it finished?</span></td>
+        <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Claude Agent SDK, LangGraph, AutoGen, CrewAI</td>
+        <td>Mosaic AI Agent Framework</td>
+        <td>AI Foundry Agent Service</td>
+        <td>Bedrock Agents</td>
+        <td>Vertex AI Agent Engine / ADK</td>
+    </tr>
+    <tr>
+        <td><span class="cap">State &amp; checkpointing</span><span class="ask">If it dies at step 7, where does it restart?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc off">·</span><span class="sc on">A</span></td>
+        <td>LangGraph checkpointer, Redis, Postgres</td>
+        <td>Delta tables, Unity Catalog volumes</td>
+        <td>Cosmos DB, Durable entities</td>
+        <td>DynamoDB, S3</td>
+        <td>Firestore, Spanner</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Concurrency, async &amp; streaming</span><span class="ask">Does it feel fast, and does it scale?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>asyncio, SSE, WebSockets, Ray</td>
+        <td>Model Serving streaming, serverless</td>
+        <td>Azure OpenAI streaming, Container Apps</td>
+        <td>Bedrock streaming, Lambda</td>
+        <td>Vertex streaming, Cloud Run</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Human-in-the-loop &amp; approval</span><span class="ask">Who signs before it acts?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Build — approval queue + callback</td>
+        <td>Databricks Apps, Workflows, review app</td>
+        <td>Logic Apps approvals, Durable Functions</td>
+        <td>Step Functions callback pattern</td>
+        <td>Workflows callbacks</td>
+    </tr>
+
+    <tr class="grp"><td colspan="7">C · Context &amp; knowledge</td></tr>
+    <tr>
+        <td><span class="cap">Context engineering &amp; token budget</span><span class="ask">What occupies the window, in what order?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Token counting APIs, compaction, summarisation</td>
+        <td>MLflow tracing token counts</td>
+        <td>AI Foundry, Prompt Flow</td>
+        <td>Bedrock converse token usage</td>
+        <td>Vertex token counting</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Retrieval / RAG</span><span class="ask">Where does the grounding come from?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>LlamaIndex, Haystack, LangChain</td>
+        <td>Vector Search + Unity Catalog</td>
+        <td>Azure AI Search (hybrid + semantic)</td>
+        <td>Bedrock Knowledge Bases, Kendra</td>
+        <td>Vertex AI Search</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Vector store</span><span class="ask">Where do embeddings live?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>pgvector, Qdrant, Weaviate, Milvus, FAISS, Chroma</td>
+        <td>Databricks Vector Search</td>
+        <td>AI Search, Cosmos DB vector</td>
+        <td>OpenSearch Serverless, Aurora pgvector</td>
+        <td>Vertex Vector Search, AlloyDB</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Knowledge graph</span><span class="ask">What are the relationships, not just the text?</span></td>
+        <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Neo4j, RDF/SPARQL, NetworkX, Apache AGE</td>
+        <td>GraphFrames, Delta + UC lineage</td>
+        <td>Cosmos DB Gremlin</td>
+        <td>Amazon Neptune</td>
+        <td>Spanner Graph</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Chunking &amp; indexing pipeline</span><span class="ask">How does source content become retrievable?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Unstructured, LlamaIndex parsers, Docling</td>
+        <td>DLT / Jobs + Vector Search sync</td>
+        <td>AI Search skillsets &amp; indexers</td>
+        <td>Bedrock KB ingestion, Glue</td>
+        <td>Vertex AI Search ingestion, Dataflow</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Memory (short &amp; long term)</span><span class="ask">What does it remember between turns and sessions?</span></td>
+        <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Mem0, LangGraph memory, Redis, Zep</td>
+        <td>Delta tables + UC, Lakebase</td>
+        <td>Cosmos DB, Redis</td>
+        <td>DynamoDB, ElastiCache</td>
+        <td>Firestore, Memorystore</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Caching (prompt &amp; semantic)</span><span class="ask">Are we paying twice for the same answer?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Prompt caching, GPTCache, Redis</td>
+        <td>Prompt caching on Model Serving</td>
+        <td>Azure Cache for Redis, AOAI prompt caching</td>
+        <td>Bedrock prompt caching, ElastiCache</td>
+        <td>Vertex context caching, Memorystore</td>
+    </tr>
+
+    <tr class="grp"><td colspan="7">D · Quality &amp; truth</td></tr>
+    <tr>
+        <td><span class="cap">Offline eval</span><span class="ask">Did the change make it better or worse?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>promptfoo, Ragas, DeepEval, Inspect AI</td>
+        <td>MLflow Evaluate, Agent Evaluation</td>
+        <td>AI Foundry evaluation SDK</td>
+        <td>Bedrock model evaluation</td>
+        <td>Vertex AI Evaluation service</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Online eval, A/B &amp; canary</span><span class="ask">Is it better for real users, not just the test set?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Feature flags, Statsig OSS, GrowthBook</td>
+        <td>MLflow + Lakehouse Monitoring, A/B on serving</td>
+        <td>App Configuration, AI Foundry</td>
+        <td>CloudWatch Evidently</td>
+        <td>Vertex experiments</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Hallucination control &amp; grounding</span><span class="ask">Can every claim be traced to a source?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Ragas faithfulness, citation enforcement, verifier pass</td>
+        <td>Agent Evaluation groundedness judges</td>
+        <td>AI Foundry groundedness detection</td>
+        <td>Bedrock Guardrails contextual grounding, KB citations</td>
+        <td>Vertex grounding &amp; check-grounding API</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Feedback capture</span><span class="ask">Do users think it helped?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Build — thumbs + implicit signals</td>
+        <td>Databricks Apps, review app, Delta</td>
+        <td>App Insights custom events</td>
+        <td>CloudWatch, DynamoDB</td>
+        <td>BigQuery, Firestore</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Regression testing in CI</span><span class="ask">Does the build fail when quality drops?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>pytest, promptfoo CI, GitHub Actions</td>
+        <td>Asset Bundles + MLflow in CI</td>
+        <td>Azure DevOps / GitHub Actions</td>
+        <td>CodeBuild, CodePipeline</td>
+        <td>Cloud Build</td>
+    </tr>
+
+    <tr class="grp"><td colspan="7">E · Safety &amp; security</td></tr>
+    <tr>
+        <td><span class="cap">Prompt injection defence</span><span class="ask">What if the retrieved document gives instructions?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>LLM Guard, Rebuff, NeMo Guardrails</td>
+        <td>Mosaic AI Gateway guardrails</td>
+        <td>Azure AI Content Safety — Prompt Shields</td>
+        <td>Bedrock Guardrails</td>
+        <td>Model Armor</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Guardrails (content, topic, policy)</span><span class="ask">What must it never say or do?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Guardrails AI, NeMo Guardrails</td>
+        <td>AI Gateway guardrails, UC policies</td>
+        <td>Azure AI Content Safety</td>
+        <td>Bedrock Guardrails</td>
+        <td>Model Armor, safety filters</td>
+    </tr>
+    <tr>
+        <td><span class="cap">PII detection &amp; redaction</span><span class="ask">What leaves our boundary in the prompt?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Presidio, spaCy, regex rule sets</td>
+        <td>AI Gateway PII, UC masking, Presidio in jobs</td>
+        <td>Purview, Content Safety, Language PII</td>
+        <td>Comprehend PII, Macie</td>
+        <td>Sensitive Data Protection (DLP)</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Identity &amp; permission propagation</span><span class="ask">Does it see only what <em>this user</em> may see?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>OAuth2 / OIDC, Keycloak, on-behalf-of flows</td>
+        <td>Unity Catalog, on-behalf-of, service principals</td>
+        <td>Entra ID OBO flow</td>
+        <td>IAM, Cognito identity pools</td>
+        <td>IAM, Workload Identity Federation</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Data governance &amp; lineage</span><span class="ask">What data went into that answer?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>OpenLineage, DataHub, OpenMetadata</td>
+        <td>Unity Catalog — lineage, tags, classification</td>
+        <td>Microsoft Purview</td>
+        <td>DataZone, Glue Data Catalog</td>
+        <td>Dataplex</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Sandboxing &amp; code execution</span><span class="ask">Where does model-written code run?</span></td>
+        <td><span class="sc off">·</span><span class="sc off">·</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Docker, gVisor, Firecracker, E2B</td>
+        <td>Serverless compute, UC functions</td>
+        <td>Container Apps dynamic sessions</td>
+        <td>Bedrock code interpreter, Lambda</td>
+        <td>Vertex code execution, Cloud Run</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Audit trail</span><span class="ask">Can we reconstruct this in three years?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>OpenTelemetry logs, append-only store</td>
+        <td>UC audit logs, system tables</td>
+        <td>Azure Monitor, Purview audit</td>
+        <td>CloudTrail</td>
+        <td>Cloud Audit Logs</td>
+    </tr>
+
+    <tr class="grp"><td colspan="7">F · Operations</td></tr>
+    <tr>
+        <td><span class="cap">Observability &amp; tracing</span><span class="ask">Why did <em>this</em> run behave that way?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>OpenTelemetry, OpenLLMetry, Langfuse, Phoenix</td>
+        <td>MLflow Tracing, Lakehouse Monitoring</td>
+        <td>Application Insights, AI Foundry tracing</td>
+        <td>CloudWatch, X-Ray</td>
+        <td>Cloud Trace, Cloud Monitoring</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Logging</span><span class="ask">What happened, in order, with correlation?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>structlog, OpenTelemetry, Loki</td>
+        <td>System tables, MLflow runs</td>
+        <td>Azure Monitor Logs</td>
+        <td>CloudWatch Logs</td>
+        <td>Cloud Logging</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Error handling, retries, circuit breakers</span><span class="ask">What happens on the bad path?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>tenacity, pybreaker, Polly-style patterns</td>
+        <td>Jobs retries, AI Gateway fallbacks</td>
+        <td>API Management policies, Durable Functions</td>
+        <td>Step Functions retry / catch</td>
+        <td>Workflows retry policies</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Rate limits &amp; quota</span><span class="ask">Who gets throttled first when we hit the ceiling?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Token bucket, Redis, Envoy, Kong</td>
+        <td>AI Gateway rate limits</td>
+        <td>API Management throttling, PTU</td>
+        <td>Bedrock quotas, WAF</td>
+        <td>Vertex quotas, Apigee</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Performance &amp; latency</span><span class="ask">Is it fast enough to be used?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>vLLM, batching, streaming, smaller models</td>
+        <td>Provisioned throughput, serverless serving</td>
+        <td>Provisioned throughput units (PTU)</td>
+        <td>Bedrock provisioned throughput</td>
+        <td>Vertex provisioned throughput</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Cost &amp; FinOps</span><span class="ask">What does one answer cost, and who pays?</span></td>
+        <td><span class="sc on">1</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>LiteLLM cost tracking, Langfuse, OpenCost</td>
+        <td>System tables billing, tags, budget policies</td>
+        <td>Cost Management, AOAI metrics</td>
+        <td>Cost Explorer, Budgets</td>
+        <td>Cloud Billing + BigQuery export</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Deployment &amp; CI/CD for AI assets</span><span class="ask">How do prompts, tools and indexes ship?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>GitHub Actions, GitOps, Argo</td>
+        <td>Databricks Asset Bundles</td>
+        <td>Azure DevOps, AI Foundry deployments</td>
+        <td>CodePipeline</td>
+        <td>Cloud Build, Cloud Deploy</td>
+    </tr>
+    <tr>
+        <td><span class="cap">Drift &amp; production monitoring</span><span class="ask">Is quality decaying quietly?</span></td>
+        <td><span class="sc off">·</span><span class="sc on">W</span><span class="sc on">S</span><span class="sc on">A</span></td>
+        <td>Evidently, Phoenix, Langfuse metrics</td>
+        <td>Lakehouse Monitoring</td>
+        <td>AI Foundry monitoring, App Insights</td>
+        <td>SageMaker Model Monitor, CloudWatch</td>
+        <td>Vertex Model Monitoring</td>
+    </tr>
+
+    </tbody>
+</table>
+</div>
+
+<h2>6 · Tool vs MCP vs Skill vs Agent <span class="chip concept">concept</span></h2>
+
+<p>These four get argued about as if they were alternatives. They are not — they answer different
+questions, and the fastest way to see it is to ask <strong>what the model is missing</strong>.</p>
+
+<div class="scroller">
+<table class="five">
+    <thead>
+        <tr>
+            <th>Choice</th>
+            <th>What it is</th>
+            <th>Gives the model</th>
+            <th>Choose it when</th>
+            <th>Do not use it when</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Workflow</td>
+            <td>A predetermined sequence of steps you wrote</td>
+            <td>Nothing — <em>you</em> decide the path</td>
+            <td>You can write the steps down in advance. This is the default and it is under-used.</td>
+            <td>The next step genuinely depends on what the previous one discovered</td>
+        </tr>
+        <tr>
+            <td>Tool</td>
+            <td>One function the model may call, described by a schema</td>
+            <td>A new <strong>ability</strong> — fetch, compute, act</td>
+            <td>It lacks a capability: it cannot read your database or send that request</td>
+            <td>It already can do it and simply does it badly — that is a prompt or skill problem</td>
+        </tr>
+        <tr>
+            <td>MCP server</td>
+            <td>A standard way to <em>expose</em> tools, resources and prompts to any client</td>
+            <td>Nothing new — it is <strong>distribution</strong>, not capability</td>
+            <td>The same capability must be reused across apps, teams or hosts — or a third party provides it</td>
+            <td>One app needs one function. An in-process tool is less machinery.</td>
+        </tr>
+        <tr>
+            <td>Skill</td>
+            <td>Packaged instructions, conventions and assets, loaded on demand</td>
+            <td><strong>Know-how</strong> — how your organisation does this task</td>
+            <td>It has the ability but not the procedure: your naming conventions, your review steps, your house style</td>
+            <td>The gap is a missing capability — no amount of instruction grants access it does not have</td>
+        </tr>
+        <tr>
+            <td>Agent</td>
+            <td>A loop where the model chooses the next call and when to stop</td>
+            <td><strong>Autonomy</strong> over the path</td>
+            <td>The sequence cannot be known in advance — investigation, negotiation with reality, unknown depth</td>
+            <td>You could have written the steps down. An agent is a workflow you chose not to design.</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+<h3>The decision, in order</h3>
+<ol>
+    <li><strong>Can I write the steps down?</strong> → Workflow. Stop here far more often than feels natural.</li>
+    <li><strong>Is a capability missing?</strong> → Tool. Add the narrowest one that closes the gap.</li>
+    <li><strong>Will others need that same capability?</strong> → Expose the tool over MCP. Otherwise keep it in-process.</li>
+    <li><strong>Does it have the ability but do the task wrongly?</strong> → Skill. This is a knowledge gap, not a capability gap.</li>
+    <li><strong>Does the path depend on what it finds mid-run?</strong> → Agent, with a loop budget and a stop condition.</li>
+</ol>
+
+<div class="good">
+    <strong>The clarifying question:</strong> "Is this a <em>can't</em> or a <em>doesn't know how</em>?"
+    A <em>can't</em> is a tool. A <em>doesn't know how</em> is a skill. Teams routinely build tools for
+    problems that were skills, and end up with twelve narrow functions where one page of instructions
+    would have worked.
+</div>
+
+<div class="trap">
+    <b>Skill vs MCP is a false choice.</b> They are orthogonal: MCP is <em>how a capability is delivered</em>,
+    a skill is <em>how a task should be done</em>. A skill can happily instruct the model to use tools that
+    arrive over MCP. If someone asks you to pick one, the question is wrong.
+</div>
+
+<div class="warn">
+    <strong>Cost of getting it wrong.</strong> Choosing <em>agent</em> when a workflow would do is the
+    expensive mistake — it buys non-determinism, latency and a debugging problem, and it is the hardest
+    thing to walk back once a demo has been seen. Choosing <em>tool</em> when you needed a skill is cheaper
+    but accumulates: a sprawl of near-duplicate functions nobody can name.
+</div>
+
+<h2>7 · Memory &amp; storage — when to use what <span class="chip trade">trade-off</span></h2>
+
+<p>"Memory" is not one thing, and the store follows from the <em>access pattern</em>, not from the fact
+that AI is involved. Name the kind of memory first.</p>
+
+<div class="scroller">
+<table>
+    <thead>
+        <tr>
+            <th style="min-width:150px">Kind of memory</th>
+            <th style="min-width:180px">What it holds</th>
+            <th style="min-width:110px">Lifetime</th>
+            <th style="min-width:170px">Access pattern</th>
+            <th style="min-width:200px">Right store</th>
+            <th style="min-width:190px">Anti-pattern</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Working / scratchpad</strong></td>
+            <td>Intermediate results inside one run</td>
+            <td>The run</td>
+            <td>Read/write by step</td>
+            <td>In-process; LangGraph state; Redis if distributed</td>
+            <td>Putting it in a vector store</td>
+        </tr>
+        <tr>
+            <td><strong>Conversation history</strong></td>
+            <td>Turns in this session</td>
+            <td>Session to days</td>
+            <td>Get by session id, append, TTL</td>
+            <td>Redis, Cosmos DB, DynamoDB, Firestore, Postgres</td>
+            <td>Embedding every turn "just in case"</td>
+        </tr>
+        <tr>
+            <td><strong>Semantic / long-term facts</strong></td>
+            <td>Documents, prior tickets, policies</td>
+            <td>Months to years</td>
+            <td>"Find things <em>like</em> this text"</td>
+            <td>Vector store — pgvector, Qdrant, Weaviate, Milvus; Databricks Vector Search; AI Search; OpenSearch; Vertex Vector Search</td>
+            <td>Using it for exact lookups it will get subtly wrong</td>
+        </tr>
+        <tr>
+            <td><strong>Relationship / entity memory</strong></td>
+            <td>What depends on what; who owns what</td>
+            <td>Long</td>
+            <td>Multi-hop traversal</td>
+            <td>Graph — Neo4j, Neptune, Spanner Graph, Cosmos Gremlin, Apache AGE</td>
+            <td>Flattening a graph into chunks and hoping similarity recovers the edges</td>
+        </tr>
+        <tr>
+            <td><strong>Episodic</strong></td>
+            <td>What happened, when, and what was decided</td>
+            <td>Years — often regulated</td>
+            <td>Append-only; query by time and entity</td>
+            <td>Delta / Iceberg, BigQuery, event store, S3 + catalogue</td>
+            <td>Keeping it only in application logs that rotate away</td>
+        </tr>
+        <tr>
+            <td><strong>Procedural</strong></td>
+            <td>How we do things — conventions, runbooks</td>
+            <td>Long, versioned</td>
+            <td>Loaded on demand by task</td>
+            <td><strong>Git.</strong> Skills, prompts and runbooks as reviewed files</td>
+            <td>Embedding your standards and hoping retrieval surfaces the right one</td>
+        </tr>
+        <tr>
+            <td><strong>Cache</strong></td>
+            <td>Answers already paid for</td>
+            <td>Minutes to weeks</td>
+            <td>Exact key, or near-duplicate</td>
+            <td>Provider prompt caching; Redis / Memorystore / ElastiCache; GPTCache for semantic</td>
+            <td>Sharing a cache across users whose permissions differ</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+
+<h3>Choosing the retrieval substrate</h3>
+
+<div class="scroller">
+<table>
+    <thead>
+        <tr>
+            <th style="min-width:130px">Substrate</th>
+            <th style="min-width:230px">Wins when the question is</th>
+            <th style="min-width:210px">Loses when</th>
+            <th style="min-width:200px">Typical choice</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td><strong>Vector</strong></td><td>"Anything similar to this description?" — vocabulary varies, phrasing is unpredictable</td><td>The query is a filter, an exact id, or an aggregate</td><td>pgvector below ~1M vectors and you already run Postgres; a dedicated store above it</td></tr>
+        <tr><td><strong>Keyword / BM25</strong></td><td>Exact error codes, identifiers, rare literal strings</td><td>The same concept is worded differently across years</td><td>OpenSearch, Elasticsearch, Postgres full-text</td></tr>
+        <tr><td><strong>Hybrid</strong></td><td>Both of the above — which is most real systems</td><td>You have not measured which half is carrying the result</td><td>Azure AI Search, OpenSearch, Vertex AI Search, Databricks Vector Search</td></tr>
+        <tr><td><strong>Graph</strong></td><td>"What is downstream of this?", "How are these connected?" — multi-hop</td><td>You only ever ask one-hop questions a join would answer</td><td>Neo4j, Neptune, Spanner Graph</td></tr>
+        <tr><td><strong>SQL / lakehouse</strong></td><td>Filters, joins, aggregates, "as at" history</td><td>The user's phrasing must be matched rather than their filters</td><td>Postgres, Delta / Unity Catalog, BigQuery</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>The most common error in AI architecture:</b> reaching for a vector store when the question was a
+    filter or a join. "Show me open incidents for customer X" is <code>WHERE</code>, not cosine similarity.
+    Vector search answers <em>"similar to this text"</em> and nothing else — everything else is a database
+    you already know how to use.
+</div>
+
+<div class="note">
+    <strong>Rule of thumb on scale:</strong> below roughly a million vectors, <code>pgvector</code> next to
+    your existing relational data beats a separate vector service — because you get filters, joins and
+    transactions for free, and one fewer system to secure, back up and reason about. Reach for a dedicated
+    store when recall at scale, or ingest throughput, becomes the actual constraint.
+</div>
+
+<h2>8 · What to build, and what to buy <span class="chip trade">trade-off</span></h2>
+
+<p>Most of the table above is a buying decision. A short list is not — and the test is simple:
+<strong>you must own anything that encodes your organisation's judgement</strong>, because no vendor can
+supply it and it is the part that actually differentiates the system.</p>
+
+<div class="buildbuy">
+    <div class="build">
+        <h4>Build in-house — nobody can sell you these</h4>
+        <ul>
+            <li><strong>Eval dataset &amp; graders</strong> — what a <em>good</em> answer is in your domain, with human labels</li>
+            <li><strong>Relevance judgements</strong> — graded, not binary, and specific to your estate</li>
+            <li><strong>Redaction categories</strong> — what counts as sensitive in <em>your</em> data</li>
+            <li><strong>Policy &amp; action classes</strong> — what an agent may do unattended, and what needs a signature</li>
+            <li><strong>Golden path templates</strong> — the compliant route made the easy route</li>
+            <li><strong>Cost attribution</strong> — mapping spend to business unit and use case</li>
+            <li><strong>Prompt library &amp; versioning conventions</strong></li>
+            <li><strong>Feedback taxonomy</strong> — what "this helped" means, and what you do with it</li>
+        </ul>
+    </div>
+    <div class="buy">
+        <h4>Buy or adopt — commodity, and moving fast</h4>
+        <ul>
+            <li>Model serving, routing and provisioned throughput</li>
+            <li>Vector stores and retrieval infrastructure</li>
+            <li>Tracing, logging and monitoring backends</li>
+            <li>Content safety and injection detection</li>
+            <li>Orchestration engines and checkpointing</li>
+            <li>Secret management and identity</li>
+            <li>Sandboxed execution environments</li>
+            <li>Eval <em>runners</em> — though not the eval <em>data</em></li>
+        </ul>
+    </div>
+</div>
+
+<div class="trap">
+    <b>The trap:</b> building the commodity layer because it is more fun than labelling 200 incidents,
+    and then having a beautiful platform you cannot prove is any good.
+</div>
+
+<h2>9 · Using this as a design review checklist <span class="chip exam">practice</span></h2>
+
+<ol>
+    <li><strong>Name the ambition.</strong> Single call, workflow, skill or agent? Everything else follows from that, and the honest answer is usually one rung lower than the pitch.</li>
+    <li><strong>Filter the table</strong> to the rows marked at that level. That is your minimum viable set of concerns.</li>
+    <li><strong>For each row, name the physical component</strong> you are actually deploying. "We'll figure out observability later" means you have chosen no observability.</li>
+    <li><strong>Find the rows with no owner.</strong> Those are your gaps, and they are usually in section E — safety and security are the concerns most often assumed rather than assigned.</li>
+    <li><strong>Challenge the ladder.</strong> For every agentic component, ask what would break if it were a workflow instead. If nothing would, make it a workflow.</li>
+</ol>
+
+<div class="note">
+    <strong>Related:</strong> <a href="ai-universe.html">The AI Universe — Who Does What</a> maps the vendors
+    and layers; <a href="genai-app-components.html">Anatomy of a Gen AI App</a> walks the request path.
+    This page is the checklist that sits between them.
+</div>
+
+</main>
+</div>
+
+</body>
+</html>

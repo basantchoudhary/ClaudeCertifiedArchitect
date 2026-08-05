@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Tooling Landscape · Observability, Gateways, Orchestration, Graph Memory</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .wrap.wide { max-width: 1400px; }
+    .scroller { overflow-x:auto; margin:16px 0; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.05); }
+    .scroller table { margin:0; box-shadow:none; min-width:1050px; }
+    .scroller th { position:sticky; top:0; z-index:2; font-size:.82em; }
+    .scroller td { font-size:.86em; }
+    .grp td { background:#efeaff !important; font-weight:700; color:#4a3c78; text-transform:uppercase;
+              letter-spacing:.04em; font-size:.86em !important; }
+    td .nm { font-weight:600; color:#333; }
+    .lic { display:inline-block; font-size:.72em; font-weight:700; padding:1px 7px; border-radius:9px; margin-left:6px; }
+    .lic.oss { background:#e6fcf0; color:#2b8a3e; }
+    .lic.free { background:#e7ecff; color:#3b5bdb; }
+    .lic.paid { background:#fff0f6; color:#c2255c; }
+    .lic.cloud { background:#fff6e0; color:#a97a20; }
+    .pick { background:#f3fbf5 !important; }
+    .toc { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin:18px 0; }
+    .toc a { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:10px 14px;
+             text-decoration:none; color:#5a4a8a; font-weight:600; font-size:.92em; }
+    .toc a:hover { border-color:#764ba2; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Tooling Landscape</div>
+    <h1>🧰 AI Tooling Landscape</h1>
+    <div class="tag">Observability · AI gateways · Orchestration frameworks · Graph &amp; memory — open source and commercial</div>
+</header>
+
+<div class="wrap wide">
+<main class="card">
+
+<div class="note">
+    <strong>How to use this.</strong> Four categories where the choice actually matters and the market is
+    crowded. Each table ends with a <strong>default recommendation</strong> — not because it is always
+    right, but because having a default means you only argue about the cases that deserve an argument.
+    Companion to the <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a>, which says
+    <em>what</em> you need; this says <em>what to use</em>.
+</div>
+
+<div class="legend" style="display:flex;gap:16px;flex-wrap:wrap;background:#faf9ff;border:1px solid #e6e1f7;border-radius:8px;padding:10px 16px;margin:14px 0;font-size:.9em">
+    <span><span class="lic oss">OSS</span> open source, self-host</span>
+    <span><span class="lic free">OSS + SaaS</span> open core with a hosted option</span>
+    <span><span class="lic paid">commercial</span></span>
+    <span><span class="lic cloud">cloud-native</span> tied to one platform</span>
+</div>
+
+<div class="toc">
+    <a href="#obs">1 · Observability &amp; tracing</a>
+    <a href="#otel">2 · OpenTelemetry &amp; its alternatives</a>
+    <a href="#gw">3 · AI gateways</a>
+    <a href="#orch">4 · Orchestration &amp; agent frameworks</a>
+    <a href="#graph">5 · Graph &amp; memory frameworks</a>
+</div>
+
+<h2 id="obs">1 · Observability &amp; tracing <span class="chip diagram">landscape</span></h2>
+
+<p>LLM observability is ordinary distributed tracing plus three things ordinary APM does not capture:
+<strong>the prompt and response</strong>, <strong>token usage and cost</strong>, and <strong>a quality
+score</strong>. That last one is why generic APM alone is rarely enough — it can tell you the call took
+900&nbsp;ms, not that the answer was wrong.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:170px">Tool</th>
+        <th style="min-width:210px">What it is best at</th>
+        <th style="min-width:190px">Watch out for</th>
+        <th style="min-width:150px">Reach for it when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">LLM-native, open source</td></tr>
+    <tr class="pick"><td><span class="nm">Langfuse</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Tracing, prompt management, evals, cost — the most complete open-source single answer</td>
+        <td>Self-hosting means running Postgres + ClickHouse</td>
+        <td>You want one OSS tool and are willing to run it</td></tr>
+    <tr><td><span class="nm">Arize Phoenix</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Trace inspection and evaluation notebooks; strong on retrieval debugging</td>
+        <td>Leans experimentation more than long-run production</td>
+        <td>You are debugging RAG relevance</td></tr>
+    <tr><td><span class="nm">MLflow Tracing</span><span class="lic oss">OSS</span></td>
+        <td>Traces, prompt registry and evaluation alongside model lifecycle</td>
+        <td>Best experience inside Databricks</td>
+        <td>You already run MLflow — do not add a second tool</td></tr>
+    <tr><td><span class="nm">Opik</span> (Comet)<span class="lic free">OSS + SaaS</span></td>
+        <td>Tracing plus an opinionated evaluation library</td>
+        <td>Younger ecosystem</td>
+        <td>Eval-first teams</td></tr>
+    <tr><td><span class="nm">TruLens</span><span class="lic oss">OSS</span></td>
+        <td>Feedback functions — programmatic quality scoring</td>
+        <td>Not a full observability backend</td>
+        <td>You want quality scoring, not infrastructure</td></tr>
+    <tr><td><span class="nm">Helicone</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Proxy-based capture — one line to adopt</td>
+        <td>Proxy sits on the critical path</td>
+        <td>You want logging without touching app code</td></tr>
+    <tr><td><span class="nm">Laminar</span>, <span class="nm">Literal AI</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Traces plus dataset curation from production</td>
+        <td>Smaller communities</td>
+        <td>You want production traces to become eval sets</td></tr>
+
+    <tr class="grp"><td colspan="4">LLM-native, commercial</td></tr>
+    <tr><td><span class="nm">LangSmith</span><span class="lic paid">commercial</span></td>
+        <td>Deep LangChain/LangGraph integration, datasets, annotation queues</td>
+        <td>Pulls you toward one framework's worldview</td>
+        <td>You are already on LangGraph</td></tr>
+    <tr><td><span class="nm">Braintrust</span><span class="lic paid">commercial</span></td>
+        <td>Eval-centric workflow, side-by-side experiment comparison</td>
+        <td>Eval-first framing suits some teams and not others</td>
+        <td>Prompt iteration is your bottleneck</td></tr>
+    <tr><td><span class="nm">W&amp;B Weave</span><span class="lic paid">commercial</span></td>
+        <td>Traces plus the ML experiment lineage teams already know</td>
+        <td>Heavier than needed for pure GenAI apps</td>
+        <td>You already run Weights &amp; Biases</td></tr>
+    <tr><td><span class="nm">Galileo</span>, <span class="nm">Humanloop</span>, <span class="nm">PromptLayer</span><span class="lic paid">commercial</span></td>
+        <td>Guardrail metrics, prompt collaboration for non-engineers</td>
+        <td>Overlaps tools you may already own</td>
+        <td>Product/PM colleagues need to edit prompts</td></tr>
+
+    <tr class="grp"><td colspan="4">General APM that now speaks LLM</td></tr>
+    <tr><td><span class="nm">Datadog LLM Observability</span><span class="lic paid">commercial</span></td>
+        <td>One pane with the rest of your estate; mature alerting</td>
+        <td>Cost at volume; prompt payloads inflate ingest</td>
+        <td>Datadog is already the company standard</td></tr>
+    <tr><td><span class="nm">New Relic</span>, <span class="nm">Dynatrace</span>, <span class="nm">Elastic</span>, <span class="nm">Splunk</span>, <span class="nm">Coralogix</span><span class="lic paid">commercial</span></td>
+        <td>AI monitoring bolted onto existing APM</td>
+        <td>Quality evaluation is usually thinner than LLM-native tools</td>
+        <td>Consolidation matters more than depth</td></tr>
+    <tr><td><span class="nm">SigNoz</span>, <span class="nm">HyperDX</span>, <span class="nm">Uptrace</span>, <span class="nm">Grafana + Tempo/Loki</span><span class="lic free">OSS + SaaS</span></td>
+        <td>OTel-native backends you can self-host</td>
+        <td>You assemble the LLM semantics yourself</td>
+        <td>You want OTel end to end with no vendor</td></tr>
+
+    <tr class="grp"><td colspan="4">Cloud-native</td></tr>
+    <tr><td><span class="nm">Databricks</span><span class="lic cloud">cloud-native</span></td>
+        <td>MLflow Tracing, Agent Evaluation, Lakehouse Monitoring, system tables for cost</td>
+        <td>Only for workloads on Databricks</td>
+        <td>The workload already lives there</td></tr>
+    <tr><td><span class="nm">Azure</span><span class="lic cloud">cloud-native</span></td>
+        <td>Application Insights + AI Foundry tracing and evaluation</td>
+        <td>Split across several services</td>
+        <td>Azure-standardised estates</td></tr>
+    <tr><td><span class="nm">AWS</span><span class="lic cloud">cloud-native</span></td>
+        <td>CloudWatch + X-Ray, Bedrock invocation logging and model evaluation</td>
+        <td>Assemble-it-yourself for LLM specifics</td>
+        <td>Bedrock-centric builds</td></tr>
+    <tr><td><span class="nm">GCP</span><span class="lic cloud">cloud-native</span></td>
+        <td>Cloud Trace/Logging plus Vertex AI evaluation and monitoring</td>
+        <td>As above</td>
+        <td>Vertex-centric builds</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Default:</strong> instrument with <strong>OpenTelemetry</strong>, and send it to
+    <strong>Langfuse</strong> (or your existing APM if one is mandated). That keeps the instrumentation
+    portable and makes the backend a reversible decision — which is the only property that reliably
+    survives a two-year tool cycle.
+</div>
+
+<h2 id="otel">2 · OpenTelemetry and its alternatives <span class="chip trade">trade-off</span></h2>
+
+<p>Worth being precise, because the question is usually asked wrongly: <strong>OpenTelemetry is a
+standard, not a product.</strong> Its true alternatives are proprietary agents. The LLM-specific
+libraries people name as alternatives are mostly <em>conventions built on top of it</em>.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:180px">Option</th>
+        <th style="min-width:130px">Relationship to OTel</th>
+        <th style="min-width:230px">Trade-off</th>
+        <th style="min-width:160px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">OpenTelemetry</span> + GenAI semantic conventions<span class="lic oss">OSS</span></td>
+        <td>The standard itself</td>
+        <td>Vendor-neutral, huge ecosystem; GenAI conventions are still settling, so expect some churn</td>
+        <td>Default. Especially if the backend may change.</td></tr>
+    <tr><td><span class="nm">OpenLLMetry</span> (Traceloop)<span class="lic oss">OSS</span></td>
+        <td><strong>On top of</strong> OTel</td>
+        <td>Auto-instruments LLM SDKs and emits OTel spans — not a replacement</td>
+        <td>You want LLM spans without writing them</td></tr>
+    <tr><td><span class="nm">OpenInference</span> (Arize)<span class="lic oss">OSS</span></td>
+        <td><strong>On top of</strong> OTel</td>
+        <td>Alternative span conventions for LLM/RAG; pairs with Phoenix</td>
+        <td>You use Phoenix or want richer RAG spans</td></tr>
+    <tr><td>Vendor SDKs — <span class="nm">Datadog</span>, <span class="nm">New Relic</span>, <span class="nm">Dynatrace OneAgent</span>, <span class="nm">Elastic APM</span><span class="lic paid">commercial</span></td>
+        <td><strong>True alternatives</strong></td>
+        <td>Deeper out-of-the-box features and support; re-instrumenting later is real work</td>
+        <td>The vendor is mandated and unlikely to change</td></tr>
+    <tr><td><span class="nm">Sentry</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Alternative, with OTel support</td>
+        <td>Error-first rather than trace-first</td>
+        <td>Exceptions matter more than latency</td></tr>
+    <tr><td><span class="nm">Prometheus</span> + <span class="nm">StatsD</span><span class="lic oss">OSS</span></td>
+        <td>Metrics only</td>
+        <td>No traces — cannot answer "why did <em>this</em> request behave that way"</td>
+        <td>You need aggregates, not per-request forensics</td></tr>
+    <tr><td><span class="nm">Zipkin</span> / <span class="nm">Jaeger</span> clients, OpenTracing / OpenCensus<span class="lic oss">OSS</span></td>
+        <td>Predecessors, merged into OTel</td>
+        <td>Legacy — OpenTracing and OpenCensus are archived</td>
+        <td>Only existing systems; do not start here</td></tr>
+    <tr><td>SDK-native tracing — <span class="nm">Langfuse SDK</span>, <span class="nm">LangSmith SDK</span>, <span class="nm">MLflow</span><span class="lic free">mixed</span></td>
+        <td>Alternative, most now OTel-compatible</td>
+        <td>Fastest to adopt; check there is an OTel export path before committing</td>
+        <td>Speed matters and the tool is already chosen</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>The question to ask a vendor:</b> "can I export raw OTel spans to a backend of my choosing?"
+    If yes, adopting them is reversible. If no, you are choosing a backend and an instrumentation layer
+    at the same time — which is how observability becomes the thing you cannot migrate off.
+</div>
+
+<h2 id="gw">3 · AI gateways <span class="chip diagram">landscape</span></h2>
+
+<p>An AI gateway is a reverse proxy that understands model traffic. It exists so that
+<strong>key management, routing, fallback, rate limiting, caching, cost attribution, guardrails and
+logging live in one place</strong> instead of being reimplemented in every application. If you have more
+than two applications calling models, you already need one.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:170px">Gateway</th>
+        <th style="min-width:210px">Strengths</th>
+        <th style="min-width:180px">Trade-off</th>
+        <th style="min-width:150px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">Open source</td></tr>
+    <tr class="pick"><td><span class="nm">LiteLLM Proxy</span><span class="lic free">OSS + SaaS</span></td>
+        <td>100+ providers behind one OpenAI-shaped API; virtual keys, budgets, fallbacks, cost tracking</td>
+        <td>Python service to operate; a hop on the critical path</td>
+        <td>Default for most teams — quickest route to multi-provider</td></tr>
+    <tr><td><span class="nm">Portkey Gateway</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Very fast edge gateway, routing, retries, caching, guardrails</td>
+        <td>Richer features sit in the paid tier</td>
+        <td>Latency-sensitive, want OSS with a hosted upgrade</td></tr>
+    <tr><td><span class="nm">Kong AI Gateway</span><span class="lic free">OSS + SaaS</span></td>
+        <td>AI plugins on a mature API gateway — auth, quotas, transformations</td>
+        <td>Kong concepts to learn if you are not already on it</td>
+        <td>Kong is already your API layer</td></tr>
+    <tr><td><span class="nm">Envoy AI Gateway</span><span class="lic oss">OSS</span></td>
+        <td>Kubernetes-native, built on Envoy Gateway; strong traffic control</td>
+        <td>Operationally heavier; k8s assumed</td>
+        <td>Platform teams standardised on Envoy</td></tr>
+    <tr><td><span class="nm">Apache APISIX</span>, <span class="nm">Higress</span>, <span class="nm">Traefik</span> AI plugins<span class="lic oss">OSS</span></td>
+        <td>AI routing on an existing ingress</td>
+        <td>AI features are newer than the core proxy</td>
+        <td>You want one proxy for all traffic</td></tr>
+    <tr><td><span class="nm">Gloo AI Gateway</span> (Solo.io)<span class="lic free">OSS + SaaS</span></td>
+        <td>Envoy-based, service-mesh adjacent, policy-rich</td>
+        <td>Enterprise-shaped</td>
+        <td>You run a mesh already</td></tr>
+    <tr><td><span class="nm">Bifrost</span>, <span class="nm">GPT Router</span>, <span class="nm">llm-gateway</span><span class="lic oss">OSS</span></td>
+        <td>Lightweight, low-overhead routers</td>
+        <td>Smaller feature sets and communities</td>
+        <td>You want the thinnest possible hop</td></tr>
+
+    <tr class="grp"><td colspan="4">Managed &amp; cloud-native</td></tr>
+    <tr><td><span class="nm">Databricks Mosaic AI Gateway</span><span class="lic cloud">cloud-native</span></td>
+        <td>Rate limits, payload logging, guardrails, PII detection, usage tracking, all governed by Unity Catalog</td>
+        <td>Databricks-resident workloads</td>
+        <td>You are on Databricks — this is the obvious answer</td></tr>
+    <tr><td><span class="nm">Azure API Management</span> (AI gateway features)<span class="lic cloud">cloud-native</span></td>
+        <td>Token-based rate limiting, semantic caching, load balancing across Azure OpenAI deployments</td>
+        <td>APIM policy language is its own skill</td>
+        <td>Azure estates with PTU + pay-go mixes</td></tr>
+    <tr><td><span class="nm">Apigee</span> (GCP)<span class="lic cloud">cloud-native</span></td>
+        <td>Mature API management with LLM policy templates</td>
+        <td>Enterprise pricing</td>
+        <td>Apigee already in place</td></tr>
+    <tr><td><span class="nm">AWS</span> — Bedrock + API Gateway / generative-AI gateway patterns<span class="lic cloud">cloud-native</span></td>
+        <td>IAM-native, no new vendor</td>
+        <td>More reference architecture than product — you assemble it</td>
+        <td>AWS-only estates that want IAM everywhere</td></tr>
+    <tr><td><span class="nm">Cloudflare AI Gateway</span><span class="lic paid">commercial</span></td>
+        <td>Edge caching, analytics, rate limiting; trivial to switch on</td>
+        <td>Traffic leaves your perimeter</td>
+        <td>Public-facing apps already on Cloudflare</td></tr>
+    <tr><td><span class="nm">OpenRouter</span>, <span class="nm">Unify</span>, <span class="nm">Martian</span>, <span class="nm">Not Diamond</span><span class="lic paid">commercial</span></td>
+        <td>Aggregation and quality/price-aware routing across providers</td>
+        <td>A third party in the data path — a real review item in regulated settings</td>
+        <td>Experimentation and model comparison</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Default:</strong> if you are on a platform, use its gateway — <strong>Mosaic AI Gateway</strong>
+    on Databricks, <strong>APIM</strong> on Azure. Otherwise <strong>LiteLLM Proxy</strong> to start, and
+    move to <strong>Portkey</strong> or <strong>Envoy AI Gateway</strong> when latency or scale makes the
+    hop expensive.
+</div>
+
+<div class="warn">
+    <strong>The trap:</strong> a gateway is on the critical path of every request. Whatever you choose needs
+    an answer for <em>what happens when the gateway itself is down</em> — a direct-to-provider fallback, or
+    an accepted outage. Deciding that after the first incident is expensive.
+</div>
+
+<h2 id="orch">4 · Orchestration &amp; agent frameworks <span class="chip diagram">landscape</span></h2>
+
+<p>The alternatives to LangGraph fall into three families, and the third is the one most teams overlook.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:180px">Framework</th>
+        <th style="min-width:120px">Family</th>
+        <th style="min-width:210px">Strengths</th>
+        <th style="min-width:190px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">Graph &amp; state-machine frameworks</td></tr>
+    <tr><td><span class="nm">LangGraph</span><span class="lic oss">OSS</span></td><td>Graph</td>
+        <td>Explicit nodes and edges, checkpointing, human-in-the-loop, mature ecosystem</td>
+        <td>Complex branching you want to see as a graph</td></tr>
+    <tr><td><span class="nm">LlamaIndex Workflows</span><span class="lic oss">OSS</span></td><td>Event-driven</td>
+        <td>Event/step model rather than a graph DSL; strong retrieval heritage</td>
+        <td>RAG-heavy systems</td></tr>
+    <tr><td><span class="nm">Burr</span> (DAGWorks)<span class="lic oss">OSS</span></td><td>State machine</td>
+        <td>Explicit state machine with good introspection</td>
+        <td>You think in states, not graphs</td></tr>
+    <tr><td><span class="nm">Pydantic AI</span><span class="lic oss">OSS</span></td><td>Typed agents</td>
+        <td>Type-safe, dependency-injected, familiar to FastAPI teams</td>
+        <td>Python-first teams who value types</td></tr>
+
+    <tr class="grp"><td colspan="4">Agent-first frameworks</td></tr>
+    <tr class="pick"><td><span class="nm">Claude Agent SDK</span><span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>The agent loop, tools, skills, subagents and permissions as first-class concepts</td>
+        <td>Building on Claude — the loop is handled for you</td></tr>
+    <tr><td><span class="nm">OpenAI Agents SDK</span><span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>Lightweight handoffs and guardrails</td>
+        <td>OpenAI-centric builds</td></tr>
+    <tr><td><span class="nm">Microsoft Agent Framework</span> / <span class="nm">Semantic Kernel</span> / <span class="nm">AutoGen</span><span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>Enterprise .NET and Python story; multi-agent conversation patterns</td>
+        <td>Microsoft-standardised organisations</td></tr>
+    <tr><td><span class="nm">Google ADK</span><span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>Pairs with Vertex Agent Engine for managed deployment</td>
+        <td>GCP-centric builds</td></tr>
+    <tr><td><span class="nm">Strands Agents</span> (AWS)<span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>Model-driven loop, deploys neatly to AWS</td>
+        <td>Bedrock-centric builds</td></tr>
+    <tr><td><span class="nm">CrewAI</span>, <span class="nm">Agno</span>, <span class="nm">smolagents</span>, <span class="nm">Griptape</span>, <span class="nm">Atomic Agents</span><span class="lic oss">OSS</span></td><td>Agent</td>
+        <td>Role-based crews and fast prototyping</td>
+        <td>Getting to a demo quickly</td></tr>
+    <tr><td><span class="nm">DSPy</span><span class="lic oss">OSS</span></td><td>Compiler</td>
+        <td>Optimises prompts against a metric instead of hand-tuning them</td>
+        <td>You have an eval set and want it to do the tuning</td></tr>
+
+    <tr class="grp"><td colspan="4">Durable execution — the overlooked family</td></tr>
+    <tr class="pick"><td><span class="nm">Temporal</span><span class="lic free">OSS + SaaS</span></td><td>Durable</td>
+        <td>Battle-tested durability, retries, timers, versioning, resumption — in plain code, no DSL</td>
+        <td>Long-running or must-not-lose-progress work</td></tr>
+    <tr><td><span class="nm">Restate</span>, <span class="nm">Inngest</span>, <span class="nm">DBOS</span><span class="lic free">OSS + SaaS</span></td><td>Durable</td>
+        <td>Lighter durable execution with modern developer experience</td>
+        <td>You want durability without operating Temporal</td></tr>
+    <tr><td><span class="nm">Airflow</span>, <span class="nm">Prefect</span>, <span class="nm">Dagster</span>, <span class="nm">Databricks Workflows</span><span class="lic free">mixed</span></td><td>Data</td>
+        <td>Scheduling, backfills, lineage, data-aware retries</td>
+        <td>The work is a pipeline that happens to call a model</td></tr>
+    <tr><td><span class="nm">Step Functions</span>, <span class="nm">Durable Functions</span>, <span class="nm">Cloud Workflows</span><span class="lic cloud">cloud-native</span></td><td>Durable</td>
+        <td>Managed, IAM-integrated, nothing to run</td>
+        <td>Cloud-standardised estates</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The unfashionable answer is often right.</strong> The genuinely hard parts of orchestration are
+    <em>durability, resumption and versioning</em> — not the graph DSL. Temporal or Step Functions plus
+    plain Python solves those properly and has done for a decade. Reach for a graph framework when the
+    <em>topology itself</em> is the complexity; reach for durable execution when <em>surviving failure</em>
+    is the complexity. Most production systems have the second problem.
+</div>
+
+<h2 id="graph">5 · Graph &amp; memory frameworks <span class="chip diagram">landscape</span></h2>
+
+<p>Two layers people conflate: the <strong>framework</strong> that builds and queries a knowledge graph
+for an agent, and the <strong>database</strong> underneath it. Choose them separately.</p>
+
+<h3>Frameworks — graph-shaped memory and retrieval</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:160px">Framework</th>
+        <th style="min-width:200px">What it does</th>
+        <th style="min-width:190px">Trade-off</th>
+        <th style="min-width:160px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">Graphiti</span> (Zep)<span class="lic oss">OSS</span></td>
+        <td><strong>Temporal</strong> knowledge graph — facts carry validity intervals, so it models what was true <em>when</em></td>
+        <td>Ingest cost; needs a graph database</td>
+        <td>Agent memory where facts change over time</td></tr>
+    <tr><td><span class="nm">Microsoft GraphRAG</span><span class="lic oss">OSS</span></td>
+        <td>Builds entity/community graphs over a corpus for global "what are the themes" questions</td>
+        <td>Expensive indexing pass; batch-oriented</td>
+        <td>Corpus-wide sense-making that vector RAG cannot do</td></tr>
+    <tr><td><span class="nm">LightRAG</span>, <span class="nm">nano-graphrag</span><span class="lic oss">OSS</span></td>
+        <td>Cheaper, simpler GraphRAG implementations</td>
+        <td>Fewer features than the original</td>
+        <td>You want GraphRAG without the indexing bill</td></tr>
+    <tr><td><span class="nm">Cognee</span><span class="lic oss">OSS</span></td>
+        <td>Pipelines that build graph + vector memory together</td>
+        <td>Younger project</td>
+        <td>You want both substrates from one pipeline</td></tr>
+    <tr><td><span class="nm">Mem0</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Memory layer with extraction and consolidation; hybrid vector + graph</td>
+        <td>Opinionated about what is worth remembering</td>
+        <td>Per-user long-term memory in an assistant</td></tr>
+    <tr><td><span class="nm">Zep</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Managed memory service built on Graphiti</td>
+        <td>A service to depend on</td>
+        <td>You want memory without building it</td></tr>
+    <tr><td><span class="nm">Letta</span> (MemGPT)<span class="lic oss">OSS</span></td>
+        <td>Agents with self-managed tiered memory</td>
+        <td>A whole agent runtime, not a library</td>
+        <td>Memory management is the core problem</td></tr>
+    <tr><td><span class="nm">LlamaIndex Property Graph Index</span><span class="lic oss">OSS</span></td>
+        <td>Graph construction and querying inside a familiar RAG framework</td>
+        <td>Tied to LlamaIndex abstractions</td>
+        <td>Already on LlamaIndex</td></tr>
+    <tr><td><span class="nm">neo4j-graphrag</span><span class="lic oss">OSS</span></td>
+        <td>First-party GraphRAG patterns for Neo4j</td>
+        <td>Neo4j-specific</td>
+        <td>Neo4j is already chosen</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h3>Databases — where the graph actually lives</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Database</th>
+        <th style="min-width:200px">Strengths</th>
+        <th style="min-width:170px">Trade-off</th>
+        <th style="min-width:160px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr><td><span class="nm">Neo4j</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Most mature; Cypher, tooling, vector index built in</td>
+        <td>Enterprise features are licensed</td>
+        <td>Default for a real knowledge graph</td></tr>
+    <tr class="pick"><td><span class="nm">FalkorDB</span><span class="lic oss">OSS</span></td>
+        <td>Very low latency, Redis-based, built for agent memory access patterns</td>
+        <td>Smaller ecosystem</td>
+        <td>Graph reads on the request path</td></tr>
+    <tr><td><span class="nm">Kùzu</span><span class="lic oss">OSS</span></td>
+        <td>Embedded — no server, like SQLite for graphs</td>
+        <td>Not for large multi-writer workloads</td>
+        <td>Per-agent or per-tenant local graphs</td></tr>
+    <tr><td><span class="nm">Apache AGE</span> (Postgres)<span class="lic oss">OSS</span></td>
+        <td>Graph queries inside the Postgres you already run</td>
+        <td>Slower than native graph engines at depth</td>
+        <td>Modest graphs; one fewer system</td></tr>
+    <tr><td><span class="nm">Memgraph</span>, <span class="nm">ArangoDB</span>, <span class="nm">NebulaGraph</span>, <span class="nm">Dgraph</span>, <span class="nm">TigerGraph</span><span class="lic free">mixed</span></td>
+        <td>In-memory speed, multi-model, or very large scale</td>
+        <td>Each has a distinct query language to learn</td>
+        <td>Specific scale or latency demands</td></tr>
+    <tr><td><span class="nm">Neptune</span> (AWS), <span class="nm">Spanner Graph</span> (GCP), <span class="nm">Cosmos DB Gremlin</span> (Azure)<span class="lic cloud">cloud-native</span></td>
+        <td>Managed, IAM-integrated, no operations</td>
+        <td>Less portable; ecosystem tooling thinner</td>
+        <td>Cloud-standardised estates</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>Before adopting any of this, ask:</b> is the question actually multi-hop? GraphRAG and temporal
+    graphs earn their cost on questions like <em>"what depends on this service, transitively"</em> or
+    <em>"what were the themes across ten thousand tickets"</em>. If your real question is
+    <em>"find me something similar"</em>, a hybrid vector + keyword search is cheaper, faster and easier to
+    explain — and it is what most teams needed.
+</div>
+
+<div class="note">
+    <strong>Related:</strong> the <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a> maps
+    every conceptual requirement to platform options and covers memory selection;
+    <a href="guardrails-implementation.html">Implementing Guardrails</a> shows how the safety controls are
+    actually built.
+</div>
+
+</main>
+</div>
+</body>
+</html>
