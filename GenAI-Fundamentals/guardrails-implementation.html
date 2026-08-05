@@ -71,7 +71,7 @@ slow and unsafe.</p>
         <span>Irreversible or regulated actions. Not a fallback for weak lower layers — a deliberate stop for decisions that should never be automatic.</span></div></div>
 </div>
 
-<h2 id="kinds">12 · What kinds of guardrails are there?</h2>
+<h2 id="kinds">2 · What kinds of guardrails are there?</h2>
 
 <p>"Guardrail" covers about fifty distinct controls. Any one of them is pinned down by four
 questions, and answering all four is what turns a vague intention into something implementable.</p>
@@ -213,16 +213,16 @@ badly at three in the morning.</p>
 <div class="toc">
     <a href="#kinds">2 · What kinds are there</a>
     <a href="#injection">3 · Prompt injection</a>
-    <a href="#pii">10 · PII &amp; redaction</a>
-    <a href="#authz">4 · Authorisation</a>
-    <a href="#output">5 · Output validation</a>
-    <a href="#grounding">6 · Grounding</a>
-    <a href="#reliability">7 · Reliability</a>
-    <a href="#loop">8 · Loop &amp; cost control</a>
-    <a href="#hitl">9 · Human-in-the-loop</a>
+    <a href="#pii">4 · PII &amp; redaction</a>
+    <a href="#authz">5 · Authorisation</a>
+    <a href="#output">6 · Output validation</a>
+    <a href="#grounding">7 · Grounding</a>
+    <a href="#reliability">8 · Reliability</a>
+    <a href="#loop">9 · Loop &amp; cost control</a>
+    <a href="#hitl">10 · Human-in-the-loop</a>
 </div>
 
-<h2 id="injection">2 · Prompt injection <span class="chip code">code</span></h2>
+<h2 id="injection">3 · Prompt injection <span class="chip code">code</span></h2>
 
 <p>The threat is not the user typing "ignore your instructions". It is a <em>retrieved document</em>, a
 ticket comment or a web page containing instructions, which the model has no reliable way to distinguish
@@ -276,7 +276,7 @@ scanners = [PromptInjection(threshold=<span class="st">0.85</span>), TokenLimit(
     instruction is just noise in a transcript.
 </div>
 
-<h2 id="pii">3 · PII &amp; redaction <span class="chip code">code</span></h2>
+<h2 id="pii">4 · PII &amp; redaction <span class="chip code">code</span></h2>
 
 <pre><span class="kw">import</span> re
 <span class="kw">from</span> presidio_analyzer <span class="kw">import</span> AnalyzerEngine
@@ -303,7 +303,7 @@ analyzer, anonymizer = AnalyzerEngine(), AnonymizerEngine()
     technical text survives intact, not only that secrets are removed.
 </div>
 
-<h2 id="authz">4 · Authorisation — the guardrail people forget <span class="chip code">code</span></h2>
+<h2 id="authz">5 · Authorisation — the guardrail people forget <span class="chip code">code</span></h2>
 
 <p>The most consequential control, and the one most often left to the prompt. Two rules:
 <strong>call downstream systems as the user, never a service account</strong>, and
@@ -333,7 +333,7 @@ response = client.messages.create(
     build and easy to lose — a shared cache keyed without the user id will silently undo it.
 </div>
 
-<h2 id="output">5 · Output validation <span class="chip code">code</span></h2>
+<h2 id="output">6 · Output validation <span class="chip code">code</span></h2>
 
 <pre><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, field_validator
 
@@ -366,7 +366,7 @@ answer = Answer.model_validate(block.input, context={<span class="st">"retrieved
     a confident answer attributed to a source that does not exist.
 </div>
 
-<h2 id="grounding">6 · Grounding &amp; hallucination <span class="chip code">code</span></h2>
+<h2 id="grounding">7 · Grounding &amp; hallucination <span class="chip code">code</span></h2>
 
 <p>Three tiers, cheapest first. Most teams jump to the third and skip the first two, which are free.</p>
 
@@ -396,7 +396,7 @@ answer = Answer.model_validate(block.input, context={<span class="st">"retrieved
     the most expensive way to be wrong.
 </div>
 
-<h2 id="reliability">7 · Reliability <span class="chip code">code</span></h2>
+<h2 id="reliability">8 · Reliability <span class="chip code">code</span></h2>
 
 <pre><span class="kw">from</span> tenacity <span class="kw">import</span> retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception_type
 <span class="kw">import</span> pybreaker
@@ -423,7 +423,7 @@ breaker = pybreaker.CircuitBreaker(fail_max=<span class="st">5</span>, reset_tim
     without an idempotency key.
 </div>
 
-<h2 id="loop">8 · Loop &amp; cost control <span class="chip code">code</span></h2>
+<h2 id="loop">9 · Loop &amp; cost control <span class="chip code">code</span></h2>
 
 <pre><span class="kw">class</span> LoopBudget:
     <span class="kw">def</span> <span class="fn">__init__</span>(self, max_turns=<span class="st">12</span>, max_usd=<span class="st">0.50</span>, max_seconds=<span class="st">120</span>):
@@ -451,7 +451,7 @@ breaker = pybreaker.CircuitBreaker(fail_max=<span class="st">5</span>, reset_tim
     check is the one most often missing and the one that catches real thrash.
 </div>
 
-<h2 id="hitl">9 · Human-in-the-loop &amp; action classes <span class="chip code">code</span></h2>
+<h2 id="hitl">10 · Human-in-the-loop &amp; action classes <span class="chip code">code</span></h2>
 
 <pre><span class="kw">class</span> ActionClass(IntEnum):
     OBSERVE       = <span class="st">0</span>   <span class="cm"># no change made</span>
@@ -478,7 +478,7 @@ breaker = pybreaker.CircuitBreaker(fail_max=<span class="st">5</span>, reset_tim
     a regulated estate. The refusal is the feature.
 </div>
 
-<h2>10 · Coverage — control, layer, and buy-or-build</h2>
+<h2>11 · Coverage — control, layer, and buy-or-build</h2>
 
 <div class="scroller">
 <table>
@@ -507,7 +507,7 @@ breaker = pybreaker.CircuitBreaker(fail_max=<span class="st">5</span>, reset_tim
 </table>
 </div>
 
-<h2>11 · Order of implementation</h2>
+<h2>12 · Order of implementation</h2>
 
 <ol>
     <li><strong>Authorisation and on-behalf-of.</strong> Retrofitting identity is the most expensive rework in this list.</li>
