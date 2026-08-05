@@ -55,6 +55,8 @@
     <a href="#obs">1 · Observability &amp; tracing</a>
     <a href="#otel">2 · OpenTelemetry &amp; its alternatives</a>
     <a href="#gw">3 · AI gateways</a>
+    <a href="#gw-matrix">3b · Gateway capability matrix</a>
+    <a href="#gw-config">3c · Gateway config example</a>
     <a href="#orch">4 · Orchestration &amp; agent frameworks</a>
     <a href="#graph">5 · Graph &amp; memory frameworks</a>
     <a href="#code">6 · Code structure graphs</a>
@@ -305,11 +307,157 @@ than two applications calling models, you already need one.</p>
     hop expensive.
 </div>
 
-<div class="warn">
-    <strong>The trap:</strong> a gateway is on the critical path of every request. Whatever you choose needs
-    an answer for <em>what happens when the gateway itself is down</em> — a direct-to-provider fallback, or
-    an accepted outage. Deciding that after the first incident is expensive.
+<h3 id="gw-what">What the gateway takes off every application</h3>
+
+<p>The reason a gateway is the highest-leverage shared component: it applies to
+<strong>every application, in any language, with zero application code</strong>. Nine of the
+thirty-seven requirements in the <a href="ai-engineering-blueprint.html">blueprint</a> can be
+satisfied here and nowhere else as cheaply.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:180px">Concern</th>
+        <th style="min-width:330px">What you stop writing in every app</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>Model access &amp; routing</b></td><td>Provider SDKs, endpoint config, one API shape for every model</td></tr>
+        <tr><td><b>Fallback &amp; retries</b></td><td>"Primary down → secondary" logic, backoff, load balancing across deployments</td></tr>
+        <tr><td><b>Rate limits &amp; quota</b></td><td>Per-key, per-user, per-team limits — including <em>token</em>-based, not only request-based</td></tr>
+        <tr><td><b>Budgets &amp; cost caps</b></td><td>Spend ceilings per team or project, alerts, hard stops</td></tr>
+        <tr><td><b>Cost attribution</b></td><td>Spend tagged to team, project and use case without touching app code</td></tr>
+        <tr><td><b>Payload logging</b></td><td>Request and response capture into your observability backend</td></tr>
+        <tr><td><b>Caching</b></td><td>Exact and semantic caching across all callers, not once per app</td></tr>
+        <tr><td><b>Guardrails</b></td><td>PII redaction and injection screening applied uniformly</td></tr>
+        <tr><td><b>Key management</b></td><td>Virtual keys per team — rotate centrally, never distribute provider keys</td></tr>
+    </tbody>
+</table>
 </div>
+
+<h3 id="gw-matrix">Open-source gateways — capability matrix</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:140px">Gateway</th>
+        <th style="min-width:60px">Lang</th>
+        <th style="min-width:110px">Routing &amp; fallback</th>
+        <th style="min-width:120px">Rate limit / budget</th>
+        <th style="min-width:105px">Caching</th>
+        <th style="min-width:130px">Guardrails</th>
+        <th style="min-width:120px">Logging</th>
+        <th style="min-width:175px">Notes</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">LiteLLM Proxy</span></td><td>Python</td>
+        <td>✅ 100+ providers</td><td>✅ per key / user / team, token-based</td><td>✅ Redis + semantic</td>
+        <td>✅ Presidio, Lakera, Bedrock Guardrails</td><td>✅ Langfuse, OTel, S3, Datadog</td>
+        <td><b>Richest OSS feature set.</b> Admin UI, virtual keys, spend tracking</td></tr>
+    <tr><td><span class="nm">Portkey Gateway</span></td><td>TypeScript</td>
+        <td>✅</td><td>✅</td><td>✅ simple + semantic</td><td>⚠️ mostly paid platform</td><td>✅ hooks</td>
+        <td>Very low latency, edge-deployable</td></tr>
+    <tr><td><span class="nm">Bifrost</span></td><td>Go</td>
+        <td>✅</td><td>✅</td><td>✅</td><td>⚠️ limited</td><td>✅</td>
+        <td>Lowest overhead; MCP support</td></tr>
+    <tr><td><span class="nm">Envoy AI Gateway</span></td><td>C++/Go</td>
+        <td>✅</td><td>✅ token-based</td><td>⚠️ via Envoy</td><td>⚠️ external</td><td>✅ OTel</td>
+        <td>Kubernetes/CRD-native; scales hardest</td></tr>
+    <tr><td><span class="nm">Kong AI Gateway</span></td><td>Lua</td>
+        <td>✅ <code>ai-proxy</code></td><td>⚠️ advanced limiting is enterprise</td><td>⚠️ semantic cache enterprise</td>
+        <td>✅ <code>ai-prompt-guard</code></td><td>✅</td><td>Right answer if Kong is already your ingress</td></tr>
+    <tr><td><span class="nm">Apache APISIX</span></td><td>Lua</td>
+        <td>✅</td><td>✅</td><td>⚠️</td><td>✅ <code>ai-prompt-guard</code></td><td>✅</td>
+        <td>Same logic if APISIX is your ingress</td></tr>
+    <tr><td><span class="nm">Higress</span></td><td>Go</td>
+        <td>✅</td><td>✅ token limit</td><td>✅</td><td>✅ security guard</td><td>✅</td>
+        <td>Strong AI plugin set</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    Several of these projects move features between the open-source and paid tiers.
+    <strong>Verify the current tier of anything you are depending on</strong> before it becomes load-bearing.
+</div>
+
+<h3 id="gw-config">What "gateway config" actually looks like</h3>
+
+<p>LiteLLM, because it is the most likely default. Note that the applications never learn any of
+this exists — they keep calling <code>claude-sonnet</code> at the gateway URL.</p>
+
+<pre><span class="cm"># config.yaml</span>
+<span class="kw">model_list</span>:
+  - model_name: claude-sonnet                 <span class="cm"># the alias apps ask for</span>
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: claude-sonnet                 <span class="cm"># same alias again = load balanced</span>
+    litellm_params:
+      model: bedrock/anthropic.claude-sonnet-5
+      aws_region_name: eu-west-1
+
+<span class="kw">router_settings</span>:
+  routing_strategy: latency-based-routing
+  fallbacks: [{ claude-sonnet: [claude-haiku] }]
+  num_retries: <span class="st">2</span>
+  allowed_fails: <span class="st">3</span>                            <span class="cm"># circuit breaker</span>
+  cooldown_time: <span class="st">30</span>
+
+<span class="kw">litellm_settings</span>:
+  cache: <span class="st">true</span>
+  cache_params: { type: redis, ttl: <span class="st">3600</span>, supported_call_types: [acompletion] }
+  callbacks: [langfuse, otel]                 <span class="cm"># tracing + payload logging</span>
+  guardrails:
+    - guardrail_name: pii
+      litellm_params: { guardrail: presidio, mode: pre_call }
+    - guardrail_name: injection
+      litellm_params: { guardrail: lakera, mode: pre_call }
+
+<span class="kw">general_settings</span>:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  max_budget: <span class="st">5000</span>                            <span class="cm"># org ceiling, USD per period</span>
+  budget_duration: 30d
+</pre>
+
+<p>Per-team virtual keys then carry their own limits and cost tags:</p>
+
+<pre>curl -X POST $GATEWAY/key/generate -H <span class="st">"Authorization: Bearer $MASTER_KEY"</span> \
+  -d <span class="st">'{"team_id":"ops-eai","models":["claude-sonnet"],
+       "max_budget":400,"budget_duration":"30d",
+       "tpm_limit":200000,"rpm_limit":500,
+       "metadata":{"cost_centre":"EAI-1042","use_case":"incident-search"}}'</span>
+</pre>
+
+<div class="good">
+    That single call is <strong>quota, budget and cost attribution for an entire team</strong> — and the
+    application never knows it happened. This is the concrete reason the gateway belongs outside the
+    application rather than inside a shared library: it governs code you do not control, in languages you
+    did not choose.
+</div>
+
+<h3 id="gw-pick">Which one to pick</h3>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:220px">Situation</th><th style="min-width:200px">Choose</th><th style="min-width:230px">Why</th></tr></thead>
+    <tbody>
+        <tr><td>On Databricks</td><td><b>Mosaic AI Gateway</b></td><td>Governed by Unity Catalog; no extra system to run</td></tr>
+        <tr><td>On Azure</td><td><b>API Management</b></td><td>Token-based limiting and balancing across PTU and pay-go deployments</td></tr>
+        <tr><td>Anywhere else, starting out</td><td><b>LiteLLM Proxy</b></td><td>Best OSS coverage, fastest to value</td></tr>
+        <tr><td>Kubernetes, high scale</td><td><b>Envoy AI Gateway</b></td><td>CRD-native, built on proven traffic infrastructure</td></tr>
+        <tr><td>Latency-critical / edge</td><td><b>Portkey</b> or <b>Bifrost</b></td><td>Lowest added hop</td></tr>
+        <tr><td>Kong or APISIX already in place</td><td><b>Their AI plugins</b></td><td>One proxy, not two</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="bad">
+    <strong>Decide this before you adopt one:</strong> the gateway is on the critical path of every
+    request. <em>What happens when the gateway is down?</em> Either a direct-to-provider fallback in the
+    client, or an accepted outage with a stated SLO. "We will add HA later" quietly means the gateway is a
+    single point of failure for every AI application at once — and you find out during the first incident.
+</div>
+
 
 <h2 id="orch">4 · Orchestration &amp; agent frameworks <span class="chip diagram">landscape</span></h2>
 
