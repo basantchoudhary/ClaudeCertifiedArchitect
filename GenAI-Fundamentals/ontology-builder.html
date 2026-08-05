@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ontology Builder · What, Who, Where and Which Store</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .wrap.wide { max-width: 1330px; }
+    .scroller { overflow-x:auto; margin:16px 0; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.05); }
+    .scroller table { margin:0; box-shadow:none; min-width:940px; }
+    .scroller th { position:sticky; top:0; z-index:2; font-size:.82em; }
+    .scroller td { font-size:.86em; }
+    .grp td { background:#efeaff !important; font-weight:700; color:#4a3c78; text-transform:uppercase;
+              letter-spacing:.04em; font-size:.86em !important; }
+    td .nm { font-weight:600; color:#333; }
+    .lic { display:inline-block; font-size:.72em; font-weight:700; padding:1px 7px; border-radius:9px; margin-left:6px; }
+    .lic.oss { background:#e6fcf0; color:#2b8a3e; }
+    .lic.free { background:#e7ecff; color:#3b5bdb; }
+    .lic.paid { background:#fff0f6; color:#c2255c; }
+    .lic.cloud { background:#fff6e0; color:#a97a20; }
+    .pick { background:#f3fbf5 !important; }
+    .toc { display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:9px; margin:18px 0; }
+    .toc a { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:9px 13px;
+             text-decoration:none; color:#5a4a8a; font-weight:600; font-size:.9em; }
+    .toc a:hover { border-color:#764ba2; }
+    .stack { display:flex; flex-direction:column; gap:6px; margin:16px 0; }
+    .lvl { display:grid; grid-template-columns:150px 1fr; gap:14px; align-items:center;
+           border:1px solid #e6e1f7; border-left:4px solid #667eea; border-radius:8px; padding:10px 14px; background:#faf9ff; }
+    .lvl b { color:#4a3c78; }
+    .lvl span { color:#666; font-size:.9em; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Ontology Builder</div>
+    <h1>🕸️ Ontology Builder</h1>
+    <div class="tag">What it contains · what shape · who builds it · where it is stored · PaaS or on-prem</div>
+</header>
+
+<div class="wrap wide">
+<main class="card">
+
+<div class="note">
+    <strong>Why this page exists.</strong> Ontology work fails far more often from starting too big than
+    from choosing the wrong tool. This page covers the components, the formalisms, the roles, the stores
+    and the deployment choice — but the section that matters most is the last one:
+    <a href="#start">how to start without boiling the ocean</a>.
+</div>
+
+<div class="toc">
+    <a href="#what">1 · Ontology vs taxonomy vs schema</a>
+    <a href="#need">2 · Where you actually need one</a>
+    <a href="#contains">3 · What it contains</a>
+    <a href="#shape">4 · Shape &amp; form</a>
+    <a href="#who">5 · Who builds it</a>
+    <a href="#store">6 · Where it lives</a>
+    <a href="#deploy">7 · PaaS or on-prem</a>
+    <a href="#standards">8 · Standards to adopt</a>
+    <a href="#pipeline">9 · Ontology as code</a>
+    <a href="#start">10 · How to start</a>
+</div>
+
+<h2 id="what">1 · Ontology vs taxonomy vs schema <span class="chip concept">concept</span></h2>
+
+<p>These five get used interchangeably and cost real money when confused in a design review.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:140px">Artefact</th>
+        <th style="min-width:250px">What it captures</th>
+        <th style="min-width:200px">Example</th>
+        <th style="min-width:150px">Answers</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>Glossary</b></td><td>Business terms and their agreed definitions</td><td>"Active Customer means…"</td><td>What does this word mean?</td></tr>
+        <tr><td><b>Taxonomy</b></td><td>Hierarchical classification — <em>is-a</em> only</td><td>Product → Vaccine → mRNA Vaccine</td><td>What kind of thing is this?</td></tr>
+        <tr class="pick"><td><b>Ontology</b></td><td>Entities, <b>relationships</b>, constraints and rules that support inference</td><td>Study <em>investigates</em> Compound; Compound <em>treats</em> Indication</td><td>How do things relate, and what follows from that?</td></tr>
+        <tr><td><b>Knowledge graph</b></td><td>An ontology <b>populated with instances</b></td><td>Study NCT0123 investigates GSK-456</td><td>What is actually true in our estate?</td></tr>
+        <tr><td><b>Data model / schema</b></td><td>Physical structure of a table or document</td><td><code>dim_product(sku, name…)</code></td><td>How is it stored?</td></tr>
+        <tr><td><b>Semantic layer</b></td><td>Business metrics and dimensions over physical tables</td><td><code>revenue = sum(net_amount)</code></td><td>How do we calculate it consistently?</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The one-line distinction:</strong> a taxonomy tells you what something <em>is</em>; an ontology
+    tells you what it is <em>connected to</em> and what can be <em>inferred</em>. If your requirement never
+    needs a relationship traversal or an inference, you need a taxonomy or a glossary — and you have just
+    saved yourself a year.
+</div>
+
+<h2 id="need">2 · Where you actually need one <span class="chip trade">trade-off</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:190px">Use case</th><th style="min-width:290px">What the ontology buys you</th><th style="min-width:140px">Could you skip it?</th></tr></thead>
+    <tbody>
+        <tr><td><b>Impact &amp; blast-radius analysis</b></td><td>"What breaks if I change this table, service or field" — transitive, across systems</td><td>No — this is inherently multi-hop</td></tr>
+        <tr><td><b>Entity resolution / master data</b></td><td>The same customer, site or compound reconciled across a dozen systems</td><td>No — identity is a relationship problem</td></tr>
+        <tr><td><b>Text-to-SQL and NL query</b></td><td>Which tables mean what, and how they legitimately join</td><td>Partly — a semantic layer may be enough</td></tr>
+        <tr><td><b>Agent tool selection &amp; context</b></td><td>Which system owns which concept, so an agent picks the right tool</td><td>Often — a good tool catalogue may suffice</td></tr>
+        <tr><td><b>Hybrid graph + vector RAG</b></td><td>Multi-hop questions vector search cannot answer</td><td>Usually yes at first — start with hybrid search</td></tr>
+        <tr><td><b>Policy &amp; classification propagation</b></td><td>Tag a concept once, inherit the controls everywhere it appears</td><td>No — inheritance is the point</td></tr>
+        <tr><td><b>Regulatory interoperability</b></td><td>Speaking IDMP, CDISC or FHIR because a regulator requires it</td><td>No — the standard <em>is</em> the ontology</td></tr>
+        <tr><td><b>Merging systems after acquisition</b></td><td>A common conceptual layer across incompatible models</td><td>No — this is the classic case</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>The qualifying test:</b> write down five real questions the business cannot answer today. If none
+    of them requires following a relationship <em>through</em> another entity, you do not need an ontology
+    yet. Most "we need an ontology" programmes are actually asking for a glossary, a semantic layer, or
+    better search.
+</div>
+
+<h2 id="contains">3 · What it contains <span class="chip concept">concept</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:175px">Component</th><th style="min-width:290px">What it is</th><th style="min-width:210px">Skipping it costs you</th></tr></thead>
+    <tbody>
+        <tr><td><b>Classes / entities</b></td><td>The things that exist — Study, Site, Compound, Incident, Service</td><td>Nothing to hang anything on</td></tr>
+        <tr><td><b>Properties</b></td><td>Attributes with datatypes and units</td><td>Ambiguity — is <code>duration</code> in hours or days?</td></tr>
+        <tr class="pick"><td><b>Relationships</b></td><td>Typed edges with domain and range — <em>investigates</em>, <em>depends-on</em>, <em>supersedes</em></td><td><b>This is the ontology.</b> Without it you have a taxonomy</td></tr>
+        <tr><td><b>Hierarchies</b></td><td>Subclass and subproperty — what inherits from what</td><td>Every rule has to be restated at every level</td></tr>
+        <tr><td><b>Cardinality &amp; constraints</b></td><td>A Study has exactly one Sponsor; a Site has at least one Investigator</td><td>Data that validates but is nonsense</td></tr>
+        <tr><td><b>Axioms &amp; rules</b></td><td>What can be inferred — transitivity, symmetry, disjointness</td><td>You infer in application code instead, inconsistently</td></tr>
+        <tr><td><b>Identifiers &amp; namespaces</b></td><td>Stable URIs or keys that survive renaming</td><td>Nothing can be merged or federated later</td></tr>
+        <tr><td><b>Labels &amp; synonyms</b></td><td>Preferred term, alternates, abbreviations, other languages</td><td>Search and NL query miss the way people actually speak</td></tr>
+        <tr><td><b>Mappings / crosswalks</b></td><td>Links to external standards and to physical columns</td><td>An ontology disconnected from data — the classic shelfware failure</td></tr>
+        <tr><td><b>Provenance &amp; versioning</b></td><td>Who asserted this, when, from what source, under which version</td><td>No way to audit or roll back a meaning change</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    <strong>Mappings are the component teams skip and the one that decides success.</strong> An ontology
+    with no link to physical columns is a diagram. The mapping layer — concept → table → column — is what
+    turns it into something a query engine or an agent can actually use.
+</div>
+
+<h2 id="shape">4 · Shape &amp; form <span class="chip trade">trade-off</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Formalism</th>
+        <th style="min-width:175px">Looks like</th>
+        <th style="min-width:210px">Strengths</th>
+        <th style="min-width:200px">Costs</th>
+        <th style="min-width:150px">Use when</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>RDF / OWL</b></td><td>Turtle, JSON-LD; SPARQL; SHACL</td><td>W3C standard, formal inference, federates, aligns with public ontologies</td><td>Steep learning curve; scarce skills; verbose</td><td>Regulated, interoperability, external standards</td></tr>
+        <tr><td><b>SKOS</b></td><td>Concept schemes, broader/narrower</td><td>Lightweight, ideal for vocabularies and taxonomies</td><td>Not expressive enough for real constraints</td><td>Controlled vocabularies, thesauri</td></tr>
+        <tr class="pick"><td><b>Labeled property graph</b></td><td>Neo4j + Cypher</td><td>Pragmatic, fast, easy to hire for, great tooling</td><td>No standard semantics; inference is yours to write</td><td>Operational graphs, impact analysis, agent memory</td></tr>
+        <tr><td><b>LinkML</b></td><td>YAML schema</td><td><b>Author once, generate</b> OWL, JSON Schema, SHACL, Python, SQL DDL</td><td>Younger ecosystem</td><td>You want one source and several outputs</td></tr>
+        <tr><td><b>JSON Schema / Pydantic</b></td><td>Code-facing types</td><td>What applications and LLM tool definitions actually consume</td><td>No inference, no relationships beyond nesting</td><td>The operational projection — generate it, do not hand-write it</td></tr>
+        <tr><td><b>Semantic layer</b></td><td>dbt / Cube / MetricFlow YAML</td><td>Consistent metrics; already in the analytics workflow</td><td>Metrics and dimensions only — not a general ontology</td><td>BI consistency and text-to-SQL grounding</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>You will need two representations, and that is fine.</strong> One <em>authoritative</em>
+    (OWL, SKOS or LinkML) and one <em>operational</em> (property graph, JSON Schema, semantic layer). The
+    rule is that the second is <b>generated</b> from the first. The moment both are hand-maintained they
+    diverge, and the ontology becomes documentation nobody trusts.
+</div>
+
+<h2 id="who">5 · Who builds it <span class="chip concept">concept</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:175px">Role</th><th style="min-width:255px">Owns</th><th style="min-width:230px">Failure if they are absent</th></tr></thead>
+    <tbody>
+        <tr class="pick"><td><b>Domain SME / steward</b></td><td>The meaning. Which distinctions matter and which are noise</td><td><b>The commonest failure.</b> A technically elegant ontology the business does not recognise</td></tr>
+        <tr><td><b>Ontologist / knowledge engineer</b></td><td>The formalism — classes, relations, constraints, alignment to standards</td><td>Inconsistent modelling that cannot be reasoned over</td></tr>
+        <tr><td><b>Data engineer</b></td><td>Mappings to physical tables, population pipelines, refresh</td><td>An ontology unconnected to real data</td></tr>
+        <tr><td><b>Architect</b></td><td>Scope, boundaries, which standard to adopt, what stays out</td><td>Scope creep to the whole enterprise; nothing ships</td></tr>
+        <tr><td><b>Governance / QA</b></td><td>Change control, versioning, regulatory alignment</td><td>Meaning drifting silently; no audit trail</td></tr>
+        <tr><td><b>LLM assistance</b></td><td><em>Proposes</em> candidate entities, relations and synonyms from documents and schemas</td><td>Slow manual extraction — but it only ever proposes; a human ratifies</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="note">
+    <strong>A workable modern split:</strong> an LLM pass over existing schemas, documents and tickets
+    proposes candidate concepts and relationships; the ontologist shapes them; the SME ratifies meaning;
+    CI validates the result. That collapses the slowest part of the work without handing meaning to a
+    model — <em>propose automatically, ratify deliberately</em>.
+</div>
+
+<h2 id="store">6 · Where it lives <span class="chip diagram">landscape</span></h2>
+
+<p>Four distinct storage questions, and teams routinely conflate them.</p>
+
+<div class="stack">
+    <div class="lvl"><b>Authoring &amp; source of truth</b><span><b>Git.</b> The ontology is code — versioned, reviewed, diffable, released. Never a database as the master copy.</span></div>
+    <div class="lvl"><b>Instance store</b><span>The populated knowledge graph — triple store or property graph.</span></div>
+    <div class="lvl"><b>Metadata &amp; governance</b><span>Catalog holding classification, lineage and policy — Unity Catalog, Purview, Collibra.</span></div>
+    <div class="lvl"><b>Operational projection</b><span>Generated JSON Schema, semantic-layer YAML, Cypher constraints that applications consume.</span></div>
+</div>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:165px">Option</th>
+        <th style="min-width:120px">Category</th>
+        <th style="min-width:225px">Strengths</th>
+        <th style="min-width:185px">Choose when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="4">Authoring &amp; validation</td></tr>
+    <tr class="pick"><td><span class="nm">Protégé</span> / WebProtégé<span class="lic oss">OSS</span></td><td>Authoring</td><td>The de-facto OWL editor; reasoners built in</td><td>Formal OWL work — the default</td></tr>
+    <tr class="pick"><td><span class="nm">LinkML</span><span class="lic oss">OSS</span></td><td>Authoring</td><td>YAML source, generates OWL, SHACL, JSON Schema, Python, DDL</td><td>You want ontology-as-code with real outputs</td></tr>
+    <tr><td><span class="nm">SHACL</span> / pySHACL, <span class="nm">ShEx</span><span class="lic oss">OSS</span></td><td>Validation</td><td>Constraint validation you can run in CI</td><td>Always — this is your test suite</td></tr>
+    <tr><td><span class="nm">VocBench</span>, <span class="nm">Neo4j Arrows</span><span class="lic oss">OSS</span></td><td>Authoring</td><td>Collaborative vocabulary editing; quick model sketching</td><td>SME-facing curation and whiteboarding</td></tr>
+    <tr><td><span class="nm">TopBraid EDG</span>, <span class="nm">PoolParty</span>, <span class="nm">Semaphore</span>, <span class="nm">metaphactory</span><span class="lic paid">commercial</span></td><td>Authoring</td><td>Governance workflow, SME-friendly UIs, publishing</td><td>Large curated vocabularies with non-technical stewards</td></tr>
+
+    <tr class="grp"><td colspan="4">Triple stores — RDF / SPARQL</td></tr>
+    <tr><td><span class="nm">Apache Jena Fuseki</span><span class="lic oss">OSS</span></td><td>Store</td><td>Free, standard, easy to start</td><td>Modest scale, getting going</td></tr>
+    <tr><td><span class="nm">GraphDB</span> (Ontotext)<span class="lic free">free tier</span></td><td>Store</td><td>Strong reasoning, mature tooling</td><td>Inference matters</td></tr>
+    <tr><td><span class="nm">Stardog</span>, <span class="nm">AllegroGraph</span>, <span class="nm">RDFox</span>, <span class="nm">Virtuoso</span><span class="lic paid">commercial</span></td><td>Store</td><td>Virtual graphs over relational data, high-performance reasoning</td><td>Enterprise scale with federation needs</td></tr>
+    <tr><td><span class="nm">Oxigraph</span>, <span class="nm">Blazegraph</span><span class="lic oss">OSS</span></td><td>Store</td><td>Lightweight, embeddable</td><td>Small footprint or embedded use</td></tr>
+
+    <tr class="grp"><td colspan="4">Property graphs</td></tr>
+    <tr class="pick"><td><span class="nm">Neo4j</span><span class="lic free">OSS + SaaS</span></td><td>Store</td><td>Most mature; Cypher, tooling, vector index; AuraDB managed</td><td>Default for an operational graph</td></tr>
+    <tr><td><span class="nm">Memgraph</span>, <span class="nm">FalkorDB</span>, <span class="nm">Kùzu</span><span class="lic oss">OSS</span></td><td>Store</td><td>In-memory speed; FalkorDB for request-path latency; Kùzu embedded</td><td>Latency-sensitive or per-tenant graphs</td></tr>
+    <tr><td><span class="nm">Neptune</span> (AWS), <span class="nm">Spanner Graph</span> (GCP), <span class="nm">Cosmos DB Gremlin</span> (Azure)<span class="lic cloud">cloud</span></td><td>Store</td><td>Managed, IAM-integrated; Neptune speaks both RDF and property graph</td><td>Cloud-standardised estates</td></tr>
+    <tr><td><span class="nm">Apache AGE</span> (Postgres)<span class="lic oss">OSS</span></td><td>Store</td><td>Graph queries in the Postgres you already run</td><td>Modest graphs, one fewer system</td></tr>
+
+    <tr class="grp"><td colspan="4">Catalog &amp; governance</td></tr>
+    <tr><td><span class="nm">Unity Catalog</span><span class="lic cloud">Databricks</span></td><td>Catalog</td><td>Lineage, tags, classification, permissions on real data</td><td>Databricks estates — put mappings here</td></tr>
+    <tr><td><span class="nm">Microsoft Purview</span><span class="lic cloud">Azure</span></td><td>Catalog</td><td>Estate-wide classification and glossary</td><td>Azure estates</td></tr>
+    <tr><td><span class="nm">DataHub</span>, <span class="nm">OpenMetadata</span>, <span class="nm">Apache Atlas</span>, <span class="nm">Egeria</span><span class="lic oss">OSS</span></td><td>Catalog</td><td>Open metadata models, glossary, lineage</td><td>Multi-cloud or vendor-neutral requirement</td></tr>
+    <tr><td><span class="nm">Collibra</span>, <span class="nm">Alation</span>, <span class="nm">Atlan</span><span class="lic paid">commercial</span></td><td>Catalog</td><td>Stewardship workflow for non-technical users</td><td>Formal governance programmes</td></tr>
+
+    <tr class="grp"><td colspan="4">Semantic layer</td></tr>
+    <tr><td><span class="nm">dbt Semantic Layer</span>, <span class="nm">Cube</span><span class="lic free">OSS + SaaS</span></td><td>Semantics</td><td>Metric definitions consumed by BI and text-to-SQL</td><td>Consistent metrics is the actual requirement</td></tr>
+    <tr><td><span class="nm">Databricks Metric Views</span>, <span class="nm">AtScale</span>, <span class="nm">Power BI models</span><span class="lic cloud">mixed</span></td><td>Semantics</td><td>Native to the platform</td><td>Already standardised there</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h2 id="deploy">7 · PaaS or on-prem <span class="chip trade">trade-off</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:175px">Factor</th><th style="min-width:230px">Points to managed / PaaS</th><th style="min-width:230px">Points to self-hosted / on-prem</th></tr></thead>
+    <tbody>
+        <tr><td><b>Data residency &amp; regulation</b></td><td>Region-pinned managed service meets the requirement</td><td>GxP validated environment, or data that may not leave the datacentre</td></tr>
+        <tr><td><b>Content sensitivity</b></td><td>Ontology <em>schema</em> is rarely sensitive — often fine anywhere</td><td><b>Instances</b> may be highly sensitive — patient, trial, commercial</td></tr>
+        <tr><td><b>Scale</b></td><td>Elastic growth, unpredictable load</td><td>Known, stable volumes</td></tr>
+        <tr><td><b>Latency</b></td><td>Batch or interactive analytics</td><td>Graph reads on a request path next to the app</td></tr>
+        <tr><td><b>Ops capacity</b></td><td>No team to run a triple store</td><td>Existing DBA and platform capability</td></tr>
+        <tr><td><b>Validation burden</b></td><td>Vendor-qualified service reduces your evidence load</td><td>You control the change window and the qualification</td></tr>
+        <tr><td><b>Exit cost</b></td><td>Standards-based (RDF/SPARQL) keeps it portable</td><td>Full control, but you carry upgrades and patching</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The split that usually wins in regulated estates:</strong> keep the <b>ontology itself in Git</b>
+    — it is text, it is reviewable, it moves anywhere, and it is rarely sensitive. Then choose the
+    <b>instance store</b> on the sensitivity of the <em>data</em>, not of the model. Schema in the open,
+    instances where policy requires. That separation also makes the deployment decision reversible.
+</div>
+
+<h2 id="standards">8 · Adopt before you build <span class="chip exam">important</span></h2>
+
+<p>In life sciences and healthcare the ontologies largely already exist, are maintained by people whose
+job that is, and are often what a regulator expects to receive. Building your own version of MedDRA is
+an expensive way to be non-standard.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:150px">Domain</th><th style="min-width:290px">Established standards</th><th style="min-width:190px">Where to find them</th></tr></thead>
+    <tbody>
+        <tr><td>Clinical terms</td><td>SNOMED CT, ICD-10/11, LOINC (labs), RxNorm, UMLS</td><td>BioPortal, UMLS Metathesaurus</td></tr>
+        <tr><td>Adverse events</td><td>MedDRA</td><td>MSSO (licensed)</td></tr>
+        <tr><td>Products &amp; substances</td><td>IDMP (ISO 11615/11616), GINAS, ChEBI</td><td>ISO, EMA, EBI</td></tr>
+        <tr><td>Clinical trials data</td><td>CDISC — SDTM, ADaM, CDASH, Controlled Terminology</td><td>CDISC library</td></tr>
+        <tr><td>Real-world / observational</td><td>OMOP Common Data Model</td><td>OHDSI</td></tr>
+        <tr><td>Interoperability</td><td>HL7 FHIR</td><td>HL7</td></tr>
+        <tr><td>Biology &amp; disease</td><td>Gene Ontology, UniProt, EFO, MONDO, NCIt</td><td>OLS (EBI), BioPortal</td></tr>
+        <tr><td>General / linked data</td><td>schema.org, SKOS, Dublin Core, PROV-O, DCAT</td><td>W3C, schema.org</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>The rule:</b> adopt the standard, then <em>extend</em> it with a small local namespace for what is
+    genuinely yours — internal programme codes, site hierarchies, system names. Your ontology should be
+    mostly imports and a thin layer of local concepts. If it is mostly local, either you are in an unusual
+    domain or you have not looked hard enough.
+</div>
+
+<h2 id="pipeline">9 · Ontology as code <span class="chip code">pattern</span></h2>
+
+<pre><span class="cm"># repo layout — the ontology is a versioned, tested, released artefact</span>
+ontology/
+  imports/         <span class="cm"># pinned versions of external standards</span>
+  core/            <span class="cm"># your entities and relationships (.ttl or LinkML .yaml)</span>
+  mappings/        <span class="cm"># concept -> physical table.column</span>
+  shapes/          <span class="cm"># SHACL constraints = the test suite</span>
+  generated/       <span class="cm"># NEVER hand-edited</span>
+
+<span class="cm"># CI — the same shape as any other build</span>
+- validate:   pyshacl -s shapes/ -d core/          <span class="cm"># constraints hold</span>
+- reason:     check no unsatisfiable classes       <span class="cm"># logically coherent</span>
+- diff:       report added/removed/renamed concepts vs the last release
+- generate:   linkml → JSON Schema, OWL, Python, Cypher constraints
+- publish:    versioned artefact + changelog       <span class="cm"># semver: renames are breaking</span>
+</pre>
+
+<div class="note">
+    <strong>Treat a concept rename as a breaking change</strong> and version accordingly. Downstream
+    queries, mappings and prompts refer to concept names; changing one quietly is the ontology equivalent
+    of renaming a public API column.
+</div>
+
+<h2 id="start">10 · How to start — and how it fails <span class="chip exam">practice</span></h2>
+
+<ol>
+    <li><strong>Start with five questions</strong> the business cannot answer today. The ontology exists to answer them; anything not needed for those five waits.</li>
+    <li><strong>Adopt the standards</strong> that already cover your domain. Import, do not re-model.</li>
+    <li><strong>Ten to twenty core entities.</strong> Enough for the five questions, no more.</li>
+    <li><strong>Write the mappings immediately</strong> — concept to real column. An unmapped concept is a hypothesis.</li>
+    <li><strong>Populate one real slice</strong> end to end and answer question one. A working thin slice beats a complete model.</li>
+    <li><strong>Put it in Git with SHACL in CI</strong> from day one, not after it grows.</li>
+    <li><strong>Generate every downstream form.</strong> Hand-maintained copies diverge within weeks.</li>
+    <li><strong>Let a model propose, a human ratify.</strong> LLM extraction over schemas and documents removes the drudgery without outsourcing meaning.</li>
+</ol>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:200px">Failure mode</th><th style="min-width:330px">What it looks like</th></tr></thead>
+    <tbody>
+        <tr><td><b>Boiling the ocean</b></td><td>Eighteen months modelling the enterprise; nothing queryable; funding withdrawn</td></tr>
+        <tr><td><b>No consumer</b></td><td>Built by a central team with no application depending on it. Nothing keeps it honest</td></tr>
+        <tr><td><b>Formal purity over usefulness</b></td><td>Beautiful OWL axioms; no mappings; no data; no answers</td></tr>
+        <tr><td><b>Unmapped ontology</b></td><td>Concepts that never connect to a physical column — a diagram, not infrastructure</td></tr>
+        <tr><td><b>No versioning</b></td><td>Meanings drift, downstream queries break, nobody can say when or why</td></tr>
+        <tr><td><b>Rebuilding a standard</b></td><td>A bespoke adverse-event hierarchy that no regulator or partner recognises</td></tr>
+        <tr><td><b>Two hand-maintained copies</b></td><td>The OWL and the property graph disagree; both are now untrusted</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The one measure worth tracking:</strong> how many production queries, applications or agents
+    depend on the ontology. If that number is zero six months in, the problem is not the modelling — it is
+    that nothing needed it. A single dependent consumer does more for quality than any amount of review.
+</div>
+
+<div class="note">
+    <strong>Related:</strong> <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a> — where
+    the ontology sits among the other 36 concerns ·
+    <a href="tooling-landscape.html#graph">Graph &amp; memory frameworks</a> — GraphRAG, Graphiti and the
+    graph databases underneath.
+</div>
+
+</main>
+</div>
+</body>
+</html>
