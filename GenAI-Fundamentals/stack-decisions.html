@@ -108,6 +108,112 @@ real constraints.</p>
     </div>
 </div>
 
+<h2 id="layer3">4 · Layer 3 in depth — who owns the loop? <span class="chip code">the confusing one</span></h2>
+
+<div class="warn">
+    <strong>First, the distinction people skip.</strong> A <b>client SDK</b> talks to <em>one model,
+    once</em> — send text, get text. <b>Orchestration</b> sequences <em>many steps</em> — model calls,
+    tool calls, branches, retries, state. The client is the HTTP library; orchestration is the
+    application framework. <strong>You always need the first. You often need nothing for the second.</strong>
+</div>
+
+<p>The four options differ on exactly one question: <strong>who owns the <code>while</code> loop?</strong></p>
+
+<h3>1 · Plain code — you own the loop</h3>
+<pre><span class="kw">def</span> <span class="fn">heal</span>(failure):
+    cause = analyse(failure, graph)          <span class="cm"># your function</span>
+    text  = llm.complete(system, prompt)     <span class="cm"># ← client SDK, one call</span>
+    fix   = generate(cause)                  <span class="cm"># your function</span>
+    <span class="kw">if</span> gate(fix).approved:
+        deploy(fix)
+</pre>
+<p>Nothing hidden, every branch written by you. Debuggable with a breakpoint.</p>
+
+<h3>2 · Agent framework — the <em>model</em> owns the loop</h3>
+<pre>agent = Agent(model=<span class="st">"claude-sonnet-5"</span>,
+              tools=[read_logs, query_graph, run_sandbox])
+result = agent.run(<span class="st">"Diagnose why curate_orders failed"</span>)
+
+<span class="cm"># the model decides the sequence at runtime:</span>
+<span class="cm">#   read_logs → query_graph → read_logs again → conclude</span>
+</pre>
+<p><strong>Inversion of control.</strong> You supply tools; it supplies the plan. You cannot know the
+sequence in advance — which is the point, and the cost.</p>
+
+<h3>3 · Graph framework — you <em>declare</em> the loop, it runs it</h3>
+<pre>g = StateGraph(Case)
+g.add_node(<span class="st">"rca"</span>, rca_fn)
+g.add_node(<span class="st">"deploy"</span>, deploy_fn)
+g.add_conditional_edges(<span class="st">"gate"</span>, route, {<span class="st">"auto"</span>: <span class="st">"deploy"</span>, <span class="st">"human"</span>: END})
+app = g.compile(checkpointer=SqliteSaver(<span class="st">"cases.db"</span>))
+</pre>
+<p>You still decide the sequence — but declared rather than written, and you get checkpointing, resume
+and a picture of the topology in return.</p>
+
+<h3>4 · Durable execution — looks like plain code, survives death</h3>
+<pre><span class="fn">@workflow.defn</span>
+<span class="kw">class</span> HealWorkflow:
+    <span class="fn">@workflow.run</span>
+    <span class="kw">async def</span> <span class="fn">run</span>(self, failure):
+        cause = <span class="kw">await</span> workflow.execute_activity(analyse, failure)
+        <span class="kw">await</span> workflow.wait_condition(<span class="kw">lambda</span>: self.approved)   <span class="cm"># can wait DAYS</span>
+        <span class="kw">await</span> workflow.execute_activity(deploy, fix)
+</pre>
+<p>That <code>wait_condition</code> spans a process restart, a deployment, a weekend. The runtime
+persists every step.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Option</th><th style="min-width:120px">Owns the loop</th>
+        <th style="min-width:210px">You get</th><th style="min-width:190px">You pay</th>
+        <th style="min-width:110px">Model-agnostic?</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><b>Plain code</b></td><td><b>You</b></td>
+        <td>Full control, trivial debugging, no dependency</td>
+        <td>You build resume and retries yourself</td><td>✅ always</td></tr>
+    <tr><td><b>Agent framework</b></td><td><b>The model</b></td>
+        <td>Handles paths you cannot enumerate</td>
+        <td>Non-determinism, cost, harder debugging, <b>lock-in</b></td><td>❌ per model family</td></tr>
+    <tr><td><b>Graph framework</b></td><td>The framework</td>
+        <td>Checkpointing, resume, branch/parallel, visualisation</td>
+        <td>A DSL to learn; indirection</td><td>✅ you supply the client</td></tr>
+    <tr><td><b>Durable execution</b></td><td>The runtime</td>
+        <td>Survives crashes and long waits; retries and timers</td>
+        <td>A server to operate; a programming model</td><td>✅ you supply the client</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Why this is the lock-in layer.</strong> Only the <b>agent framework</b> has to speak the
+    model's tool-calling and stop-reason protocol — a per-model-family contract. The other three never
+    touch it: they call <em>your</em> function, which calls <em>your</em> client. Model-agnostic by
+    construction.
+</div>
+
+<h3>Choosing, in order</h3>
+<ol>
+    <li><strong>Can you write the steps down?</strong> → <b>plain code</b>. Stop here far more often than feels natural.</li>
+    <li><strong>Must a run survive a crash or a long human wait?</strong> → <b>durable execution</b>.</li>
+    <li><strong>Is the topology genuinely complex</strong> — branches, parallel, joins? → <b>graph framework</b>.</li>
+    <li><strong>Does the model need to choose the sequence</strong> because you cannot know it? → <b>agent framework</b>.</li>
+</ol>
+
+<div class="note">
+    They <strong>compose</strong>. Temporal can wrap plain code. A graph can have an agent as a single
+    node. The common mature shape is <em>durable execution for the spine, plain code for the steps, and
+    one agentic node where the path is genuinely unknowable.</em>
+</div>
+
+<div class="trap">
+    <b>The expensive mistake</b> is reaching for an agent framework because the work is "AI work". If you
+    can enumerate the steps, an agent buys you non-determinism, latency and a debugging problem in
+    exchange for nothing. Agents earn their place only where the path depends on what is discovered
+    mid-run.
+</div>
+
 <h2>3 · Compatibility — orchestration × provider <span class="chip diagram">matrix</span></h2>
 
 <div class="scroller">
@@ -145,7 +251,7 @@ real constraints.</p>
     architectural one.
 </div>
 
-<h2>4 · Why the permutation count is a red herring</h2>
+<h2>5 · Why the permutation count is a red herring</h2>
 
 <p>Multiplied out, the stack looks terrifying:</p>
 
@@ -178,7 +284,7 @@ order</strong>, and each one collapses the space:</p>
 <p>Language and runtime are orthogonal to all four. So the real decision tree is
 <strong>four nodes deep, not seven</strong> — and only one node is genuinely yours.</p>
 
-<h2>5 · A worked example <span class="chip code">applied</span></h2>
+<h2>6 · A worked example <span class="chip code">applied</span></h2>
 
 <p>The same system, running in a corporate estate and on a personal free-tier account. One code path.</p>
 
@@ -212,7 +318,7 @@ order</strong>, and each one collapses the space:</p>
 <p>Selected by one environment variable. <strong>Two config values separate a corporate deployment from
 a laptop demo.</strong></p>
 
-<h2>6 · Building the mind map <span class="chip exam">practice</span></h2>
+<h2>7 · Building the mind map <span class="chip exam">practice</span></h2>
 
 <p>Draw it as a <strong>ladder, not a web</strong> — seven rungs bottom to top — and annotate each rung
 with three things:</p>
