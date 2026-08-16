@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Gateway · The Control Point</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .wrap.wide { max-width: 1500px; }
+    .scroller { overflow-x:auto; margin:16px 0; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.05); }
+    .scroller table { margin:0; box-shadow:none; min-width:1050px; }
+    .scroller th { position:sticky; top:0; z-index:2; font-size:.8em; padding:8px 9px; }
+    .scroller td { font-size:.85em; padding:8px 9px; }
+    .grp td { background:#efeaff !important; font-weight:700; color:#4a3c78; text-transform:uppercase;
+              letter-spacing:.04em; font-size:.84em !important; }
+    td .nm { font-weight:600; color:#333; }
+    .lic { display:inline-block; font-size:.7em; font-weight:700; padding:1px 7px; border-radius:9px; margin-left:5px; }
+    .lic.oss   { background:#e6fcf0; color:#2b8a3e; }
+    .lic.free  { background:#e7ecff; color:#3b5bdb; }
+    .lic.paid  { background:#fff0f6; color:#c2255c; }
+    .lic.cloud { background:#fff6e0; color:#a97a20; }
+    .pick { background:#f3fbf5 !important; }
+    .y { color:#2b8a3e; font-weight:700; }
+    .n { color:#c0c0c0; }
+    .p { color:#b08900; font-weight:600; }
+    .matrix td:not(:first-child):not(:last-child) { text-align:center; }
+    .toc { display:grid; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); gap:10px; margin:18px 0; }
+    .toc a { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:10px 14px;
+             text-decoration:none; color:#5a4a8a; font-weight:600; font-size:.92em; }
+    .toc a:hover { border-color:#764ba2; }
+    .legend { display:flex; gap:16px; flex-wrap:wrap; background:#faf9ff; border:1px solid #e6e1f7;
+              border-radius:8px; padding:10px 16px; margin:14px 0; font-size:.9em; }
+    .caps { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:12px; margin:16px 0; }
+    .cap { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:12px 15px; }
+    .cap b { color:#5a4a8a; display:block; margin-bottom:3px; }
+    .cap span { font-size:.9em; color:#555; }
+    .cap .tier { display:inline-block; font-size:.7em; font-weight:700; padding:1px 7px; border-radius:9px;
+                 margin-left:6px; background:#e7ecff; color:#3b5bdb; vertical-align:middle; }
+    .cap .tier.must { background:#ffe3e3; color:#c92a2a; }
+    .cap .tier.soon { background:#fff3bf; color:#a17f1a; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › AI Gateway</div>
+    <h1>🚪 AI Gateway — The Control Point</h1>
+    <div class="tag">What it is, what every gateway offers, and how open source compares to each cloud</div>
+</header>
+
+<div class="wrap wide">
+<main class="card">
+
+<div class="note">
+    <strong>Why this got its own page.</strong> The gateway is the only component that applies to
+    <em>every</em> AI application in the organisation, in <em>any</em> language, with <em>zero</em> application
+    code — which makes it the highest-leverage thing on the diagram and the one most often bolted on a year
+    late. Companion pages: <a href="observability-eval-tools.html">Observability &amp; Eval tools</a> for the
+    other two boxes, and <a href="tooling-landscape.html">AI Tooling Landscape</a> for the short
+    choose-one-tool version and a LiteLLM config example.
+</div>
+
+<div class="legend">
+    <span><span class="lic oss">OSS</span> open source, self-host</span>
+    <span><span class="lic free">OSS + SaaS</span> open core with a hosted option</span>
+    <span><span class="lic paid">commercial</span></span>
+    <span><span class="lic cloud">cloud-native</span> tied to one platform</span>
+    <span><span class="y">✅</span> yes &nbsp; <span class="p">◐</span> partial / paid tier &nbsp; <span class="n">—</span> no</span>
+</div>
+
+<div class="toc">
+    <a href="#what">1 · What it is — and is not</a>
+    <a href="#path">2 · Where it sits</a>
+    <a href="#caps">3 · The 14 capabilities</a>
+    <a href="#oss">4 · Open-source gateways</a>
+    <a href="#cloud">5 · Cloud-provider gateways</a>
+    <a href="#routing">6 · Routing strategies decoded</a>
+    <a href="#cache">7 · Semantic caching</a>
+    <a href="#keys">8 · Virtual keys &amp; cost attribution</a>
+    <a href="#guard">9 · Guardrails: gateway or app?</a>
+    <a href="#mcp">10 · MCP gateways — the new category</a>
+    <a href="#ha">11 · Failure modes &amp; HA</a>
+    <a href="#adopt">12 · An adoption path</a>
+    <a href="#traps">13 · Anti-patterns</a>
+</div>
+
+<h2 id="what">1 · What an AI gateway is — and is not <span class="chip concept">definition</span></h2>
+
+<p>An AI gateway is <strong>a reverse proxy that understands model traffic</strong>. Ordinary proxies see
+bytes and URLs; an AI gateway sees models, prompts, tokens and cost — which is what lets it do rate limiting
+by <em>tokens</em>, caching by <em>meaning</em>, and budgets in <em>dollars</em>.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:180px">It is often confused with</th>
+        <th style="min-width:250px">The actual difference</th>
+        <th style="min-width:230px">Do you need both?</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>An API gateway</b> (Kong, APIM, Apigee)</td>
+        <td>An API gateway counts <em>requests</em>; an AI gateway counts <em>tokens</em>, understands streaming responses, and knows a model alias from a deployment</td>
+        <td>Usually the same product with AI plugins enabled — one proxy, not two</td></tr>
+        <tr><td><b>An SDK wrapper</b> (a shared internal library)</td>
+        <td>A library only governs code that imports it, in one language, and needs a redeploy to change policy</td>
+        <td>The library is fine for one team; it fails the moment a second language or a vendor tool appears</td></tr>
+        <tr><td><b>A service mesh</b> (Istio, Linkerd)</td>
+        <td>The mesh secures service-to-service traffic; it has no idea what a token is</td>
+        <td>Complementary — the gateway usually runs <em>as</em> a service inside the mesh</td></tr>
+        <tr><td><b>A model router</b> (OpenRouter, Not Diamond)</td>
+        <td>Routers pick the best/cheapest model per request; that is <em>one feature</em> of a gateway, sold separately and usually hosted by a third party</td>
+        <td>A router can sit behind your gateway, but it should not replace it</td></tr>
+        <tr><td><b>An inference server</b> (vLLM, TGI, Ollama)</td>
+        <td>Inference servers <em>run</em> the model; gateways <em>route to</em> them</td>
+        <td>Both, if you self-host models — the gateway makes vLLM look like every other provider</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>The one-line test for whether you need one:</strong> if more than one application, or more than
+    one team, calls a model — <em>and</em> someone will eventually ask “what did we spend on AI last month,
+    by team?” — you need a gateway. Both halves are usually true by month three.
+</div>
+
+<h2 id="path">2 · Where it sits in the request path <span class="chip diagram">diagram</span></h2>
+
+<div class="mermaid">
+flowchart LR
+    A1["App A · Python"] --> GW
+    A2["App B · TypeScript"] --> GW
+    A3["Vendor tool<br/>(code you don't own)"] --> GW
+    subgraph GW["AI GATEWAY — one OpenAI-shaped API"]
+        direction TB
+        K["Virtual key<br/>authn · team · budget"] --> RL["Rate limit<br/>RPM · TPM"]
+        RL --> GI["Guardrails in<br/>PII · injection"]
+        GI --> C{"Cache hit?"}
+        C -->|"yes"| RET["return cached"]
+        C -->|"no"| R["Route · load balance"]
+        R --> FB["Retry · fallback"]
+        FB --> GO["Guardrails out"]
+    end
+    GW --> P1["Anthropic API"]
+    GW --> P2["Bedrock · Vertex · Foundry"]
+    GW --> P3["vLLM / self-hosted"]
+    GW -.->|"spend · payloads · spans"| OBS[("Observability<br/>+ billing")]
+    classDef a fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    classDef b fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class A1,A2,A3,P1,P2,P3 a;
+    class K,RL,GI,C,R,FB,GO,RET b;
+</div>
+
+<p style="text-align:center;color:#888;font-size:.9em">Every arrow into the box is an application that
+needed <b>no code</b> to gain keys, quotas, budgets, caching, guardrails and logging.
+The third one is the argument: <b>you cannot add a library to software you do not own.</b></p>
+
+<h2 id="caps">3 · The 14 capabilities <span class="chip concept">checklist</span></h2>
+
+<p>Use this as the RFP checklist. The <span class="tier must" style="display:inline-block;font-size:.7em;font-weight:700;padding:1px 7px;border-radius:9px;background:#ffe3e3;color:#c92a2a">core</span>
+items are why the gateway exists; the rest are why you eventually pick one over another.</p>
+
+<div class="caps">
+    <div class="cap"><b>1 · Unified API <span class="tier must">core</span></b><span>One request shape — almost always OpenAI-compatible — for every provider. Swapping Claude for Gemini becomes a config line, not a refactor.</span></div>
+    <div class="cap"><b>2 · Key management <span class="tier must">core</span></b><span>Provider keys live only in the gateway. Applications get <em>virtual</em> keys you can scope, rotate and revoke without touching any app.</span></div>
+    <div class="cap"><b>3 · Routing &amp; load balancing <span class="tier must">core</span></b><span>One alias, many deployments — across regions, across providers, across PTU and pay-as-you-go capacity.</span></div>
+    <div class="cap"><b>4 · Retries &amp; fallback <span class="tier must">core</span></b><span>Automatic retry on 429/5xx, failover to a second provider, and a circuit breaker so a dead deployment stops receiving traffic.</span></div>
+    <div class="cap"><b>5 · Rate limiting <span class="tier must">core</span></b><span>Per key, user and team — and crucially by <em>tokens per minute</em>, not just requests, because request counts do not predict provider throttling.</span></div>
+    <div class="cap"><b>6 · Budgets &amp; spend caps <span class="tier must">core</span></b><span>Hard dollar ceilings per team or project, with alerts before the stop. The control that turns a runaway loop into a 429 instead of an invoice.</span></div>
+    <div class="cap"><b>7 · Cost attribution <span class="tier must">core</span></b><span>Every request tagged to team, project, cost centre and use case, so the monthly bill can be broken down without anyone instrumenting anything.</span></div>
+    <div class="cap"><b>8 · Payload logging</b><span>Request and response capture, forwarded to your observability backend. Verify it can redact before it stores.</span></div>
+    <div class="cap"><b>9 · Caching</b><span>Exact-match on identical prompts, and optionally semantic — shared across all callers rather than reimplemented per app.</span></div>
+    <div class="cap"><b>10 · Guardrails</b><span>PII redaction and injection screening applied uniformly, pre-call and post-call, including to applications you do not control.</span></div>
+    <div class="cap"><b>11 · Observability export</b><span>OTel spans, or native hooks into Langfuse/Datadog. Without this the gateway becomes a blind spot in the middle of every trace.</span></div>
+    <div class="cap"><b>12 · Governance &amp; RBAC</b><span>SSO, audit logs, model allow-lists per team — “this team may not call an external provider” enforced centrally.</span></div>
+    <div class="cap"><b>13 · Non-chat endpoints <span class="tier soon">check</span></b><span>Embeddings, reranking, batch, image, audio, and file uploads. Coverage varies far more than the chat endpoint, and it is where migrations break.</span></div>
+    <div class="cap"><b>14 · MCP / tool proxying <span class="tier soon">emerging</span></b><span>The same governance applied to tool servers, not just model calls. New, moving fast, and covered in §10.</span></div>
+</div>
+
+<h2 id="oss">4 · Open-source gateways — what each offers <span class="chip diagram">matrix</span></h2>
+
+<div class="scroller">
+<table class="matrix">
+    <thead><tr>
+        <th style="min-width:145px">Gateway</th>
+        <th style="min-width:70px">Runtime</th>
+        <th style="min-width:78px">Providers</th>
+        <th style="min-width:74px">Virtual keys</th>
+        <th style="min-width:74px">Budgets</th>
+        <th style="min-width:76px">Token rate limit</th>
+        <th style="min-width:80px">Semantic cache</th>
+        <th style="min-width:74px">Guardrails</th>
+        <th style="min-width:70px">OTel</th>
+        <th style="min-width:60px">MCP</th>
+        <th style="min-width:66px">Admin UI</th>
+        <th style="min-width:245px">The honest summary</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">LiteLLM Proxy</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Python</td><td class="y">100+</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅ Redis</td><td class="y">✅ Presidio, Lakera, Bedrock</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td><b>The richest OSS feature set, by a distance.</b> Also the heaviest hop — it is a Python service, so size it and run more than one.</td></tr>
+    <tr><td><span class="nm">Portkey Gateway</span><span class="lic free">OSS + SaaS</span></td>
+        <td>TypeScript</td><td class="y">200+</td><td class="p">◐ platform</td><td class="p">◐</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="p">◐ mostly paid</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐ paid</td>
+        <td>Very low added latency, edge-deployable, tiny footprint. The OSS core routes; the governance lives in the paid platform.</td></tr>
+    <tr><td><span class="nm">Bifrost</span> (Maxim)<span class="lic oss">OSS</span></td>
+        <td>Go</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅ native</td><td class="y">✅</td>
+        <td>Lowest overhead of the full-featured options, with first-class MCP support. Younger and smaller community.</td></tr>
+    <tr><td><span class="nm">Envoy AI Gateway</span><span class="lic oss">OSS</span></td>
+        <td>Envoy / Go</td><td class="y">✅</td><td class="p">◐ via k8s</td><td class="p">◐</td><td class="y">✅ token-aware</td>
+        <td class="p">◐ external</td><td class="p">◐ external</td><td class="y">✅</td><td class="p">◐</td><td class="n">— CRDs</td>
+        <td>Kubernetes-native, configured as CRDs, built on the proxy that already runs the internet. <b>Scales hardest, operates heaviest.</b></td></tr>
+    <tr><td><span class="nm">Kong AI Gateway</span><span class="lic free">OSS + SaaS</span></td>
+        <td>Lua / Nginx</td><td class="y">✅ <code>ai-proxy</code></td><td class="y">✅ consumers</td><td class="p">◐</td><td class="p">◐ advanced is enterprise</td>
+        <td class="p">◐ enterprise</td><td class="y">✅ <code>ai-prompt-guard</code></td><td class="y">✅</td><td class="p">◐</td><td class="p">◐ enterprise</td>
+        <td>The right answer <em>if Kong is already your ingress</em> — AI becomes another plugin on infrastructure you already operate.</td></tr>
+    <tr><td><span class="nm">Apache APISIX</span><span class="lic oss">Apache 2.0</span></td>
+        <td>Lua / Nginx</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td>Same logic as Kong, fully open — less gated behind an enterprise tier.</td></tr>
+    <tr><td><span class="nm">Higress</span><span class="lic oss">Apache 2.0</span></td>
+        <td>Go / Envoy</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Unusually complete AI plugin set for an ingress; strong in Kubernetes estates, documentation is improving from a China-first base.</td></tr>
+    <tr><td><span class="nm">Gloo AI Gateway</span> (Solo.io)<span class="lic free">OSS + SaaS</span></td>
+        <td>Envoy</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td>Policy-rich and mesh-adjacent. Enterprise-shaped in both the good and the expensive sense.</td></tr>
+    <tr><td><span class="nm">Helicone</span><span class="lic free">OSS + SaaS</span></td>
+        <td>TypeScript</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td><td class="y">✅</td>
+        <td>Observability-first proxy that grew gateway features. One hop for both jobs — simple, and a shared blast radius.</td></tr>
+    <tr><td><span class="nm">Arch</span> (Katanemo), <span class="nm">TrueFoundry</span>, <span class="nm">llm-gateway</span><span class="lic free">mixed</span></td>
+        <td>Rust / Go</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="p">◐</td>
+        <td class="p">◐</td><td class="y">✅ intent models</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td>
+        <td>Newer entrants. Arch is interesting for running small models <em>in</em> the proxy for routing and guardrail decisions.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    <strong>Tiers move.</strong> Semantic caching, advanced rate limiting and guardrails have all migrated
+    between free and paid tiers in several of these projects. <b>Verify the current tier of any feature before
+    it becomes load-bearing</b> — and check it again at renewal.
+</div>
+
+<h2 id="cloud">5 · Cloud-provider gateways — the real comparison <span class="chip exam">key table</span></h2>
+
+<p>Each cloud solves this differently, and the differences are structural rather than cosmetic. Databricks
+and Azure ship a product; AWS ships a pattern; GCP routes you through its API-management platform.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:135px">Capability</th>
+        <th style="min-width:215px">Databricks<br/><span style="font-weight:400;font-size:.9em">Mosaic AI Gateway</span></th>
+        <th style="min-width:215px">Azure<br/><span style="font-weight:400;font-size:.9em">API Management + AI Foundry</span></th>
+        <th style="min-width:215px">AWS<br/><span style="font-weight:400;font-size:.9em">Bedrock + API Gateway pattern</span></th>
+        <th style="min-width:215px">GCP<br/><span style="font-weight:400;font-size:.9em">Apigee + Vertex AI</span></th>
+        <th style="min-width:190px">Cloudflare<br/><span style="font-weight:400;font-size:.9em">AI Gateway</span></th>
+    </tr></thead>
+    <tbody>
+    <tr><td><b>What it actually is</b></td>
+        <td>A managed feature of Model Serving — enable it on an endpoint</td>
+        <td>Policies you write on an existing APIM instance, plus a model router in Foundry</td>
+        <td><b>A reference architecture</b> you assemble from API Gateway, Lambda and Bedrock</td>
+        <td>LLM policy templates on Apigee, an established API-management product</td>
+        <td>A hosted edge proxy — change your base URL and it is on</td></tr>
+    <tr><td><b>External models</b></td>
+        <td class="y">✅ OpenAI, Anthropic, Cohere and others as “external models”</td>
+        <td class="y">✅ any HTTP backend; Foundry hosts many model families</td>
+        <td class="p">◐ Bedrock models natively; external providers need your own Lambda</td>
+        <td class="y">✅ any backend, Apigee is provider-agnostic</td>
+        <td class="y">✅ broad provider list</td></tr>
+    <tr><td><b>Token rate limiting</b></td>
+        <td class="y">✅ per endpoint / user</td>
+        <td class="y">✅ <code>llm-token-limit</code> policy — the most mature implementation of this</td>
+        <td class="p">◐ request-based by default; token limits are yours to build</td>
+        <td class="y">✅ via LLM policy templates</td>
+        <td class="y">✅</td></tr>
+    <tr><td><b>Budgets / spend caps</b></td>
+        <td class="p">◐ usage tracking + alerts; hard caps via limits</td>
+        <td class="p">◐ quotas by product/subscription, not dollars</td>
+        <td class="p">◐ Budgets alert; enforcement is yours</td>
+        <td class="p">◐ quota policies</td>
+        <td class="p">◐</td></tr>
+    <tr><td><b>Cost attribution</b></td>
+        <td class="y">✅ usage tracking → system tables, per endpoint and user</td>
+        <td class="y">✅ <code>llm-emit-token-metric</code> with custom dimensions → Azure Monitor</td>
+        <td class="y">✅ <b>application inference profiles</b> — tag Bedrock invocations for per-team cost</td>
+        <td class="y">✅ Apigee analytics + billing labels</td>
+        <td class="y">✅ analytics per app</td></tr>
+    <tr><td><b>Payload logging</b></td>
+        <td class="y">✅ <b>inference tables</b> — requests and responses land as Delta tables in Unity Catalog</td>
+        <td class="y">✅ APIM diagnostics → App Insights / Event Hubs</td>
+        <td class="y">✅ model invocation logging → S3 / CloudWatch</td>
+        <td class="y">✅ Apigee message logging → Cloud Logging</td>
+        <td class="y">✅ logs + log push</td></tr>
+    <tr><td><b>Caching</b></td>
+        <td class="n">— not a gateway feature</td>
+        <td class="y">✅ <code>llm-semantic-cache</code> backed by Azure Redis with vector search</td>
+        <td class="p">◐ Bedrock prompt caching at the model; proxy caching is yours</td>
+        <td class="y">✅ semantic caching policy</td>
+        <td class="y">✅ exact + configurable TTL</td></tr>
+    <tr><td><b>Guardrails</b></td>
+        <td class="y">✅ built-in safety, PII detection, topic restriction</td>
+        <td class="y">✅ Content Safety / Prompt Shields callable as a policy</td>
+        <td class="y">✅ <b>Bedrock Guardrails</b> — the strongest standalone guardrail product of the five</td>
+        <td class="y">✅ <b>Model Armor</b> integrated as an Apigee policy</td>
+        <td class="p">◐ guardrails + DLP, newer</td></tr>
+    <tr><td><b>Fallback / load balance</b></td>
+        <td class="y">✅ fallbacks across served entities</td>
+        <td class="y">✅ backend pools with circuit breaker; balances PTU then spills to pay-go</td>
+        <td class="p">◐ cross-region inference profiles; multi-provider is yours</td>
+        <td class="y">✅ target servers and failover</td>
+        <td class="y">✅ universal endpoint with fallbacks</td></tr>
+    <tr><td><b>Identity &amp; governance</b></td>
+        <td class="y">✅ <b>Unity Catalog</b> — permissions, lineage and audit on the same objects as your data</td>
+        <td class="y">✅ Entra ID, subscriptions, products, full audit</td>
+        <td class="y">✅ IAM everywhere — the strongest identity story</td>
+        <td class="y">✅ Cloud IAM + Apigee developer apps</td>
+        <td class="p">◐ Cloudflare account model</td></tr>
+    <tr><td><b>You operate</b></td>
+        <td>Nothing</td><td>An APIM instance</td><td>Gateway + Lambda + the code in it</td><td>An Apigee org</td><td>Nothing</td></tr>
+    <tr class="pick"><td><b>Choose it when</b></td>
+        <td>The workload and the data already live on Databricks — this is the obvious answer and needs no new system</td>
+        <td>Azure-standardised, and especially with a PTU + pay-as-you-go capacity mix to balance</td>
+        <td>AWS-only estate that wants IAM to be the single authorisation model, and is willing to build</td>
+        <td>Apigee is already in place, or Model Armor is the deciding feature</td>
+        <td>Public-facing apps already behind Cloudflare and you want this working this afternoon</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="bad">
+    <strong>The structural gap on AWS.</strong> There is no first-party product called “AWS AI Gateway” — the
+    published generative-AI gateway guidance is an architecture you deploy and then own. That is fine, and
+    it is IAM-native, but budget for it as <em>a system your team maintains</em>, not a checkbox. Many
+    AWS-centric teams run <b>LiteLLM on ECS in front of Bedrock</b> for exactly this reason and treat Bedrock
+    Guardrails as the enforcement layer behind it.
+</div>
+
+<h3>What an Azure APIM AI policy actually looks like</h3>
+
+<p>Worth seeing, because “APIM has AI gateway features” means writing this — the policy language is a real
+skill and a real dependency. (The LiteLLM equivalent is on the
+<a href="tooling-landscape.html#gw-config">Tooling Landscape</a> page.)</p>
+
+<pre><span class="cm">&lt;!-- inbound: token quota per team, then check the semantic cache --&gt;</span>
+<span class="kw">&lt;inbound&gt;</span>
+  <span class="kw">&lt;llm-token-limit</span> counter-key=<span class="st">"@(context.Subscription.Id)"</span>
+                   tokens-per-minute=<span class="st">"50000"</span>
+                   estimate-prompt-tokens=<span class="st">"true"</span>
+                   remaining-tokens-header-name=<span class="st">"x-tokens-remaining"</span> <span class="kw">/&gt;</span>
+
+  <span class="kw">&lt;azure-openai-semantic-cache-lookup</span> score-threshold=<span class="st">"0.05"</span>
+                   embeddings-backend-id=<span class="st">"embeddings-pool"</span>
+                   embeddings-backend-auth=<span class="st">"system-assigned"</span> <span class="kw">/&gt;</span>
+
+  <span class="cm">&lt;!-- backend pool = PTU deployment first, pay-go as overflow --&gt;</span>
+  <span class="kw">&lt;set-backend-service</span> backend-id=<span class="st">"aoai-pool"</span> <span class="kw">/&gt;</span>
+<span class="kw">&lt;/inbound&gt;</span>
+
+<span class="kw">&lt;outbound&gt;</span>
+  <span class="cm">&lt;!-- this is your cost attribution: dimensions become Azure Monitor metrics --&gt;</span>
+  <span class="kw">&lt;llm-emit-token-metric</span> namespace=<span class="st">"genai"</span><span class="kw">&gt;</span>
+    <span class="kw">&lt;dimension</span> name=<span class="st">"Team"</span>     value=<span class="st">"@(context.Subscription.Name)"</span> <span class="kw">/&gt;</span>
+    <span class="kw">&lt;dimension</span> name=<span class="st">"UseCase"</span>  value=<span class="st">"@(context.Request.Headers.GetValueOrDefault(&amp;quot;x-use-case&amp;quot;,&amp;quot;unknown&amp;quot;))"</span> <span class="kw">/&gt;</span>
+    <span class="kw">&lt;dimension</span> name=<span class="st">"ModelId"</span> <span class="kw">/&gt;</span>
+  <span class="kw">&lt;/llm-emit-token-metric&gt;</span>
+  <span class="kw">&lt;azure-openai-semantic-cache-store</span> duration=<span class="st">"3600"</span> <span class="kw">/&gt;</span>
+<span class="kw">&lt;/outbound&gt;</span>
+</pre>
+
+<div class="note">
+    Note <code>estimate-prompt-tokens</code>. Token limits must be enforced <em>before</em> the call, but the
+    true token count is only known <em>after</em> it — so every gateway either estimates up front or
+    reconciles afterwards. Ask which, because it decides whether your limit is a guarantee or an
+    approximation.
+</div>
+
+<h2 id="routing">6 · Routing strategies decoded <span class="chip trade">trade-off</span></h2>
+
+<p>“Routing” covers five genuinely different behaviours. Teams routinely configure one and expect another.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:165px">Strategy</th>
+        <th style="min-width:250px">How it picks</th>
+        <th style="min-width:230px">Use it for</th>
+        <th style="min-width:200px">Failure mode</th>
+    </tr></thead>
+    <tbody>
+    <tr><td><b>Simple / round-robin</b></td><td>Next deployment in the list</td>
+        <td>Identical deployments across regions</td><td>Sends traffic to a degraded endpoint until health checks notice</td></tr>
+    <tr><td><b>Weighted</b></td><td>Fixed percentages</td>
+        <td>Canarying a new model version; draining a region</td><td>Weights become stale and nobody revisits them</td></tr>
+    <tr class="pick"><td><b>Latency-based</b></td><td>Tracks recent p50/p95 per deployment and prefers the fastest</td>
+        <td><b>The sensible default</b> for multi-region or multi-provider</td><td>Can stampede onto one endpoint and then oscillate; check the smoothing window</td></tr>
+    <tr><td><b>Usage / capacity-based</b></td><td>Routes by remaining TPM headroom</td>
+        <td>Mixing reserved capacity (PTU) with pay-as-you-go overflow</td><td>Needs accurate token accounting or it overflows too early and costs more</td></tr>
+    <tr><td><b>Semantic / quality routing</b></td><td>A classifier or small model reads the request and picks a tier — cheap model for easy prompts, frontier for hard ones</td>
+        <td>Real cost reduction at high volume</td><td><b>Non-deterministic behaviour introduced in the proxy.</b> Same prompt, different model, different answer — and evals that never saw the cheap model</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>On semantic routing.</b> It is the most-hyped gateway feature and the one to adopt last. It changes
+    which model answers, which means your evaluation results no longer describe production. If you do use it,
+    <em>pin the routing decision in the trace</em> and evaluate each tier separately — otherwise a quality
+    regression looks like random noise.
+</div>
+
+<h2 id="cache">7 · Semantic caching — what it is and when it is wrong <span class="chip trade">trade-off</span></h2>
+
+<p>Exact caching returns a stored response when the prompt is byte-identical. <strong>Semantic</strong>
+caching embeds the incoming prompt, finds the nearest cached prompt by vector similarity, and returns
+<em>its</em> answer if the distance is under a threshold.</p>
+
+<div class="tradeoff">
+    <div class="pro"><h4>✅ Where it genuinely pays</h4>
+        <ul>
+            <li>High-volume FAQ and support surfaces where thousands of users ask the same thing in different words</li>
+            <li>Documentation and product Q&amp;A with a stable corpus</li>
+            <li>Bursty read-heavy traffic where latency matters more than freshness</li>
+            <li>Cost profiles dominated by repeated short questions</li>
+        </ul></div>
+    <div class="con"><h4>⛔ Where it quietly breaks things</h4>
+        <ul>
+            <li><b>Anything personalised.</b> “What is <em>my</em> balance?” and “what is <em>my</em> balance?” from two users are semantically identical — cache key must include identity</li>
+            <li>Negations and small numeric differences sit close in embedding space: “under 50mg” vs “over 50mg”</li>
+            <li>Time-sensitive answers — yesterday's response returned confidently today</li>
+            <li>Agent steps, where the same tool call in a different context needs a different result</li>
+            <li>Anything you must reproduce for audit: the model never ran, so the trace shows a call that did not happen</li>
+        </ul></div>
+</div>
+
+<div class="bad">
+    <strong>The threshold is a safety control, not a tuning knob.</strong> Loosen it to raise hit rate and you
+    are increasing how often one user's answer is served to another user's question. Start strict, measure the
+    hit rate, and never scope a semantic cache more broadly than a single tenant. Prefer the model provider's
+    own <em>prompt caching</em> (which caches the processed prefix and still runs the model) when what you
+    actually want is cheaper long system prompts — it has none of these failure modes.
+</div>
+
+<h2 id="keys">8 · Virtual keys &amp; cost attribution <span class="chip practice">the killer feature</span></h2>
+
+<p>If the gateway only ever did this, it would still be worth running. A virtual key is a credential you issue
+that carries its own model allow-list, quota, budget and cost tags — while the real provider key never leaves
+the gateway.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:200px">Without a gateway</th>
+        <th style="min-width:230px">With virtual keys</th>
+    </tr></thead>
+    <tbody>
+        <tr><td>One provider key shared over Slack, in four <code>.env</code> files</td><td>One key per team, issued and revoked centrally, never in an app repo</td></tr>
+        <tr><td>Rotating the key means coordinating four deploys</td><td>Rotate the provider key in one place; no application notices</td></tr>
+        <tr><td>“Who spent $40k last month?” — nobody knows</td><td>Spend broken down by team, project and use case, from tags applied at issue time</td></tr>
+        <tr><td>A runaway agent loop is discovered on the invoice</td><td>The budget cap returns an error at $400 and alerts at $320</td></tr>
+        <tr><td>Any app can call any model, including external ones</td><td>Model allow-lists per key — “this team may not call a non-EU endpoint”</td></tr>
+        <tr><td>Onboarding a team = a security conversation about secrets</td><td>Onboarding a team = one API call</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Design the tag schema before you issue the first key.</strong> Team, cost centre, environment,
+    use case, and a data-classification tag if you are regulated. Tags are almost impossible to backfill —
+    the spend they would have explained has already happened. Ten minutes now, or a reconciliation project later.
+</div>
+
+<h2 id="guard">9 · Guardrails: at the gateway or in the app? <span class="chip trade">trade-off</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:190px">Control</th>
+        <th style="min-width:110px">Best placed</th>
+        <th style="min-width:290px">Why</th>
+    </tr></thead>
+    <tbody>
+        <tr><td>PII redaction on input</td><td><b>Gateway</b></td>
+        <td>Must apply to every app including ones you do not own; needs no context to do its job</td></tr>
+        <tr><td>Prompt-injection screening</td><td><b>Gateway</b></td>
+        <td>Same detector everywhere, updated once when a new technique appears</td></tr>
+        <tr><td>Toxicity / safety classification</td><td><b>Gateway</b></td>
+        <td>Uniform policy, and central evidence for an auditor</td></tr>
+        <tr><td>Model allow-lists, region pinning</td><td><b>Gateway</b></td>
+        <td>It is an authorisation decision, and authorisation belongs at the boundary</td></tr>
+        <tr><td>Output schema validation</td><td><b>Application</b></td>
+        <td>Only the app knows what shape it asked for</td></tr>
+        <tr><td>Citation / grounding checks</td><td><b>Application</b></td>
+        <td>Requires the retrieved context, which the gateway never sees</td></tr>
+        <tr><td>Authorisation on tool actions</td><td><b>Application</b></td>
+        <td>Needs the end user's identity and the business rule, not the calling service's</td></tr>
+        <tr><td>Loop and step budgets</td><td><b>Application</b></td>
+        <td>The gateway sees individual calls, not that they form one runaway agent trajectory</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="note">
+    The dividing line is simple: <strong>if the control needs application context, it cannot live in the
+    gateway</strong>. Everything else should, because that is the only way it reaches software you do not
+    control. <a href="guardrails-implementation.html">Implementing Guardrails</a> has working code for the
+    application half.
+</div>
+
+<h2 id="mcp">10 · MCP gateways — the new category <span class="chip exam">emerging</span></h2>
+
+<p>Once agents call tools over <a href="ai-universe.html">MCP</a>, the tool servers need exactly the
+governance the model calls already have — and it is a different proxy, because the traffic is tool
+invocations rather than completions.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:175px">Option</th>
+        <th style="min-width:250px">What it provides</th>
+        <th style="min-width:200px">Maturity</th>
+    </tr></thead>
+    <tbody>
+    <tr><td><span class="nm">Docker MCP Gateway</span><span class="lic oss">OSS</span></td>
+        <td>Runs MCP servers as containers behind one endpoint, with secret injection and per-server isolation</td>
+        <td>The easiest starting point locally</td></tr>
+    <tr><td><span class="nm">IBM ContextForge</span> (MCP Gateway)<span class="lic oss">OSS</span></td>
+        <td>Registry, federation of many servers behind one, virtual servers, auth and admin UI</td>
+        <td>The most complete OSS option today</td></tr>
+    <tr><td><span class="nm">AWS AgentCore Gateway</span><span class="lic cloud">cloud-native</span></td>
+        <td>Turns existing APIs and Lambdas into MCP tools with IAM-backed access control</td>
+        <td>Managed, AWS-only</td></tr>
+    <tr><td><span class="nm">Azure API Management</span> + API Center<span class="lic cloud">cloud-native</span></td>
+        <td>Exposes existing APIs as MCP servers and applies the same APIM policies and Entra auth</td>
+        <td>Managed, fits existing APIM estates</td></tr>
+    <tr><td><span class="nm">LiteLLM</span>, <span class="nm">Bifrost</span>, <span class="nm">Higress</span><span class="lic free">mixed</span></td>
+        <td>MCP proxying added to the model gateway you already run</td>
+        <td>One system instead of two — usually the pragmatic answer</td></tr>
+    <tr><td><span class="nm">MintMCP</span>, <span class="nm">Lasso</span>, <span class="nm">Obot</span><span class="lic paid">commercial</span></td>
+        <td>Enterprise MCP governance — audit, DLP, per-tool permissions</td>
+        <td>Young segment, moving weekly</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    <strong>Why this matters more than it looks.</strong> An MCP tool call is an <em>action</em>, not a
+    completion — it writes to systems. The blast radius of an ungoverned tool server is larger than that of an
+    ungoverned model call, and the questions are the same ones you already answered for models: who may call
+    it, with whose identity, logged where, and what happens when a prompt injection tells the agent to call it.
+</div>
+
+<h2 id="ha">11 · Failure modes &amp; high availability <span class="chip exam">decide first</span></h2>
+
+<p>The gateway is on the critical path of every AI request in the organisation. Its failure modes are the
+most consequential design decision on this page, and the one most often deferred.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:180px">Failure</th>
+        <th style="min-width:250px">What users see</th>
+        <th style="min-width:250px">The mitigation to decide now</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><b>Gateway is down</b></td>
+        <td><b>Every AI feature in the company is down at once</b></td>
+        <td>Run ≥2 instances behind a load balancer <em>and</em> decide explicitly: direct-to-provider fallback in the client SDK, or an accepted outage with a stated SLO. There is no third option</td></tr>
+    <tr><td><b>Its datastore is down</b> (Redis/Postgres)</td>
+        <td>Depends entirely on config — either degraded, or total failure</td>
+        <td>Confirm it fails <em>open</em>: no cache and no spend tracking is survivable; refusing all traffic is not</td></tr>
+    <tr><td><b>Added latency</b></td>
+        <td>Every call is slower by the hop</td>
+        <td>Measure it. A Go/Rust proxy adds low single-digit milliseconds; an under-provisioned Python one can add hundreds under load</td></tr>
+    <tr><td><b>Streaming breaks</b></td>
+        <td>Responses arrive as one block after a long pause</td>
+        <td>Test SSE passthrough explicitly, with buffering disabled at every layer. This is the most common integration bug</td></tr>
+    <tr><td><b>Budget cap fires</b></td>
+        <td>A production feature starts returning errors mid-afternoon</td>
+        <td>Alert well before the cap, and make the app degrade gracefully — a hard 429 with no handling is a self-inflicted incident</td></tr>
+    <tr><td><b>A provider throttles</b></td>
+        <td>429s, or silent slowdown</td>
+        <td>This is what the gateway is <em>for</em> — verify fallback and circuit-breaker config actually fire, by testing them, not by reading the YAML</td></tr>
+    <tr><td><b>The gateway is the trace gap</b></td>
+        <td>Traces stop at the app and resume at the model with nothing between</td>
+        <td>Propagate trace context through the proxy and have it emit its own spans, or you have created a blind spot in the middle of every request</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="bad">
+    <strong>Say the answer out loud before you adopt one:</strong> <em>“when the gateway is down, X happens.”</em>
+    If nobody in the room can finish that sentence, the gateway is currently a single point of failure for
+    every AI application simultaneously — and that fact will be discovered during the first incident, by
+    the person least equipped to fix it.
+</div>
+
+<h2 id="adopt">12 · An adoption path that works <span class="chip practice">practice</span></h2>
+
+<ol>
+    <li><b>Do not start with one.</b> A single application calling a provider SDK directly needs no gateway. Adding one on day one buys operational burden before it buys leverage.</li>
+    <li><b>Introduce it at the second application</b>, or the first time someone asks what AI cost by team. Start in <em>passthrough</em> mode: routing and logging only, no policies. Prove the hop is invisible.</li>
+    <li><b>Issue virtual keys and delete the shared provider key.</b> This alone justifies the project, and it is a one-afternoon change once the proxy is up.</li>
+    <li><b>Turn on cost tags and budgets</b> with generous ceilings and alerts. Let a month of real data arrive before anyone argues about limits.</li>
+    <li><b>Add fallbacks and a circuit breaker</b>, then <em>test them by taking a provider away</em> in a non-production environment. Untested failover is a belief, not a control.</li>
+    <li><b>Add guardrails last</b>, once you can see in the traces what actually needs guarding. Guardrails configured from imagination block legitimate traffic and miss the real attacks.</li>
+    <li><b>Semantic caching and semantic routing are step seven at the earliest</b> — both change what the model returns, so neither should land before you have evals that would notice.</li>
+</ol>
+
+<h2 id="traps">13 · Anti-patterns <span class="chip exam">avoid</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr><th style="min-width:210px">Anti-pattern</th><th style="min-width:290px">Why it hurts</th><th style="min-width:210px">Do instead</th></tr></thead>
+    <tbody>
+    <tr><td><b>A shared internal SDK instead of a gateway</b></td>
+        <td>Governs only code that imports it, in one language, and every policy change is a coordinated redeploy across every team</td>
+        <td>A proxy — then the SDK is optional ergonomics, not the control</td></tr>
+    <tr><td><b>Single gateway instance</b></td>
+        <td>One process is now a company-wide single point of failure</td>
+        <td>Two or more, health-checked, with an explicit down-path</td></tr>
+    <tr><td><b>Gateway and observability in the same hop</b></td>
+        <td>Convenient until the shared blast radius takes both out together</td>
+        <td>Acceptable early; separate them before it is load-bearing</td></tr>
+    <tr><td><b>Logging full payloads with no redaction or retention policy</b></td>
+        <td>You have built a searchable archive of customer data with an unbounded bill attached</td>
+        <td>Redact at the gateway, sample successes, keep errors, set retention on day one</td></tr>
+    <tr><td><b>Semantic cache scoped across tenants</b></td>
+        <td>One customer's answer served to another. This is a data-leak class of bug, not a caching bug</td>
+        <td>Tenant and identity in the cache key, always</td></tr>
+    <tr><td><b>Adopting a third-party hosted router in a regulated setting</b></td>
+        <td>Prompts containing customer data now traverse a party nobody reviewed</td>
+        <td>Self-host, or complete the review before the pilot, not after</td></tr>
+    <tr><td><b>“We'll add HA later”</b></td>
+        <td>Later is during the incident</td>
+        <td>Two instances is not a project; it is a config change on day one</td></tr>
+    <tr><td><b>Treating the gateway as a cost-optimisation product</b></td>
+        <td>The savings are real but second-order; the durable value is control, attribution and reversibility</td>
+        <td>Justify it on governance. The cost reduction is a bonus you will also get</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>If you take one thing:</strong> the gateway is where <b>governance stops being a document and
+    becomes a runtime control</b>. Keys, quotas, budgets, attribution, allow-lists and uniform guardrails are
+    all enforced there — for every application, in every language, including the ones you will not write and
+    cannot modify. That is why it is worth running a proxy you would otherwise rather not operate.
+</div>
+
+<div class="note">
+    <strong>Related:</strong> <a href="observability-eval-tools.html">Observability &amp; Eval tools</a> —
+    where the gateway's logs and spend data should land ·
+    <a href="tooling-landscape.html#gw">AI Tooling Landscape</a> — the short choose-one version, with a
+    LiteLLM config example · <a href="stack-decisions.html">Stack Decisions</a> — which agent frameworks work
+    through a gateway to which model endpoints ·
+    <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a> — the nine of ~37 requirements this
+    layer satisfies on its own.
+</div>
+
+<div class="pager">
+    <a href="observability-eval-tools.html"><span class="k">← Back</span>Observability &amp; Eval Tools</a>
+    <a class="next" href="tooling-landscape.html"><span class="k">Next →</span>AI Tooling Landscape</a>
+</div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · AI Gateway</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

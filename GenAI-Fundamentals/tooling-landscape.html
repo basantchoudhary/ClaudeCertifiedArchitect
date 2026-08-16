@@ -42,6 +42,10 @@
     right, but because having a default means you only argue about the cases that deserve an argument.
     Companion to the <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a>, which says
     <em>what</em> you need; this says <em>what to use</em>.
+    <br><br>
+    Going deeper on two of them: <a href="observability-eval-tools.html">Observability &amp; Eval — What Each
+    Tool Offers</a> has the feature-by-feature matrices and the cloud-provider equivalents, and
+    <a href="ai-gateway.html">AI Gateway — The Control Point</a> covers that layer on its own page.
 </div>
 
 <div class="legend" style="display:flex;gap:16px;flex-wrap:wrap;background:#faf9ff;border:1px solid #e6e1f7;border-radius:8px;padding:10px 16px;margin:14px 0;font-size:.9em">
@@ -227,6 +231,12 @@ libraries people name as alternatives are mostly <em>conventions built on top of
 </div>
 
 <h2 id="gw">3 · AI gateways <span class="chip diagram">landscape</span></h2>
+
+<div class="note">
+    This section is the short version. <a href="ai-gateway.html"><strong>AI Gateway — The Control
+    Point</strong></a> is the full page: the 14-capability checklist, an expanded OSS matrix, a proper
+    side-by-side of the five cloud gateways, routing strategies, semantic caching, MCP gateways and failure modes.
+</div>
 
 <p>An AI gateway is a reverse proxy that understands model traffic. It exists so that
 <strong>key management, routing, fallback, rate limiting, caching, cost attribution, guardrails and

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Observability &amp; Eval Tools · What Each One Actually Offers</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+    .wrap.wide { max-width: 1500px; }
+    .scroller { overflow-x:auto; margin:16px 0; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,.05); }
+    .scroller table { margin:0; box-shadow:none; min-width:1050px; }
+    .scroller th { position:sticky; top:0; z-index:2; font-size:.8em; padding:8px 9px; }
+    .scroller td { font-size:.85em; padding:8px 9px; }
+    .grp td { background:#efeaff !important; font-weight:700; color:#4a3c78; text-transform:uppercase;
+              letter-spacing:.04em; font-size:.84em !important; }
+    td .nm { font-weight:600; color:#333; }
+    .lic { display:inline-block; font-size:.7em; font-weight:700; padding:1px 7px; border-radius:9px; margin-left:5px; }
+    .lic.oss   { background:#e6fcf0; color:#2b8a3e; }
+    .lic.free  { background:#e7ecff; color:#3b5bdb; }
+    .lic.paid  { background:#fff0f6; color:#c2255c; }
+    .lic.cloud { background:#fff6e0; color:#a97a20; }
+    .pick { background:#f3fbf5 !important; }
+    .y  { color:#2b8a3e; font-weight:700; }
+    .n  { color:#c0c0c0; }
+    .p  { color:#b08900; font-weight:600; }
+    .matrix td:not(:first-child):not(:last-child) { text-align:center; }
+    .toc { display:grid; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); gap:10px; margin:18px 0; }
+    .toc a { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:10px 14px;
+             text-decoration:none; color:#5a4a8a; font-weight:600; font-size:.92em; }
+    .toc a:hover { border-color:#764ba2; }
+    .legend { display:flex; gap:16px; flex-wrap:wrap; background:#faf9ff; border:1px solid #e6e1f7;
+              border-radius:8px; padding:10px 16px; margin:14px 0; font-size:.9em; }
+    .defs { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; margin:16px 0; }
+    .def { background:#faf9ff; border:1px solid #e6e1f7; border-radius:8px; padding:12px 15px; }
+    .def b { color:#5a4a8a; display:block; margin-bottom:3px; }
+    .def span { font-size:.9em; color:#555; }
+</style>
+</head>
+<body>
+<header class="page">
+    <div class="crumb"><a href="index.html">Gen AI Fundamentals</a> › Observability &amp; Eval Tools</div>
+    <h1>🔬 Observability &amp; Eval — What Each Tool Actually Offers</h1>
+    <div class="tag">Capability by capability · open source vs. commercial vs. each cloud provider</div>
+</header>
+
+<div class="wrap wide">
+<main class="card">
+
+<div class="note">
+    <strong>How this page differs from the others.</strong> The
+    <a href="tooling-landscape.html">AI Tooling Landscape</a> tells you <em>which tool to choose</em> and why.
+    This page answers the question that comes immediately after: <em>what does each one actually give me,
+    feature by feature</em> — so you can tell whether a tool you already own covers the gap, and what the
+    equivalent is called on Databricks, Azure, AWS and GCP. Gateways get
+    <a href="ai-gateway.html">their own page</a>, because that layer turned out to be big enough to deserve one.
+</div>
+
+<div class="legend">
+    <span><span class="lic oss">OSS</span> open source, self-host</span>
+    <span><span class="lic free">OSS + SaaS</span> open core with a hosted option</span>
+    <span><span class="lic paid">commercial</span></span>
+    <span><span class="lic cloud">cloud-native</span> tied to one platform</span>
+    <span><span class="y">✅</span> yes &nbsp; <span class="p">◐</span> partial / paid tier &nbsp; <span class="n">—</span> no</span>
+</div>
+
+<div class="toc">
+    <a href="#three">1 · Three concerns, one blurred market</a>
+    <a href="#vocab">2 · The capability vocabulary</a>
+    <a href="#obs-oss">3 · Observability — open source</a>
+    <a href="#obs-com">4 · Observability — commercial</a>
+    <a href="#eval-what">5 · What "eval" actually means</a>
+    <a href="#eval-oss">6 · Eval — open source</a>
+    <a href="#eval-com">7 · Eval — commercial</a>
+    <a href="#redteam">8 · Safety &amp; red-team tooling</a>
+    <a href="#cloud">9 · The cloud-provider Rosetta stone</a>
+    <a href="#overlap">10 · Which tools cover which boxes</a>
+    <a href="#scenarios">11 · Five stacks that actually work</a>
+    <a href="#cost">12 · How these tools bill you</a>
+    <a href="#traps">13 · Decide these before you buy</a>
+</div>
+
+<h2 id="three">1 · Three concerns, one blurred market <span class="chip concept">framing</span></h2>
+
+<p>Observability, evaluation and the gateway are <strong>three different questions</strong>, and almost every
+vendor in this space now claims all three. That is why the market looks confusing: the categories are clean,
+the products are not.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:130px">Concern</th>
+        <th style="min-width:230px">The question it answers</th>
+        <th style="min-width:150px">When it runs</th>
+        <th style="min-width:230px">What it produces</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>Observability</b></td>
+            <td>“Why did <em>this particular run</em> behave that way?”</td>
+            <td>Always, in production</td>
+            <td>Traces, spans, token counts, cost, latency, errors</td></tr>
+        <tr><td><b>Evaluation</b></td>
+            <td>“Is version B better than version A — and on what evidence?”</td>
+            <td>In CI before release, and sampled in production</td>
+            <td>Scores against a dataset, pass/fail gates, regressions</td></tr>
+        <tr><td><b>Gateway</b></td>
+            <td>“Who is allowed to call what, at what cost, through which route?”</td>
+            <td>On every request, in the path</td>
+            <td>Routing, keys, quotas, budgets, caching, logs</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="mermaid">
+flowchart LR
+    subgraph BUILD["Build time"]
+        DS["Dataset<br/>inputs + expectations"] --> EX["Experiment run"]
+        EX --> SC["Scores / graders"]
+        SC --> GATE{"Gate:<br/>regression?"}
+    end
+    subgraph RUN["Run time"]
+        APP["Application"] --> GW["AI Gateway<br/>keys · routing · budget"]
+        GW --> LLM["Model"]
+        APP -.spans.-> OBS[("Observability<br/>backend")]
+        GW -.payload logs.-> OBS
+    end
+    OBS -->|"curate failing traces"| DS
+    OBS -->|"sampled online eval"| SC
+    GATE -->|"pass"| APP
+    classDef a fill:#eef6ff,stroke:#3b7bd0,color:#1f5fa8;
+    classDef b fill:#f3f0ff,stroke:#764ba2,color:#4a3b7a;
+    class APP,GW,LLM a;
+    class DS,EX,SC,OBS b;
+</div>
+
+<div class="good">
+    <strong>The loop is the point.</strong> Observability is not a dashboard you look at — it is the
+    <em>source of your eval data</em>. Production traces that went wrong become dataset rows; the dataset
+    gates the next release. A team with tracing but no path from a bad trace to a test case has bought a
+    logging bill, not a quality process.
+</div>
+
+<h2 id="vocab">2 · The capability vocabulary <span class="chip concept">definitions</span></h2>
+
+<p>The matrices below use these columns. Vendors use the same words for slightly different things, so pin
+the meaning down before comparing.</p>
+
+<div class="defs">
+    <div class="def"><b>Tracing</b><span>A span tree for one run — every LLM call, retrieval, tool call and nested agent step, with inputs, outputs, latency and tokens.</span></div>
+    <div class="def"><b>Prompt management</b><span>Prompts stored, versioned and <em>fetched at runtime</em>, so changing one is a deploy-free operation with an audit trail.</span></div>
+    <div class="def"><b>Datasets</b><span>Curated input → expected-output pairs, ideally built from real production traces rather than invented.</span></div>
+    <div class="def"><b>Experiments</b><span>Run a whole dataset through a specific prompt/model version and compare aggregate scores against a previous run.</span></div>
+    <div class="def"><b>LLM-as-judge</b><span>A model grades an output against a rubric. Cheap and scalable; needs calibrating against human labels or it silently measures nothing.</span></div>
+    <div class="def"><b>Human annotation</b><span>Review queues where people label traces — the ground truth that calibrates every automated score.</span></div>
+    <div class="def"><b>Online eval</b><span>Scoring a sample of live production traffic, not just the test set. The only way to catch drift in real inputs.</span></div>
+    <div class="def"><b>Cost tracking</b><span>Tokens converted to money and attributed to a team, user, feature or customer.</span></div>
+    <div class="def"><b>Monitoring &amp; alerts</b><span>Thresholds and anomaly detection on latency, cost, error rate and quality scores — with somewhere for the alert to go.</span></div>
+    <div class="def"><b>OTel in / out</b><span>Whether it ingests OTLP, and whether it re-exports raw spans elsewhere. The second one is what makes the choice reversible.</span></div>
+    <div class="def"><b>Self-host</b><span>Can you run the whole thing in your own network — genuinely, not as a crippled community edition.</span></div>
+    <div class="def"><b>Agent traces</b><span>First-class handling of multi-step loops, tool calls, sub-agents and retries — not just a flat list of LLM calls.</span></div>
+</div>
+
+<h2 id="obs-oss">3 · Observability — open source <span class="chip diagram">matrix</span></h2>
+
+<div class="scroller">
+<table class="matrix">
+    <thead><tr>
+        <th style="min-width:150px">Tool</th>
+        <th style="min-width:62px">Tracing</th>
+        <th style="min-width:78px">Prompt mgmt</th>
+        <th style="min-width:70px">Datasets</th>
+        <th style="min-width:72px">LLM judge</th>
+        <th style="min-width:78px">Human annot.</th>
+        <th style="min-width:72px">Online eval</th>
+        <th style="min-width:60px">Cost</th>
+        <th style="min-width:70px">Alerts</th>
+        <th style="min-width:72px">OTel in</th>
+        <th style="min-width:78px">Self-host</th>
+        <th style="min-width:230px">What it is really for</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">Langfuse</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅ full</td>
+        <td>The most complete single open-source answer — tracing, prompts, datasets and evals in one product. Self-host needs Postgres + ClickHouse.</td></tr>
+    <tr><td><span class="nm">Arize Phoenix</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="n">—</td><td class="y">✅ native</td><td class="y">✅</td>
+        <td>Debugging <em>retrieval</em>. Best-in-class span inspection for RAG, embedding drift views, notebook-first workflow.</td></tr>
+    <tr><td><span class="nm">MLflow Tracing</span><span class="lic oss">OSS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="n">—</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Keeping GenAI in the <em>same</em> lifecycle tool as your models. Strongest if you already run MLflow — and the default on Databricks.</td></tr>
+    <tr><td><span class="nm">Opik</span> (Comet)<span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Eval-first teams who also want tracing. Ships a strong opinionated metric library out of the box.</td></tr>
+    <tr><td><span class="nm">Helicone</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="n">—</td>
+        <td class="n">—</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="y">✅</td>
+        <td>Zero-code adoption. It is a <em>proxy</em> — change the base URL and you have logs, cost and caching. Also part gateway.</td></tr>
+    <tr><td><span class="nm">Laminar</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="n">—</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Turning production traces into labelled datasets with the least friction. Rust backend, fast ingest.</td></tr>
+    <tr><td><span class="nm">Langtrace</span><span class="lic oss">OSS</span></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="n">—</td>
+        <td class="n">—</td><td class="y">✅</td><td class="n">—</td><td class="y">✅ native</td><td class="y">✅</td>
+        <td>OTel-purist tracing — emits standard GenAI spans, so you can point it at any OTel backend later.</td></tr>
+    <tr><td><span class="nm">OpenLIT</span><span class="lic oss">OSS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="n">—</td><td class="p">◐</td><td class="n">—</td>
+        <td class="n">—</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅ native</td><td class="y">✅</td>
+        <td>OTel-native GenAI instrumentation including GPU metrics; pairs with Grafana or SigNoz rather than replacing them.</td></tr>
+    <tr><td><span class="nm">Lunary</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td class="n">—</td><td class="y">✅</td><td class="p">◐</td><td class="n">—</td><td class="y">✅</td>
+        <td>Chat-product analytics — per-user and per-conversation views, feedback capture, lightweight to run.</td></tr>
+    <tr><td><span class="nm">TruLens</span><span class="lic oss">OSS</span></td>
+        <td class="p">◐</td><td class="n">—</td><td class="y">✅</td><td class="y">✅</td><td class="n">—</td>
+        <td class="y">✅</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="y">✅</td>
+        <td>Feedback functions — programmatic quality scoring you embed in the app. A scoring library, not a backend.</td></tr>
+    <tr><td><span class="nm">OTel + SigNoz / Grafana Tempo / HyperDX</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td>
+        <td class="n">—</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅ native</td><td class="y">✅</td>
+        <td>Full control, no vendor, one backend for AI and everything else. You supply all the LLM semantics yourself.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Reading the matrix.</strong> The right-hand column matters more than the ticks. Almost everything
+    here can draw a span tree; they differ in <em>what workflow they were designed around</em> — Phoenix around
+    retrieval debugging, Opik around evals, Lunary around end-user analytics, Langfuse around all of it at the
+    cost of more infrastructure.
+</div>
+
+<h2 id="obs-com">4 · Observability — commercial <span class="chip diagram">matrix</span></h2>
+
+<div class="scroller">
+<table class="matrix">
+    <thead><tr>
+        <th style="min-width:150px">Tool</th>
+        <th style="min-width:62px">Tracing</th>
+        <th style="min-width:78px">Prompt mgmt</th>
+        <th style="min-width:70px">Datasets</th>
+        <th style="min-width:72px">LLM judge</th>
+        <th style="min-width:78px">Human annot.</th>
+        <th style="min-width:72px">Online eval</th>
+        <th style="min-width:60px">Cost</th>
+        <th style="min-width:70px">Alerts</th>
+        <th style="min-width:72px">OTel in</th>
+        <th style="min-width:78px">Self-host</th>
+        <th style="min-width:230px">What it is really for</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="12">LLM-native platforms</td></tr>
+    <tr><td><span class="nm">LangSmith</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐ enterprise</td>
+        <td>LangChain/LangGraph teams. Annotation queues and dataset workflow are genuinely mature.</td></tr>
+    <tr><td><span class="nm">Braintrust</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐ hybrid</td>
+        <td>Prompt iteration as the core loop — side-by-side experiment diffs are the product. Hybrid deploy keeps data in your VPC.</td></tr>
+    <tr><td><span class="nm">Arize AX</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td>The production/enterprise tier above Phoenix — drift, cohorts, guardrails, scale.</td></tr>
+    <tr><td><span class="nm">W&amp;B Weave</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐</td>
+        <td>Teams already living in Weights &amp; Biases who want GenAI runs beside their training lineage.</td></tr>
+    <tr><td><span class="nm">Galileo</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td>Guardrail-style metrics computed continuously — hallucination and adherence scoring as a first-class product.</td></tr>
+    <tr><td><span class="nm">HoneyHive</span>, <span class="nm">Humanloop</span>, <span class="nm">PromptLayer</span>, <span class="nm">Vellum</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td>
+        <td>Non-engineers editing and testing prompts. Buy these for the <em>collaboration</em>, not the tracing.</td></tr>
+
+    <tr class="grp"><td colspan="12">General APM that now speaks LLM</td></tr>
+    <tr><td><span class="nm">Datadog LLM Observability</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="n">—</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅ mature</td><td class="y">✅</td><td class="n">—</td>
+        <td>One pane with the rest of the estate. Alerting and on-call integration are far ahead of LLM-native tools; prompt payloads inflate the ingest bill.</td></tr>
+    <tr><td><span class="nm">New Relic</span>, <span class="nm">Dynatrace</span>, <span class="nm">Elastic</span>, <span class="nm">Splunk</span>, <span class="nm">Coralogix</span><span class="lic paid">commercial</span></td>
+        <td class="y">✅</td><td class="n">—</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td>Consolidation. AI monitoring bolted onto existing APM — thin on quality evaluation, strong on everything operational.</td></tr>
+    <tr><td><span class="nm">Sentry AI Monitoring</span><span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td>
+        <td class="n">—</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Error-first rather than trace-first. Good if your real question is “what threw”, not “what was said”.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>The question that decides reversibility:</b> “can I export raw OTel spans to a backend of my choosing?”
+    If yes, adopting the vendor is a reversible decision. If no, you are choosing an instrumentation layer and
+    a backend at the same time — which is how observability becomes the one system you cannot migrate off.
+</div>
+
+<h2 id="eval-what">5 · What “eval” actually means <span class="chip concept">framing</span></h2>
+
+<p>“We need evals” is four different projects wearing one word. Tools specialise in different rows, and buying
+the wrong row is the most common mistake in this category.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Kind</th>
+        <th style="min-width:250px">What it checks</th>
+        <th style="min-width:150px">Runs where</th>
+        <th style="min-width:230px">Tools built for it</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>Unit / assertion evals</b></td>
+        <td>Deterministic checks on one output: JSON valid, contains the citation, under N tokens, no PII, latency budget</td>
+        <td>CI, on every PR</td>
+        <td>promptfoo, DeepEval, pytest + any judge library</td></tr>
+        <tr class="pick"><td><b>Regression evals</b></td>
+        <td>A curated dataset scored before and after a change — did the change make it <em>worse anywhere</em>?</td>
+        <td>CI, pre-release gate</td>
+        <td>Langfuse, Braintrust, LangSmith, Opik, MLflow Evaluate</td></tr>
+        <tr><td><b>RAG-specific evals</b></td>
+        <td>Faithfulness, answer relevance, context precision/recall — separating retrieval failure from generation failure</td>
+        <td>CI and offline analysis</td>
+        <td>Ragas, Phoenix, TruLens, continuous-eval</td></tr>
+        <tr><td><b>Agent / trajectory evals</b></td>
+        <td>Did it pick the right tools, in a sensible order, without looping — and did the <em>task</em> complete?</td>
+        <td>CI, and sampled in production</td>
+        <td>Inspect AI, DeepEval, AgentEvals, Opik, Agent Evaluation (Databricks)</td></tr>
+        <tr><td><b>Safety / red team</b></td>
+        <td>Jailbreaks, prompt injection, toxic and unsafe output, data leakage</td>
+        <td>Pre-release, and periodically</td>
+        <td>garak, PyRIT, promptfoo redteam, Giskard</td></tr>
+        <tr><td><b>Benchmarks</b></td>
+        <td>Public academic scores — MMLU, GSM8K, HumanEval. Useful for <em>picking a model</em>, near-useless for your app</td>
+        <td>Model selection only</td>
+        <td>lm-evaluation-harness, HELM, Inspect AI</td></tr>
+        <tr><td><b>Online / production eval</b></td>
+        <td>Scoring a sample of real traffic; user feedback; drift in inputs</td>
+        <td>Continuously, in production</td>
+        <td>Langfuse, Galileo, Arize, Datadog, Lakehouse Monitoring</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="bad">
+    <strong>The uncomfortable truth about eval tooling.</strong> Every tool here will run graders for you.
+    None of them will tell you <em>what a good answer looks like in your domain</em> — that is a dataset with
+    human labels, and it is the expensive part. Teams routinely spend three months choosing an eval platform
+    and then run it against forty examples someone invented on a Friday. <b>Buy the runner, build the
+    dataset.</b> The dataset is the asset; the runner is replaceable in a week.
+</div>
+
+<h2 id="eval-oss">6 · Eval — open source <span class="chip diagram">matrix</span></h2>
+
+<div class="scroller">
+<table class="matrix">
+    <thead><tr>
+        <th style="min-width:155px">Tool</th>
+        <th style="min-width:70px">Unit /<br/>assert</th>
+        <th style="min-width:78px">Regression</th>
+        <th style="min-width:60px">RAG</th>
+        <th style="min-width:70px">Agent /<br/>traj.</th>
+        <th style="min-width:70px">Red team</th>
+        <th style="min-width:72px">LLM judge</th>
+        <th style="min-width:66px">CI-first</th>
+        <th style="min-width:60px">UI</th>
+        <th style="min-width:250px">What you actually get</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">promptfoo</span><span class="lic oss">MIT</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="y">✅ strong</td>
+        <td class="y">✅</td><td class="y">✅ yes</td><td class="y">✅ local</td>
+        <td>A YAML test file, a CLI, and a matrix view comparing prompts × models × providers. Also ships a serious red-team generator. <b>The fastest thing to put in CI on day one.</b></td></tr>
+    <tr class="pick"><td><span class="nm">Ragas</span><span class="lic oss">Apache 2.0</span></td>
+        <td class="n">—</td><td class="p">◐</td><td class="y">✅ purpose-built</td><td class="p">◐</td><td class="n">—</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="n">— library</td>
+        <td>The reference metric set for RAG: faithfulness, answer relevancy, context precision and recall. A <em>library</em>, not a platform — you bring the runner and the storage.</td></tr>
+    <tr><td><span class="nm">DeepEval</span> (Confident AI)<span class="lic oss">Apache 2.0</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅ DeepTeam</td>
+        <td class="y">✅</td><td class="y">✅ pytest</td><td class="p">◐ SaaS</td>
+        <td>“Pytest for LLMs” — 40+ prebuilt metrics as assertions in a normal test suite. The most natural fit if your team already lives in pytest.</td></tr>
+    <tr><td><span class="nm">Inspect AI</span> (UK AISI)<span class="lic oss">MIT</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅ strong</td><td class="y">✅</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅ viewer</td>
+        <td>A rigorous evaluation <em>framework</em> — solvers, scorers, sandboxed tool use, agent trajectories. Built by a national safety institute, and it shows in the rigour.</td></tr>
+    <tr><td><span class="nm">Giskard</span><span class="lic oss">Apache 2.0</span></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅ scan</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>An automatic vulnerability <em>scan</em> — point it at a model and it generates its own probes for hallucination, bias, injection and disclosure.</td></tr>
+    <tr><td><span class="nm">Evidently</span><span class="lic oss">Apache 2.0</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐</td><td class="p">◐</td><td class="n">—</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅ reports</td>
+        <td>Drift and data-quality heritage extended to LLMs — the strongest of these on <em>monitoring over time</em> rather than one-off scoring.</td></tr>
+    <tr><td><span class="nm">MLflow Evaluate</span><span class="lic oss">OSS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="n">—</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td>Evaluation results stored as first-class MLflow runs, versioned alongside prompts and models. The zero-new-tools answer if you run MLflow.</td></tr>
+    <tr><td><span class="nm">TruLens</span><span class="lic oss">MIT</span></td>
+        <td class="p">◐</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="n">—</td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td>Feedback functions that run <em>inside</em> the app, so scoring happens on live calls rather than only in a batch job.</td></tr>
+    <tr><td><span class="nm">lm-evaluation-harness</span> (EleutherAI), <span class="nm">HELM</span> (Stanford)<span class="lic oss">OSS</span></td>
+        <td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td>
+        <td class="p">◐</td><td class="n">—</td><td class="n">—</td>
+        <td>Academic benchmark harnesses. Use to <em>choose a base model</em>; they say nothing about your application.</td></tr>
+    <tr><td><span class="nm">Opik</span>, <span class="nm">Langfuse</span>, <span class="nm">Phoenix</span> eval modules<span class="lic free">OSS + SaaS</span></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="n">—</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Evals attached to the <em>same</em> store as the traces — so a failing production trace becomes a dataset row in one click. See the observability matrix above.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="good">
+    <strong>Default:</strong> <strong>promptfoo</strong> in CI from week one — it costs an afternoon and
+    catches the regressions that actually reach users. Add <strong>Ragas</strong> metrics if the system is
+    RAG-shaped, and let whichever observability tool you chose store the datasets, so production failures and
+    test cases live in one place instead of two.
+</div>
+
+<h2 id="eval-com">7 · Eval — commercial platforms <span class="chip diagram">matrix</span></h2>
+
+<p>These overlap heavily with the observability table, because the serious eval products <em>are</em>
+observability products — the dataset comes from the traces. What you are buying beyond the OSS libraries is
+the workflow around them: annotation queues, permissions, experiment history and reporting people outside the
+team will actually read.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:160px">Platform</th>
+        <th style="min-width:250px">What it adds over the OSS libraries</th>
+        <th style="min-width:200px">Watch out for</th>
+        <th style="min-width:170px">Buy it when</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">Braintrust</span><span class="lic paid">commercial</span></td>
+        <td>Experiment diffs a human can read, prompt playground with real datasets behind it, hybrid deployment that keeps payloads in your VPC</td>
+        <td>Priced around eval volume — costs scale with how seriously you use it</td>
+        <td>Prompt iteration is the bottleneck and several people do it</td></tr>
+    <tr><td><span class="nm">LangSmith</span><span class="lic paid">commercial</span></td>
+        <td>Annotation queues, dataset versioning, tight LangGraph trajectory views</td>
+        <td>Pulls you toward one framework's worldview</td>
+        <td>Already on LangChain/LangGraph</td></tr>
+    <tr><td><span class="nm">Galileo</span><span class="lic paid">commercial</span></td>
+        <td>Proprietary hallucination/adherence metrics that run continuously without a labelled set</td>
+        <td>You are trusting metrics you cannot fully inspect</td>
+        <td>You need production quality signal before you have a dataset</td></tr>
+    <tr><td><span class="nm">Patronus AI</span>, <span class="nm">Okareo</span>, <span class="nm">Freeplay</span>, <span class="nm">Maxim AI</span><span class="lic paid">commercial</span></td>
+        <td>Managed judges, scenario generation, and non-engineer review workflows</td>
+        <td>Crowded segment with fast-moving feature parity</td>
+        <td>You want the workflow bought rather than assembled</td></tr>
+    <tr><td><span class="nm">Confident AI</span><span class="lic paid">commercial</span></td>
+        <td>The hosted layer over DeepEval — dataset management, regression history, sharing</td>
+        <td>Tied to DeepEval's metric model</td>
+        <td>You started with DeepEval and outgrew local runs</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h2 id="redteam">8 · Safety &amp; red-team tooling <span class="chip exam">often missed</span></h2>
+
+<p>A separate category, and the one most often discovered late — usually during a security review, three weeks
+before launch. These generate <em>adversarial</em> inputs rather than scoring your own.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:160px">Tool</th>
+        <th style="min-width:100px">Origin</th>
+        <th style="min-width:270px">What it does</th>
+        <th style="min-width:190px">Use it for</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><span class="nm">garak</span><span class="lic oss">Apache 2.0</span></td><td>NVIDIA</td>
+        <td>A vulnerability scanner for LLMs — dozens of probe families (jailbreak, encoding attacks, prompt leakage, toxicity, package hallucination) run as a sweep</td>
+        <td>“Scan this endpoint and tell me what breaks”</td></tr>
+    <tr><td><span class="nm">PyRIT</span><span class="lic oss">MIT</span></td><td>Microsoft</td>
+        <td>A risk-identification framework with multi-turn attack orchestration and converters — automates the <em>escalating conversation</em>, not just single prompts</td>
+        <td>Structured red-team programmes; underpins Azure's red-teaming agent</td></tr>
+    <tr><td><span class="nm">promptfoo red team</span><span class="lic oss">MIT</span></td><td>promptfoo</td>
+        <td>Generates application-specific attacks from a description of your app, mapped to OWASP LLM Top 10 and NIST AI RMF</td>
+        <td>Red teaming that produces an auditable report</td></tr>
+    <tr><td><span class="nm">DeepTeam</span><span class="lic oss">Apache 2.0</span></td><td>Confident AI</td>
+        <td>Red-teaming built on DeepEval's metric model</td><td>Already standardised on DeepEval</td></tr>
+    <tr><td><span class="nm">Giskard scan</span><span class="lic oss">Apache 2.0</span></td><td>Giskard</td>
+        <td>Automatic probe generation across hallucination, bias, injection and disclosure</td>
+        <td>A first pass with almost no setup</td></tr>
+    <tr><td><span class="nm">Llama Guard</span> / <span class="nm">Purple Llama</span><span class="lic oss">OSS</span></td><td>Meta</td>
+        <td>Classifier models for input/output safety, plus CyberSecEval benchmarks</td>
+        <td>A self-hosted safety classifier in the request path</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="note">
+    Red teaming finds problems; <a href="guardrails-implementation.html">guardrails</a> are what you build to
+    stop them. Running a scan without a plan for fixing what it finds generates a report nobody can action —
+    pair every red-team tool with the enforcement layer that will carry the fix.
+</div>
+
+<h2 id="cloud">9 · The cloud-provider Rosetta stone <span class="chip exam">key table</span></h2>
+
+<p>The same capability, in each platform's vocabulary. This is the table to bring to an architecture review,
+because most disagreements in that room are people naming the same thing differently.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:150px">Capability</th>
+        <th style="min-width:200px">Databricks</th>
+        <th style="min-width:200px">Azure</th>
+        <th style="min-width:200px">AWS</th>
+        <th style="min-width:200px">GCP</th>
+        <th style="min-width:185px">Open-source equivalent</th>
+    </tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="6">Observability</td></tr>
+    <tr><td><b>Trace capture</b></td>
+        <td>MLflow Tracing (auto-instruments major frameworks)</td>
+        <td>AI Foundry tracing → Application Insights / Azure Monitor</td>
+        <td>CloudWatch GenAI Observability, X-Ray; AgentCore Observability for agents</td>
+        <td>Cloud Trace + Vertex AI Agent Engine tracing</td>
+        <td>OpenTelemetry + Langfuse / Phoenix</td></tr>
+    <tr><td><b>Payload logging</b></td>
+        <td>AI Gateway inference tables (requests + responses land in Unity Catalog)</td>
+        <td>APIM diagnostics; AI Foundry model logging</td>
+        <td>Bedrock model invocation logging → S3 / CloudWatch</td>
+        <td>Vertex AI request-response logging → BigQuery</td>
+        <td>Gateway callbacks (LiteLLM → Langfuse)</td></tr>
+    <tr><td><b>Cost attribution</b></td>
+        <td>System tables (billing usage) + AI Gateway usage tracking</td>
+        <td>Cost Management + APIM token metrics per subscription/product</td>
+        <td>Cost Explorer + Bedrock <em>application inference profiles</em> for per-tag cost</td>
+        <td>Billing export to BigQuery, labels on Vertex resources</td>
+        <td>LiteLLM spend tracking, Langfuse cost per trace</td></tr>
+    <tr><td><b>Quality monitoring</b></td>
+        <td>Lakehouse Monitoring on inference tables</td>
+        <td>AI Foundry continuous evaluation on live traffic</td>
+        <td>CloudWatch metrics + scheduled Bedrock evaluation jobs</td>
+        <td>Vertex AI Model Monitoring</td>
+        <td>Langfuse / Evidently online scores</td></tr>
+
+    <tr class="grp"><td colspan="6">Evaluation</td></tr>
+    <tr><td><b>Offline eval runner</b></td>
+        <td>MLflow Evaluate; <b>Mosaic AI Agent Evaluation</b></td>
+        <td><b>Azure AI Evaluation SDK</b> (<code>azure-ai-evaluation</code>)</td>
+        <td><b>Bedrock Evaluations</b> — automatic, human, and LLM-as-judge</td>
+        <td><b>Vertex AI Gen AI Evaluation Service</b></td>
+        <td>promptfoo, DeepEval, Inspect AI</td></tr>
+    <tr><td><b>Built-in judges</b></td>
+        <td>Groundedness, relevance, safety, chunk relevance, plus custom judges</td>
+        <td>Groundedness, relevance, coherence, fluency, similarity, safety, plus agent evaluators</td>
+        <td>Correctness, completeness, faithfulness, helpfulness, harmfulness</td>
+        <td>Pointwise and pairwise autoraters with customisable rubrics</td>
+        <td>Ragas, DeepEval metrics</td></tr>
+    <tr><td><b>RAG-specific eval</b></td>
+        <td>Retrieval judges over the retrieved chunks</td>
+        <td>Document retrieval + groundedness evaluators</td>
+        <td>Bedrock Knowledge Bases RAG evaluation</td>
+        <td>Vertex RAG Engine evaluation</td>
+        <td>Ragas, TruLens</td></tr>
+    <tr><td><b>Human review</b></td>
+        <td>Review App — domain experts label agent outputs</td>
+        <td>Human evaluation flows in AI Foundry</td>
+        <td>Bedrock human-based evaluation (SageMaker Ground Truth workforce)</td>
+        <td>Human-in-the-loop via Vertex pipelines</td>
+        <td>Langfuse / Argilla / Label Studio</td></tr>
+    <tr><td><b>Red teaming</b></td>
+        <td>Bring your own (garak, promptfoo)</td>
+        <td><b>AI Red Teaming Agent</b> (PyRIT-based) in AI Foundry</td>
+        <td>Bring your own; Guardrails for enforcement</td>
+        <td>Bring your own; Model Armor for enforcement</td>
+        <td>garak, PyRIT, promptfoo redteam</td></tr>
+
+    <tr class="grp"><td colspan="6">Gateway <span style="text-transform:none;font-weight:400">— see the <a href="ai-gateway.html">AI Gateway page</a> for the full comparison</span></td></tr>
+    <tr><td><b>AI gateway</b></td>
+        <td><b>Mosaic AI Gateway</b></td>
+        <td><b>API Management</b> AI gateway policies; AI Foundry model router</td>
+        <td>Bedrock + API Gateway pattern; AgentCore Gateway for tools</td>
+        <td><b>Apigee</b> with LLM policies; Vertex endpoints</td>
+        <td>LiteLLM, Portkey, Envoy AI Gateway</td></tr>
+    <tr><td><b>Guardrails in path</b></td>
+        <td>AI Gateway guardrails + PII detection</td>
+        <td>Azure AI Content Safety / Prompt Shields</td>
+        <td>Bedrock Guardrails</td>
+        <td>Model Armor</td>
+        <td>Presidio, Llama Guard, Lakera</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="warn">
+    <strong>Two asymmetries worth naming.</strong> First, <em>Databricks and Azure ship an opinionated,
+    integrated story; AWS and GCP give you strong components you assemble.</em> Neither is better — but the
+    AWS/GCP path needs design effort that never appears on a feature comparison. Second, the cloud evaluators
+    are <b>judge libraries plus a runner</b>, not a prompt-iteration workflow — teams frequently pair a cloud
+    eval service with Langfuse or Braintrust rather than choosing between them.
+</div>
+
+<h2 id="overlap">10 · Which tools cover which boxes <span class="chip trade">overlap</span></h2>
+
+<p>The practical question is rarely “which observability tool” — it is “how few tools can I get away with”.
+Here is the honest overlap.</p>
+
+<div class="scroller">
+<table class="matrix">
+    <thead><tr>
+        <th style="min-width:190px">Tool / platform</th>
+        <th style="min-width:110px">Observability</th>
+        <th style="min-width:110px">Eval</th>
+        <th style="min-width:110px">Gateway</th>
+        <th style="min-width:110px">Guardrails</th>
+        <th style="min-width:290px">Realistic verdict</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><b>Langfuse</b> + <b>LiteLLM</b></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="p">◐</td>
+        <td><b>The default open-source pairing.</b> Two systems to run, covers everything except deep red teaming. Add promptfoo in CI and you are done.</td></tr>
+    <tr><td><b>Databricks</b> (Mosaic AI)</td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Genuinely covers all four, governed by Unity Catalog — <em>if</em> the workload lives on Databricks. Nothing extra to operate.</td></tr>
+    <tr><td><b>Azure AI Foundry</b> + <b>APIM</b></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Complete, but split across four services with four learning curves. APIM policy language is its own skill.</td></tr>
+    <tr><td><b>AWS Bedrock</b> stack</td>
+        <td class="p">◐</td><td class="y">✅</td><td class="p">◐</td><td class="y">✅</td>
+        <td>Evaluation and Guardrails are strong products; the gateway and LLM-native observability are reference architectures you build.</td></tr>
+    <tr><td><b>GCP Vertex AI</b> + <b>Apigee</b></td>
+        <td class="p">◐</td><td class="y">✅</td><td class="y">✅</td><td class="y">✅</td>
+        <td>Good evaluation service and Model Armor; trace tooling is general-purpose rather than LLM-shaped.</td></tr>
+    <tr><td><b>LangSmith</b></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="n">—</td><td class="n">—</td>
+        <td>One tool for the build-time loop. You still need a gateway and guardrails elsewhere.</td></tr>
+    <tr><td><b>Braintrust</b></td>
+        <td class="y">✅</td><td class="y">✅</td><td class="p">◐ proxy</td><td class="n">—</td>
+        <td>Its proxy covers key management and caching, but it is not a substitute for an enterprise gateway.</td></tr>
+    <tr><td><b>Datadog</b></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="n">—</td><td class="p">◐</td>
+        <td>Best operational story, thinnest quality story. Common pattern: Datadog for ops alerting, an LLM-native tool for quality.</td></tr>
+    <tr><td><b>Helicone</b> / <b>Portkey</b></td>
+        <td class="y">✅</td><td class="p">◐</td><td class="y">✅</td><td class="p">◐</td>
+        <td>Gateway-and-observability in one hop — attractively simple, and the same box is now a single point of failure for both.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h2 id="scenarios">11 · Five stacks that actually work <span class="chip practice">practice</span></h2>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:190px">Situation</th>
+        <th style="min-width:290px">Stack</th>
+        <th style="min-width:230px">Why this shape</th>
+    </tr></thead>
+    <tbody>
+    <tr class="pick"><td><b>One team, first production app</b></td>
+        <td>OTel instrumentation → <b>Langfuse</b> (hosted) · <b>promptfoo</b> in CI · direct provider SDK, no gateway yet</td>
+        <td>A gateway before the second application is premature. Everything here is a weekend of work.</td></tr>
+    <tr><td><b>Several teams, no platform mandate</b></td>
+        <td><b>LiteLLM Proxy</b> → <b>Langfuse</b> (self-hosted) · <b>promptfoo</b> + <b>Ragas</b> in CI · <b>Presidio</b> guardrails at the gateway</td>
+        <td>The gateway becomes the control point the moment more than two apps exist. Cost attribution stops being a spreadsheet.</td></tr>
+    <tr><td><b>Regulated enterprise, Azure-standardised</b></td>
+        <td><b>APIM</b> AI policies → <b>AI Foundry</b> evaluation + <b>Content Safety</b> · <b>App Insights</b> for traces · <b>AI Red Teaming Agent</b> pre-release</td>
+        <td>Data residency and identity integration usually decide this before anyone compares features.</td></tr>
+    <tr><td><b>Data already on Databricks</b></td>
+        <td><b>Mosaic AI Gateway</b> → <b>MLflow Tracing</b> → <b>Agent Evaluation</b> + <b>Review App</b> · Lakehouse Monitoring on inference tables</td>
+        <td>The governance boundary is already Unity Catalog. Adding an external tool means exporting the very data you were trying to keep governed.</td></tr>
+    <tr><td><b>Prompt quality is the bottleneck</b></td>
+        <td><b>Braintrust</b> or <b>LangSmith</b> for the build loop · keep your existing APM for ops · gateway unchanged</td>
+        <td>You are buying a workflow for humans, not infrastructure. Do not let it also become your alerting system.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<h2 id="cost">12 · How these tools bill you <span class="chip trade">economics</span></h2>
+
+<p>The pricing model matters more than the sticker price, because LLM payloads are unusually large and the
+bill scales with something you do not control.</p>
+
+<div class="scroller">
+<table>
+    <thead><tr>
+        <th style="min-width:170px">Billing model</th>
+        <th style="min-width:200px">Who uses it</th>
+        <th style="min-width:290px">What surprises people</th>
+    </tr></thead>
+    <tbody>
+        <tr><td><b>Per trace / per span</b></td><td>Langfuse Cloud, LangSmith, Braintrust</td>
+        <td>An agent run is <em>dozens</em> of spans, not one. Agentic workloads can cost 20–50× a simple chat app at identical user volume.</td></tr>
+        <tr><td><b>Per GB ingested</b></td><td>Datadog, Splunk, Elastic</td>
+        <td>Prompts and responses are large text blobs. Full payload capture on a RAG app can dwarf the rest of your APM bill — sample it, or truncate.</td></tr>
+        <tr><td><b>Per evaluation run</b></td><td>Braintrust, hosted eval platforms</td>
+        <td>Plus the judge model's own token cost, which is billed by your model provider and easy to forget entirely.</td></tr>
+        <tr><td><b>Per seat</b></td><td>Humanloop, PromptLayer, Vellum</td>
+        <td>Fine while it is the AI team; re-price it before you invite the whole product org in.</td></tr>
+        <tr><td><b>Self-hosted infrastructure</b></td><td>Langfuse OSS, Phoenix, SigNoz</td>
+        <td>Free licence, real cost: Postgres + ClickHouse + object storage, plus someone to own upgrades and retention.</td></tr>
+        <tr><td><b>Bundled into the platform</b></td><td>Databricks, Azure, AWS, GCP</td>
+        <td>“Included” usually means the compute and storage are billed elsewhere on the same invoice — cheap to start, hard to attribute later.</td></tr>
+    </tbody>
+</table>
+</div>
+
+<div class="trap">
+    <b>Set sampling and retention on day one.</b> 100% payload capture with 90-day retention is the single
+    most common source of a surprise observability bill. Full capture on errors and a small sample of
+    successes gives you nearly all the debugging value at a fraction of the ingest.
+</div>
+
+<h2 id="traps">13 · Decide these before you buy <span class="chip exam">checklist</span></h2>
+
+<ol>
+    <li><b>Can it export raw OTel spans elsewhere?</b> If not, you are choosing instrumentation and backend together, permanently.</li>
+    <li><b>Where do payloads live?</b> Prompts and responses routinely contain customer data. “SaaS with a DPA” and “self-hosted” are different answers to a question Legal <em>will</em> ask — better before the pilot than after.</li>
+    <li><b>What is the path from a bad production trace to a test case?</b> If it is manual copy-paste, evals will quietly stop being updated within a month.</li>
+    <li><b>Who calibrates the judges?</b> An LLM-as-judge that nobody has checked against human labels produces confident numbers that measure nothing.</li>
+    <li><b>What is sampled, and what is retained for how long?</b> Decide before the first bill, not after.</li>
+    <li><b>Does it understand agents?</b> Many tools show a flat list of LLM calls. If you are building loops with tools and sub-agents, a flat list is close to useless.</li>
+    <li><b>What happens when it is down?</b> Tracing should fail open and asynchronously. A blocking observability call in the request path is an outage waiting for a bad afternoon — and a proxy-based tool is <em>in</em> that path by design.</li>
+</ol>
+
+<div class="good">
+    <strong>If you take one thing:</strong> instrument with <b>OpenTelemetry</b>, keep the backend swappable,
+    put a <b>cheap eval in CI on day one</b>, and spend your real effort on the <b>labelled dataset</b> — the
+    only artefact here that gets more valuable over time and cannot be bought.
+</div>
+
+<div class="note">
+    <strong>Related:</strong> <a href="ai-gateway.html">AI Gateway — the control point</a> covers the third
+    box in depth · <a href="tooling-landscape.html">AI Tooling Landscape</a> gives the choose-one-tool
+    narrative and covers orchestration and graph memory ·
+    <a href="ai-engineering-blueprint.html">AI Engineering Blueprint</a> maps all ~37 requirements to
+    platform options · <a href="guardrails-implementation.html">Implementing Guardrails</a> is what you build
+    once red teaming has found something.
+</div>
+
+<div class="pager">
+    <a href="tooling-landscape.html"><span class="k">← Related</span>AI Tooling Landscape</a>
+    <a class="next" href="ai-gateway.html"><span class="k">Next →</span>AI Gateway — the control point</a>
+</div>
+
+</main>
+</div>
+
+<footer>Gen AI Fundamentals · Observability &amp; Eval Tools</footer>
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>
