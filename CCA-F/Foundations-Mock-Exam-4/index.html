@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCA-F — Mock Exam #4 (Exam-Grade)</title>
+<link rel="stylesheet" href="assets/exam.css">
+</head>
+<body>
+<header class="page">
+  <div class="crumb"><a href="../CCA-F_Study_Guide.html">CCA-F</a> › Mock Exam #4 — Exam-Grade</div>
+  <h1>CCA-F — Mock Exam #4 <span style="color:var(--acc2)">(Exam-Grade)</span></h1>
+  <div class="tag">6 scenario item-sets · 60 questions · 120-minute timer · multiple-response items included</div>
+</header>
+
+<div class="wrap">
+  <div id="scorebar" class="scorebar"></div>
+
+  <div class="intro">
+    <h2>Why this exam is different from Mocks #1–#3</h2>
+    <p>Mocks #1–#3 test whether you can <em>recognise the right concept</em>. Their stems average about 100–160
+    characters and each has one clearly-correct option beside three throwaways. That is why a high score on them
+    doesn't predict much: you were pattern-matching, not deciding.</p>
+    <p>This exam tests whether you can <em>choose between four defensible options</em>. Every item obeys four rules:</p>
+    <ul>
+      <li>The stem carries real system state and numbers — what was already tried, and what it cost.</li>
+      <li>All four options are things a competent architect might actually do. Usually two are genuinely good ideas.</li>
+      <li>The discriminator sits in the qualifier — <b>first step</b>, <b>guarantees</b>, <b>root cause</b>,
+          <b>least added complexity</b>. Read it before you read the options.</li>
+      <li>Every option carries its own rationale on reveal, so a wrong pick teaches you where the boundary actually is.</li>
+    </ul>
+    <p>Each wrong answer is also tagged with the <b>trap pattern</b> it belongs to. At the end you get a domain
+    breakdown plus a ranked list of which traps caught you — that list is your revision plan.</p>
+    <div>
+      <span class="pill"><span id="qcount">60</span> questions</span>
+      <span class="pill">120 minutes</span>
+      <span class="pill">Pass ≥ 72%</span>
+      <span class="pill">D1 27% · D2 18% · D3 20% · D4 20% · D5 15%</span>
+    </div>
+  </div>
+
+  <div id="exam"></div>
+
+  <div class="actions">
+    <button id="submitBtn">Reveal remaining &amp; finish</button>
+    <button id="resetBtn">Reset &amp; reshuffle</button>
+  </div>
+
+  <div id="report"></div>
+</div>
+
+<footer>CCA-F · Mock Exam #4 — exam-grade scenario item-sets · 60 questions across all 5 domains</footer>
+
+<script src="assets/questions.js"></script>
+<script src="assets/exam.js"></script>
+</body>
+</html>
