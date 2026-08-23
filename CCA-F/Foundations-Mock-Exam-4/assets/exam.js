@@ -18,6 +18,7 @@
   var byId = {}; EXAM.scenarios.forEach(function (s) { byId[s.id] = s; });
   var root = document.getElementById('exam');
   var state = [], answered = 0, correct = 0, finished = false, reported = false;
+  var NUMWORD = { 2: 'TWO', 3: 'THREE', 4: 'FOUR' };
   var DURATION = (EXAM.minutes || 120) * 60, left = DURATION, timerId = null, started = false;
 
   var FAMILIES = {
@@ -86,7 +87,7 @@
           '<span class="qnum">Q' + (qi + 1) + '</span>' +
           '<span class="qdom">' + esc(q.domain) + '</span>' +
           '<span class="qobj">' + esc(q.obj) + '</span>' +
-          (sel > 1 ? '<span class="qmulti">Select TWO</span>' : '') +
+          (sel > 1 ? '<span class="qmulti">Select ' + (NUMWORD[sel] || sel) + '</span>' : '') +
         '</div>' +
         '<div class="qtext">' + q.question + '</div>';
 
@@ -229,11 +230,11 @@
       '<tr><th>Item format</th><th>Score</th><th>%</th></tr>' +
       '<tr><td>Single answer</td><td>' + singleOk + '/' + single + '</td><td class="' +
         (singleOk / single >= 0.72 ? 'g' : 'r') + '">' + Math.round(singleOk / single * 100) + '%</td></tr>' +
-      (ms.length ? '<tr><td>Select TWO</td><td>' + msOk + '/' + ms.length + '</td><td class="' +
+      (ms.length ? '<tr><td>Multiple response</td><td>' + msOk + '/' + ms.length + '</td><td class="' +
         (msOk / ms.length >= 0.72 ? 'g' : 'r') + '">' + Math.round(msOk / ms.length * 100) + '%</td></tr>' : '') +
       '</table>' +
       (near ? '<p class="fnote" style="margin-top:6px">' + near +
-        ' of your Select-TWO misses were one-of-two \u2014 near misses, not content gaps.</p>' : '');
+        ' of your multiple-response misses were one short of the full set \u2014 near misses, not content gaps.</p>' : '');
 
     var el = document.getElementById('report');
     el.innerHTML =
