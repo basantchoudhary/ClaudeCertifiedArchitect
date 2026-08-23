@@ -136,9 +136,17 @@
       if (s.picked.indexOf(orig) >= 0 && s.q.answer.indexOf(orig) < 0) li.classList.add('wrongpick');
     });
 
+    if (s.q.select > 1 && !ok && s.picked.length) {
+      var hit = s.picked.filter(function (i) { return s.q.answer.indexOf(i) >= 0; }).length;
+      s.partial = hit;
+    }
+
     var res = s.picked.length === 0
       ? '<span class="res skip">Skipped</span>'
-      : (ok ? '<span class="res ok">Correct</span>' : '<span class="res no">Incorrect</span>');
+      : (ok ? '<span class="res ok">Correct</span>'
+            : '<span class="res no">Incorrect' +
+              (s.partial ? ' \u2014 ' + s.partial + ' of ' + s.q.select + ' right' : '') +
+              '</span>');
 
     var rows = s.order.map(function (orig, pos) {
       var isAns = s.q.answer.indexOf(orig) >= 0;
@@ -212,10 +220,25 @@
           '<div class="fnote">' + esc(F.note) + '</div>' +
           '<div class="fitems">' + fam[k].map(esc).join(' \u00b7 ') + '</div></li>';
       }).join('');
+    var ms = state.filter(function (s) { return s.q.select > 1; });
+    var msOk = ms.filter(function (s) { return eqSet(s.picked, s.q.answer); }).length;
+    var near = ms.filter(function (s) { return s.partial === s.q.select - 1; }).length;
+    var single = state.length - ms.length;
+    var singleOk = correct - msOk;
+    var split = '<table class="dom" style="margin-top:14px">' +
+      '<tr><th>Item format</th><th>Score</th><th>%</th></tr>' +
+      '<tr><td>Single answer</td><td>' + singleOk + '/' + single + '</td><td class="' +
+        (singleOk / single >= 0.72 ? 'g' : 'r') + '">' + Math.round(singleOk / single * 100) + '%</td></tr>' +
+      (ms.length ? '<tr><td>Select TWO</td><td>' + msOk + '/' + ms.length + '</td><td class="' +
+        (msOk / ms.length >= 0.72 ? 'g' : 'r') + '">' + Math.round(msOk / ms.length * 100) + '%</td></tr>' : '') +
+      '</table>' +
+      (near ? '<p class="fnote" style="margin-top:6px">' + near +
+        ' of your Select-TWO misses were one-of-two \u2014 near misses, not content gaps.</p>' : '');
+
     var el = document.getElementById('report');
     el.innerHTML =
       '<h2>Result breakdown</h2>' +
-      '<table class="dom"><tr><th>Domain</th><th>Score</th><th>%</th></tr>' + rows + '</table>' +
+      '<table class="dom"><tr><th>Domain</th><th>Score</th><th>%</th></tr>' + rows + '</table>' + split +
       (fams
         ? '<h3>Trap families that caught you \u2014 revise in this order</h3><ul class="traps">' + fams + '</ul>'
         : '<p class="clean">No trap family caught you. You are reading the distractors properly.</p>');
