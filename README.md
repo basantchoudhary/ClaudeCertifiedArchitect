@@ -26,13 +26,19 @@ exam-focused CCA material land more easily.
 | 🧪 **CCA-F · Domain 2 — Mock Exam Bank** (8 sets + full mock, 121 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Claude-Code/quizzes/index.html) |
 | **CCA-F · Domain 3 — Prompt Engineering** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/index.html) |
 | 🧪 **CCA-F · Domain 3 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
+| 🧪 **CCA-F · Domain 3 — Hands-On Lab** (8 exercises in a throwaway repo · memory, rules, commands, skills, permissions) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Hands-On-Lab/index.html) |
 | **CCA-F · Domain 4 — Tool Design & MCP** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/index.html) |
 | 🧪 **CCA-F · Domain 4 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
+| 🦴 **CCA-F · Domain 4 — MCP Skeletons** 🆕 (mental model + 8 minimal servers, one per design pattern · runnable Python, all tested) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-MCP-Skeletons/index.html) |
+| 🔌 **CCA-F · Wire-Format Reference** 🆕 (11 scenarios × scenario → client code → request JSON → response JSON, annotated · what actually goes to the model and comes back) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Wire-Format-Reference/index.html) |
 | **CCA-F · Domain 5 — Context & Reliability** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/index.html) |
 | 🧪 **CCA-F · Domain 5 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/quizzes/index.html) |
 | CCA-F full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/CCA-F_Study_Guide.html) |
 | ⏱️ **CCA-F · Foundations Timed Mock Exam #1** (all 5 domains · 77 questions · 120-min timer · scaled scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam/index.html) |
-| ⏱️ **CCA-F · Foundations Timed Mock Exam #2** 🆕 (all 5 domains · 60 all-new questions · 120-min timer · per-domain breakdown) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-2/index.html) |
+| ⏱️ **CCA-F · Foundations Timed Mock Exam #2** (all 5 domains · 60 all-new questions · 120-min timer · per-domain breakdown) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-2/index.html) |
+| ⏱️ **CCA-F · Foundations Timed Mock Exam #3** (all 5 domains · 120-min timer) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-3/index.html) |
+| 🎯 **CCA-F · Mock Exam #4 — Exam-Grade** (6 scenario item-sets · 60 questions · four defensible options each · trap-pattern breakdown) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-4/index.html) |
+| 🎯 **CCA-F · Mock Exam #5 — Exam-Grade** 🆕 (60 all-new items, none repeated from #4 · exact blueprint weighting · 6 multiple-response) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-5/index.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
 
