@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCA-F — Mock Exam #5 (Exam-Grade)</title>
+<link rel="stylesheet" href="assets/exam.css">
+</head>
+<body>
+<header class="page">
+  <div class="crumb"><a href="../CCA-F_Study_Guide.html">CCA-F</a> › Mock Exam #5 — Exam-Grade</div>
+  <h1>CCA-F — Mock Exam #5 <span style="color:var(--acc2)">(Exam-Grade)</span></h1>
+  <div class="tag">6 scenario item-sets · 60 questions · 120-minute timer · multiple-response items included · no item repeated from Mock #4</div>
+</header>
+
+<div class="wrap">
+  <div id="scorebar" class="scorebar"></div>
+
+  <div class="intro">
+    <h2>What this is</h2>
+    <p>A second exam-grade paper, built to the same four rules as <a href="../Foundations-Mock-Exam-4/index.html">Mock #4</a>:</p>
+    <ul>
+      <li>The stem carries real system state and numbers — what was already tried, and what it cost.</li>
+      <li>All four options are things a competent architect might actually do. Usually two are genuinely good ideas.</li>
+      <li>The discriminator sits in the qualifier — <b>first step</b>, <b>guarantees</b>, <b>root cause</b>,
+          <b>least added complexity</b>. Read it before you read the options.</li>
+      <li>Every option carries its own rationale on reveal, so a wrong pick teaches you where the boundary actually is.</li>
+    </ul>
+    <p><b>Nothing here repeats Mock #4.</b> Every stem, every correct answer and every distractor is new — checked
+    programmatically, not by eye. The six scenarios are the same official systems, but each brief carries
+    <em>different system state</em>, so no item can be answered from memory of the previous paper.</p>
+    <p>Sit this one <em>after</em> Mock #4, ideally a day or more later. Because the traps repeat but the surfaces
+    do not, the gap between your two scores is the useful number — it tells you whether you learned the
+    <em>principle</em> or just the previous paper's answers.</p>
+    <div>
+      <span class="pill"><span id="qcount">60</span> questions</span>
+      <span class="pill">120 minutes</span>
+      <span class="pill">Pass ≥ 72%</span>
+      <span class="pill">D1 27% · D2 18% · D3 20% · D4 20% · D5 15%</span>
+    </div>
+  </div>
+
+  <div class="intro">
+    <h2>How it differs from Mock #4</h2>
+    <table class="dom">
+      <tr><th>&nbsp;</th><th>Mock #4</th><th>Mock #5</th></tr>
+      <tr><td>Domain mix</td><td>15 · 12 · 12 · 12 · 9</td><td><b>16 · 11 · 12 · 12 · 9</b> — exactly the published blueprint</td></tr>
+      <tr><td>Multiple-response</td><td>5 items</td><td>6 items</td></tr>
+      <tr><td>Emphasis</td><td>The core of each objective</td><td>The sub-objectives Mock #4 did not reach</td></tr>
+    </table>
+    <p style="margin-top:12px">Objectives this paper targets that Mock #4 left alone: loop-termination anti-patterns,
+    <code>tool_choice</code> semantics (<code>any</code> vs forced), <code>allowedTools</code> and
+    <code>AgentDefinition</code> restrictions, hub-and-spoke communication, <code>@import</code> and path-scoped rule
+    diagnosis, <code>context: fork</code>, skill frontmatter as enforcement, the interview pattern, message batching
+    strategy, <code>--json-schema</code>, headless permissions, semantic-versus-syntactic schema failure,
+    absent-source retries, <code>detected_pattern</code> tracking, <code>custom_id</code> correlation, stratified
+    sampling, scratchpads and manifests, and lost-in-the-middle positioning.</p>
+    <p>Each wrong answer is tagged with the <b>trap pattern</b> it belongs to. At the end you get a domain breakdown,
+    a single-versus-multiple-response split, and a ranked list of which traps caught you — that list is your revision
+    plan for the days you have left.</p>
+  </div>
+
+  <div id="exam"></div>
+
+  <div class="actions">
+    <button id="submitBtn">Reveal remaining &amp; finish</button>
+    <button id="resetBtn">Reset &amp; reshuffle</button>
+  </div>
+
+  <div id="report"></div>
+</div>
+
+<footer>CCA-F · Mock Exam #5 — exam-grade scenario item-sets · 60 all-new questions across all 5 domains</footer>
+
+<script src="assets/questions.js"></script>
+<script src="assets/exam.js"></script>
+</body>
+</html>
