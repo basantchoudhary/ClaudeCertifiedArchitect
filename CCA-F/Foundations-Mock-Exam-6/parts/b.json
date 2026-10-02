@@ -1,0 +1,700 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A public-policy think tank runs a research system on the Claude Agent SDK. A coordinator agent decomposes each analyst request and delegates through the Task tool to a web-search subagent, a document-analysis subagent that reads PDFs from a licensed journal database and other archives exposed over MCP, a synthesis subagent and a report subagent. Briefings go to legislative staff and must cite every claim to a document and page."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D3 Claude Code Configuration",
+   "brief": "A food-delivery company's platform team uses Claude Code in a 900k-line monorepo: Kotlin backend services, a TypeScript web app and shared protobuf contracts. Engineers use the built-in tools (Read, Write, Edit, Bash, Grep, Glob) to explore and change code, plus MCP servers for the company's feature-flag service and its design-docs wiki. A few engineers also script Claude through the Agent SDK."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m6-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Iterative refinement loop",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A briefing on the state's 2026 water-rights reform went out after the coordinator divided the request into legislative history, agricultural impact and municipal supply. Each subagent covered its share well. A committee aide replied that the briefing 'skips the court case everyone at the hearing will raise': a 2025 federal ruling that, together with an interstate compact amendment, changes how the reform applies. Both items appear only in the footnotes of PDFs the analysis subagent had already read, and the reform's public summaries mention neither. In March a housing briefing missed a zoning settlement the same way. What is the <b>most effective change</b>?",
+   "options": [
+    {
+     "t": "Revise the coordinator's planning instructions so reform requests are split into court-ruling and interstate-agreement strands as well as legislative and economic ones.",
+     "why": "Runner-up. Broadening the decomposition is right when the missing areas are foreseeable from the request. These items surfaced only inside documents already retrieved, so no up-front split would have named them, and the next miss will be something else."
+    },
+    {
+     "t": "Include the complete findings returned by earlier subagents in each later subagent's prompt, alongside its own assignment and its quality criteria.",
+     "why": "Incorrect. Passing prior findings explicitly is good practice for dependent subagents, but nothing here assigns anyone to investigate what those findings depend on."
+    },
+    {
+     "t": "Have the coordinator examine each draft for premises its evidence leans on but nobody investigated, commission follow-up work on those, and redraft.",
+     "why": "Correct. An iterative refinement loop (evaluate the synthesis for gaps, re-delegate, re-synthesize) catches gaps that only become visible in intermediate findings."
+    },
+    {
+     "t": "Give the synthesis subagent a scoped lookup tool for quick factual checks while drafting, with deeper questions still routed through the coordinator.",
+     "why": "Incorrect. A scoped cross-role tool suits frequent simple verifications; researching a federal ruling and a compact amendment is substantive work that belongs to the coordinator's delegation."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The missing items surfaced only inside sources already read, and the same failure hit a housing briefing on a different subject, so no fixed set of planning strands can anticipate them; if the gaps were predictable from the request type, fixing the decomposition would win.",
+   "explanation": "Decomposition covers only what is knowable at the start. When gaps emerge from what subagents find, the coordinator should evaluate the synthesis for gaps, re-delegate targeted work and re-synthesize."
+  },
+  {
+   "id": "m6-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Coordinator-mediated communication",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The document-analysis subagent often reaches PDFs whose key tables come from datasets it cannot open, and it reports each case to the coordinator; the round trip adds about 90 seconds, and analysts have noticed. An engineer proposes a shared board where any subagent can post such requests for the web-search subagent to pick up. A review of last month's runs found the coordinator's follow-ups split roughly evenly between commissioning a search for a public copy, narrowing the claim to what the PDF supports, and checking with the analyst, and the right choice depended on what other subagents had already gathered. Which design <b>best fits</b>?",
+   "options": [
+    {
+     "t": "Keep each unopened-dataset case flowing to the coordinator as a typed field in the analysis return, and leave the choice of follow-ups with it.",
+     "why": "Correct. Hub-and-spoke: the coordinator sees every subagent's results, so it is the only place that can choose correctly among searching, narrowing or asking the analyst."
+    },
+    {
+     "t": "Create the shared request board, have the web-search subagent watch it for new items, and let the coordinator read the board when it aggregates.",
+     "why": "Incorrect. Subagents have isolated context by design; a shared board lets them act around the coordinator, which then cannot pick the right follow-up or own failures."
+    },
+    {
+     "t": "Give the analysis subagent a scoped tool that searches for a public copy of a cited dataset, with other follow-ups still sent to the coordinator.",
+     "why": "Runner-up. A limited cross-role tool is right for a high-frequency, uniform need. Here a search is the right response only about a third of the time, and whether it is right depends on other subagents' findings that the analysis subagent cannot see."
+    },
+    {
+     "t": "Start the web-search subagent alongside the analysis subagent by emitting both Task calls in one coordinator response at the outset.",
+     "why": "Incorrect. Parallel spawning helps independent work; the search here cannot be specified until the analysis subagent has found the missing dataset."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "Follow-ups split evenly across three actions and depend on what other subagents gathered; if most follow-ups were a uniform public-copy search, the scoped cross-role tool would win.",
+   "explanation": "In a coordinator-subagent design, inter-subagent requests flow through the coordinator, which sees all results and decides routing. Scoped cross-role tools are the exception for high-frequency, simple needs."
+  },
+  {
+   "id": "m6-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Dependent vs parallel spawning",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "For energy-subsidy briefings the coordinator emits four Task calls in one response: legislative search, regulatory review, cost-data search and stakeholder search. The regulatory reviewer's prompt names the topic and asks it to 'review the implementing rules for the statutes in scope'. Its output is consistently generic, and about half of it concerns statutes that never appear in the final briefing. Which statutes are in scope is settled by what the legislative search returns, and that varies widely between states. The cost-data and stakeholder searches perform well and finish in about the same time as the legislative search. Which change should the team make?",
+   "options": [
+    {
+     "t": "Keep the four parallel Task calls and expand the regulatory prompt with the topic's jurisdiction, date range, expected output format and quality criteria.",
+     "why": "Runner-up. Richer explicit context is the fix when a subagent's input is independent of the others. Its key input, the statute list, does not exist until the legislative search finishes."
+    },
+    {
+     "t": "Add a refinement step where the coordinator checks the regulatory output against the final statute list and re-delegates any mismatched sections.",
+     "why": "Incorrect. A gap-and-refine loop is useful for discoveries made late; here the dependency is known in advance, so re-doing half the work each run is avoidable."
+    },
+    {
+     "t": "Restrict the regulatory reviewer's tools to the regulations database, removing general web search from its <code>AgentDefinition</code> tool list.",
+     "why": "Incorrect. Scoping tools to role is good practice, but the reviewer drifts because it does not know which statutes matter, not because of the tools it holds."
+    },
+    {
+     "t": "Delay the regulatory Task until the legislative results come back, put the full statute list into its prompt, and run the other two searches concurrently.",
+     "why": "Correct. A dependent subtask waits for its input, which is passed explicitly in its prompt; independent subtasks still run in parallel via multiple Task calls."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The statutes in scope are set by the legislative search's output; if the regulatory work did not depend on another subagent's results, keeping it parallel with a richer prompt would be right.",
+   "explanation": "Subagents receive only what is in their prompt. Spawn independent work in parallel, but sequence a subtask after the one whose findings it needs and include those findings in full."
+  },
+  {
+   "id": "m6-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Selecting subagents by query complexity",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Analysts complain that every request takes 6–9 minutes. Profiling shows that in about 30% of runs the search and analysis subagents fetch the same PDFs, adding roughly 40 seconds. Most requests are narrow factual questions, such as the effective date of one regulation or the vote count on one bill, and on those the synthesis and report stages run for over four minutes while changing the answer little. Briefings for complex requests are rated well. Which change <b>best addresses the complaint</b>?",
+   "options": [
+    {
+     "t": "Send the synthesis and report stages through the Message Batches API and notify each analyst by email when their answer is ready.",
+     "why": "Incorrect. Batch processing trades latency for cost, with up to a 24-hour window; it makes interactive answers slower."
+    },
+    {
+     "t": "Let the coordinator judge how much of the pipeline each request warrants and skip the drafting stages for narrow questions.",
+     "why": "Correct. The coordinator should select subagents by query complexity rather than always running the full pipeline; that removes the four-minute stages from most requests."
+    },
+    {
+     "t": "Partition sources between the search and analysis subagents, assigning each PDF to one subagent and passing its content to the other on request.",
+     "why": "Runner-up. Partitioning scope is right when duplicated work drives the delay. Duplication here costs about 40 seconds in 30% of runs; the unnecessary stages cost minutes on most runs."
+    },
+    {
+     "t": "Emit the search and analysis Task calls in one coordinator response, running both subagents in parallel instead of one after the other.",
+     "why": "Incorrect. Parallel Task calls suit independent work; analysis depends on what search finds, and the bulk of the time is in later stages."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Most requests are narrow lookups spending four minutes in stages they do not need, while duplication costs 40 seconds in 30% of runs; if duplication were the dominant cost, scope partitioning would win.",
+   "explanation": "A coordinator should choose which subagents to invoke based on the request, not route everything through the full pipeline."
+  },
+  {
+   "id": "m6-s3-05",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resume vs fresh session with summary",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "A research session on rail-freight policy paused on Friday after the analysis subagent had worked through 34 journal articles. On Monday the analyst writes: 'Pick up where we left off, and add two questions on port congestion.' Over the weekend the publisher issued corrected editions for most of those articles, revising several tables the coordinator had already quoted. The session history still holds the original tool results, and the coordinator's notes map findings to articles. What is the <b>most reliable</b> way to continue?",
+   "options": [
+    {
+     "t": "Resume with <code>--resume rail-freight</code>, tell the agent which articles now have corrected editions, and add the analyst's two questions on port congestion.",
+     "why": "Runner-up. Resuming and informing the agent of changes is right when a few sources changed. With most results superseded, the history is dominated by stale tables the model may keep reasoning from."
+    },
+    {
+     "t": "Resume with <code>--resume rail-freight</code>, run <code>/compact</code> to reduce context usage, then re-read the corrected editions within that session.",
+     "why": "Incorrect. /compact reduces context usage but summarizes the stale results rather than removing them, so superseded figures can survive in the summary."
+    },
+    {
+     "t": "Open a fresh session from a structured digest of the findings that still hold, with the corrected editions queued for re-reading.",
+     "why": "Correct. When much of the prior tool output is stale, a new session with a structured summary is more reliable than resuming over outdated results."
+    },
+    {
+     "t": "Use <code>fork_session</code> to branch the Friday session into one line of work for the original questions and one for the new questions.",
+     "why": "Incorrect. Forking suits divergent approaches from a valid baseline; both branches would inherit the same stale tool results."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Most of the articles were replaced, so most tool results in history are stale; if only one or two had changed, resuming and telling the agent about them would win.",
+   "explanation": "Resume when prior context is still mostly valid and tell the agent what changed; start fresh with a structured summary when much of the history is stale."
+  },
+  {
+   "id": "m6-s3-06",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 PostToolUse normalization",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Three MCP servers feed the document-analysis subagent: a journal database, a government gazette archive and a court-records service. They report publication dates as Unix timestamps, 'Q3 2024' strings and DD/MM/YYYY respectively, and the court service switches to MM/DD/YYYY on one endpoint. The synthesis subagent sometimes orders events wrongly or treats a 2024 figure as newer than a 2025 one. All three are the vendors' own hosted MCP endpoints, used under the vendors' standard terms. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Register a <code>PostToolUse</code> hook on the team's agent that rewrites every date in those results to one standard form before the model reads them.",
+     "why": "Correct. A PostToolUse hook normalizes heterogeneous formats deterministically before the model reasons over them, on the side of the boundary the team controls."
+    },
+    {
+     "t": "Change the three servers' responses to emit ISO 8601 dates, with an explicit precision field for quarter-only values such as 'Q3 2024'.",
+     "why": "Runner-up. Fixing formats at the source is cleanest when the team runs the servers. These are vendor-hosted endpoints, so their responses are not the team's to change."
+    },
+    {
+     "t": "Add few-shot examples to the analysis subagent's prompt showing each date format converted to ISO 8601, including the court service's two formats.",
+     "why": "Incorrect. Few-shot examples improve consistency but remain probabilistic, and the DD/MM vs MM/DD ambiguity cannot be resolved reliably by the model."
+    },
+    {
+     "t": "Require the synthesis output to show each source's publication date beside every claim drawn from it, in the reader-facing briefing.",
+     "why": "Incorrect. Showing publication dates helps readers interpret temporal differences, but the dates shown would still be mis-parsed upstream."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The servers are vendor-hosted endpoints the team cannot change; if the team operated them, normalizing in the servers' own output would be the better fix.",
+   "explanation": "PostToolUse hooks intercept tool results and normalize them before the model sees them, giving deterministic behaviour where prompts give only probabilistic compliance."
+  },
+  {
+   "id": "m6-s3-07",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Splitting a generic tool",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The document-analysis subagent queries four corpora through one MCP tool, <code>query_corpus(source, text)</code>. About one call in five goes to the wrong corpus, and when a court query lands on the archive it returns zero hits and the briefing says no precedent exists. The tool's documentation already runs to forty lines, with a worked query for each corpus. Each corpus has its own query grammar (the court service takes docket syntax, the gazette takes date-bounded keywords), and each returns a different set of fields. What should the team <b>do next</b>?",
+   "options": [
+    {
+     "t": "Add four or five few-shot examples to the subagent's system prompt that show the right corpus choice for typical court, gazette and archive questions.",
+     "why": "Incorrect. Examples add tokens without fixing the root cause: one tool hides four different contracts behind a parameter."
+    },
+    {
+     "t": "Rework the <code>query_corpus</code> description into a decision table mapping question types to source values, with the common mistakes listed.",
+     "why": "Runner-up. Improving the description is the right first step when it is thin. It is already long with per-corpus examples, and the corpora differ in grammar and output, which a parameter value cannot express."
+    },
+    {
+     "t": "Return <code>isError</code> with a validation category when a query's syntax does not match the chosen corpus, instead of an empty result.",
+     "why": "Incorrect. Structured errors help the agent recover after a misroute, but the misrouting itself continues."
+    },
+    {
+     "t": "Expose each corpus as its own purpose-named tool, with parameters that follow that corpus's grammar and a documented result shape.",
+     "why": "Correct. Splitting a generic tool into purpose-specific tools with defined input/output contracts makes selection reliable when the operations genuinely differ."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The description is already long and specific, and the corpora differ in query grammar and returned fields; if the description were still minimal, improving it would be the first step.",
+   "explanation": "Descriptions are the primary selection mechanism, but when one tool covers operations with different inputs and outputs, split it into purpose-specific tools."
+  },
+  {
+   "id": "m6-s3-08",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Access failure vs valid empty result",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A briefing stated that no committee testimony existed on a pesticide bill; testimony was found later. The archive search tool had returned an empty list. Logs show the archive's index was down for its nightly rebuild, which runs up to two hours, and that the tool's wrapper catches connection errors and returns an empty list in their place. Analysts submit requests at all hours, and the coordinator reads an empty list as a search that ran and found nothing. How should the tool's behaviour change?",
+   "options": [
+    {
+     "t": "Retry connection errors inside the wrapper with exponential backoff for up to a minute, returning the empty list only once the retries are used up.",
+     "why": "Runner-up. Local retry is right for brief transient faults. A rebuild of up to two hours outlasts it, after which the outage still looks identical to a genuine no-match."
+    },
+    {
+     "t": "Report the index outage as a failed call carrying an availability category and a retryable flag, and keep empty lists for searches that ran.",
+     "why": "Correct. Distinguishing an access failure from a valid empty result, with structured category and retryability, lets the coordinator wait, reroute or flag the gap."
+    },
+    {
+     "t": "Fall back to the web-search subagent whenever the archive returns nothing, letting the coordinator merge whatever public sources it finds.",
+     "why": "Incorrect. Committee testimony may not be public, and the coordinator still cannot tell an outage from a real absence in the archive."
+    },
+    {
+     "t": "Record the query, timestamp and hit count of each archive call in the claim-source metadata that the coordinator passes to synthesis.",
+     "why": "Incorrect. Provenance metadata is useful, but a hit count of zero still does not say whether the search ran."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The outage lasts up to two hours and requests arrive at any time; if failures were brief blips, local retry with backoff would be the first fix.",
+   "explanation": "Tools must distinguish access failures from valid empty results and return structured error metadata (isError, category, retryability) so the agent can recover appropriately."
+  },
+  {
+   "id": "m6-s3-09",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Presenting conflicting sources",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Two sources published this year disagree on a plant closure: an agency estimates 14,000 jobs affected, a university study 9,500. The synthesis subagent kept the agency figure, and at the hearing a witness pointed out that the agency's model had been disputed, which embarrassed the member's aide. Staff use these briefings to draft questions for witnesses from both organizations, and briefings go straight from the report subagent to staff. Which change to the synthesis output is <b>most appropriate</b>?",
+   "options": [
+    {
+     "t": "Calibrate a per-claim confidence score on a labeled set of past briefings and hold claims below threshold, such as disputed models, for analyst review.",
+     "why": "Runner-up. Calibrated confidence routing is right for directing reviewer effort. There is no review step in this flow, and staff need the disagreement itself to question both witnesses, not a score."
+    },
+    {
+     "t": "Require every cited source to carry its publication and data-collection dates, shown next to the claims drawn from it.",
+     "why": "Incorrect. Dates stop timing differences being read as contradictions; both sources are from this year, so dates do not explain the disagreement."
+    },
+    {
+     "t": "Give disagreements their own part of the briefing, setting out every competing estimate with who produced it, when, and by what method.",
+     "why": "Correct. Conflicting statistics are preserved with source attribution in a structured section rather than resolved by picking one."
+    },
+    {
+     "t": "Render statistical findings as tables with a source column and keep narrative findings as prose, matching each source's content type.",
+     "why": "Incorrect. Content-appropriate rendering is good practice, but a table can still carry only the one figure synthesis chose."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Readers must question both organizations and briefings reach them without review; if the goal were routing analyst review effort, calibrated confidence would win.",
+   "explanation": "When credible sources conflict, preserve both values with attribution and dates in a structured section rather than picking one."
+  },
+  {
+   "id": "m6-s3-10",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Preserving figures across long runs",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 2,
+   "question": "Large briefings involve 25–40 subagent returns of about 300 tokens each. The coordinator keeps a rolling summary, rewritten every ten returns, and hands synthesis that summary plus the analyst's request; the synthesis subagent's input is capped at 6,000 tokens to keep drafting fast. Audits find that 30% of numeric findings from returns 10–30 are missing from the final briefing or reworded as 'declined' or 'rose sharply', against 4% for the first and last five returns. <b>Which TWO changes</b> should the team make?",
+   "options": [
+    {
+     "t": "Maintain a facts ledger outside the rolling summary that holds each exact number with its date and source as returned, and hand it to synthesis verbatim.",
+     "why": "Correct. A persistent facts block keeps numbers, dates and sources out of progressive summarization, which is what is turning figures into 'declined'."
+    },
+    {
+     "t": "Pass synthesis the complete set of subagent returns in place of the rolling summary, ordered by subtopic, with each return's source metadata attached.",
+     "why": "Runner-up. Passing complete prior findings is right when they fit; 40 returns at 300 tokens is about 12,000 tokens, double the synthesis cap, and a long flat input keeps the middle-position loss."
+    },
+    {
+     "t": "Trim each subagent return to the fields the briefing needs and drop retrieval metadata before the coordinator adds the return to its context.",
+     "why": "Incorrect. Trimming verbose tool output helps when returns bloat context; these are already compact 300-token records."
+    },
+    {
+     "t": "Lead the synthesis input with a digest of key findings grouped under explicit headings by subtopic rather than in arrival sequence.",
+     "why": "Correct. Key findings at the start under explicit section headers counter the lost-in-the-middle effect that hits mid-run returns."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The synthesis input cap of 6,000 tokens rules out passing all 25–40 returns (about 12,000 tokens); without the cap, passing complete findings would compete with the facts ledger.",
+   "explanation": "Progressive summarization loses exact figures, and models attend less to the middle of long inputs. Keep a persistent facts block and put key summaries up front under clear headers."
+  },
+  {
+   "id": "m6-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Grep then incremental Read",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "An engineer new to the backend needs to understand where the X-Courier-Region header is parsed and how its value reaches the dispatch scheduler. Teams named their request-handling classes differently over the years, and a few services read the header through a constant declared in a shared module. The engineer is pairing with Claude in this session to learn the code and wants the trail of files in front of them as it is followed. <b>Which TWO steps</b> should Claude take?",
+   "options": [
+    {
+     "t": "Use Glob with <code>**/*Interceptor*.kt</code> and <code>**/*Filter*.kt</code> to list candidate classes, then Read each match looking for the header.",
+     "why": "Incorrect. Glob matches path patterns; with inconsistent class naming, file names are an unreliable guide to where the header is handled."
+    },
+    {
+     "t": "Use Grep across the Kotlin sources for the literal header name, then again for the identifier of any constant found to hold it.",
+     "why": "Correct. Grep searches file contents, so it finds the header and its constant wherever they appear, regardless of file naming."
+    },
+    {
+     "t": "Read the files those searches surface and follow their calls toward the scheduler, opening each next file only when the trace reaches it.",
+     "why": "Correct. Build understanding incrementally: find entry points by content, then Read along the flow rather than loading everything up front."
+    },
+    {
+     "t": "Delegate the trace to an Explore subagent with the header name and target, and have it return a summary of the path from parsing to the scheduler.",
+     "why": "Runner-up. An Explore subagent is right when only the conclusion is needed and verbose discovery should stay out of the main context. The engineer wants to see the trail in this session."
+    }
+   ],
+   "answer": [
+    1,
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "The engineer wants to follow the trail of files in this session; if they only needed the resulting map, delegating to an Explore subagent would be one of the two.",
+   "explanation": "Grep searches contents, Glob matches paths. Locate entry points by content, then Read incrementally along the call path; delegate to Explore only when the trail itself is not wanted."
+  },
+  {
+   "id": "m6-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 User vs project MCP scope",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The feature-flag MCP server is configured in the repository's <code>.mcp.json</code>, and every engineer uses it. Priya is trialling a beta build of the same server that adds tools for changing rollout percentages. The platform lead wants its token kept out of git. The beta's write tools are under a security review that ends in three weeks, and until then the server set that teammates get when they pull must stay as it is. Priya works across this repository and two sibling services. Where should she configure the beta server?",
+   "options": [
+    {
+     "t": "In the repository's <code>.mcp.json</code> as a second server entry, with its token supplied through <code>${FLAGS_BETA_TOKEN}</code> expansion from the environment.",
+     "why": "Runner-up. Project .mcp.json with env-var expansion is the right home once a server is meant for the team. Committing it now changes what every teammate gets on pull, and it covers only this repository."
+    },
+    {
+     "t": "In the project's <code>.claude/settings.json</code>, with permission rules that deny the beta's write tools to every user except Priya.",
+     "why": "Incorrect. Project settings are shared and have no per-user carve-outs; the server would still reach every teammate."
+    },
+    {
+     "t": "In a <code>CLAUDE.local.md</code> file in each of the three repositories, describing the beta server's command, arguments and token variable.",
+     "why": "Incorrect. CLAUDE.local.md holds personal instructions, not MCP server configuration; describing a server there does not connect it."
+    },
+    {
+     "t": "In the personal Claude Code config in her home directory, <code>~/.claude.json</code>, with the beta server's token taken from her shell environment.",
+     "why": "Correct. User-level configuration is personal, not version-controlled, suits experimental servers and applies across all her repositories."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Teammates' server set must not change on pull and Priya needs it in three repositories; if the beta were cleared for the team, project .mcp.json with env-var expansion would be right.",
+   "explanation": "Project .mcp.json is shared via version control; ~/.claude.json is personal. Experimental or individually-scoped servers belong at user level."
+  },
+  {
+   "id": "m6-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resource for a content catalog",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The design-docs wiki MCP server exposes <code>search_docs</code> and <code>get_doc</code>. Before answering most architecture questions, Claude makes 8–15 search calls with guessed keywords, often trying service names that do not exist in the wiki, before it reaches the right page. The 1,400 docs sit in a hierarchy by domain and service that changes a few times a month. Which change would <b>most reduce</b> these exploratory calls?",
+   "options": [
+    {
+     "t": "Publish the wiki's page tree, with titles, owning teams and one-line summaries, as an MCP resource.",
+     "why": "Correct. MCP resources expose content catalogs such as doc hierarchies, so the agent knows what exists without exploratory tool calls."
+    },
+    {
+     "t": "Expand the <code>search_docs</code> description with the wiki's valid service names, its query syntax and example queries for common questions.",
+     "why": "Runner-up. Richer descriptions are right when the agent picks or calls the tool badly. The calls here are discovery of 1,400 pages, which a description cannot enumerate."
+    },
+    {
+     "t": "Trim <code>search_docs</code> results to title, path and summary fields before Claude sees them, dropping body excerpts and edit history.",
+     "why": "Incorrect. Trimming tool output reduces tokens per call, not the number of guessed searches."
+    },
+    {
+     "t": "Delegate wiki lookups to an Explore subagent that runs the searches in its own context and returns only the page it settles on.",
+     "why": "Incorrect. A subagent keeps verbose output out of the main context, but the same exploratory calls still happen inside it."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The searches are spent discovering which of 1,400 stable pages exist; if Claude were misusing the tool's inputs, improving the description would come first.",
+   "explanation": "Use MCP resources to expose catalogs and hierarchies so the agent knows what exists, reserving tools for actions and targeted retrieval."
+  },
+  {
+   "id": "m6-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions on an owned server",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The platform team built the feature-flag MCP server and deploys it from its own repository. Its three tools have these complete descriptions: <code>get_flag</code> 'Gets flag info', <code>get_flag_rules</code> 'Gets rules', <code>evaluate_flag</code> 'Evaluates a flag'. Yesterday Claude told a product manager that courier 4471 would see the new routing flow; a targeting rule excludes that courier's city. Session logs show Claude called <code>get_flag</code> and reasoned from the default value. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add a section to the project CLAUDE.md telling Claude to answer any question about a specific courier or user with <code>evaluate_flag</code>.",
+     "why": "Runner-up. Project-level guidance is the practical fix when the server is third-party and its descriptions cannot be edited. This team owns the server, so the fix belongs in the descriptions every client sees."
+    },
+    {
+     "t": "Rename the tools to purpose-specific names such as <code>resolve_flag_for_courier</code> and <code>list_targeting_rules</code>, keeping their implementations.",
+     "why": "Incorrect. Renaming helps, but names alone do not state inputs, outputs or boundaries; it is a larger change than the first step needs."
+    },
+    {
+     "t": "Rewrite the server's tool documentation to give each tool's inputs, outputs, a sample question and when a sibling fits better.",
+     "why": "Correct. Tool descriptions are the primary selection mechanism; minimal descriptions cause misrouting among similar tools."
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that appends a note to every <code>get_flag</code> result warning that targeting rules may override the default.",
+     "why": "Incorrect. A hook can transform results, but a warning after the wrong call does not steer selection toward the evaluation tool."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The platform team owns the server; if it were a third-party server whose descriptions they could not edit, CLAUDE.md guidance would be the practical first step.",
+   "explanation": "Minimal descriptions cause unreliable selection among similar tools. Expanding descriptions with inputs, outputs, examples and boundaries is the high-leverage first fix."
+  },
+  {
+   "id": "m6-s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Forking from a shared baseline",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "An engineer spent 50 minutes with Claude mapping how order-assignment code uses a blocking Redis client: dozens of file reads covering call sites, threading assumptions and three timing-sensitive tests. They now want to compare a migration to Kotlin coroutines with one to a reactive client, each taken far enough to see test fallout, and keep the better one. The working tree is still clean at the commit they started from, and the status line shows the session at 38% of its context window. How should they proceed?",
+   "options": [
+    {
+     "t": "Ask Claude for a structured summary of the mapping, then open two new sessions seeded with that summary, one for each migration approach.",
+     "why": "Runner-up. A fresh session with a summary is right when the baseline's tool results are stale or context is near its limit. Neither holds, and a summary drops detail the full session retains."
+    },
+    {
+     "t": "Branch the session twice from its current point with <code>fork_session</code> and carry one migration forward in each branch.",
+     "why": "Correct. Forking creates independent branches from a shared, still-valid baseline, which is what comparing divergent approaches needs."
+    },
+    {
+     "t": "Spawn two subagents with the Task tool, passing each the complete mapping findings in its prompt and one migration approach to implement.",
+     "why": "Incorrect. Passing findings explicitly is right for delegation, but both subagents would edit the same working tree, and a prompt carries less than the session's full context."
+    },
+    {
+     "t": "Enter plan mode and have Claude design both migrations side by side, comparing their effect on the three timing-sensitive tests before choosing.",
+     "why": "Incorrect. Plan mode is for designing before changing code; the engineer needs both migrations implemented far enough to see real test fallout."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The tree is unchanged and context is at 38%, so the full baseline is valid; if files had changed or context were near its limit, a fresh session with a summary would win.",
+   "explanation": "fork_session creates independent branches from a shared baseline for divergent approaches. Start fresh with a summary only when the baseline is stale or overloaded."
+  },
+  {
+   "id": "m6-s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Per-item passes plus integration",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Before a resilience review, a staff engineer asks Claude how each of 28 backend services retries calls to the payments gateway. The reviewers supplied a spreadsheet template with one row per service and columns for retry count, backoff, idempotency key and timeout. In one long session, Claude found halfway through that three services use a different HTTP client, gave detailed rows for early services and thin ones for later services, and made two contradictory statements about a shared retry library. What is the <b>best way</b> to restructure the work?",
+   "options": [
+    {
+     "t": "Have Claude draft an investigation plan from what the first services reveal and add subtasks as new HTTP clients and retry patterns turn up.",
+     "why": "Runner-up. Adaptive decomposition is right when the shape of the work is unknown and subtasks depend on discoveries. The reviewers' template fixes both the items and the questions in advance."
+    },
+    {
+     "t": "Delegate the work to an Explore subagent that reads the services in its own context and returns a single summary table to the main session.",
+     "why": "Incorrect. A subagent isolates verbose output from the main session, but one pass over 28 services inside it suffers the same dilution."
+    },
+    {
+     "t": "Have Claude record each service's findings in a scratchpad file as it goes, and consult that file before writing later rows of the table.",
+     "why": "Incorrect. A scratchpad preserves findings across context boundaries, but the analysis is still one long pass with uneven attention."
+    },
+    {
+     "t": "Give every service its own focused pass, then run one comparison pass over all the outputs that settles disagreements about common code.",
+     "why": "Correct. Prompt chaining with per-item analysis and a cross-item integration pass gives consistent depth and resolves contradictions."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The reviewers' template fixes the 28 rows and four columns in advance; if the scope had to be discovered as the work progressed, adaptive decomposition would win.",
+   "explanation": "For a known, fixed set of items, chain focused per-item passes and add an integration pass; use adaptive decomposition when subtasks depend on what is found."
+  },
+  {
+   "id": "m6-s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Structured handoff for a human",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "At 02:00 an engineer uses Claude to investigate why courier ETAs jumped 40%. After an hour, Claude has traced it to a config change in the routing service, confirmed it on two dashboards and drafted a rollback. The status line shows the session at 85% of its context window, and the engineer worries the detail will be lost. Their shift ends in ten minutes; the rollback will be carried out by an engineer from the network team, who works from the incident ticket and does not use Claude Code. What should the engineer have Claude produce?",
+   "options": [
+    {
+     "t": "A concise incident note: affected service, cause, evidence with file references, revert steps and unresolved questions.",
+     "why": "Correct. A structured handoff summary lets a human act without the session or its transcript."
+    },
+    {
+     "t": "A scratchpad file in the repository holding each finding and its evidence, which a later session can load to continue the investigation.",
+     "why": "Runner-up. Scratchpad files are right for carrying findings across context boundaries for an agent. The next actor is a person working from the ticket, not a later session."
+    },
+    {
+     "t": "A named session the next engineer can reopen with <code>--resume eta-incident</code>, with a pointer to it added to the incident ticket.",
+     "why": "Incorrect. Resuming a named session suits continuing work in Claude Code; the incoming engineer does not use it."
+    },
+    {
+     "t": "A <code>/compact</code> of the current session to free context, followed by a final message summarizing the state of the investigation.",
+     "why": "Incorrect. /compact manages this session's context, but the summary stays inside a session the next engineer will not see."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The next actor is a human working only from the ticket without Claude Code; if a later Claude session were continuing the work, a scratchpad of findings would fit.",
+   "explanation": "When work passes to a human who will not read the transcript, compile a structured summary: what, why, evidence, recommended action, open questions."
+  },
+  {
+   "id": "m6-s4-08",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skill with context: fork",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Once a month an engineer upgrades the backend's third-party dependencies with Claude: it reads release notes for 30–60 libraries, often 150,000 tokens of changelog text, flags breaking changes and produces a short list of required code edits, which the engineer then makes in that same conversation. The procedure lives on an old wiki page, and last month a junior engineer following it skipped the step that checks transitive dependencies. Several engineers rotate through this task. What is the <b>best way</b> to package it?",
+   "options": [
+    {
+     "t": "A project slash command in <code>.claude/commands/upgrade-deps.md</code> holding the procedure, the transitive-dependency check and the output format.",
+     "why": "Runner-up. A shared project command is right for a repeatable team procedure whose working output can live in the main conversation. Reading 30–60 changelogs would crowd the conversation the engineer keeps working in."
+    },
+    {
+     "t": "A user-level skill in <code>~/.claude/skills/upgrade-deps/</code> with <code>context: fork</code> set and <code>allowed-tools</code> limited to Read and Grep.",
+     "why": "Incorrect. Forked context isolates the reading, but a user-level skill is personal and not shared with the rotating engineers."
+    },
+    {
+     "t": "A skill under <code>.claude/skills/</code> in the repository with <code>context: fork</code> in its frontmatter, whose last step returns the edit list.",
+     "why": "Correct. A project skill is shared through the repository, and context: fork runs the release-note reading in an isolated sub-agent context so only the edit list comes back."
+    },
+    {
+     "t": "A procedure file in <code>docs/</code> referenced from the project CLAUDE.md with an <code>@import</code> line, loaded in every session.",
+     "why": "Incorrect. @import keeps CLAUDE.md modular, but CLAUDE.md is for always-loaded standards, not an on-demand monthly workflow, and it does not isolate output."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Roughly 150,000 tokens of release notes are read before the engineer keeps working in the same conversation, so the reading must run in a forked context that returns only the edit list; if the reading were short, a shared project command would be enough.",
+   "explanation": "Skills package on-demand workflows; context: fork isolates verbose work from the main conversation. Project scope shares them with the team."
+  },
+  {
+   "id": "m6-s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 Verifying loaded memory files",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An engineer reports that Claude ignores <code>services/routing/CLAUDE.md</code> when editing routing code, repeatedly adding the LogWrapper call that the file forbids. Their personal <code>~/.claude/CLAUDE.md</code> includes the line 'Wrap outbound calls in LogWrapper'. Teammates editing the same directory see no problem. The engineer also recently moved to working from a second git worktree created from an older branch. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Remove the LogWrapper line from the engineer's <code>~/.claude/CLAUDE.md</code> and restate the prohibition at the top of the routing CLAUDE.md file.",
+     "why": "Runner-up. Removing the conflicting personal instruction is the fix once it is confirmed as the cause. The older-branch worktree may simply lack the routing file, so the first step is to see what is loaded."
+    },
+    {
+     "t": "Run <code>/memory</code> in that engineer's own session, inside the worktree they now use, and check which files load for routing code.",
+     "why": "Correct. /memory shows which memory files are loaded, separating a worktree that lacks the routing file from a conflicting personal instruction."
+    },
+    {
+     "t": "Move the routing conventions into <code>.claude/rules/routing.md</code> with a <code>paths:</code> glob of <code>services/routing/**</code> in its frontmatter.",
+     "why": "Incorrect. Path-scoped rules suit conventions spanning directories; these are directory-bound, and the move diagnoses nothing about this one engineer."
+    },
+    {
+     "t": "Pull the routing conventions into the root CLAUDE.md with an <code>@import</code> of the routing file, keeping that file as the single source.",
+     "why": "Incorrect. @import organizes memory modularly, but if the worktree lacks the file the import fails too, and the personal conflict remains."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Two causes are plausible (an older-branch worktree and a conflicting personal file) and only this engineer is affected; if /memory had already shown both files loaded, removing the personal instruction would win.",
+   "explanation": "When memory behaves differently for one person, /memory verifies which CLAUDE.md files are loaded before changing configuration."
+  },
+  {
+   "id": "m6-s4-10",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Interview pattern",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A product manager asks for a daily CSV export of courier payouts for finance, replacing a spreadsheet an analyst used to build by hand, and pastes three of its rows. The engineer has the schema but little knowledge of payout accounting. The finance lead says the old spreadsheet 'got several cases wrong' without saying which, and nobody has written down how refunds after payout, shifts crossing midnight or mid-week city changes should be treated. What is the <b>best way</b> to start?",
+   "options": [
+    {
+     "t": "Give Claude the three pasted spreadsheet rows with their source records and ask it to build an export that reproduces those lines exactly.",
+     "why": "Runner-up. Concrete input/output examples are the best way to communicate a transformation once the expected outputs are trustworthy. The source spreadsheet is known to be wrong in unnamed cases."
+    },
+    {
+     "t": "Write failing tests for the export's columns and header first, share the failures with Claude, and iterate until every test passes.",
+     "why": "Incorrect. Test-first iteration works when expected behaviour is known; these tests would cover layout, not the unsettled business rules."
+    },
+    {
+     "t": "Enter plan mode and have Claude design the full export, covering refunds, cross-midnight shifts and city changes, before any code is written.",
+     "why": "Incorrect. Plan mode designs an approach, but Claude would have to invent rules that no one has set."
+    },
+    {
+     "t": "Have Claude open by questioning the engineer about unusual situations the report must handle, and take the unanswered ones to the accounting team.",
+     "why": "Correct. The interview pattern has Claude ask questions first, surfacing requirements the engineer has not considered when the domain is unfamiliar."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The pasted rows come from a spreadsheet known to be wrong in unnamed cases and the edge-case rules are unwritten; if trustworthy expected outputs existed, concrete examples would be the best start.",
+   "explanation": "Use the interview pattern when requirements are unclear; use concrete examples or tests once the expected behaviour is known."
+  }
+ ]
+}
