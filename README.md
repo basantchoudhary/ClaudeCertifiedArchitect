@@ -39,7 +39,7 @@ exam-focused CCA material land more easily.
 | ⏱️ **CCA-F · Foundations Timed Mock Exam #3** (all 5 domains · 120-min timer) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-3/index.html) |
 | 🎯 **CCA-F · Mock Exam #4 — Exam-Grade** (6 scenario item-sets · 60 questions · four defensible options each · trap-pattern breakdown) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-4/index.html) |
 | 🎯 **CCA-F · Mock Exam #5 — Exam-Grade** (60 all-new items, none repeated from #4 · exact blueprint weighting · 6 multiple-response) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-5/index.html) |
-| ⚖️ **CCA-F · Mock Exam #6 — Real-Exam Style** 🆕 (60 original items · every item has a runner-up · length-matched options · graded on submit, topic tags hidden) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-6/index.html) |
+| ⚖️ **CCA-F · Mock Exam #6 — Real-Exam Style** 🆕 (60 original items · every item has a runner-up · length-matched options · answer shown on click, topic tags hidden) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Foundations-Mock-Exam-6/index.html) |
 | CCAR-P full study guide | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCAR-P/CCAR-P_Study_Guide.html) |
 | Production Projects roadmap | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/Production-Projects/Production_Projects.html) |
 

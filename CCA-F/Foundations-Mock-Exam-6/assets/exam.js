@@ -1,6 +1,6 @@
 /* CCA-F Mock Exam #6 — real-exam-style harness (forked from Mock #4/#5).
    Mock #6 additions:
-     · exam mode (default): answers stay changeable and nothing is graded until submit
+     · practice mode (default) grades on click; exam mode keeps answers changeable until submit
      · domain/objective tags hidden until an item is graded (the real exam shows neither)
      · runner-up + decider shown on reveal; report counts how often the runner-up caught you
    Original header:
@@ -24,8 +24,8 @@
   var root = document.getElementById('exam');
   var state = [], answered = 0, correct = 0, finished = false, reported = false;
   var NUMWORD = { 2: 'TWO', 3: 'THREE', 4: 'FOUR' };
-  var EXAMMODE = true;
-  try { EXAMMODE = localStorage.getItem('m6-mode') !== 'practice'; } catch (e) {}
+  var EXAMMODE = false;
+  try { EXAMMODE = localStorage.getItem('m6-mode') === 'exam'; } catch (e) {}
   var DURATION = (EXAM.minutes || 120) * 60, left = DURATION, timerId = null, started = false;
 
   var FAMILIES = {
