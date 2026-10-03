@@ -50,6 +50,9 @@ def check(qs, errors, warns):
     for q in qs:
         qid = q.get("id", "?")
         e = lambda m: errors.append(f"{qid}: {m}")
+        el = q.get("eli5")
+        if not el or not el.get("question") or not el.get("answer") or len(el.get("options", [])) != len(q.get("options", [])):
+            e("missing or incomplete eli5 (question, answer, one options entry per option)")
         for k in ("id", "sid", "domain", "obj", "trap", "fam", "select", "question", "options", "answer", "runnerUp", "decider", "explanation"):
             if k not in q:
                 e(f"missing field {k}")

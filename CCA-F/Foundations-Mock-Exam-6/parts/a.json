@@ -46,7 +46,17 @@
    ],
    "runnerUp": 0,
    "decider": "Nearly half of conversations involve more than one order, raised later; if every conversation concerned a single order known at the outset, forcing lookup_order first would suffice.",
-   "explanation": "Deterministic prerequisites belong on the downstream call and must be keyed to the entity being acted on. tool_choice controls what happens on a given turn; it cannot express 'before every refund, for that order'."
+   "explanation": "Deterministic prerequisites belong on the downstream call and must be keyed to the entity being acted on. tool_choice controls what happens on a given turn; it cannot express 'before every refund, for that order'.",
+   "eli5": {
+    "question": "A shop rule says: check the order before giving money back. The agent sometimes skips the check. The clue is: nearly half of conversations involve more than one order, and the extra ones come up later. The question is not about the 37 missed lookups as such. It is about which fix still works for the second and third order.",
+    "answer": "Put a guard at the till who looks at every refund before it goes out (a <b>PreToolUse hook</b> on <code>process_refund</code>). The guard asks one thing: was this exact purchase checked earlier in the chat? That works for the first order, the third order, or an order mentioned at the very end. Code checks every time; instructions only work most of the time. <b>Rule: a must-happen-every-time rule goes in code, checked at the moment of the risky action.</b>",
+    "options": [
+     "Runner-up. Forcing one lookup at the start (<code>tool_choice</code>) is like checking the first customer in the queue only. It would win if every chat had one order, known from the start.",
+     "A better label on the tool (the tool description) helps the agent pick tools. It is still a request, not a lock.",
+     "Correct. A guard on the refund itself, keyed to that purchase, catches every order, whenever it comes up.",
+     "Tidying the lookup result (a <b>PostToolUse hook</b>) helps only when a lookup happened. In 37 of 41 cases there was no lookup to tidy."
+    ]
+   }
   },
   {
    "id": "m6-s1-02",
@@ -80,7 +90,17 @@
    ],
    "runnerUp": 0,
    "decider": "The agent's first reply already omits the other problems; if they had been acknowledged and then lost many turns later, a persistent case-facts block would be the better fix.",
-   "explanation": "Multi-concern requests should be decomposed up front, investigated in parallel with shared context, and answered together. Case-facts blocks address a different failure: facts fading over long interactions."
+   "explanation": "Multi-concern requests should be decomposed up front, investigated in parallel with shared context, and answered together. Case-facts blocks address a different failure: facts fading over long interactions.",
+   "eli5": {
+    "question": "A customer hands over a list of three problems, and the agent answers only the first. The clue is: the agent's very first reply already skips the other two. The angry follow-ups and the empty case record are the vivid part, but they are results, not the cause.",
+    "answer": "Think of a waiter taking a table's order. They should write down every dish first, then send them all to the kitchen together. Here that means splitting the message into separate concerns, looking each one up (in parallel), and answering them all in one reply (<b>multi-concern decomposition</b>). Nothing was forgotten over time. The other concerns were never picked up. <b>Rule: split a request into its parts before you start working on any of them.</b>",
+    "options": [
+     "Runner-up. A pinned list of open issues (a <b>case-facts block</b>) stops facts fading in long chats. It would win if the issues had been noted and then lost many turns later.",
+     "Correct. Write down every concern first, look them all up, and answer them together.",
+     "A tidy summary for the human team (a <b>structured handoff</b>) is good practice. But these chats never went to a human, so it changes nothing here.",
+     "Teaching by example (<b>few-shot</b>) to take one issue per turn is the pattern that lets later issues slip away."
+    ]
+   }
   },
   {
    "id": "m6-s1-03",
@@ -114,7 +134,17 @@
    ],
    "runnerUp": 1,
    "decider": "The repair centre rewrites many fields of the order record during the pause; if only one or two known values changed, resuming with a note about them would be the better choice.",
-   "explanation": "Resume when the earlier context is mostly still valid, and tell the agent what changed. When much of the earlier tool output is stale, start a new session from a structured summary. The summary carries only stable facts (IDs, commitments, amounts); volatile state is fetched fresh, ideally by code rather than left to the agent — a must-never-happen-again requirement calls for a deterministic step, not an instruction."
+   "explanation": "Resume when the earlier context is mostly still valid, and tell the agent what changed. When much of the earlier tool output is stale, start a new session from a structured summary. The summary carries only stable facts (IDs, commitments, amounts); volatile state is fetched fresh, ideally by code rather than left to the agent — a must-never-happen-again requirement calls for a deterministic step, not an instruction.",
+   "eli5": {
+    "question": "A customer comes back after about nine days, and the agent picks up the old conversation where it left off. The clue is: while the device is at the repair centre, its system rewrites many parts of the order record. The wrong 'still in transit' quote is the vivid part. It is one example of a bigger problem, not the whole problem.",
+    "answer": "Imagine coming back to a recipe after nine days and finding someone has changed half the ingredients. You would not cook from your old notes. You would start a fresh page from a short summary and re-check the cupboard. Here that means a new session that opens with a structured summary of the claim, followed by fresh lookups (<b>new session with a structured summary</b>). Resuming would keep all the old, now-wrong tool results in front of the agent. One more thing: the re-check of the cupboard should be done by the system, not left to the agent's memory. Your code fetches the current order record and puts it in that first message (a <b>deterministic</b> step), and the summary holds only things that don't change, like IDs and promised amounts. <b>Rule: if little has changed, resume and say what changed; if a lot has changed, start fresh from a summary.</b>",
+    "options": [
+     "Branching the old conversation (<code>fork_session</code>) is for trying two different approaches from the same starting point. The branch still carries the same outdated notes.",
+     "Runner-up. Resuming with a note about what changed works when one or two values moved. It would win if only the shipment status had changed.",
+     "A pinned list of key facts (a <b>case-facts block</b>) keeps amounts from getting lost. The outdated tool results are still in the history, so the agent can still quote them.",
+     "Correct. A new session with a clean summary plus fresh lookups means the agent reasons only from current facts."
+    ]
+   }
   },
   {
    "id": "m6-s1-04",
@@ -148,7 +178,17 @@
    ],
    "runnerUp": 3,
    "decider": "In 22 of 40 cases the split was planned before any rejection; if every split followed a rejection, a non-retryable structured business error would be the fix.",
-   "explanation": "A hook enforces only the condition it evaluates. When the policy concerns a cumulative amount, the interception must evaluate the cumulative amount and redirect to escalation."
+   "explanation": "A hook enforces only the condition it evaluates. When the policy concerns a cumulative amount, the interception must evaluate the cumulative amount and redirect to escalation.",
+   "eli5": {
+    "question": "There is a $250 limit per order, and a guard blocks any single refund over $250. The agent pays a $400 refund as two $200 refunds. The clue is: in 22 of 40 cases nothing was ever rejected; the split was planned from the start. The question is not about how the agent reacts to a rejection.",
+    "answer": "A bouncer who checks each person, but not how many have already gone in, can be beaten by sending people in one at a time. The guard (the <b>PreToolUse hook</b>) has to count the running total for that order. Then it blocks once the total passes $250 and sends the case to a human (<code>escalate_to_human</code>). The limit is about the total, so the check must be about the total too. <b>Rule: a hook enforces only what it actually checks; check the thing the policy is about.</b>",
+    "options": [
+     "Correct. Count what has already been paid on that order plus the new amount, and block anything above $250.",
+     "Clear rules with examples (<b>escalation criteria</b> and <b>few-shot</b>) help judgment calls. A hard money limit needs code, not advice.",
+     "Splitting into two tools (<b>purpose-specific tools</b>) helps the agent choose. Both tools would still accept several small refunds.",
+     "Runner-up. A clear 'don't retry this' error (<code>isRetryable: false</code>) fixes an agent that keeps retrying after a rejection. It would win if every split had followed a rejection."
+    ]
+   }
   },
   {
    "id": "m6-s1-05",
@@ -182,7 +222,17 @@
    ],
    "runnerUp": 0,
    "decider": "Misroutes track particular phrases while the tool text already states boundaries; if the tool text were thin or overlapping, expanding the descriptions would come first.",
-   "explanation": "Keyword-sensitive wording in a system prompt can create tool associations that override good descriptions. When misroutes follow specific words regardless of what the customer wants, look at the prompt wording first."
+   "explanation": "Keyword-sensitive wording in a system prompt can create tool associations that override good descriptions. When misroutes follow specific words regardless of what the customer wants, look at the prompt wording first.",
+   "eli5": {
+    "question": "The agent issues refunds when customers only ask where their existing refund is. The clue is: every wrong case contains words like 'money back' or 'credit', and the tool text is already detailed. So the question is really about where those words get tied to the refund tool.",
+    "answer": "Picture a new shop assistant given a note: 'when anyone says money back, open the till.' They will open the till even for someone asking where their refund is. That note is the system prompt's wording, and it is overriding good tool labels (<b>keyword-sensitive system-prompt wording</b>). Fix the note so it describes what the customer wants, not which words to react to. <b>Rule: if mistakes follow particular words, look for those words in the system prompt.</b>",
+    "options": [
+     "Runner-up. Better tool labels (<b>tool descriptions</b>) are the usual first fix for wrong tool choices. They would win if the labels were thin, but these already state clear boundaries.",
+     "Splitting a tool (<b>purpose-specific tools</b>) is good design. But status questions without trigger words already go to the right tool, so the tools are not the problem.",
+     "Correct. Rewrite the prompt line that ties money words to <code>process_refund</code>.",
+     "Teaching by example (<b>few-shot</b>) could hide the bias. The bad instruction would still be there pulling the other way."
+    ]
+   }
   },
   {
    "id": "m6-s1-06",
@@ -216,7 +266,17 @@
    ],
    "runnerUp": 0,
    "decider": "About nine in ten failures are permanent declines; if timeouts made up most failures, retrying inside the tool would be the bigger improvement.",
-   "explanation": "Generic errors like 'Refund failed' hide what the agent needs to recover. Return a structured category and a retryable flag; business errors need an explanation the customer can act on."
+   "explanation": "Generic errors like 'Refund failed' hide what the agent needs to recover. Return a structured category and a retryable flag; business errors need an explanation the customer can act on.",
+   "eli5": {
+    "question": "Refunds fail, and the agent tries five times, then tells the customer to come back tomorrow. The clue is: about nine in ten failures are closed cards, which fail the same way every time. The afternoon timeouts are the vivid part, but they are the small share.",
+    "answer": "If a letter is returned 'address no longer exists', posting it again will not help. You need a new address. So the tool should label that failure as a business problem that will not go away (<code>errorCategory</code> business, <code>isRetryable: false</code>). It should also give a message the agent can pass on, listing other ways to pay the refund. Then the agent stops retrying and offers a real way forward (<b>structured error responses</b>). <b>Rule: tell the agent what kind of failure it is and whether retrying can help.</b>",
+    "options": [
+     "Runner-up. Trying again with growing waits (<b>retry with backoff</b>) is right for brief outages. It would win if timeouts were most of the failures.",
+     "Correct. Mark closed-card declines as permanent and give the agent words and options for the customer.",
+     "Turning error codes into plain words (a <b>PostToolUse hook</b>) helps readability. It still does not tell the agent whether to try again.",
+     "Telling 'nothing to refund' apart from 'something broke' is good practice (<b>empty result vs error</b>). It is about a different case, not the closed cards."
+    ]
+   }
   },
   {
    "id": "m6-s1-07",
@@ -250,7 +310,17 @@
    ],
    "runnerUp": 1,
    "decider": "Later calls land first time once a title has been seen, and the titles are stable; if the searches were returning irrelevant passages, a better tool description would be the fix.",
-   "explanation": "MCP resources expose content catalogues so the agent does not spend exploratory tool calls finding out what exists. Tool descriptions help it form and choose calls."
+   "explanation": "MCP resources expose content catalogues so the agent does not spend exploratory tool calls finding out what exists. Tool descriptions help it form and choose calls.",
+   "eli5": {
+    "question": "The agent makes about seven policy searches per chat, starting with vague guesses. The clue is: once it has seen a section title, its next search lands first time. So the agent is not bad at searching. It just does not know which sections exist.",
+    "answer": "In a library, you would read the contents page before pulling books off shelves. Give the agent the handbook's contents list as something it can read up front (an <b>MCP resource</b>). With 46 stable titles, it can go straight to the right section. A resource is for 'what is available'; a tool is for doing a lookup. <b>Rule: if the agent is searching to discover what exists, give it a catalogue.</b>",
+    "options": [
+     "Shortening results (<b>trimming tool output</b>) saves space. It does not reduce the number of searches.",
+     "Runner-up. Better tool instructions (the <b>tool description</b>) fix badly formed searches. They would win if searches were returning the wrong passages.",
+     "A helper agent (a <b>subagent</b>) keeps messy work out of the main chat. It would still do the same guessing searches itself.",
+     "Correct. A contents list the agent can read first removes the guessing."
+    ]
+   }
   },
   {
    "id": "m6-s1-08",
@@ -284,7 +354,17 @@
    ],
    "runnerUp": 1,
    "decider": "Roughly 80% of the context is tool payloads, most of it unused; if the payloads were already lean and the conversation was simply long, a case-facts block would be the fix.",
-   "explanation": "Tool results can take up context far out of proportion to their value. Trim them to the relevant fields as they arrive, and use case-facts blocks for values that must survive long conversations."
+   "explanation": "Tool results can take up context far out of proportion to their value. Trim them to the relevant fields as they arrive, and use case-facts blocks for values that must survive long conversations.",
+   "eli5": {
+    "question": "After many turns, the agent misquotes order totals. The clue is: each order lookup brings back 58 fields when about six are used, and these fill about 80% of the space. The wrong dollar figure is the vivid part. The question is what is filling the room.",
+    "answer": "Imagine a desk buried under full delivery manifests when you only need six numbers from each. The desk fills up, old papers get squashed into summaries, and the numbers blur. Cut each lookup down to the few fields used as it arrives (a <b>PostToolUse hook</b> that trims tool output). Then the space does not fill, and old turns do not get squashed so early. <b>Rule: fix the source of the clutter before protecting things from it.</b>",
+    "options": [
+     "Correct. Trim each order result to the few fields the agent uses, before the agent sees it.",
+     "Runner-up. A pinned list of key numbers (a <b>case-facts block</b>) protects them. It would win if the results were already small and the chat was simply long.",
+     "Putting key facts at the top with headings helps the model notice them (<b>lost in the middle</b>). But the summary comes from the same squashing that blurs the numbers.",
+     "Starting fresh from a summary (<b>new session</b>) suits outdated history. The new session would fill with the same huge results within a few turns."
+    ]
+   }
   },
   {
    "id": "m6-s1-09",
@@ -318,7 +398,17 @@
    ],
    "runnerUp": 0,
    "decider": "Replacements were only 4% (about 20) of the audited conversations; if their accuracy had been measured separately, calibrated field-level routing would be the right next step.",
-   "explanation": "Aggregate accuracy can hide poor performance on a particular type. Validate by category with enough samples before extending automation, and then use calibrated confidence to route review."
+   "explanation": "Aggregate accuracy can hide poor performance on a particular type. Validate by category with enough samples before extending automation, and then use calibrated confidence to route review.",
+   "eli5": {
+    "question": "Leadership wants the agent to approve warranty replacements alone, citing 96% overall agreement. The clue is: replacements were only 4% of the 500 checked, about 20 conversations. The note about unclear serial numbers is vivid, but it is not the first thing to fix.",
+    "answer": "A school's overall average can look great while one small class is struggling. Twenty replacement cases are too few to know how good the agent is at replacements. So check more replacement cases on their own (<b>stratified sampling</b>), then decide. Only after that is it worth fine-tuning how cases are routed. <b>Rule: measure the specific type you plan to automate, not the overall average.</b>",
+    "options": [
+     "Runner-up. A tested confidence score per field (<b>calibrated field-level confidence</b>) is a good way to route reviews. It comes next, once replacement accuracy is actually known.",
+     "Clear escalation rules with examples improve the agent's choices. They do not tell you whether its replacements are accurate enough to trust.",
+     "A guard on amounts of $250 or more (a <b>PreToolUse hook</b>) enforces the limit. It says nothing about decision quality below the limit.",
+     "Correct. Sample enough replacement cases to measure that type on its own first."
+    ]
+   }
   },
   {
    "id": "m6-s1-10",
@@ -353,7 +443,17 @@
    ],
    "runnerUp": 2,
    "decider": "Only 400 labelled conversations exist and the fix must land this sprint; with a large labelled history and more time, a separate classifier might compete.",
-   "explanation": "Unclear escalation boundaries are best fixed with explicit criteria plus a few contrasting examples. Classifiers are disproportionate here, and handoff summaries improve the hand-off, not the decision."
+   "explanation": "Unclear escalation boundaries are best fixed with explicit criteria plus a few contrasting examples. Classifiers are disproportionate here, and handoff summaries improve the hand-off, not the decision.",
+   "eli5": {
+    "question": "The agent escalates easy cases and keeps going on cases the policy does not cover. The team wants better judgment about when to escalate. The clue is: there is one sprint, and only 400 labelled conversations. That rules out building something new and big.",
+    "answer": "Training a new staff member works best with a clear rule sheet plus a few worked examples of tricky calls. The rule sheet says when to hand over: the customer asks for a person, the policy is silent, or there is no way forward (<b>explicit criteria</b>). The examples show near-identical cases going different ways, with the reason (<b>few-shot</b>). Together they fix a fuzzy boundary quickly. <b>Rule: fuzzy decisions get clear criteria plus a few contrasting examples.</b>",
+    "options": [
+     "Correct. Written hand-over triggers draw the line the agent was guessing at.",
+     "Correct. A few borderline examples with reasons show how to apply those triggers.",
+     "Runner-up. A separate trained sorter (a <b>classifier</b>) needs lots of labelled history and time. It might compete with years of tagged tickets, not 400 and one sprint.",
+     "A tidy summary for the human (a <b>structured handoff</b>) makes each escalation easier to act on. It does not change which cases get escalated."
+    ]
+   }
   },
   {
    "id": "m6-s2-01",
@@ -387,7 +487,17 @@
    ],
    "runnerUp": 0,
    "decider": "The guide is owned and revised every couple of weeks by another group; if it were a team-owned convention, a rules file would be an equally good home.",
-   "explanation": "@import lets CLAUDE.md reference a file maintained elsewhere without copying it. .claude/rules/ suits topic-specific conventions the team owns, especially ones scoped to particular paths."
+   "explanation": "@import lets CLAUDE.md reference a file maintained elsewhere without copying it. .claude/rules/ suits topic-specific conventions the team owns, especially ones scoped to particular paths.",
+   "eli5": {
+    "question": "A style guide written by another team lives in the repo, and the root <code>CLAUDE.md</code> holds an out-of-date copy of part of it. The clue is: the guild revises its file every couple of weeks. So any copy will keep going stale.",
+    "answer": "Rather than photocopying a recipe that keeps changing, pin a note saying 'see the recipe card in the drawer'. In <code>CLAUDE.md</code>, an <code>@path</code> line pulls in the real file each time (<b>@import</b>). Delete the paraphrase, and Claude always reads the current guide. <b>Rule: if someone else owns and updates the document, reference it; don't copy it.</b>",
+    "options": [
+     "Runner-up. A rules file (<code>.claude/rules/</code>) is a fine home for conventions your own team writes. It would win if the team owned the guide, but here it is just another copy.",
+     "Correct. One import line points Claude at the guild's live file.",
+     "A skill loads only when someone asks for it (<b>on demand</b>). A standard for every Python edit should load automatically.",
+     "Personal settings (<code>~/.claude/CLAUDE.md</code>) are not shared through the repo. Each engineer's setup would differ."
+    ]
+   }
   },
   {
    "id": "m6-s2-02",
@@ -421,7 +531,17 @@
    ],
    "runnerUp": 1,
    "decider": "Part of the code lives outside api/app/repositories/, in workers and legacy SDK folders; if all of it lived in one folder, a directory-level CLAUDE.md would serve.",
-   "explanation": "Path-scoped rules load conventions by glob regardless of directory, which beats directory CLAUDE.md files for conventions that span trees and beats root memory for conventions that are not universal."
+   "explanation": "Path-scoped rules load conventions by glob regardless of directory, which beats directory CLAUDE.md files for conventions that span trees and beats root memory for conventions that are not universal.",
+   "eli5": {
+    "question": "New coding rules apply only to data-access files. Most of those files are in one folder, but some are scattered elsewhere. The clue is: the rules must also hold in the <code>workers/</code> and legacy <code>sdk/</code> folders. The '80% in one folder' detail is there to tempt you.",
+    "answer": "Think of a sticky note that appears on a certain kind of drawer, wherever that drawer is in the house. A rules file with path patterns (<code>.claude/rules/</code> with <code>paths:</code> globs) loads whenever Claude edits a matching file, in any folder. It stays out of the way for everything else, and nobody has to remember to load it. <b>Rule: conventions that follow a file type across folders belong in path-scoped rules.</b>",
+    "options": [
+     "Root memory loads in every session. That puts these rules in front of Claude even for code they do not apply to.",
+     "Runner-up. A <code>CLAUDE.md</code> in one folder (<b>directory-level memory</b>) works when all the files are in that folder. It misses the scattered ones.",
+     "Correct. Path patterns catch matching files in every tree, and only those.",
+     "A skill must be asked for (<b>on demand</b>). The stem says nobody should have to remember to load anything."
+    ]
+   }
   },
   {
    "id": "m6-s2-03",
@@ -455,7 +575,17 @@
    ],
    "runnerUp": 1,
    "decider": "The work includes choosing between designs and changing many modules; if the task were only to understand current session handling, an Explore subagent would suffice.",
-   "explanation": "Plan mode fits multi-file changes with several valid approaches. Explore subagents isolate discovery, and the interview pattern gathers requirements; neither makes the design decision."
+   "explanation": "Plan mode fits multi-file changes with several valid approaches. Explore subagents isolate discovery, and the interview pattern gathers requirements; neither makes the design decision.",
+   "eli5": {
+    "question": "An engineer must change how 140 task modules get the current tenant. The clue is: the requirement is already settled, but how to do it is not. There are several ways sessions are opened today and three competing designs. So the job is to understand the code and choose a design before changing anything.",
+    "answer": "Before renovating 140 rooms, you walk the building, compare the builders' proposals, and agree a plan. Then you start knocking down walls. That is <b>plan mode</b>: Claude explores, compares the options, and proposes one design for sign-off before editing. It prevents redoing work across many files. <b>Rule: many files plus more than one valid design means plan first.</b>",
+    "options": [
+     "Correct. Plan mode covers exploring, choosing a design and getting approval before any edit.",
+     "Runner-up. A scout that reads and reports back (an <b>Explore subagent</b>) is great for understanding code. It would win if the job were only to map the code, not also to decide and change it.",
+     "Asking the engineer questions first (the <b>interview pattern</b>) gathers requirements. Those are already settled; the unknowns are in the code.",
+     "Writing tests first (<b>test-driven iteration</b>) is good practice. Starting edits before choosing a design risks rework in 140 modules."
+    ]
+   }
   },
   {
    "id": "m6-s2-04",
@@ -489,7 +619,17 @@
    ],
    "runnerUp": 1,
    "decider": "Each round breaks a different case, caught only by manual checking; if only the month-boundary and downgrade cases interfered with each other, fixing them together in one message would be the better move.",
-   "explanation": "Test-driven iteration gives Claude objective feedback on every case after every change. Use a single message when two specific problems interact, and examples when the transformation is misunderstood."
+   "explanation": "Test-driven iteration gives Claude objective feedback on every case after every change. Use a single message when two specific problems interact, and examples when the transformation is misunderstood.",
+   "eli5": {
+    "question": "Each fix to the function breaks some other case that used to work. The clue is: it is a different case each round, and the engineer only notices by checking all eight by hand. The first two cases clashing is the distraction.",
+    "answer": "If every time you fix one tap another starts leaking, you want a gauge on every pipe, not a guess about which two are linked. Turn the eight cases into automated tests and run them after every change (<b>test-driven iteration</b>). Claude then sees exactly which cases fail and fixes them with that feedback. <b>Rule: if fixes keep breaking other things, make the checks automatic and run them every time.</b>",
+    "options": [
+     "More worked examples (<b>concrete input/output examples</b>) help when Claude misunderstands the goal. The goal is clear here; the regressions go unnoticed.",
+     "Runner-up. Sending two linked problems in one message is right when they interact. It would win if only those two cases kept breaking each other.",
+     "Asking the engineer questions (the <b>interview pattern</b>) helps with unclear requirements. These are written down already.",
+     "Correct. An automated suite run after each edit catches every regression at once."
+    ]
+   }
   },
   {
    "id": "m6-s2-05",
@@ -523,7 +663,17 @@
    ],
    "runnerUp": 0,
    "decider": "The checklist is a one-time step before opening a PR; if it had to apply whenever migrations/ or sdk/ files were edited, a path-scoped rule would be the right home.",
-   "explanation": "CLAUDE.md, imports and rules are loaded automatically; commands and skills are on-demand. Project-level .claude/commands/ is shared through version control."
+   "explanation": "CLAUDE.md, imports and rules are loaded automatically; commands and skills are on-demand. Project-level .claude/commands/ is shared through version control.",
+   "eli5": {
+    "question": "A pre-PR checklist sits in always-loaded memory and leaks into everyday work. The clue is: engineers use it once, as the last step before opening a pull request. Most items being about <code>migrations/</code> and <code>sdk/</code> is the tempting detail.",
+    "answer": "A pre-flight checklist lives in the cockpit drawer and comes out before take-off. It is not taped to the windscreen for the whole flight. A project slash command (<code>.claude/commands/</code>) loads only when someone runs it. It is in the repo, so new joiners get the current version on clone. <b>Rule: use-on-request steps become commands; always-true standards go in memory.</b>",
+    "options": [
+     "Runner-up. Path rules (<code>.claude/rules/</code> with <code>paths:</code>) load whenever matching files are edited. They would win if the checklist had to apply during all work on those folders.",
+     "Correct. A shared command, run on request before the PR.",
+     "Personal commands (<code>~/.claude/commands/</code>) are copied once and then drift as the checklist changes monthly.",
+     "Importing the file (<b>@import</b>) keeps memory tidy, but it still loads into every session."
+    ]
+   }
   },
   {
    "id": "m6-s2-06",
@@ -557,7 +707,17 @@
    ],
    "runnerUp": 1,
    "decider": "The ticket quotes the exact before and after lines; if the review had left the fix's approach open, plan mode would be right despite the change being in a single file.",
-   "explanation": "Choose plan mode or direct execution based on how settled and how broad the change is, not how sensitive the area is. A fully specified single-site fix calls for direct execution and review of the diff."
+   "explanation": "Choose plan mode or direct execution based on how settled and how broad the change is, not how sensitive the area is. A fully specified single-site fix calls for direct execution and review of the diff.",
+   "eli5": {
+    "question": "A bug fix in a sensitive billing file is already decided down to the exact lines. The clue is: the ticket quotes the before and after lines, and a test exists. The file's size and the scary past incident are the distraction.",
+    "answer": "If the mechanic already knows exactly which bolt to tighten, you do not need a full inspection first. Give Claude the exact change and the test, let it make that one edit (<b>direct execution</b>), run the test, and read the diff. Reading the diff is how you check nothing else was touched. <b>Rule: choose the mode by how settled and how wide the change is, not by how scary the area is.</b>",
+    "options": [
+     "A scout (an <b>Explore subagent</b>) is for open-ended discovery. There is nothing to discover; the fix is known.",
+     "Runner-up. <b>Plan mode</b> fits open or multi-file changes. It would win if the incident review had not already decided the fix.",
+     "Correct. A known, one-place fix with a test is a direct edit, followed by a diff review.",
+     "Asking the engineer questions (the <b>interview pattern</b>) is for unclear requirements. The review already settled them."
+    ]
+   }
   },
   {
    "id": "m6-s2-07",
@@ -591,7 +751,17 @@
    ],
    "runnerUp": 0,
    "decider": "The goal is that raised findings are worth reading (precision), and 55% are a category that should be excluded; if the goal were stable severity and format, few-shot examples would contribute most.",
-   "explanation": "Explicit categorical criteria, including what to skip, improve precision. Few-shot examples mainly improve consistency, and 'be conservative' improves neither."
+   "explanation": "Explicit categorical criteria, including what to skip, improve precision. Few-shot examples mainly improve consistency, and 'be conservative' improves neither.",
+   "eli5": {
+    "question": "A review command raises lots of findings that people ignore. The clue is: the goal is that a raised finding is worth reading, and 55% of findings are style points the linter already covers. The severity flipping between runs is the distraction.",
+    "answer": "If a smoke alarm keeps going off for toast, you change what it reacts to. Making the beep sound the same every time does not help. Tell Claude exactly which kinds of problem to raise and which to skip, with a small code sample for each (<b>explicit criteria</b>). That cuts false alarms (better <b>precision</b>), which is what earns trust. <b>Rule: to cut noise, say exactly what to report and what to skip.</b>",
+    "options": [
+     "Runner-up. Worked examples (<b>few-shot</b>) make format and severity consistent. They would win if consistency were the goal, but here it is precision.",
+     "A second reviewer with fresh eyes (an <b>independent instance</b>) catches missed issues. Given the same vague brief, it would still accept style points.",
+     "Tracking which findings get dismissed (<code>detected_pattern</code>) finds noisy categories. This one is already found, and tracking alone changes nothing.",
+     "Correct. Name what to raise and what to leave alone."
+    ]
+   }
   },
   {
    "id": "m6-s2-08",
@@ -625,7 +795,17 @@
    ],
    "runnerUp": 1,
    "decider": "The rules have already been refined three times and work on simple cases; if the instructions were still vague, making the criteria explicit would come first.",
-   "explanation": "When detailed instructions still give inconsistent results on ambiguous cases, two to four examples that show the reasoning are the most effective way to get consistent output."
+   "explanation": "When detailed instructions still give inconsistent results on ambiguous cases, two to four examples that show the reasoning are the most effective way to get consistent output.",
+   "eli5": {
+    "question": "Generated tasks are right on simple cases but inconsistent on mixed ones. The clue is: the rules have already been rewritten three times. So more rules are not the answer.",
+    "answer": "When a written recipe has been rewritten three times and people still get the tricky dish wrong, show them two or three finished dishes. Explain why each was made that way. Here that means a few complete reference tasks covering the hard cases, with the reasoning attached (<b>few-shot examples</b>). Examples generalise to cases the rules do not cleanly cover. <b>Rule: when detailed instructions stop improving, show a few worked examples with reasons.</b>",
+    "options": [
+     "Correct. Two to four worked examples of the hard cases, each with its reasoning.",
+     "Runner-up. A decision table is a sharper version of the rules (<b>explicit criteria</b>). It would win if the rules were still vague, but they have already been refined three times.",
+     "A fresh reviewer (an <b>independent instance</b>) catches mistakes after the fact. It reads from the same rules that leave these cases open.",
+     "A fixed output form (a <b>JSON schema</b> with an enum) makes the structure consistent. It does not make the choice of strategy consistent."
+    ]
+   }
   },
   {
    "id": "m6-s2-09",
@@ -660,7 +840,17 @@
    ],
    "runnerUp": 0,
    "decider": "The teammate works on a different laptop and many reviewed modules have changed; if the same engineer continued on the same machine with few changes, resuming with a change note would be reasonable.",
-   "explanation": "Scratchpad files carry key findings across context limits and sessions. When earlier tool results are largely stale, start a new session from a structured summary rather than resuming."
+   "explanation": "Scratchpad files carry key findings across context limits and sessions. When earlier tool results are largely stale, start a new session from a structured summary rather than resuming.",
+   "eli5": {
+    "question": "A long audit session is getting muddled, and a teammate takes over tomorrow on her own laptop. The clue is: it is a different laptop, and a merge has changed 35 of the reviewed modules. So the old session cannot be relied on.",
+    "answer": "At a shift change, you write a handover sheet and leave it where the next person can find it. The next person starts their shift from that sheet. Here, Claude writes the findings to a file in the repo (a <b>scratchpad file</b>). The teammate then starts a clean session from a structured summary, rechecking the changed modules first. The file survives the move; the clean start avoids outdated results. <b>Rule: write findings down outside the chat, and start fresh when much has changed.</b>",
+    "options": [
+     "Runner-up. Resuming the session with a note (<code>--resume</code>) works when the same person continues with few changes. Here the session is on another laptop and already muddled.",
+     "Correct. A findings file in the repo reaches the teammate and keeps the details exact.",
+     "Sending scouts (<b>Explore subagents</b>) keeps the main chat light. It adds to a nearly full session and leaves nothing for the teammate.",
+     "Correct. A clean session from a summary avoids reasoning from stale results."
+    ]
+   }
   },
   {
    "id": "m6-s2-10",
@@ -694,7 +884,17 @@
    ],
    "runnerUp": 1,
    "decider": "Each run adds about 5,000 lines and thirty runs remain; if the only problem were tracking progress across a session boundary, a progress file would be the fix.",
-   "explanation": "Delegating verbose work to a subagent keeps the main context for decisions. Scratchpads, /compact and restarts help, but none of them stops repeated verbose output from filling the context."
+   "explanation": "Delegating verbose work to a subagent keeps the main context for decisions. Scratchpads, /compact and restarts help, but none of them stops repeated verbose output from filling the context.",
+   "eli5": {
+    "question": "Every test run dumps about 5,000 lines into the chat, and Claude starts forgetting progress. The clue is: thirty more runs are still to come. Claude forgetting which endpoints are done is the symptom, not the cause.",
+    "answer": "If every delivery dumps a full truckload of packing paper in your kitchen, a sticky note on the fridge will not save the kitchen. Have someone else unpack the truck and hand you only what you ordered. That is a <b>subagent</b>: it runs the tests in its own space and returns only the failures and their causes. The main session stays clear for all thirty runs. <b>Rule: send noisy, repeated work to a subagent and keep only the summary.</b>",
+    "options": [
+     "Squashing the chat each time (<code>/compact</code>) helps after a single pile-up. Done thirty times, it loses detail on every pass.",
+     "Runner-up. A progress file (a <b>scratchpad</b>) fixes forgetting across a break. It would win if the logs were not still flooding the chat.",
+     "Correct. A subagent absorbs each huge log and passes back only what matters.",
+     "Restarting every ten endpoints (<b>new session</b>) helps with outdated history. Each new session fills up again with ten runs of logs."
+    ]
+   }
   }
  ]
 }

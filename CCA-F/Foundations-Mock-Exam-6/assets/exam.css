@@ -134,3 +134,13 @@ ul.traps .fitems{font-size:12px;color:var(--dim);font-style:italic}
 .modes button.on{border-color:var(--acc);background:rgba(124,92,255,.18)}
 .opt .lbl{flex:1;min-width:0;overflow-wrap:anywhere}
 .opt .mark{flex:none}
+/* ELI5 learning layer */
+.eli5q{margin:10px 0 2px}
+.eli5q summary,.tech summary{cursor:pointer;color:var(--acc2);font-size:13px;font-weight:600}
+.eli5q[open] div{background:var(--card2);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;margin-top:6px}
+.eli5a{background:var(--card2);border-left:3px solid var(--acc);border-radius:6px;padding:8px 14px;margin:6px 0 12px}
+.eli5a p{margin:6px 0}
+.tech{margin-top:6px}
+.tech:not(.exam) summary{font-weight:500;color:var(--dim);font-size:12px}
+.tech[open]:not(.exam){color:var(--dim);font-size:13px}
+.tech.exam{margin-top:12px}

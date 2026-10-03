@@ -46,7 +46,17 @@
    ],
    "runnerUp": 0,
    "decider": "The missing items surfaced only inside sources already read, and the same failure hit a housing briefing on a different subject, so no fixed set of planning strands can anticipate them; if the gaps were predictable from the request type, fixing the decomposition would win.",
-   "explanation": "Decomposition covers only what is knowable at the start. When gaps emerge from what subagents find, the coordinator should evaluate the synthesis for gaps, re-delegate targeted work and re-synthesize."
+   "explanation": "Decomposition covers only what is knowable at the start. When gaps emerge from what subagents find, the coordinator should evaluate the synthesis for gaps, re-delegate targeted work and re-synthesize.",
+   "eli5": {
+    "question": "A report went out with a hole in it. The question asks how to stop holes like this. The clue is: the missing items appear only in the footnotes of documents already read, and a housing briefing missed something the same way. The angry aide's quote is a distraction, not the decider.",
+    "answer": "Think of a school project where the team splits the topic before anyone has read anything. Some important things only show up once you start reading. So someone has to read the draft, spot what it leans on but never checked, and send people back to research it (an <b>iterative refinement loop</b>: check the synthesis for gaps, re-delegate, re-synthesize). Adding more topics to the plan up front can't catch things nobody could know about at the start. <b>Rule: if a gap can only be seen after reading, fix it with a check-and-redo loop, not a bigger plan.</b>",
+    "options": [
+     "Runner-up. Adding court and treaty topics to the plan (fixing the <b>task decomposition</b>) would win if gaps were predictable from the type of request. Here they hide in footnotes and differ from topic to topic.",
+     "Handing each helper the earlier helpers' notes (explicit <b>context passing</b>) is good practice. But nobody is told to chase what those notes depend on, so the hole stays.",
+     "Correct. The coordinator reviews the draft, finds what is missing, sends researchers back, and rewrites.",
+     "A quick fact-check tool for the writer (a <b>scoped cross-role tool</b>) suits small, frequent checks. Researching a court ruling is real research, and that belongs to the coordinator."
+    ]
+   }
   },
   {
    "id": "m6-s3-02",
@@ -80,7 +90,17 @@
    ],
    "runnerUp": 2,
    "decider": "Follow-ups split evenly across three actions and depend on what other subagents gathered; if most follow-ups were a uniform public-copy search, the scoped cross-role tool would win.",
-   "explanation": "In a coordinator-subagent design, inter-subagent requests flow through the coordinator, which sees all results and decides routing. Scoped cross-role tools are the exception for high-frequency, simple needs."
+   "explanation": "In a coordinator-subagent design, inter-subagent requests flow through the coordinator, which sees all results and decides routing. Scoped cross-role tools are the exception for high-frequency, simple needs.",
+   "eli5": {
+    "question": "One helper keeps hitting data it can't open. Who should decide what happens next? The clue is: the follow-ups split three ways, and the right one depends on what other helpers already found. The 90-second wait is the distraction.",
+    "answer": "Picture a restaurant kitchen. A cook runs out of an ingredient and tells the head chef. Only the head chef knows what every station is making, so only they can choose to buy more, change the dish, or ask the customer. In an agent system that head chef is the <b>coordinator</b> (the hub in <b>hub-and-spoke</b>), and helpers keep separate memories (<b>isolated context</b>). So the helper reports the problem in a clear, labelled form, and the coordinator decides. <b>Rule: when the next step depends on everyone's work, route it through the coordinator.</b>",
+    "options": [
+     "Correct. The helper reports the problem in a labelled field, and the coordinator, who sees everything, picks the follow-up.",
+     "A shared noticeboard lets helpers act behind the head chef's back (no <b>isolated context</b>, no central error handling). The coordinator can no longer pick the right follow-up.",
+     "Runner-up. A small search tool for the helper (a <b>scoped cross-role tool</b>) wins when the need is frequent and always the same. Here a search is right only about a third of the time.",
+     "Starting both helpers at once (<b>parallel Task calls</b>) suits independent jobs. The search can't be written until the analysis helper finds what's missing."
+    ]
+   }
   },
   {
    "id": "m6-s3-03",
@@ -114,7 +134,17 @@
    ],
    "runnerUp": 0,
    "decider": "The statutes in scope are set by the legislative search's output; if the regulatory work did not depend on another subagent's results, keeping it parallel with a richer prompt would be right.",
-   "explanation": "Subagents receive only what is in their prompt. Spawn independent work in parallel, but sequence a subtask after the one whose findings it needs and include those findings in full."
+   "explanation": "Subagents receive only what is in their prompt. Spawn independent work in parallel, but sequence a subtask after the one whose findings it needs and include those findings in full.",
+   "eli5": {
+    "question": "One of four helpers produces vague, off-target work. The question asks what to change. The clue is: which laws are in scope is settled by what the legislative search returns. 'Generic output' tempts you to just write a better prompt.",
+    "answer": "Think of baking: you can't ice a cake that hasn't been baked yet. The rules reviewer needs the list of laws, and that list only exists after the legislative search finishes. So run the search first, hand its full results to the reviewer in its instructions, and let the two unrelated searches run at the same time. Helpers only know what you put in their prompt (no shared memory). <b>Rule: run independent jobs in parallel, but make a job wait for the results it depends on, and pass them in full.</b>",
+    "options": [
+     "Runner-up. A richer prompt (more <b>explicit context</b>) would win if the reviewer's job didn't depend on another helper's results. Here the key input doesn't exist yet when it starts.",
+     "A check-and-redo pass (a <b>refinement loop</b>) is for surprises found later. This dependency is known in advance, so redoing half the work every run is wasteful.",
+     "Limiting a helper's tools (<b>tool scoping</b>) is good hygiene. But the reviewer drifts because it doesn't know which laws matter, not because of its tools.",
+     "Correct. Wait for the law list, pass it in full, and keep the other two searches parallel."
+    ]
+   }
   },
   {
    "id": "m6-s3-04",
@@ -148,7 +178,17 @@
    ],
    "runnerUp": 2,
    "decider": "Most requests are narrow lookups spending four minutes in stages they do not need, while duplication costs 40 seconds in 30% of runs; if duplication were the dominant cost, scope partitioning would win.",
-   "explanation": "A coordinator should choose which subagents to invoke based on the request, not route everything through the full pipeline."
+   "explanation": "A coordinator should choose which subagents to invoke based on the request, not route everything through the full pipeline.",
+   "eli5": {
+    "question": "Every request takes minutes, and people are annoyed. The question asks what fixes the wait. The clue is: most requests are narrow questions, and on those the writing stages take over four minutes. The duplicate-fetch numbers look important but only cost about 40 seconds.",
+    "answer": "Imagine a library where asking 'what time do you close?' gets you a full written report. Most questions need a quick answer, not the whole process. The coordinator should look at each request and call only the helpers it needs (<b>dynamic subagent selection</b>). That removes the four slow minutes from most requests. <b>Rule: match the size of the pipeline to the size of the question.</b>",
+    "options": [
+     "The batch service (<b>Message Batches API</b>) is cheaper but can take up to 24 hours. That makes waiting worse, not better.",
+     "Correct. Small questions skip the slow writing stages.",
+     "Runner-up. Splitting who fetches what (<b>scope partitioning</b>) would win if duplicate work were the main cost. Here it's 40 seconds in some runs versus minutes in most.",
+     "Running both helpers at once (<b>parallel Task calls</b>) only helps independent work. Analysis needs search's results, and the slow part comes later anyway."
+    ]
+   }
   },
   {
    "id": "m6-s3-05",
@@ -182,7 +222,17 @@
    ],
    "runnerUp": 0,
    "decider": "Most of the articles were replaced, so most tool results in history are stale; if only one or two had changed, resuming and telling the agent about them would win.",
-   "explanation": "Resume when prior context is still mostly valid and tell the agent what changed; start fresh with a structured summary when much of the history is stale."
+   "explanation": "Resume when prior context is still mostly valid and tell the agent what changed; start fresh with a structured summary when much of the history is stale.",
+   "eli5": {
+    "question": "A paused research session needs to continue after the weekend. The question asks the most reliable way. The clue is: the publisher replaced most of the articles with corrected editions. The analyst's 'pick up where we left off' tempts you to just resume.",
+    "answer": "Picture a notebook full of figures copied from textbooks, and then most of the textbooks get reprinted with corrections. Writing 'some pages changed' on the cover doesn't stop you reading the old numbers. It is safer to start a fresh notebook with a clean summary of what is still true, and re-read the new editions (a <b>new session seeded with a structured summary</b>). Resuming (<b>--resume</b>) keeps all the old tool results in memory. <b>Rule: resume when little changed; start fresh with a summary when much of the history is stale.</b>",
+    "options": [
+     "Runner-up. Resuming and listing what changed is right when only a few sources changed. With most articles replaced, the old tables still dominate what the model reads.",
+     "Squashing the history (<b>/compact</b>) shrinks it, but it summarizes the stale figures rather than removing them.",
+     "Correct. A fresh start with a summary of what still holds, plus re-reading the corrected editions.",
+     "Branching (<b>fork_session</b>) is for trying two approaches from a good starting point. Both branches would carry the same stale data."
+    ]
+   }
   },
   {
    "id": "m6-s3-06",
@@ -216,7 +266,17 @@
    ],
    "runnerUp": 1,
    "decider": "The servers are vendor-hosted endpoints the team cannot change; if the team operated them, normalizing in the servers' own output would be the better fix.",
-   "explanation": "PostToolUse hooks intercept tool results and normalize them before the model sees them, giving deterministic behaviour where prompts give only probabilistic compliance."
+   "explanation": "PostToolUse hooks intercept tool results and normalize them before the model sees them, giving deterministic behaviour where prompts give only probabilistic compliance.",
+   "eli5": {
+    "question": "Three outside services write dates in different ways, and the system gets the order of events wrong. The question asks for the best fix. The clue is: all three are the vendors' own hosted services. The odd extra date format on one endpoint tempts you to fix it at the source.",
+    "answer": "Think of parcels arriving from three countries with labels in different formats. You can't change how other countries label parcels. But you can put a sorting desk at your own door that relabels every parcel in one standard way before anyone handles it (a <b>PostToolUse hook</b>, which rewrites tool results before the model sees them). It's code, so it works every time, unlike instructions in a prompt. <b>Rule: if you can't fix the source, normalize at your own door with a hook.</b>",
+    "options": [
+     "Correct. A hook on your side rewrites every date into one format before the model reads it.",
+     "Runner-up. Fixing the dates at the source would win if your team ran those servers. They belong to the vendors, so you can't change them.",
+     "Worked examples in the prompt (<b>few-shot</b>) help but are still guesses. And 03/04 vs 04/03 can't be told apart by the model reliably.",
+     "Showing dates next to claims helps readers, but the dates would already be misread before they get there."
+    ]
+   }
   },
   {
    "id": "m6-s3-07",
@@ -250,7 +310,17 @@
    ],
    "runnerUp": 1,
    "decider": "The description is already long and specific, and the corpora differ in query grammar and returned fields; if the description were still minimal, improving it would be the first step.",
-   "explanation": "Descriptions are the primary selection mechanism, but when one tool covers operations with different inputs and outputs, split it into purpose-specific tools."
+   "explanation": "Descriptions are the primary selection mechanism, but when one tool covers operations with different inputs and outputs, split it into purpose-specific tools.",
+   "eli5": {
+    "question": "One search tool covers four very different collections, and about one call in five picks the wrong one. The question asks what to do next. The clue is: each collection speaks a different query language and returns different fields, and the tool's documentation is already long.",
+    "answer": "Picture one front desk for four very different libraries, where each library uses its own catalogue system. A longer sign at the desk won't fix that. Give each library its own desk with its own form (split into <b>purpose-specific tools</b> with their own inputs and outputs). The model picks tools by reading their names and descriptions, so clear separate tools are easy to choose between. <b>Rule: when one tool hides several different jobs, split it.</b>",
+    "options": [
+     "Worked examples in the prompt (<b>few-shot</b>) add text but leave four different contracts hidden behind one switch.",
+     "Runner-up. Improving the description is the right first step when it's thin. It's already long, and no wording can express four different query languages.",
+     "A clear error for a bad query (a structured <b>isError</b> response) helps recovery after the mistake. The wrong picks still happen.",
+     "Correct. One tool per collection, each with its own inputs and documented results."
+    ]
+   }
   },
   {
    "id": "m6-s3-08",
@@ -284,7 +354,17 @@
    ],
    "runnerUp": 0,
    "decider": "The outage lasts up to two hours and requests arrive at any time; if failures were brief blips, local retry with backoff would be the first fix.",
-   "explanation": "Tools must distinguish access failures from valid empty results and return structured error metadata (isError, category, retryability) so the agent can recover appropriately."
+   "explanation": "Tools must distinguish access failures from valid empty results and return structured error metadata (isError, category, retryability) so the agent can recover appropriately.",
+   "eli5": {
+    "question": "A search said 'nothing found' when the archive was actually down. The question asks how the tool should behave. The clue is: the outage can last up to two hours, and requests come in at any hour. The swallowed connection errors tempt you towards 'just retry'.",
+    "answer": "Imagine phoning a shop and getting no answer, then telling your boss 'they don't sell it'. 'Closed' and 'doesn't have it' are different answers. The tool must say 'I couldn't search, try later' as a real error (<b>isError</b> with a category and a retryable flag). A genuine empty result stays a normal answer (a <b>valid empty result</b>). Then the coordinator can wait, reroute, or flag the gap. <b>Rule: never let 'couldn't look' look the same as 'looked and found nothing'.</b>",
+    "options": [
+     "Runner-up. Retrying a few times (<b>local retry with backoff</b>) is right for brief blips. A two-hour rebuild outlasts it, and the failure still ends up looking like 'nothing found'.",
+     "Correct. Report the outage as a labelled, retryable failure and keep real empty results as normal answers.",
+     "Asking the web instead might help, but committee testimony may not be public. And the coordinator still can't tell 'down' from 'none'.",
+     "Logging the query and hit count is useful record-keeping (<b>provenance</b>). But zero hits still doesn't say whether the search actually ran."
+    ]
+   }
   },
   {
    "id": "m6-s3-09",
@@ -318,7 +398,17 @@
    ],
    "runnerUp": 0,
    "decider": "Readers must question both organizations and briefings reach them without review; if the goal were routing analyst review effort, calibrated confidence would win.",
-   "explanation": "When credible sources conflict, preserve both values with attribution and dates in a structured section rather than picking one."
+   "explanation": "When credible sources conflict, preserve both values with attribution and dates in a structured section rather than picking one.",
+   "eli5": {
+    "question": "Two respected sources give different job-loss numbers, and the report picked one. The question asks how the output should change. The clue is: staff use the briefing to question witnesses from both sides, and it reaches them with no review step. The embarrassing hearing moment is the distraction.",
+    "answer": "Think of a referee's report when two line judges disagree. You don't quietly pick one; you write down both calls, who made them and why. The briefing should have its own section for disputes, listing each number with who produced it, when, and how (keeping <b>claim-source attribution</b> for <b>conflicting sources</b>). Staff can then ask each witness about their own figure. <b>Rule: when good sources disagree, show both with their sources; don't pick a winner.</b>",
+    "options": [
+     "Runner-up. A tested confidence score that sends weak claims to a reviewer (<b>calibrated confidence routing</b>) wins when you need to direct reviewers' time. Here there is no review step, and staff need both numbers.",
+     "Dates help when sources are from different years. Both of these are from this year, so dates don't explain the clash.",
+     "Correct. A dedicated section shows every competing number with its source, date and method.",
+     "Tables for numbers are good presentation. But a table can still show only the one figure that was picked."
+    ]
+   }
   },
   {
    "id": "m6-s3-10",
@@ -353,7 +443,17 @@
    ],
    "runnerUp": 1,
    "decider": "The synthesis input cap of 6,000 tokens rules out passing all 25–40 returns (about 12,000 tokens); without the cap, passing complete findings would compete with the facts ledger.",
-   "explanation": "Progressive summarization loses exact figures, and models attend less to the middle of long inputs. Keep a persistent facts block and put key summaries up front under clear headers."
+   "explanation": "Progressive summarization loses exact figures, and models attend less to the middle of long inputs. Keep a persistent facts block and put key summaries up front under clear headers.",
+   "eli5": {
+    "question": "Exact numbers from the middle of long runs get lost or blurred into 'declined'. Pick the two changes that fix this. The clue is: the writer's input is capped at 6,000 tokens, while 25–40 returns of about 300 tokens each add up to far more.",
+    "answer": "Picture taking notes in a long meeting. If you keep rewriting your summary, '41.2 to 37.9' becomes 'went down'. So keep a separate list of exact figures that never gets rewritten (a <b>persistent facts block</b>). People also remember the start and end of a long talk better than the middle (<b>lost in the middle</b>). So put a short summary with clear headings at the top of the writer's input. Pasting in everything won't fit under the cap. <b>Rule: protect exact numbers from summarizing, and put key facts at the top under headings.</b>",
+    "options": [
+     "Correct. A ledger of exact figures, dates and sources sits outside the rewritten summary.",
+     "Runner-up. Handing over everything (complete findings) would win if it fit. About 12,000 tokens is double the 6,000 cap, and a long flat input still loses the middle.",
+     "Cutting unneeded fields (trimming tool output) helps when returns are bloated. These are already small 300-token records.",
+     "Correct. Key findings go first, under clear headings by subtopic, which beats the lost-in-the-middle effect."
+    ]
+   }
   },
   {
    "id": "m6-s4-01",
@@ -388,7 +488,17 @@
    ],
    "runnerUp": 3,
    "decider": "The engineer wants to follow the trail of files in this session; if they only needed the resulting map, delegating to an Explore subagent would be one of the two.",
-   "explanation": "Grep searches contents, Glob matches paths. Locate entry points by content, then Read incrementally along the call path; delegate to Explore only when the trail itself is not wanted."
+   "explanation": "Grep searches contents, Glob matches paths. Locate entry points by content, then Read incrementally along the call path; delegate to Explore only when the trail itself is not wanted.",
+   "eli5": {
+    "question": "A new engineer wants to learn how one header travels through the code. Pick the two steps Claude should take. The clue is: the engineer is pairing with Claude in this session and wants to see each file as it is followed. Also, teams named their classes inconsistently.",
+    "answer": "Think of tracing a rumour through a school. You don't guess by people's names; you ask who actually said the words, then follow who they told. Search inside files for the exact text (<b>Grep</b>, content search), then open those files and follow the trail one step at a time (<b>Read</b>, incrementally). The engineer sees every file along the way. <b>Rule: search by content when names are unreliable, then follow the trail step by step.</b>",
+    "options": [
+     "Searching by file name (<b>Glob</b>) works only when names are reliable. Here teams named classes differently, so you'd miss places.",
+     "Correct. Content search finds the header and its constant wherever they live.",
+     "Correct. Open only what the trail leads to, one file at a time.",
+     "Runner-up. Sending a separate helper (an <b>Explore subagent</b>) wins when you only want the final map. This engineer wants to watch the trail in their own session."
+    ]
+   }
   },
   {
    "id": "m6-s4-02",
@@ -422,7 +532,17 @@
    ],
    "runnerUp": 0,
    "decider": "Teammates' server set must not change on pull and Priya needs it in three repositories; if the beta were cleared for the team, project .mcp.json with env-var expansion would be right.",
-   "explanation": "Project .mcp.json is shared via version control; ~/.claude.json is personal. Experimental or individually-scoped servers belong at user level."
+   "explanation": "Project .mcp.json is shared via version control; ~/.claude.json is personal. Experimental or individually-scoped servers belong at user level.",
+   "eli5": {
+    "question": "One engineer wants to try a risky beta tool server. Where should she set it up? The clue is: what teammates get when they pull must not change, and she needs it in three repositories. 'Keep the token out of git' is true, but it isn't the deciding fact.",
+    "answer": "Think of a shared office fridge and your own lunchbox. Anything in the fridge is for everyone; your lunchbox goes wherever you go. The project file (<b>.mcp.json</b>) is the shared fridge, because it travels with the repository. Her personal config (<b>~/.claude.json</b>) is the lunchbox: private, not in git, and used in every project she opens. <b>Rule: shared tools go in the project's .mcp.json; personal or experimental ones go in your user-level config.</b>",
+    "options": [
+     "Runner-up. Project config with the token read from an environment variable (<b>env-var expansion</b>) is right once the team should have it. Committing it now changes what everyone gets, and it covers only one repository.",
+     "Project settings are shared and can't make exceptions per person. The server would still reach everyone.",
+     "That file holds personal written instructions, not tool-server setup. Describing a server there doesn't connect it.",
+     "Correct. Her personal config is private, stays out of git and works in every repository she uses."
+    ]
+   }
   },
   {
    "id": "m6-s4-03",
@@ -456,7 +576,17 @@
    ],
    "runnerUp": 1,
    "decider": "The searches are spent discovering which of 1,400 stable pages exist; if Claude were misusing the tool's inputs, improving the description would come first.",
-   "explanation": "Use MCP resources to expose catalogs and hierarchies so the agent knows what exists, reserving tools for actions and targeted retrieval."
+   "explanation": "Use MCP resources to expose catalogs and hierarchies so the agent knows what exists, reserving tools for actions and targeted retrieval.",
+   "eli5": {
+    "question": "Claude wastes many searches guessing which wiki pages exist. The question asks what cuts those searches most. The clue is: there are 1,400 pages in a stable tree of domains and services. The invented service names tempt you to improve the search tool's description.",
+    "answer": "Picture a library with no catalogue, where you keep asking the librarian 'do you have anything on X?' A printed map of the shelves fixes that. Publish the wiki's page tree as something Claude can read up front (an <b>MCP resource</b>: content to read, not an action to call). Then Claude knows what exists and searches only for the right page. <b>Rule: use a resource to show what exists; use tools to act or fetch.</b>",
+    "options": [
+     "Correct. A readable catalogue of the page tree, loaded before searching.",
+     "Runner-up. A better description wins when Claude misuses the tool. Here the problem is finding which of 1,400 pages exist, and a description can't list them.",
+     "Smaller results (trimming tool output) save tokens per search, but not the number of guesses.",
+     "A separate helper (an <b>Explore subagent</b>) keeps the noise out of your main chat. The same guessing searches still happen inside it."
+    ]
+   }
   },
   {
    "id": "m6-s4-04",
@@ -490,7 +620,17 @@
    ],
    "runnerUp": 0,
    "decider": "The platform team owns the server; if it were a third-party server whose descriptions they could not edit, CLAUDE.md guidance would be the practical first step.",
-   "explanation": "Minimal descriptions cause unreliable selection among similar tools. Expanding descriptions with inputs, outputs, examples and boundaries is the high-leverage first fix."
+   "explanation": "Minimal descriptions cause unreliable selection among similar tools. Expanding descriptions with inputs, outputs, examples and boundaries is the high-leverage first fix.",
+   "eli5": {
+    "question": "Claude picked the wrong feature-flag tool and gave a wrong answer. The question asks for the best first step. The clue is: the team built and deploys this server themselves, and each tool's description is only a few words.",
+    "answer": "Imagine three drawers labelled 'stuff', 'things' and 'items'. People will open the wrong one. Claude chooses tools mainly by reading their descriptions (the <b>tool description</b> is the main selection signal). Since the team owns the server, rewrite each description: what it needs, what it returns, an example question, and when to use a sibling instead. <b>Rule: if you own the tool and Claude picks wrong, fix the description first.</b>",
+    "options": [
+     "Runner-up. A note in the project memory (<b>CLAUDE.md</b>) is the fallback when the server belongs to someone else. This team owns it, so fix the descriptions every client sees.",
+     "Better names help, but names alone don't explain inputs, outputs or limits. It's also a bigger change than a first step needs.",
+     "Correct. Clear descriptions with inputs, outputs, an example and boundaries.",
+     "A hook that adds a warning after the wrong call (<b>PostToolUse</b>) doesn't steer Claude to the right tool."
+    ]
+   }
   },
   {
    "id": "m6-s4-05",
@@ -524,7 +664,17 @@
    ],
    "runnerUp": 0,
    "decider": "The tree is unchanged and context is at 38%, so the full baseline is valid; if files had changed or context were near its limit, a fresh session with a summary would win.",
-   "explanation": "fork_session creates independent branches from a shared baseline for divergent approaches. Start fresh with a summary only when the baseline is stale or overloaded."
+   "explanation": "fork_session creates independent branches from a shared baseline for divergent approaches. Start fresh with a summary only when the baseline is stale or overloaded.",
+   "eli5": {
+    "question": "After a long mapping session, an engineer wants to try two different migrations and compare them. The question asks how to proceed. The clue is: the code hasn't changed and the session is only at 38% of its memory. '50 minutes, dozens of reads' tempts you to start fresh.",
+    "answer": "Think of a choose-your-own-adventure book. You've read to a key page, and now you want to try both paths. You keep a finger on that page and explore each path from it. Branching the session (<b>fork_session</b>) does that: two independent copies of everything learned so far. A summary would throw away detail you can still use. <b>Rule: fork when the starting point is still good; start fresh only when it's stale or full.</b>",
+    "options": [
+     "Runner-up. A fresh session with a summary wins when the old results are stale or memory is nearly full. Neither is true here, and summaries lose detail.",
+     "Correct. Two branches from the same good starting point, one per migration.",
+     "Helpers (<b>subagents</b>) get only what's in their prompt, and both would edit the same files at once.",
+     "Planning first (<b>plan mode</b>) designs before changing code. The engineer needs real test results from both."
+    ]
+   }
   },
   {
    "id": "m6-s4-06",
@@ -558,7 +708,17 @@
    ],
    "runnerUp": 0,
    "decider": "The reviewers' template fixes the 28 rows and four columns in advance; if the scope had to be discovered as the work progressed, adaptive decomposition would win.",
-   "explanation": "For a known, fixed set of items, chain focused per-item passes and add an integration pass; use adaptive decomposition when subtasks depend on what is found."
+   "explanation": "For a known, fixed set of items, chain focused per-item passes and add an integration pass; use adaptive decomposition when subtasks depend on what is found.",
+   "eli5": {
+    "question": "A long single pass over 28 services gave uneven answers and contradictions. The question asks how to restructure. The clue is: the reviewers' template fixes both the list of services and the four questions in advance. The surprise HTTP client tempts you towards an adaptive plan.",
+    "answer": "Imagine marking 28 exam papers in one sitting. The first few get careful attention, the last ones get skimmed, and you contradict yourself. Better: mark each paper on its own, then do one final pass comparing them. That's <b>prompt chaining</b>: a focused pass per item, then an <b>integration pass</b> across all results. <b>Rule: for a fixed list of items, do one pass each, then one pass to compare.</b>",
+    "options": [
+     "Runner-up. A plan that grows as you discover things (<b>adaptive decomposition</b>) wins when you don't know the shape of the work. Here the template fixes it.",
+     "A separate helper (an <b>Explore subagent</b>) keeps the noise out of the main chat. Inside it, one pass over 28 services thins out the same way.",
+     "A notes file (a <b>scratchpad</b>) keeps findings safe across memory limits. But it's still one long pass with uneven attention.",
+     "Correct. One focused pass per service, then one comparison pass to settle the shared library."
+    ]
+   }
   },
   {
    "id": "m6-s4-07",
@@ -592,7 +752,17 @@
    ],
    "runnerUp": 1,
    "decider": "The next actor is a human working only from the ticket without Claude Code; if a later Claude session were continuing the work, a scratchpad of findings would fit.",
-   "explanation": "When work passes to a human who will not read the transcript, compile a structured summary: what, why, evidence, recommended action, open questions."
+   "explanation": "When work passes to a human who will not read the transcript, compile a structured summary: what, why, evidence, recommended action, open questions.",
+   "eli5": {
+    "question": "An engineer's shift is ending mid-incident. What should Claude produce? The clue is: the next person is from the network team, works from the ticket and doesn't use Claude Code. The '85% full' warning tempts you to save the session instead.",
+    "answer": "Think of a nurse handing over at shift change. The next nurse needs a short, clear handover sheet, not a recording of the whole shift. Write a <b>structured handoff summary</b> in the ticket: what's affected, the cause, the evidence, the steps to undo it, and what's still unknown. That person can act without ever opening Claude. <b>Rule: when a human takes over, hand them a short structured summary, not the session.</b>",
+    "options": [
+     "Correct. A short note covering service, cause, evidence, undo steps and open questions.",
+     "Runner-up. A notes file (a <b>scratchpad</b>) wins when another Claude session will continue the work. The next worker is a person reading the ticket.",
+     "A named session to reopen (<b>--resume</b>) only helps someone who uses Claude Code. This engineer doesn't.",
+     "Squashing the session (<b>/compact</b>) frees memory in this chat, but the summary stays inside a session the next person won't see."
+    ]
+   }
   },
   {
    "id": "m6-s4-08",
@@ -626,7 +796,17 @@
    ],
    "runnerUp": 0,
    "decider": "Roughly 150,000 tokens of release notes are read before the engineer keeps working in the same conversation, so the reading must run in a forked context that returns only the edit list; if the reading were short, a shared project command would be enough.",
-   "explanation": "Skills package on-demand workflows; context: fork isolates verbose work from the main conversation. Project scope shares them with the team."
+   "explanation": "Skills package on-demand workflows; context: fork isolates verbose work from the main conversation. Project scope shares them with the team.",
+   "eli5": {
+    "question": "A monthly upgrade routine needs packaging for the whole team. The question asks the best way. The clue is: Claude reads about 150,000 tokens of release notes, and then the engineer keeps working in that same conversation. The junior engineer's skipped step tempts you towards a plain shared command.",
+    "answer": "Think of sending an assistant to a library to read 60 manuals. You don't want all 60 manuals piled on your desk. You want one page back: 'here's what you must change.' A skill set to run in its own side room (<b>context: fork</b> in a <b>SKILL.md</b>) does the reading separately and returns just the edit list. Keeping it in the repository's <code>.claude/skills/</code> folder shares it with everyone who pulls. <b>Rule: shared routines live in the repo; heavy reading runs in a forked context.</b>",
+    "options": [
+     "Runner-up. A shared project command (<code>.claude/commands/</code>) wins when the work is small enough to stay in your chat. 150,000 tokens of release notes would flood the conversation you keep using.",
+     "This forks the reading correctly, but it lives in one person's home folder (user-level). The rotating teammates wouldn't get it.",
+     "Correct. A repository skill with a forked context: shared with the team, and it returns only the edit list.",
+     "Pulling a file into project memory (<b>CLAUDE.md</b> with <b>@import</b>) loads it every session. It's for standing rules, not a monthly job, and it doesn't keep the reading out of your chat."
+    ]
+   }
   },
   {
    "id": "m6-s4-09",
@@ -660,7 +840,17 @@
    ],
    "runnerUp": 0,
    "decider": "Two causes are plausible (an older-branch worktree and a conflicting personal file) and only this engineer is affected; if /memory had already shown both files loaded, removing the personal instruction would win.",
-   "explanation": "When memory behaves differently for one person, /memory verifies which CLAUDE.md files are loaded before changing configuration."
+   "explanation": "When memory behaves differently for one person, /memory verifies which CLAUDE.md files are loaded before changing configuration.",
+   "eli5": {
+    "question": "Claude ignores one folder's rules, but only for one engineer. The question asks for the first step. The clue is: there are two possible causes, a personal file that says the opposite and a worktree made from an older branch. The quoted LogWrapper line tempts you to jump straight to deleting it.",
+    "answer": "Imagine a recipe going wrong for one cook only. Before changing anything, check which recipe cards are actually on that cook's counter. <b>/memory</b> shows exactly which instruction files (the <b>CLAUDE.md</b> memory files) Claude has loaded for that person. Then you know whether the folder's file is missing or a personal file is overriding it. <b>Rule: when instructions misbehave for one person, check what's loaded before changing files.</b>",
+    "options": [
+     "Runner-up. Deleting the clashing personal line is the fix once you know it's the cause. The older-branch worktree might simply be missing the folder file, so check first.",
+     "Correct. See which memory files are loaded in that engineer's own session and worktree.",
+     "Path-based rule files (<b>.claude/rules/</b> with <b>paths:</b>) suit rules that span many folders. These belong to one folder, and moving them diagnoses nothing.",
+     "Pulling the file in from the root (<b>@import</b>) organizes memory, but if the worktree lacks the file the import fails too."
+    ]
+   }
   },
   {
    "id": "m6-s4-10",
@@ -694,7 +884,17 @@
    ],
    "runnerUp": 0,
    "decider": "The pasted rows come from a spreadsheet known to be wrong in unnamed cases and the edge-case rules are unwritten; if trustworthy expected outputs existed, concrete examples would be the best start.",
-   "explanation": "Use the interview pattern when requirements are unclear; use concrete examples or tests once the expected behaviour is known."
+   "explanation": "Use the interview pattern when requirements are unclear; use concrete examples or tests once the expected behaviour is known.",
+   "eli5": {
+    "question": "An engineer must build a payout export in an area they don't know well. How should they start with Claude? The clue is: the old spreadsheet 'got several cases wrong' (nobody says which) and the tricky rules are unwritten. The pasted rows tempt you to copy them.",
+    "answer": "Think of a new tailor making a suit when the customer hasn't chosen the cloth or the cut. You don't copy an old suit that's known to fit badly. You ask questions first. Have Claude interview you about unusual cases (the <b>interview pattern</b>), then take the questions you can't answer to finance. Examples and tests come later, once the right answers are known. <b>Rule: when the rules are unclear, have Claude ask questions before building.</b>",
+    "options": [
+     "Runner-up. Real examples of input and expected output (<b>concrete examples</b>) are the best guide once you trust them. These rows come from a spreadsheet known to be wrong.",
+     "Writing tests first (<b>test-driven iteration</b>) works when you know what 'right' looks like. These tests would only check the layout, not the unsettled rules.",
+     "Designing first (<b>plan mode</b>) would make Claude invent business rules nobody has set.",
+     "Correct. Claude asks about edge cases first, and the open questions go to the people who decide."
+    ]
+   }
   }
  ]
 }

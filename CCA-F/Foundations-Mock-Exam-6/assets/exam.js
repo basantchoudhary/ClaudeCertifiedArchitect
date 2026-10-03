@@ -96,7 +96,8 @@
           '<span class="qobj tagged">' + esc(q.obj) + '</span>' +
           (sel > 1 ? '<span class="qmulti">Select ' + (NUMWORD[sel] || sel) + '</span>' : '') +
         '</div>' +
-        '<div class="qtext">' + q.question + '</div>';
+        '<div class="qtext">' + q.question + '</div>' +
+        (q.eli5 ? '<details class="eli5q"><summary>Explain this question simply</summary><div>' + q.eli5.question + '</div></details>' : '');
 
       var ul = document.createElement('ul');
       ul.className = 'opts';
@@ -105,7 +106,7 @@
         li.className = 'opt';
         li.innerHTML =
           '<span class="tick"></span>' +
-          '<span class="lbl"><b>' + String.fromCharCode(65 + pos) + '.</b> ' + esc(q.options[orig].t) + '</span>' +
+          '<span class="lbl"><b>' + String.fromCharCode(65 + pos) + '.</b> ' + q.options[orig].t + '</span>' +
           '<span class="mark ok">&#10003;</span><span class="mark no">&#10007;</span>';
         li.addEventListener('click', function () {
           var s = state[qi];
@@ -174,17 +175,24 @@
 
     var ru = s.q.runnerUp;
     s.fellForRunnerUp = !ok && s.picked.indexOf(ru) >= 0;
+    var el5 = s.q.eli5;
     var rows = s.order.map(function (orig, pos) {
       var isAns = s.q.answer.indexOf(orig) >= 0;
       return '<div class="why ' + (isAns ? 'w-ok' : (orig === ru ? 'w-ru' : 'w-no')) + '">' +
-        '<b>' + String.fromCharCode(65 + pos) + '.</b> ' + esc(s.q.options[orig].why) + '</div>';
+        '<b>' + String.fromCharCode(65 + pos) + '.</b> ' +
+        (el5 ? el5.options[orig] + '<details class="tech"><summary>Technical detail</summary>' + s.q.options[orig].why + '</details>'
+             : s.q.options[orig].why) + '</div>';
     }).join('');
 
     card.querySelector('.explain').innerHTML =
       '<div class="eh">Explanation ' + res + '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
+      (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
+             '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
+      '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
+      (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary>' : '') +
       (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
       '<div class="ebody">' + s.q.explanation + '</div>' +
-      '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>';
+      (el5 ? '</details>' : '');
 
     updateBar();
   }
