@@ -1,0 +1,2047 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A hospital network's evidence team runs a research system on the Claude Agent SDK. A coordinator delegates through the Task tool to subagents for literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Evidence summaries go to clinical guideline committees, and every claim must cite a paper and section."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D3 Claude Code Configuration",
+   "brief": "A language-learning app company's platform team uses Claude Code on a Ruby on Rails monolith with a React front end. Engineers explore and change code with the built-in tools (Read, Write, Edit, Bash, Grep, Glob), plus MCP servers for Linear and a staging Postgres database. Some engineers also script Claude through the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Loop termination on stop_reason",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team wrote its own coordinator loop. After each response, the loop checks whether the response contains a text block. If it does, the loop treats the run as finished and sends that text to the report subagent. Runs often stop after the first search. In those runs, Claude wrote a short sentence and requested more Task calls in the same response. <b>Which change fixes the loop?</b>",
+   "options": [
+    {
+     "t": "Base the loop's exit on each response's stop_reason, continuing on tool_use and exiting only on end_turn.",
+     "why": "Correct. stop_reason is the loop's signal. A response can hold a sentence and tool calls together; stop_reason tool_use says the model still wants those calls run."
+    },
+    {
+     "t": "Set tool_choice to any on the coordinator's requests until the report subagent has run, then return to auto.",
+     "why": "Runner-up. <code>any</code> is the fix when Claude answers in text instead of calling a tool. Here Claude did call tools; the loop ignored them, and any would also stop Claude ending the run normally."
+    },
+    {
+     "t": "Exit only when the response's last content block is text, after running any tool_use blocks that precede it.",
+     "why": "Incorrect. Still a text-content check. Claude can end a response with text while asking for more work, and block order is not the API's completion signal."
+    },
+    {
+     "t": "Cap the loop at a turn budget set for each request type, and pass the last text block to the report subagent.",
+     "why": "Incorrect. An iteration cap as the main stop rule is an anti-pattern; it cuts off long runs and wastes turns on short ones."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Claude's stopping response also contained Task calls, so stop_reason was tool_use; if Claude had replied with text only and no tool calls, forcing a tool call with tool_choice any would be the fix.",
+   "explanation": "The agentic loop continues while stop_reason is tool_use and ends on end_turn. Checking for text in the reply is an unreliable completion signal, because Claude often writes a sentence before its tool calls.",
+   "eli5": {
+    "question": "The loop stops too early. The question asks how to fix the loop's stop rule. The clue is: Claude wrote a short sentence and requested more Task calls in the same response.",
+    "answer": "Think of a waiter who leaves the table as soon as you say anything, even \"hmm, and also…\". You were still ordering. The API tells you plainly whether Claude is still ordering: a field called <b>stop_reason</b>. If it says <code>tool_use</code>, run the tools and go round again. If it says <code>end_turn</code>, Claude is done. <b>Rule: loop on stop_reason, not on what the text looks like.</b>",
+    "options": [
+     "Correct. Use the official signal: keep going on <code>tool_use</code>, stop on <code>end_turn</code>.",
+     "Runner-up. Forcing a tool call (<code>tool_choice: any</code>) helps when Claude talks instead of acting. Here Claude did act; the loop just didn't listen.",
+     "Checking whether the <i>last</i> block is text is still reading the text, not the official signal.",
+     "A turn budget stops at an arbitrary point, finished or not."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read <b>\"a text reply\" as \"the final answer\"</b>. In the API it isn't. One response can hold a text block <i>and</i> tool_use blocks. The only reliable signal for \"done\" is <b>stop_reason</b>: <code>tool_use</code> means run the tools and continue, <code>end_turn</code> means finished.",
+    "diagram": "response = [text: \"Next I'll search...\", tool_use, tool_use]\nstop_reason = \"tool_use\"  -> run tools, loop again\nstop_reason = \"end_turn\"  -> finished",
+    "mapTitle": "The loop misbehaves: which signal is it reading?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Run ends while tool calls are still pending",
+       "Loop reads text, not stop_reason",
+       "Continue on <code>tool_use</code>, stop on <code>end_turn</code>"
+      ],
+      [
+       "Claude replies in prose when a tool call was needed",
+       "Tool choice left at auto",
+       "<code>tool_choice: \"any\"</code> or a forced tool"
+      ],
+      [
+       "Claude repeats calls it already made",
+       "Tool results not appended to history",
+       "Append each result before the next request"
+      ],
+      [
+       "Loop stops at a magic phrase or a turn cap",
+       "Natural-language or arbitrary stop rule",
+       "Use stop_reason as the primary stop"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the loop checks whether the response contains a text block",
+      "means": "The loop's stop rule reads the content, not stop_reason. That is the suspect."
+     },
+     {
+      "quote": "Runs often stop after the first search.",
+      "means": "The run ends too early, while work remains."
+     },
+     {
+      "quote": "Claude wrote a short sentence and requested more Task calls in the same response",
+      "means": "The decider. Claude <i>did</i> call tools, so stop_reason was tool_use. Forcing a tool call (<b>[[1]]</b>, the runner-up) fixes a different problem."
+     },
+     {
+      "quote": "Which change fixes the loop?",
+      "means": "The fix is the stop signal itself: <b>[[0]]</b>. Checking the last block for text (<b>[[2]]</b>) is still a content check, and a turn budget (<b>[[3]]</b>) is the arbitrary-cap anti-pattern."
+     }
+    ],
+    "rule": "Continue on tool_use, stop on end_turn. Never decide \"done\" from what the text says.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Anti-patterns: parsing natural-language signals to determine termination; arbitrary iteration caps as the primary stop; checking assistant text content as a completion indicator."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Per-request context in the Task prompt",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Each committee sets its own inclusion rules when it submits a request, such as a minimum trial size or excluded drug classes. The coordinator agrees these rules with the requester before delegating. The analysis subagent then includes studies the committee excluded. Its Task prompt names the drug and the outcome, but nothing else. The rules differ on every request. <b>Where should the inclusion rules go?</b>",
+   "options": [
+    {
+     "t": "Into the analysis subagent's AgentDefinition system prompt, as a criteria section with included and excluded examples.",
+     "why": "Runner-up. A subagent's system prompt is the right home for criteria that are the same on every run. These change per request, so a fixed prompt can't hold them."
+    },
+    {
+     "t": "Into a criteria section of the coordinator's system prompt, which the coordinator updates for each new request.",
+     "why": "Incorrect. The coordinator's prompt is part of the coordinator's context. Subagents don't inherit it, so the analysis step still never sees the rules."
+    },
+    {
+     "t": "Into a case-facts block the coordinator maintains, listing the drug, the outcome and each inclusion rule.",
+     "why": "Incorrect. A case-facts block keeps details safe in the coordinator's own long context. It doesn't reach a subagent unless it is written into the delegation."
+    },
+    {
+     "t": "Into each analysis Task prompt, stated in full for that request beside the drug and the outcome to study.",
+     "why": "Correct. Subagents do not inherit the coordinator's conversation; per-request context must be passed explicitly in the Task prompt."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The rules differ on every request, so they must travel in each Task prompt; if every committee used the same fixed rules, the subagent's system prompt would be the better home.",
+   "explanation": "Subagents have isolated context and do not see what the coordinator discussed. Anything specific to one request must be written into that delegation's prompt; fixed role guidance belongs in the AgentDefinition.",
+   "eli5": {
+    "question": "A helper ignores rules that the boss agreed with the customer. The question asks where those rules should be written. The clue is: the rules differ on every request.",
+    "answer": "Picture a kitchen. The head chef took the customer's allergy note, but the cook only got a ticket saying \"pasta\". The cook can't see the chef's conversation (subagents have <b>isolated context</b>). So the allergy note must go on the ticket itself: the <b>Task prompt</b>. A note pinned on the cook's wall (the system prompt) only works for rules that never change. <b>Rule: per-request facts go in the Task prompt; fixed role rules go in the system prompt.</b>",
+    "options": [
+     "Runner-up. The wall note (system prompt) is right for rules that are the same every time. These change per request.",
+     "The boss's own notes (<b>coordinator's system prompt</b>) stay with the boss. The cook never sees them.",
+     "A fact sheet (<b>case-facts block</b>) on the boss's desk is still on the boss's desk.",
+     "Correct. Write this request's rules on this request's ticket."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the subagent \"knows\" what the coordinator agreed</b>, so the fix must be better instructions in general. It doesn't know. Subagents start with only their own system prompt and the Task prompt. The real choice is <b>which</b> of those two the rules belong in, and that depends on whether the rules change.",
+    "mapTitle": "Subagent misses information: where should it be written?",
+    "map": {
+     "head": [
+      "Kind of information",
+      "Where it belongs",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Changes on every request (committee rules, scope)",
+       "The Task prompt for that delegation",
+       "Subagents don't inherit the coordinator's history"
+      ],
+      [
+       "Same on every run (role, method, output format)",
+       "The subagent's AgentDefinition system prompt",
+       "Written once, applies every time"
+      ],
+      [
+       "Findings from an earlier subagent",
+       "The next Task prompt, in full",
+       "No shared memory between subagents"
+      ],
+      [
+       "Two alternative directions from one baseline",
+       "fork_session",
+       "Branches a session; not a delivery channel"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each committee sets its own inclusion rules when it submits a request",
+      "means": "The rules belong to the request, not to the subagent's role."
+     },
+     {
+      "quote": "The coordinator agrees these rules with the requester before delegating.",
+      "means": "The rules live only in the coordinator's conversation, which the subagent can't see."
+     },
+     {
+      "quote": "Its Task prompt names the drug and the outcome, but nothing else.",
+      "means": "The delegation leaves the rules out. That is the gap."
+     },
+     {
+      "quote": "The rules differ on every request.",
+      "means": "The decider. A fixed system prompt (<b>[[0]]</b>, the runner-up) can't hold them, so they go in each Task prompt: <b>[[3]]</b>. The coordinator's prompt (<b>[[1]]</b>) and its case-facts block (<b>[[2]]</b>) stay in the coordinator's context."
+     }
+    ],
+    "rule": "Per-request facts ride in the Task prompt. Fixed role rules live in the system prompt.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Parallel subagent spawning",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "For each request, the coordinator runs three searches: journal literature, the trial registry and regulatory notices. None of the searches uses another's results. Today the coordinator sends one Task call, waits for its result, then sends the next. Committees say summaries take too long. Every request needs all three searches. <b>Which change best cuts the wait?</b>",
+   "options": [
+    {
+     "t": "Let the coordinator judge each request's complexity and invoke only the search subagents that request needs.",
+     "why": "Runner-up. Dynamic selection saves time when many requests skip some subagents. Here every request needs all three."
+    },
+    {
+     "t": "Have the coordinator emit the three Task calls together in one response and use each result as it arrives.",
+     "why": "Correct. Independent subagents can run in parallel when the coordinator emits multiple Task calls in a single response."
+    },
+    {
+     "t": "Merge the three search subagents into one that holds all three search tools and runs the searches itself.",
+     "why": "Incorrect. One subagent with all the tools still runs the searches one after another, and it mixes three roles in one context."
+    },
+    {
+     "t": "Have each search subagent return only trimmed fields, so the coordinator reads less from each result.",
+     "why": "Incorrect. Trimming saves context tokens, but the wait comes from running independent searches in series."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Every request needs all three independent searches, so the time goes to running them one after another; if many requests needed only some searches, selecting subagents per request would cut more.",
+   "explanation": "Independent subtasks should run in parallel: the coordinator emits several Task calls in one response. Dynamic selection helps only when some subagents are unnecessary for a request.",
+   "eli5": {
+    "question": "Three independent searches run one after another, and summaries are slow. The question asks for the best way to cut the wait. The clue is: every request needs all three searches.",
+    "answer": "Think of three shopping errands that don't depend on each other. Sending one friend, waiting, then sending the next is slow. Send all three friends at once. In the Agent SDK, the coordinator does this by putting <b>several Task calls in one response</b>. Skipping errands would help only if some were unnecessary, and here none are. <b>Rule: independent subtasks go out together, in one response.</b>",
+    "options": [
+     "Runner-up. Skipping helpers (<b>dynamic selection</b>) helps when some aren't needed. All three are needed here.",
+     "Correct. Send all three at once; they don't depend on each other.",
+     "One helper doing all three errands (<b>merged subagent</b>) still does them one after another.",
+     "Shorter reports back (<b>trimming</b>) save reading, but the helpers still go out one at a time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat <b>\"too slow\" as \"doing too much\"</b> and reach for skipping work. But nothing here is unnecessary. The time is lost because <b>independent work runs in series</b>. The fix is parallelism, not less work.",
+    "diagram": "now:   lit ---> registry ---> notices ---> done\nbetter: lit ------>\n        registry -->  done (one response, 3 Task calls)\n        notices -->",
+    "mapTitle": "A multi-agent run is slow: what is the time spent on?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the time goes",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Independent subagents run one after another",
+       "Needless sequencing",
+       "Several Task calls in one response"
+      ],
+      [
+       "Many requests don't need every subagent",
+       "Running the full pipeline every time",
+       "Coordinator selects subagents per request"
+      ],
+      [
+       "One subagent needs another's output",
+       "Real dependency",
+       "Sequence that one; keep the rest parallel"
+      ],
+      [
+       "Large overnight job, no one waiting",
+       "Paying real-time prices",
+       "Message Batches API"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "None of the searches uses another's results.",
+      "means": "The searches are independent, so they can run at the same time."
+     },
+     {
+      "quote": "Today the coordinator sends one Task call, waits for its result, then sends the next.",
+      "means": "The time is lost in sequencing. Parallel Task calls fix exactly this: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Every request needs all three searches.",
+      "means": "The decider. Nothing can be skipped, so dynamic selection (<b>[[0]]</b>, the runner-up) saves nothing."
+     },
+     {
+      "quote": "Which change best cuts the wait?",
+      "means": "Merging into one subagent (<b>[[2]]</b>) stays sequential; trimming (<b>[[3]]</b>) saves tokens, not waiting."
+     }
+    ],
+    "rule": "Independent subtasks: emit all the Task calls in one response. Skip subagents only when a request doesn't need them.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "spawn parallel subagents by emitting multiple Task calls in one response"
+    }
+   }
+  },
+  {
+   "id": "m7-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Programmatic prerequisite gate",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "The coordinator publishes each summary by calling publish_summary. Policy says no summary may reach a committee until the citation-check subagent has passed every citation in it. In a small share of runs, the coordinator publishes before the check has run. Each such run is a reportable compliance incident. <b>Which change meets the policy?</b>",
+   "options": [
+    {
+     "t": "Force tool_choice to the citation-check delegation on the coordinator request that comes before each publish.",
+     "why": "Incorrect. Forcing a tool works per request, but the coordinator decides when it is about to publish. A run that publishes early never reaches that forced request."
+    },
+    {
+     "t": "Add a PostToolUse hook on publish_summary that runs the citation check on each summary once published.",
+     "why": "Incorrect. A hook is deterministic, but PostToolUse runs after the call. The summary has already reached the committee."
+    },
+    {
+     "t": "Make publish_summary refuse any draft that has no passing result on record from the citation-check subagent.",
+     "why": "Correct. A programmatic prerequisite blocks the downstream call until the earlier step has completed, every time."
+    },
+    {
+     "t": "State in the coordinator prompt, as a hard requirement with its reason, that publishing waits for a passing check.",
+     "why": "Runner-up. A clear requirement with its reason is the right prompt-level fix when occasional misses are tolerable. Prompt instructions still have a non-zero failure rate, and every miss is an incident."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "Each early publish is a compliance incident, so the order must hold on every run; if the check were a quality goal that tolerated occasional misses, stating it as a coordinator quality criterion would be enough.",
+   "explanation": "When a step must happen before another every time, enforce it in code: block the downstream tool until the prerequisite has a recorded result. Prompt instructions and examples have a non-zero failure rate.",
+   "eli5": {
+    "question": "Sometimes a report goes out before its citations were checked. The question asks which change meets the policy. The clue is: each such run is a reportable compliance incident.",
+    "answer": "Think of a lab that must not release a sample until it has passed testing. A poster saying \"test first\" helps, but people still forget. A lock on the release door that opens only with a pass slip never forgets. In software, that lock is a <b>prerequisite gate</b>: the publish code refuses unless a passing check is on record. <b>Rule: if it must happen every time, use code, not a request.</b>",
+    "options": [
+     "Forcing a tool on one request (<b>forced tool_choice</b>) only helps if the run reaches that request. Early publishers skip it.",
+     "A check after release (<b>PostToolUse hook</b>) is automatic, but too late: the summary already went out.",
+     "Correct. The lock on the door: no pass on record, no publish.",
+     "Runner-up. A firm, well-explained instruction helps a lot. For a rule that can never be broken, you need the lock."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better-written prompt fixes an ordering mistake</b>. Better prompts do lower the error rate. But this policy treats every miss as an incident, and <b>any prompt has a non-zero failure rate</b>. When the requirement is \"every time\", the fix moves from words to code.",
+    "mapTitle": "A required step is sometimes skipped: words or code?",
+    "map": {
+     "head": [
+      "Requirement",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Step must precede another on every run (compliance)",
+       "Programmatic gate on the downstream tool",
+       "Deterministic, can't be skipped"
+      ],
+      [
+       "Coordinator should aim for a quality bar",
+       "Goals and quality criteria in its prompt",
+       "Steers judgement; misses are tolerable"
+      ],
+      [
+       "Output format or judgement is inconsistent",
+       "Few-shot examples",
+       "Improves consistency, still probabilistic"
+      ],
+      [
+       "Subtle errors in finished work",
+       "Independent review instance",
+       "Fresh eyes, but runs after generation"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Policy says no summary may reach a committee until the citation-check subagent has passed every citation in it.",
+      "means": "A hard ordering rule: check first, then publish."
+     },
+     {
+      "quote": "In a small share of runs, the coordinator publishes before the check has run.",
+      "means": "Rare misses are exactly what prompt-based guidance leaves behind."
+     },
+     {
+      "quote": "Each such run is a reportable compliance incident.",
+      "means": "The decider. Zero misses are allowed, so a prompt requirement (<b>[[3]]</b>, the runner-up) is not enough. Forcing a tool on one request (<b>[[0]]</b>) can't stop an early publish."
+     },
+     {
+      "quote": "Which change meets the policy?",
+      "means": "A hook after publishing (<b>[[1]]</b>) is too late. Only the gate on the publish call, <b>[[2]]</b>, meets it."
+     }
+    ],
+    "rule": "Must happen every time means code. A prompt can raise the odds but can't guarantee the order.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "When deterministic compliance is required (e.g., identity verification before financial ops), prompt instructions have a non-zero failure rate."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-05",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Fixed pipeline vs adaptive decomposition",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Every evidence summary follows the committee template. It has the same four sections, each researched the same way: efficacy, safety, cost and guideline status. No section's research depends on what another section finds. Auditors must be able to replay each run step by step and see the same structure. The team is redesigning how the coordinator splits up work. <b>Which decomposition fits best?</b>",
+   "options": [
+    {
+     "t": "Chain fixed steps for each section in a set order, then run one integration pass over the four outputs.",
+     "why": "Correct. When the steps are known in advance and don't depend on intermediate findings, a fixed pipeline (prompt chaining) is predictable and auditable."
+    },
+    {
+     "t": "Let the coordinator plan from early findings and add subtasks for each section as results come back.",
+     "why": "Runner-up. Adaptive decomposition fits open-ended investigations where findings decide the next step. Here the steps never change, and audit needs repeatable runs."
+    },
+    {
+     "t": "Draft all four sections, have the coordinator check the draft for gaps, and re-delegate any thin section.",
+     "why": "Incorrect. A refinement loop helps when coverage gaps appear. It makes run length vary, which works against step-by-step replay."
+    },
+    {
+     "t": "Let the coordinator size each request and invoke only the subagents that its four sections need.",
+     "why": "Incorrect. Dynamic selection suits requests of varying size. Every request here has the same four sections."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The sections are fixed, independent and must replay identically for audit; if the work were open-ended and the next step depended on what was found, adaptive decomposition would win.",
+   "explanation": "Fixed sequential pipelines suit work whose steps are known in advance; adaptive decomposition suits investigations whose subtasks depend on intermediate findings. Predictability and auditability favour the fixed pipeline.",
+   "eli5": {
+    "question": "The team is choosing how to split up the research. The question asks which style fits this work. The clue is: no section's research depends on what another section finds, and auditors must replay each run.",
+    "answer": "Think of a recipe card versus a detective. A recipe card (a <b>fixed pipeline</b>) does the same steps every time, so anyone can check it. A detective (<b>adaptive decomposition</b>) picks the next step from each clue. These summaries always have the same four parts done the same way, and auditors want the same steps every time. That is a recipe card. <b>Rule: known steps use a fixed pipeline; steps that depend on findings use an adaptive plan.</b>",
+    "options": [
+     "Correct. Same steps every run, easy to replay, then one pass to join the parts.",
+     "Runner-up. The detective style wins when each finding decides the next step. Here nothing does.",
+     "A check-and-redo loop (<b>refinement loop</b>) fixes gaps, but makes runs vary in length.",
+     "Choosing helpers per request (<b>dynamic selection</b>) fits requests of different sizes. These are all the same shape."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the adaptive approach is always the more advanced, better choice</b>. It isn't better here. Adaptive plans shine when you can't know the steps in advance. When the steps are fixed and auditors need identical runs, <b>a fixed pipeline is the right tool</b>, and adaptivity becomes a cost.",
+    "mapTitle": "How should the coordinator split the work?",
+    "map": {
+     "head": [
+      "Situation",
+      "Decomposition",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Same steps every time; must be auditable",
+       "Fixed pipeline (prompt chaining) + joining pass",
+       "Predictable and replayable"
+      ],
+      [
+       "Next step depends on what was just found",
+       "Adaptive decomposition",
+       "Subtasks generated from findings"
+      ],
+      [
+       "Drafts show coverage gaps",
+       "Refinement loop: find gaps, re-delegate, re-synthesize",
+       "Fills what the first pass missed"
+      ],
+      [
+       "Requests vary from one fact to a full review",
+       "Select subagents by complexity",
+       "Skip what a request doesn't need"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It has the same four sections, each researched the same way",
+      "means": "The steps are known in advance."
+     },
+     {
+      "quote": "No section's research depends on what another section finds.",
+      "means": "No intermediate finding changes the plan, so adaptive decomposition (<b>[[1]]</b>, the runner-up) adds nothing."
+     },
+     {
+      "quote": "Auditors must be able to replay each run step by step and see the same structure.",
+      "means": "The decider. Repeatable runs favour a fixed pipeline: <b>[[0]]</b>. A refinement loop (<b>[[2]]</b>) varies run length."
+     },
+     {
+      "quote": "Which decomposition fits best?",
+      "means": "Every request is the same shape, so dynamic selection (<b>[[3]]</b>) has nothing to choose."
+     }
+    ],
+    "rule": "Known, independent steps: fixed pipeline. Steps that depend on findings: adaptive plan.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-06",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Tool results in conversation history",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The team's coordinator loop sends each request with the system prompt, the original question and only the latest tool result. Earlier turns are dropped. The coordinator often repeats searches it already ran in the same run. Runs are short and use a small part of the context window. <b>What should the team change first?</b>",
+   "options": [
+    {
+     "t": "Write each search and its findings to a scratchpad file, and have the coordinator read it before each turn.",
+     "why": "Runner-up. A scratchpad preserves findings across context limits or session boundaries. These runs are short, so the normal message history fits and the root fault is that it's discarded."
+    },
+    {
+     "t": "Keep a case-facts block listing each search already run, and send it with the latest tool result.",
+     "why": "Incorrect. A case-facts block protects key details in long conversations. Here it patches the missing history instead of restoring it, and the reasoning between turns is still lost."
+    },
+    {
+     "t": "Have each search tool return its cached result when it receives a query it already answered in the run.",
+     "why": "Incorrect. Caching makes repeats cheaper but leaves Claude blind to what it already did; it treats the symptom."
+    },
+    {
+     "t": "Send the full message list each turn, with every assistant turn and tool result appended in order.",
+     "why": "Correct. Tool results are appended to the conversation history so the model can reason about its next action from what it has already done."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The runs are short and fit easily in context, so the plain message history is the fix; if runs were long enough to exhaust the context window, an external scratchpad would be needed.",
+   "explanation": "In the agentic loop, each tool result is appended to the conversation history and sent back on the next request. Without it, the model cannot know what it has already done and repeats work.",
+   "eli5": {
+    "question": "The coordinator repeats searches it already did. The question asks what to fix first. The clue is: runs are short and use a small part of the context window.",
+    "answer": "Imagine a cook who is handed only the last note from the kitchen, never the earlier ones. They'll keep asking for things they already got. The fix is to hand them the whole stack of notes: the <b>message history</b> with every tool result appended. Extra notebooks (a scratchpad file) are for very long jobs that outgrow the stack. These runs are short. <b>Rule: append every tool result to the conversation; reach for external memory only when context runs out.</b>",
+    "options": [
+     "Runner-up. A scratchpad file helps when the history is too long to keep. Here it fits easily.",
+     "A list of searches done (<b>case-facts block</b>) is a patch. The full history is what's missing.",
+     "A cache makes repeats cheap but doesn't stop them.",
+     "Correct. Send the whole conversation, including every tool result, each time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see repeated work and think <b>\"memory problem, add a memory tool\"</b>. But the model has no memory beyond the messages you send. Here the loop <b>throws the history away</b>. Restore the history first; external memory is for when history no longer fits.",
+    "mapTitle": "The agent forgets what it did: what is missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Repeats calls in a short run",
+       "Loop drops earlier turns",
+       "Append each tool result to the messages list"
+      ],
+      [
+       "Loses findings in a long run near context limits",
+       "History too large to keep",
+       "Scratchpad file or subagent delegation"
+      ],
+      [
+       "Exact amounts or dates blur over a long chat",
+       "Progressive summarization",
+       "Case-facts block"
+      ],
+      [
+       "Picks the wrong tool",
+       "Weak descriptions",
+       "Expand tool descriptions"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "only the latest tool result",
+      "means": "The loop sends just one result. Everything earlier is gone."
+     },
+     {
+      "quote": "The coordinator often repeats searches it already ran in the same run.",
+      "means": "The symptom of a missing history."
+     },
+     {
+      "quote": "Runs are short and use a small part of the context window.",
+      "means": "The decider. Space isn't the problem, so a scratchpad (<b>[[0]]</b>, the runner-up) or a facts block (<b>[[1]]</b>) works around a problem these runs don't have."
+     },
+     {
+      "quote": "What should the team change first?",
+      "means": "Restore the history: <b>[[3]]</b>. A cache (<b>[[2]]</b>) treats the symptom."
+     }
+    ],
+    "rule": "The model knows only what you send. Append every tool result to the conversation.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Tool results are appended to conversation history so the model reasons about the next action."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-07",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Forcing a tool to run first",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The document-analysis subagent has two tools: extract_citation_metadata and analyze_findings. Each paper must go through extraction first, because analysis needs its page and DOI fields. The subagent calls a tool on every turn. But on some papers it calls analyze_findings first, and those findings carry no page numbers. <b>Which setting fixes this most directly?</b>",
+   "options": [
+    {
+     "t": "Rewrite both tool descriptions to say which tool comes first and which fields the analysis step expects.",
+     "why": "Incorrect. Better descriptions improve selection but stay probabilistic; the order is still left to the model."
+    },
+    {
+     "t": "On the first request for each paper, set tool_choice to the named tool for metadata extraction.",
+     "why": "Correct. A forced tool_choice makes Claude call that specific tool, so extraction runs before analysis."
+    },
+    {
+     "t": "Add a PostToolUse hook that looks up page and DOI fields and adds them to each analysis result.",
+     "why": "Incorrect. A hook can transform results, but repairing them afterwards hides the skipped step instead of preventing it."
+    },
+    {
+     "t": "Set tool_choice to any for every request the subagent makes while it is working on a paper.",
+     "why": "Runner-up. <code>any</code> guarantees a tool call instead of text. The subagent already calls a tool every turn; it picks the wrong one first."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 3,
+   "decider": "The subagent already calls a tool every turn but picks the wrong one first; if it were answering in plain text instead of calling tools, tool_choice any would be the fix.",
+   "explanation": "tool_choice auto lets Claude choose, any forces some tool call, and a forced named tool makes Claude call that exact tool. To make a specific tool run first, force it on that request.",
+   "eli5": {
+    "question": "A helper sometimes skips the first step and goes straight to the second tool. The question asks which setting fixes the order. The clue is: the subagent calls a tool on every turn.",
+    "answer": "Think of a form with \"fill in section A first\". Saying \"you must use a pen\" (<code>any</code>) doesn't help: they already use a pen. You need \"start with section A\" (a <b>forced tool choice</b> naming the tool). In the API, <code>tool_choice</code> can name one tool, and Claude must call exactly that one. Do that on the paper's first request, then let it choose freely. <b>Rule: any = some tool; named = this tool.</b>",
+    "options": [
+     "Clearer labels (<b>descriptions</b>) help, but the model may still choose the wrong order.",
+     "Correct. Name the extraction tool for the first request, so it always starts there.",
+     "A clean-up step afterwards (<b>PostToolUse hook</b>) patches results instead of fixing the order.",
+     "Runner-up. <code>any</code> stops plain-text replies. This helper already calls tools; it just picks the wrong one first."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b><code>tool_choice: \"any\"</code> means \"make it use the tools properly\"</b>. It only means \"call <i>some</i> tool, not text\". When the problem is <b>which</b> tool comes first, you need the forced form that names the tool.",
+    "diagram": "auto   -> tool or text, model decides\nany    -> must call a tool, any tool\nforced -> must call THIS tool",
+    "mapTitle": "Claude's tool calls are off: which tool_choice fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "A specific tool must run first but sometimes doesn't",
+       "Order left to the model",
+       "Forced tool_choice naming that tool on the first request"
+      ],
+      [
+       "Claude replies in text when a tool call is needed",
+       "tool_choice auto",
+       "tool_choice any"
+      ],
+      [
+       "Claude confuses two similar tools at random",
+       "Thin descriptions",
+       "Expand descriptions with inputs and boundaries"
+      ],
+      [
+       "Results arrive in mixed formats",
+       "Heterogeneous sources",
+       "PostToolUse hook to normalize"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each paper must go through extraction first",
+      "means": "A required order: one specific tool before the other."
+     },
+     {
+      "quote": "The subagent calls a tool on every turn.",
+      "means": "The decider. Text replies aren't the problem, so <code>any</code> (<b>[[3]]</b>, the runner-up) changes nothing."
+     },
+     {
+      "quote": "on some papers it calls analyze_findings first",
+      "means": "The wrong tool is picked first. Naming the tool fixes that: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Which setting fixes this most directly?",
+      "means": "Descriptions (<b>[[0]]</b>) stay probabilistic; a hook (<b>[[2]]</b>) repairs after the fact."
+     }
+    ],
+    "rule": "any forces some tool call; a named tool_choice forces that exact tool. Use the named form to make a step run first.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment); \"any\" guarantees a tool call rather than text."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-08",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Scoped tool access per subagent",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "All subagents are built from one AgentDefinition template that carries the full tool set. The synthesis subagent only needs to read analysis results and save drafts. It often runs registry and journal searches mid-draft, and sometimes saves drafts with the wrong tool. Every tool already has a detailed, distinct description. Most of the tools belong to other subagents' roles. <b>Which change best fixes its tool use?</b>",
+   "options": [
+    {
+     "t": "Add a section to the synthesis system prompt naming the tools it may use and the tools that belong to other roles.",
+     "why": "Incorrect. Telling the subagent which tools are off-limits helps, but it still holds them all; prompt guidance stays probabilistic."
+    },
+    {
+     "t": "Expose the analysis results as an MCP resource that the synthesis subagent reads before it starts each draft.",
+     "why": "Incorrect. A resource can cut exploratory calls, but the subagent still holds every other role's tools."
+    },
+    {
+     "t": "Give the synthesis subagent its own AgentDefinition whose tool list holds only the read and draft tools it uses.",
+     "why": "Correct. Too many tools degrade selection, and off-role tools get misused; scope each subagent's tools to its role."
+    },
+    {
+     "t": "Rewrite each tool's description with input formats, sample calls and a note on when synthesis should not use it.",
+     "why": "Runner-up. Better descriptions are the first fix when descriptions are thin. These are already detailed; the trouble is how many off-role tools it holds."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "The descriptions are already detailed and most tools belong to other roles; if the descriptions were one-liners, rewriting them would be the first fix.",
+   "explanation": "Selection reliability drops as the tool count grows, and agents misuse tools outside their specialty. Give each subagent only the tools its role needs.",
+   "eli5": {
+    "question": "A writing helper keeps using search tools and the wrong save tool. The question asks what fixes its tool use. The clue is: most of the tools belong to other subagents' roles, and the descriptions are already good.",
+    "answer": "Think of a painter handed the whole hardware store. Even with perfect labels, they'll pick up the drill now and then. Give them the brushes and the canvas only. In the Agent SDK, each subagent's <b>AgentDefinition</b> can list exactly which tools it gets. Fewer, role-fit tools means fewer wrong picks. <b>Rule: give each agent only the tools its job needs.</b>",
+    "options": [
+     "A note saying \"don't touch the drill\" (<b>prompt guidance</b>) helps, but the drill is still in the box.",
+     "A ready-made catalog (<b>MCP resource</b>) saves lookups, but the extra tools stay.",
+     "Correct. Only the tools for this job.",
+     "Runner-up. Better labels are the first fix when labels are poor. These are already good."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>wrong tool picks always mean bad descriptions</b>. Descriptions are the main signal, but they can't fix an agent that holds <b>far too many tools, most meant for other roles</b>. Fewer tools and role-fit tools are a separate lever.",
+    "mapTitle": "A subagent misuses tools: description or distribution?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Many off-role tools; descriptions already good",
+       "Tool distribution",
+       "Scope the AgentDefinition's tool list to the role"
+      ],
+      [
+       "Few tools, one-line descriptions, confused picks",
+       "Descriptions",
+       "Expand descriptions: inputs, examples, boundaries"
+      ],
+      [
+       "Needs one quick lookup from another role, often",
+       "Strict scoping too tight",
+       "One limited cross-role tool"
+      ],
+      [
+       "Many exploratory calls to learn what exists",
+       "No catalog",
+       "MCP resource"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "one AgentDefinition template that carries the full tool set",
+      "means": "Every subagent holds every tool."
+     },
+     {
+      "quote": "It often runs registry and journal searches mid-draft, and sometimes saves drafts with the wrong tool.",
+      "means": "Classic signs of off-role tools and too many choices."
+     },
+     {
+      "quote": "Every tool already has a detailed, distinct description.",
+      "means": "Descriptions aren't the weak point, so <b>[[3]]</b>, the runner-up, isn't the best fix."
+     },
+     {
+      "quote": "Most of the tools belong to other subagents' roles.",
+      "means": "The decider. Scope the tool list: <b>[[2]]</b>. A prompt list of allowed tools (<b>[[0]]</b>) and a resource (<b>[[1]]</b>) leave the tools in place."
+     }
+    ],
+    "rule": "Descriptions fix confused picks among the right tools; scoping fixes holding the wrong tools.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Agents with off-specialization tools misuse them."
+    }
+   }
+  },
+  {
+   "id": "m7-s3-09",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Lost in the middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The synthesis subagent receives one long input: findings from every analyzed paper, in the order the papers were found. Each finding is already trimmed to a few relevant fields. Reviewers say summaries cover the first and last papers well. Findings from papers in the middle of the input are often missing. <b>Which change best addresses this?</b>",
+   "options": [
+    {
+     "t": "Move the findings into a persistent case-facts block and refresh that block as each new paper is analyzed.",
+     "why": "Incorrect. A case-facts block protects details across long multi-turn conversations; it doesn't change how one long input is read."
+    },
+    {
+     "t": "Have a second, independent synthesis instance review each draft and list the papers it left out.",
+     "why": "Incorrect. Independent review can catch omissions, but it treats the symptom and adds a pass every run."
+    },
+    {
+     "t": "Trim each paper's analysis output down to the fields that synthesis uses before passing it on.",
+     "why": "Runner-up. Trimming is the fix when verbose outputs bloat the input. These findings are already trimmed."
+    },
+    {
+     "t": "Open the synthesis input with a digest of key findings, and put the detail under headings by outcome.",
+     "why": "Correct. Models attend best to the beginning and end; a leading digest and clear section headers keep middle content from being lost."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "The findings are already trimmed and the losses track position in the input; if the input were bloated with irrelevant fields, trimming would be the first fix.",
+   "explanation": "Models reliably process the beginning and end of long inputs but may omit the middle. Put key findings first and organize the rest under explicit headers.",
+   "eli5": {
+    "question": "Long input, and the middle part gets ignored. The question asks how to fix it. The clue is: each finding is already trimmed, and losses are in the middle.",
+    "answer": "Think of a long speech: people remember the opening and the ending, and the middle blurs. Models do the same with long inputs (\"<b>lost in the middle</b>\"). The fix is to put a short list of key points up front and use clear headings, like a table of contents. Trimming helps only when there is junk to cut, and here there isn't. <b>Rule: key summary first, explicit headings for the rest.</b>",
+    "options": [
+     "A <b>case-facts block</b> is for long chats. This is one long input.",
+     "A second reader (<b>independent review</b>) catches misses after the fact. It doesn't stop them.",
+     "Runner-up. Cutting junk (<b>trimming</b>) helps bloated input. This is already trimmed.",
+     "Correct. Headline first, then clear sections."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a long input always means \"cut it down\"</b>. Trimming helps when irrelevant fields crowd the input. Here every field is relevant; the problem is <b>where</b> the content sits. Models read the start and end best, so the structure must surface the middle.",
+    "mapTitle": "Content goes missing in a long input: what kind of loss?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Middle sections omitted; content already lean",
+       "Lost in the middle",
+       "Key digest first, explicit section headers"
+      ],
+      [
+       "Input full of irrelevant fields",
+       "Verbose tool outputs",
+       "Trim to relevant fields"
+      ],
+      [
+       "Numbers and dates blur over a long chat",
+       "Progressive summarization",
+       "Persistent case-facts block"
+      ],
+      [
+       "Claims lose their sources",
+       "Compression without mapping",
+       "Structured claim-source mappings"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "in the order the papers were found",
+      "means": "No structure: findings sit in arrival order."
+     },
+     {
+      "quote": "Each finding is already trimmed to a few relevant fields.",
+      "means": "The decider against trimming (<b>[[2]]</b>, the runner-up): there's nothing left to cut."
+     },
+     {
+      "quote": "Reviewers say summaries cover the first and last papers well.",
+      "means": "The start and end are fine."
+     },
+     {
+      "quote": "Findings from papers in the middle of the input are often missing.",
+      "means": "The classic lost-in-the-middle pattern. Fix the layout: <b>[[3]]</b>. <b>[[0]]</b> is for long chats; <b>[[1]]</b> treats the symptom."
+     }
+    ],
+    "rule": "Lean input but missing middle: put a key digest first and use explicit headers.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "place key summaries at the beginning + explicit section headers"
+    }
+   }
+  },
+  {
+   "id": "m7-s3-10",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Structured error propagation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The trial-registry subagent sometimes cannot reach the registry, and the outages last for hours. Today it raises an exception that ends the whole run and discards finished work from the other subagents. The team wants the coordinator to choose what happens next: wait, use another source, or publish with a noted gap. <b>Which TWO changes should the subagent make?</b>",
+   "options": [
+    {
+     "t": "Retry the registry call locally with backoff before reporting anything back to the coordinator.",
+     "why": "Runner-up. Local recovery is right for brief, transient failures. These outages last for hours, so the coordinator needs to hear about them now."
+    },
+    {
+     "t": "Return a structured failure naming the error type, the registry query it attempted and possible alternatives.",
+     "why": "Correct. Structured error context lets the coordinator decide whether to wait, switch source or proceed."
+    },
+    {
+     "t": "Log the full stack trace to the team's monitoring dashboard and page the on-call engineer.",
+     "why": "Incorrect. Alerting humans is useful operations practice, but it gives the coordinator nothing to decide with."
+    },
+    {
+     "t": "Include in its return any trial records it had already retrieved before the registry went down.",
+     "why": "Correct. Passing partial results along with the error keeps finished work and lets the coordinator publish with a noted gap."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The outages last for hours and the coordinator must choose the next step, so the subagent should report a structured error with its partial results; if outages were brief blips, local retry with backoff would come first.",
+   "explanation": "Recover locally from transient errors, but propagate unresolved ones with structured context: failure type, attempted query, partial results and alternatives. Crashing the run and hiding the failure are both anti-patterns.",
+   "eli5": {
+    "question": "One helper's data source goes down for hours, and today that crashes everything. The question asks which two changes let the boss decide what to do. The clue is: the outages last for hours.",
+    "answer": "Think of a courier who finds a road closed for the day. Crashing the van loses every parcel. Circling the block for hours wastes the day. The useful courier calls the depot: \"Road X closed, here's what I tried, here are the parcels I already have.\" The depot can then reroute. In multi-agent terms: a <b>structured error</b> plus the <b>partial results</b>. <b>Rule: fix brief glitches locally; report long failures with context and what you already have.</b>",
+    "options": [
+     "Runner-up. Circling the block (<b>local retry</b>) is right for a short blip. Hours-long closures need a call to the depot.",
+     "Correct. Say what failed, what you tried, and what else could work.",
+     "Calling the mechanic (<b>paging on-call</b>) is good practice, but the depot still doesn't know what to do.",
+     "Correct. Hand over the parcels already collected."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a good subagent handles its own errors and keeps quiet</b>. That's right for a short blip. When a failure <b>can't be solved locally</b>, the coordinator must decide, and it can only decide well if the subagent tells it what failed, what was tried, and what was already gathered.",
+    "diagram": "subagent --> {type: unavailable, query: ...,\n             partial: [records], alt: [...]}\n          --> coordinator: wait / switch / publish gap",
+    "mapTitle": "A subagent hits an error: handle it, or hand it up?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right handling",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Brief transient timeout",
+       "Retry locally with backoff",
+       "Likely to succeed soon"
+      ],
+      [
+       "Failure that won't clear soon",
+       "Structured error + partial results to coordinator",
+       "Coordinator chooses the recovery"
+      ],
+      [
+       "Source answered: nothing matches",
+       "Return a valid empty result",
+       "Not an error; don't retry"
+      ],
+      [
+       "Crash on any failure",
+       "Anti-pattern",
+       "Discards other agents' work"
+      ],
+      [
+       "Generic \"unavailable\" status",
+       "Anti-pattern",
+       "Hides what was tried and what remains"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the outages last for hours",
+      "means": "The decider. Local retry (<b>[[0]]</b>, the runner-up) won't resolve it soon."
+     },
+     {
+      "quote": "Today it raises an exception that ends the whole run and discards finished work from the other subagents.",
+      "means": "Terminating on a single failure is the anti-pattern to remove."
+     },
+     {
+      "quote": "The team wants the coordinator to choose what happens next",
+      "means": "The coordinator needs the facts: <b>[[1]]</b>."
+     },
+     {
+      "quote": "publish with a noted gap",
+      "means": "Publishing with a gap needs the records already found: <b>[[3]]</b>. Paging a human (<b>[[2]]</b>) doesn't inform the coordinator."
+     }
+    ],
+    "rule": "Handle brief glitches locally. Hand up long failures with type, query, partial results and alternatives.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Structured error context (failure type, attempted query, partial results, alternatives) enables coordinator recovery."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Grep for content search",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An engineer must remove the deprecated helper legacy_price_round. First they need every place that calls it. Calls could be in models, jobs, views or lib code. File names give no hint about which files use the helper. <b>Which approach finds the call sites most directly?</b>",
+   "options": [
+    {
+     "t": "Read the helper's definition, then Grep for files that require its module and Read each of those files.",
+     "why": "Incorrect. Files that load a module aren't the same set as files that call this helper; Rails autoloading means many callers never require it."
+    },
+    {
+     "t": "Use Bash to run the test suite with the helper stubbed to raise, and collect each failing call site.",
+     "why": "Incorrect. Tests only reach code they cover; untested call sites stay hidden."
+    },
+    {
+     "t": "Use Grep for the helper's name across the repository, and review the file and line of each match.",
+     "why": "Correct. Grep searches file contents, so it finds every call site wherever it lives."
+    },
+    {
+     "t": "Use Glob with **/*price*.rb to list the pricing files, then Read each one for calls to the helper.",
+     "why": "Runner-up. Glob is the right tool when the target is defined by file names or paths. Here the names say nothing about which files call the helper."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "File names give no hint which files call the helper, so a content search is needed; if the files were identifiable by name pattern, Glob would be the right first tool.",
+   "explanation": "Grep searches inside files; Glob matches file paths. Finding where a function is called is a content question.",
+   "eli5": {
+    "question": "The engineer needs every place a function is called. The question asks for the most direct way to find them. The clue is: file names give no hint about which files use the helper.",
+    "answer": "Think of a library. Searching the catalogue by book title (<b>Glob</b>, file names) won't find every book that mentions a word. You need a full-text search (<b>Grep</b>, file contents). The function's name appears inside the calling files, not in their names. <b>Rule: Grep looks inside files; Glob looks at file names.</b>",
+    "options": [
+     "Searching for <code>require</code> lines finds who loads the file, not who calls the helper.",
+     "Running tests only finds callers the tests happen to reach.",
+     "Correct. Search the contents for the name.",
+     "Runner-up. Searching by file name (<b>Glob</b>) works when names tell you something. Here they don't."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>\"find files\" means Glob</b>. Glob only matches <b>paths and names</b>. Here the files are defined by what they <b>contain</b> (a call to the helper), and the names give no hint. Content questions go to Grep.",
+    "mapTitle": "Which built-in tool answers this question?",
+    "map": {
+     "head": [
+      "What you need",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every file that mentions a name or string",
+       "Grep",
+       "Searches contents"
+      ],
+      [
+       "Every file whose path matches a pattern",
+       "Glob",
+       "Matches names and paths"
+      ],
+      [
+       "Understand a flow from an entry point",
+       "Grep for entry, then Read along the calls",
+       "Incremental, not read-all"
+      ],
+      [
+       "Change one unique line",
+       "Edit",
+       "Targeted text match"
+      ],
+      [
+       "Verbose exploration without filling context",
+       "Explore subagent",
+       "Returns a summary"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "First they need every place that calls it.",
+      "means": "The target is call sites: content inside files."
+     },
+     {
+      "quote": "Calls could be in models, jobs, views or lib code.",
+      "means": "They could be anywhere, so a repository-wide search is needed."
+     },
+     {
+      "quote": "File names give no hint about which files use the helper.",
+      "means": "The decider. A name pattern (<b>[[3]]</b>, the runner-up) can't find them; a content search can: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Which approach finds the call sites most directly?",
+      "means": "Tracing requires (<b>[[0]]</b>) finds the wrong set; tests (<b>[[1]]</b>) find only covered code."
+     }
+    ],
+    "rule": "Grep searches inside files. Glob matches file names and paths.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Grep = content search; Glob = file path patterns"
+    }
+   }
+  },
+  {
+   "id": "m7-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Structured MCP error responses",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team's Linear MCP server has a move_issue tool. It fails for two different reasons. Sometimes the Linear API times out. Other times the team's workflow forbids the move, such as closing an issue with no reviewer. Both cases return the text 'Operation failed'. Claude retries every failure several times. <b>What should the server return instead?</b>",
+   "options": [
+    {
+     "t": "An isError result with an error category, a retryable flag and a readable reason for the refusal.",
+     "why": "Correct. Structured error metadata lets Claude retry transient timeouts and stop and explain on business-rule rejections."
+    },
+    {
+     "t": "Retry timeouts inside the server with backoff, and return an isError result to Claude once the retries run out.",
+     "why": "Runner-up. Local recovery of transient failures is good practice and would be enough if every failure were a timeout. Rule rejections still come back with no category or reason."
+    },
+    {
+     "t": "An isError result carrying the 'Operation failed' text plus the HTTP status code returned by the Linear API.",
+     "why": "Incorrect. A status code is closer, but it doesn't say whether to retry or which workflow rule blocked the move."
+    },
+    {
+     "t": "A success result whose text explains a blocked move, with an isError result reserved for timeouts.",
+     "why": "Incorrect. A rule rejection is a failure; returning it as success hides it from the agent's error handling."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Some failures are workflow rejections that will fail again on any retry, so Claude needs the error category and retryability; if every failure were a timeout, retrying inside the server would be enough.",
+   "explanation": "Distinguish transient, validation, business and permission errors. Return isError with an error category, a retryable flag and a readable description so the agent can choose between retrying and explaining.",
+   "eli5": {
+    "question": "A tool fails for two very different reasons but says the same thing both times. The question asks what it should return. The clue is: other times the team's workflow forbids the move.",
+    "answer": "Think of a shop till that only ever says \"error\". Is the card reader slow (try again) or is the card blocked (stop)? You can't tell, so you keep swiping. A good till says which. MCP tools do this with <b>isError</b> plus a <b>category</b> and a <b>retryable</b> flag. Then Claude retries the timeouts and explains the blocked moves. <b>Rule: tell the agent what kind of failure it is and whether retrying can help.</b>",
+    "options": [
+     "Correct. Say what kind of failure it is, whether to retry, and which rule blocked it.",
+     "Runner-up. Retrying the slow reader yourself is good. But the blocked card still gets no explanation.",
+     "A raw status code is a clue, not an answer: retry or stop?",
+     "Calling a blocked move a success hides the failure."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat <b>all tool failures as \"try again later\"</b>. Some failures are <b>business rules</b>: they will fail every time until something changes. The agent can only tell these apart if the error itself says what kind it is.",
+    "mapTitle": "A tool fails: what should the agent be told?",
+    "map": {
+     "head": [
+      "Kind of failure",
+      "What to return",
+      "Agent's next move"
+     ],
+     "rows": [
+      [
+       "Transient (timeout)",
+       "isError, transient category, retryable true",
+       "Retry, or retry locally first"
+      ],
+      [
+       "Business rule (workflow forbids)",
+       "isError, business category, retryable false, readable reason",
+       "Stop and explain to the user"
+      ],
+      [
+       "Validation (bad input)",
+       "isError, validation category, what was wrong",
+       "Fix the input and retry"
+      ],
+      [
+       "Valid search with no matches",
+       "Success with an empty result",
+       "Report nothing found"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Sometimes the Linear API times out.",
+      "means": "Transient: retrying helps."
+     },
+     {
+      "quote": "Other times the team's workflow forbids the move",
+      "means": "The decider. A business-rule failure; retrying can't help, so retrying timeouts alone (<b>[[1]]</b>, the runner-up) misses half the problem."
+     },
+     {
+      "quote": "Both cases return the text 'Operation failed'.",
+      "means": "A uniform message hides which case it is. A bare status code (<b>[[2]]</b>) still doesn't say retry-or-stop."
+     },
+     {
+      "quote": "Claude retries every failure several times.",
+      "means": "Claude can't tell them apart. Category and retryable flag fix that: <b>[[0]]</b>. Reporting a refusal as success (<b>[[3]]</b>) hides it."
+     }
+    ],
+    "rule": "Return the error's category and whether it is retryable. A uniform \"failed\" leaves the agent guessing.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "Uniform \"Operation failed\" prevents good recovery decisions."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit for a targeted change",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Claude often changes single values in large YAML config files. It reads the whole file and writes the whole file back. Reviewers find these full rewrites hard to check, and one rewrite quietly reformatted a file. The lines being changed hold text that appears only once in each file. <b>Which tool use should the team ask for?</b>",
+   "options": [
+    {
+     "t": "Use Bash to run sed with the line's current text as the pattern and the new value as the replacement.",
+     "why": "Incorrect. A shell substitution can work, but it bypasses the purpose-built editing tool and its match checks."
+    },
+    {
+     "t": "Use Grep to find the line, then use Edit with only the old value itself as the match string.",
+     "why": "Incorrect. The value alone (say, a number) may appear on many lines, so the match can fail or hit the wrong place. The full line is what's unique."
+    },
+    {
+     "t": "Read the file, change the value in memory, and Write the full file back with its formatting kept.",
+     "why": "Runner-up. Read plus Write is the fallback when Edit's match text isn't unique. Here the text is unique, so a full rewrite isn't needed."
+    },
+    {
+     "t": "Use Edit with the line's full current text as the match string and the updated line as the replacement.",
+     "why": "Correct. Edit makes a targeted change through a unique text match and leaves the rest of the file untouched."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "The text to change appears only once in each file, so Edit's unique match works; if the same text appeared several times, Read plus Write would be the fallback.",
+   "explanation": "Edit performs a targeted change by matching unique text. Read plus Write is the fallback when the match isn't unique.",
+   "eli5": {
+    "question": "Claude rewrites whole files to change one value. The question asks which tool to use instead. The clue is: the text appears only once in each file.",
+    "answer": "Think of fixing a typo in a book. You don't retype the whole book (<b>Read + Write</b>); you correct the one word (<b>Edit</b>). Edit finds the exact text and swaps it, so it needs that text to be unique, and here it is. Retyping is only for when the same text appears in several places. <b>Rule: unique text means Edit; non-unique means Read and Write.</b>",
+    "options": [
+     "A shell trick (<b>sed via Bash</b>) can work, but it skips the editing tool.",
+     "Matching just the value is risky: a number like that may appear in many places.",
+     "Runner-up. Retyping the whole file is the fallback when the text isn't unique. Here it is.",
+     "Correct. Swap that one unique line."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Read then Write is the safe, thorough way to change a file</b>. It is the <b>fallback</b>. When the text to change is unique, Edit changes only that text and leaves the rest of the file exactly as it was.",
+    "mapTitle": "Changing a file: which built-in tool?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Text to change is unique in the file",
+       "Edit",
+       "Targeted change, rest untouched"
+      ],
+      [
+       "Text to change appears several times",
+       "Read + Write",
+       "Edit's match would be ambiguous"
+      ],
+      [
+       "Creating a new file",
+       "Write",
+       "Full file content"
+      ],
+      [
+       "Finding where text appears",
+       "Grep",
+       "Content search, not editing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It reads the whole file and writes the whole file back.",
+      "means": "Full rewrites are being used for one-value changes."
+     },
+     {
+      "quote": "one rewrite quietly reformatted a file",
+      "means": "Full rewrites can disturb text they shouldn't touch."
+     },
+     {
+      "quote": "The lines being changed hold text that appears only once in each file.",
+      "means": "The decider. A unique match is what Edit needs: <b>[[3]]</b>. The Read+Write fallback (<b>[[2]]</b>, the runner-up) is for non-unique text."
+     },
+     {
+      "quote": "Which tool use should the team ask for?",
+      "means": "Matching only the value (<b>[[1]]</b>) may not be unique; sed (<b>[[0]]</b>) sidesteps the editing tool."
+     }
+    ],
+    "rule": "Unique text: Edit. Not unique: Read, then Write.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "When Edit fails on non-unique match → Read + Write fallback."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 tool_choice any",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An Agent SDK script sends each merged pull request to Claude in a single request. It offers two tools: record_changelog and request_clarification. Either tool call is an acceptable result. Plain text is not, because the script parses only tool input. Today some replies come back as prose. <b>Which tool_choice setting fits best?</b>",
+   "options": [
+    {
+     "t": "Keep tool_choice at auto, and add few-shot examples in which every reply ends in one of the two tool calls.",
+     "why": "Incorrect. Examples raise the odds of a tool call; auto still permits a text reply."
+    },
+    {
+     "t": "Set tool_choice to any on each request, and let Claude choose which of the two tools to call.",
+     "why": "Correct. any requires a tool call instead of text while leaving the choice between acceptable tools to Claude."
+    },
+    {
+     "t": "Force tool_choice to record_changelog by name, and handle clarifications in a separate second request.",
+     "why": "Runner-up. Forcing a named tool is right when only one tool is acceptable. Here both are, and forcing one takes the clarification decision away from Claude."
+    },
+    {
+     "t": "Keep tool_choice at auto, enable strict mode on both schemas, and retry any reply that has no tool call.",
+     "why": "Incorrect. Strict schemas fix tool input shape, and retries clean up afterwards; auto still allows the text reply in the first place."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Either tool is an acceptable result, so the setting should force some tool call without picking which; if only record_changelog were acceptable, forcing it by name would be right.",
+   "explanation": "tool_choice auto may return text, any must call a tool, and a forced tool must call that specific tool. When several tools are valid outputs and text is not, use any.",
+   "eli5": {
+    "question": "Claude sometimes replies in plain text, and the script can only read tool calls. The question asks which tool_choice setting fits. The clue is: either tool call is an acceptable result.",
+    "answer": "Think of a form with two boxes, \"approve\" or \"ask a question\", and a rule: tick one, don't write a letter. <code>any</code> means \"you must tick a box, your choice which\". Forcing one named box would remove the second, valid option. <b>Rule: several acceptable tools and no text allowed means any; exactly one acceptable tool means force it by name.</b>",
+    "options": [
+     "Examples (<b>few-shot</b>) make a tick more likely, but auto still allows a letter.",
+     "Correct. Must tick a box; either box is fine.",
+     "Runner-up. Forcing one named box is right when only that box is allowed. Here both are.",
+     "Strict schemas plus retries mop up after a letter arrives. Better to ban letters up front."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to reach for <b>the strongest setting, forcing a named tool</b>, whenever text replies are a problem. But forcing one tool removes the other valid outcome. <code>any</code> is the setting that bans text while <b>keeping Claude's choice among tools</b>.",
+    "diagram": "auto   -> tool or text      (text breaks the parser)\nany    -> one of the tools  (either is fine)\nforced -> record_changelog  (clarification lost)",
+    "mapTitle": "Which tool_choice fits the output you need?",
+    "map": {
+     "head": [
+      "What you need",
+      "Setting",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Text or tool, model decides",
+       "auto",
+       "Default; may return text"
+      ],
+      [
+       "Some tool call, any of several valid ones",
+       "any",
+       "Bans text, keeps the choice"
+      ],
+      [
+       "One specific tool, every time",
+       "Forced named tool",
+       "Removes the choice"
+      ],
+      [
+       "Tool input matches the schema",
+       "Strict schema",
+       "Shape, not whether a call happens"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It offers two tools: record_changelog and request_clarification.",
+      "means": "Two possible tool outputs."
+     },
+     {
+      "quote": "Either tool call is an acceptable result.",
+      "means": "The decider. Forcing one named tool (<b>[[2]]</b>, the runner-up) would remove a valid outcome."
+     },
+     {
+      "quote": "Plain text is not, because the script parses only tool input.",
+      "means": "Text must be impossible, not merely less likely, which rules out <b>[[0]]</b>."
+     },
+     {
+      "quote": "Which tool_choice setting fits best?",
+      "means": "<b>[[1]]</b> bans text and keeps the choice. Strict schemas with retries (<b>[[3]]</b>) leave auto in place."
+     }
+    ],
+    "rule": "Several valid tools, no text allowed: any. One required tool: force it by name.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_choice: \"auto\" (may return text), \"any\" (must call a tool), forced (specific named tool)."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-05",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode for multi-approach changes",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team must move the app from one background-job library to another. Job classes, retry settings and tests in many directories will change. Engineers disagree on whether to migrate job by job or switch everything at once. Nobody has mapped which jobs rely on features unique to the old library. <b>How should the engineer start with Claude?</b>",
+   "options": [
+    {
+     "t": "Ask Claude to write tests for every job first, then convert the jobs directly until all the tests pass.",
+     "why": "Incorrect. Test-first iteration is a good refinement technique, but it starts converting before a strategy has been chosen."
+    },
+    {
+     "t": "Use direct execution job by job, starting with the simplest, and review each diff before the next one.",
+     "why": "Runner-up. Direct execution with review fits well-scoped changes. This one has an open strategy choice and unmapped dependencies."
+    },
+    {
+     "t": "Enter plan mode, have Claude map the job code and weigh both strategies, and approve a design before edits.",
+     "why": "Correct. Plan mode suits large, multi-file changes with several valid approaches: explore and design before committing to edits."
+    },
+    {
+     "t": "Spawn an Explore subagent to find jobs using old-library features, then convert them directly one by one.",
+     "why": "Incorrect. Explore is good for discovery, but going straight to job-by-job conversion settles the strategy debate by default, with no design to approve."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "There are two valid migration strategies and unmapped dependencies, so the work needs exploration and a design first; if the change were a small, well-understood edit, direct execution would be right.",
+   "explanation": "Use plan mode for large-scale changes with multiple valid approaches or architectural decisions; use direct execution for simple, well-scoped changes.",
+   "eli5": {
+    "question": "A big library switch, and the team hasn't agreed how. The question asks how to start. The clue is: engineers disagree on the approach, and nobody has mapped the dependencies.",
+    "answer": "Think of moving house. Before packing a single box, you walk through the rooms and decide what goes where. Claude's <b>plan mode</b> is that walk-through: it explores and proposes a design without changing files. Then you approve, and the packing starts. Just starting to pack (<b>direct execution</b>) works for moving one shelf, not a whole house you haven't surveyed. <b>Rule: many files plus open choices means plan first.</b>",
+    "options": [
+     "Writing tests first (<b>test-driven iteration</b>) is good, but it starts converting before deciding how.",
+     "Runner-up. Box by box (<b>direct execution</b>) is fine for a small, clear job. This one isn't clear yet.",
+     "Correct. Survey, compare the two ways, decide, then edit.",
+     "A scout (<b>Explore subagent</b>) maps the jobs, but then the plan is skipped and one strategy is picked by default."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>careful, reviewed, one-step-at-a-time edits are always the safe start</b>. They are safe for a known change. Here the <b>strategy itself is undecided</b> and the dependencies are unknown, so the first job is to explore and design: that is what plan mode is for.",
+    "mapTitle": "Plan mode or direct execution?",
+    "map": {
+     "head": [
+      "Situation",
+      "Mode",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Many files, several valid approaches, unknown dependencies",
+       "Plan mode",
+       "Explore and design before edits"
+      ],
+      [
+       "Small, well-scoped change with a clear fix",
+       "Direct execution",
+       "Planning adds nothing"
+      ],
+      [
+       "Discovery will flood the context",
+       "Explore subagent inside the plan",
+       "Returns a summary"
+      ],
+      [
+       "Settled conversion repeated many times",
+       "Skill or command",
+       "Reusable on-demand workflow"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Job classes, retry settings and tests in many directories will change.",
+      "means": "A large, multi-file change."
+     },
+     {
+      "quote": "Engineers disagree on whether to migrate job by job or switch everything at once.",
+      "means": "Several valid approaches: a design decision is open."
+     },
+     {
+      "quote": "Nobody has mapped which jobs rely on features unique to the old library.",
+      "means": "The decider. Exploration must come first, so direct execution (<b>[[1]]</b>, the runner-up) is premature."
+     },
+     {
+      "quote": "How should the engineer start with Claude?",
+      "means": "Plan mode: <b>[[2]]</b>. Tests-first (<b>[[0]]</b>) and Explore-then-convert (<b>[[3]]</b>) both start converting before choosing."
+     }
+    ],
+    "rule": "Large change with open choices: plan mode first. Small clear change: go direct.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Plan mode: large-scale changes, multiple valid approaches, architectural decisions, multi-file mods."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-06",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-specific rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Background job classes follow strict conventions, such as idempotent perform methods and explicit retry limits. Job files all end in _job.rb, but they live in many directories across the app's engines. The conventions are long and irrelevant to other code. Today they sit in the root CLAUDE.md and load in every session. <b>Where should they live instead?</b>",
+   "options": [
+    {
+     "t": "In a .claude/rules/ file whose paths: frontmatter uses the glob pattern **/*_job.rb.",
+     "why": "Correct. A path-scoped rule loads only when Claude works on matching files, wherever they live."
+    },
+    {
+     "t": "In a job conventions file that the root CLAUDE.md pulls in with an @import line.",
+     "why": "Incorrect. @import keeps CLAUDE.md modular, but the imported file still loads in every session."
+    },
+    {
+     "t": "In a Job conventions section at the very top of the root CLAUDE.md, under its own heading.",
+     "why": "Incorrect. Placing key content first with a heading helps it get attention, but it still loads in every session."
+    },
+    {
+     "t": "In a CLAUDE.md in app/jobs/, the directory where the generator creates new job classes.",
+     "why": "Runner-up. A directory CLAUDE.md works when all matching files share one directory. These are spread across many."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "Job files are spread across many directories but share a file-name pattern, so a glob-scoped rule fits; if all jobs lived in one directory, a CLAUDE.md there would do.",
+   "explanation": "Rules in .claude/rules/ with paths: globs load only for matching files, regardless of directory. They beat directory CLAUDE.md files for conventions that span directories.",
+   "eli5": {
+    "question": "Long conventions for one kind of file load in every session. The question asks where to put them instead. The clue is: the files live in many directories but share a name pattern.",
+    "answer": "Think of a sign that should appear only at doors marked \"Staff\". Taping it in one corridor (a <b>directory CLAUDE.md</b>) misses staff doors elsewhere. A rule that says \"show at every door whose label matches\" (<b>.claude/rules/</b> with a <code>paths:</code> glob) catches them all. <b>Rule: conventions for a file pattern spread across folders go in a path-scoped rule.</b>",
+    "options": [
+     "Correct. Loads only for files named <code>*_job.rb</code>, wherever they are.",
+     "Splitting the file (<b>@import</b>) is tidy, but it still loads every time.",
+     "Moving it to the top (<b>placement</b>) makes it noticed, but it still loads every time.",
+     "Runner-up. A folder note works when every job is in that folder. They aren't."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>\"load it only for those files\" means \"put a CLAUDE.md in their folder\"</b>. That works only if the files share a folder. When they share a <b>name pattern</b> across many folders, a path-scoped rule is the tool.",
+    "mapTitle": "Where should a convention live?",
+    "map": {
+     "head": [
+      "Convention applies to…",
+      "Home",
+      "Loads when"
+     ],
+     "rows": [
+      [
+       "Files matching a pattern across many folders",
+       ".claude/rules/ with paths: glob",
+       "Editing a matching file"
+      ],
+      [
+       "Everything inside one folder",
+       "CLAUDE.md in that folder",
+       "Working in that folder"
+      ],
+      [
+       "The whole project, always",
+       "Root CLAUDE.md (optionally @import)",
+       "Every session"
+      ],
+      [
+       "A task run on request",
+       "Skill or command",
+       "When invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Job files all end in _job.rb, but they live in many directories across the app's engines.",
+      "means": "The decider. A shared name pattern, many folders: a glob rule fits (<b>[[0]]</b>); one folder's CLAUDE.md (<b>[[3]]</b>, the runner-up) misses the rest."
+     },
+     {
+      "quote": "The conventions are long and irrelevant to other code.",
+      "means": "They should load only for job files, which rules out @import (<b>[[1]]</b>) and a top-of-file section (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Today they sit in the root CLAUDE.md and load in every session.",
+      "means": "The cost to remove: always-loaded text."
+     },
+     {
+      "quote": "Where should they live instead?",
+      "means": "Conventions must apply automatically when job files are touched; a glob rule does this."
+     }
+    ],
+    "rule": "Pattern across folders: rules with paths:. One folder: that folder's CLAUDE.md.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m7-s4-07",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills vs always-loaded memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The root CLAUDE.md holds a long runbook for restoring the staging database from a snapshot. Engineers run a restore about once a month, when they ask for it. The runbook isn't tied to any file being edited. It still loads into every session and crowds the context. It must stay shared through the repository. <b>Where should the runbook go?</b>",
+   "options": [
+    {
+     "t": "Into a .claude/rules/ file whose paths: glob matches the snapshot and database config files.",
+     "why": "Runner-up. Path-scoped rules suit guidance tied to editing certain files. A restore is requested, not triggered by editing."
+    },
+    {
+     "t": "Into .claude/skills/ as a SKILL.md that engineers invoke when they need a restore.",
+     "why": "Correct. Skills are on-demand task workflows, shared through the repository and loaded only when invoked."
+    },
+    {
+     "t": "Into a separate runbook file that the root CLAUDE.md references with an @import line.",
+     "why": "Incorrect. @import organizes CLAUDE.md, but the imported runbook still loads in every session."
+    },
+    {
+     "t": "Into a CLAUDE.md inside the db/ directory, next to the snapshot scripts the runbook uses.",
+     "why": "Incorrect. A directory CLAUDE.md loads whenever Claude works in db/, which is unrelated to when a restore is requested."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The runbook is a task run on request and isn't tied to editing any file, so it belongs in a skill; if it were guidance for editing particular files, a path-scoped rule would fit.",
+   "explanation": "CLAUDE.md is for always-loaded universal standards; skills are on-demand task workflows. Path-scoped rules load guidance when matching files are edited.",
+   "eli5": {
+    "question": "A rarely used procedure loads into every session. The question asks where it should go. The clue is: it runs when someone asks for it and isn't tied to any file being edited.",
+    "answer": "Think of a fire-drill binder. You don't read it every morning (<b>CLAUDE.md</b>, always loaded). You pull it off the shelf when there's a drill (a <b>skill</b>, loaded when invoked). Taping it to certain doors (<b>path-scoped rules</b>) only makes sense if it applies when you touch those doors. <b>Rule: always-needed standards go in CLAUDE.md; on-request procedures go in a skill.</b>",
+    "options": [
+     "Runner-up. A path rule loads when you edit matching files. A restore isn't triggered by editing.",
+     "Correct. Pulled off the shelf when someone asks for a restore, and shared with the team.",
+     "Splitting it out (<b>@import</b>) still loads it every session.",
+     "A folder note (<b>directory CLAUDE.md</b>) loads whenever you work in that folder, not when you ask for a restore."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>anything that should load \"only sometimes\" goes in a path-scoped rule</b>. Rules load when you <b>edit matching files</b>. A procedure that someone <b>asks for</b> is a task, and tasks on request are what skills are for.",
+    "mapTitle": "What loads when? Pick the home by its trigger",
+    "map": {
+     "head": [
+      "Content",
+      "Home",
+      "Trigger"
+     ],
+     "rows": [
+      [
+       "Standards for every session",
+       "CLAUDE.md (root or @import)",
+       "Always loaded"
+      ],
+      [
+       "Conventions for certain files",
+       ".claude/rules/ with paths:",
+       "Editing a matching file"
+      ],
+      [
+       "Procedure run on request",
+       ".claude/skills/ SKILL.md",
+       "Invoked"
+      ],
+      [
+       "Personal preferences",
+       "~/.claude/CLAUDE.md",
+       "Always, for one user only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Engineers run a restore about once a month, when they ask for it.",
+      "means": "An on-demand task."
+     },
+     {
+      "quote": "The runbook isn't tied to any file being edited.",
+      "means": "The decider. A path-scoped rule (<b>[[0]]</b>, the runner-up) needs a file trigger, and there isn't one."
+     },
+     {
+      "quote": "It still loads into every session and crowds the context.",
+      "means": "@import (<b>[[2]]</b>) doesn't stop that."
+     },
+     {
+      "quote": "It must stay shared through the repository.",
+      "means": "It stays shared either way; the trigger decides. A db/ CLAUDE.md (<b>[[3]]</b>) loads by folder, not on request. A project skill fits: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Triggered by asking: skill. Triggered by editing certain files: path rule. Needed always: CLAUDE.md.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Skills = on-demand task workflows; CLAUDE.md = always-loaded universal standards."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-08",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resuming a named session",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "An engineer keeps several named Claude Code sessions. Last week, one called billing-audit traced how invoices are rounded. They want to continue that exact conversation today. Nobody has changed the billing code since then. Their most recent session was about something else. <b>How should they continue?</b>",
+   "options": [
+    {
+     "t": "Start a new session and paste a structured summary of the billing-audit findings into the first prompt.",
+     "why": "Runner-up. A fresh session with a summary beats resuming when files have changed and old tool results are stale. Nothing has changed here."
+    },
+    {
+     "t": "Start Claude Code with --continue and ask it to pick up the invoice rounding work from there.",
+     "why": "Incorrect. --continue reopens the most recent session, which is the unrelated one."
+    },
+    {
+     "t": "Start a new session, run /memory, and load the billing-audit conversation from the listed files.",
+     "why": "Incorrect. /memory shows which memory files are loaded; it doesn't restore a past conversation."
+    },
+    {
+     "t": "Start Claude Code with --resume billing-audit and carry on with the investigation where it stopped.",
+     "why": "Correct. --resume with the session name continues that specific conversation, with its findings intact."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The billing code is unchanged, so the earlier tool results are still accurate and resuming is safe; if files had changed since, a fresh session with a structured summary would be more reliable.",
+   "explanation": "--resume <session-name> continues a specific prior conversation. When the files it read have changed, a new session with a structured summary is more reliable than resuming with stale results.",
+   "eli5": {
+    "question": "The engineer wants to pick up an old conversation, not the latest one. The question asks how. The clue is: nobody has changed the billing code since then.",
+    "answer": "Think of a book with several bookmarks. You open it at the bookmark named \"billing-audit\" (<b>--resume</b> with the name), not at whichever page you last read (<b>--continue</b>). Starting a fresh notebook with a summary is wiser only if the facts have changed since you wrote them. Here they haven't. <b>Rule: unchanged files, resume by name; changed files, start fresh with a summary.</b>",
+    "options": [
+     "Runner-up. A fresh start with a summary is safer when the code changed. It didn't.",
+     "<code>--continue</code> opens the most recent session, which is the wrong one.",
+     "<code>/memory</code> lists memory files. It doesn't bring back a conversation.",
+     "Correct. Open the named bookmark."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a fresh session with a summary is always the cleaner choice</b>. It is cleaner when the old tool results are <b>stale</b>. When nothing has changed, resuming keeps every detail of the earlier work, and <code>--resume</code> with a name picks the right one.",
+    "mapTitle": "Continue old work: resume, fork, or start fresh?",
+    "map": {
+     "head": [
+      "Situation",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Continue a specific past session, files unchanged",
+       "--resume &lt;name&gt;",
+       "Full context, still accurate"
+      ],
+      [
+       "Continue, but many files changed since",
+       "New session + structured summary",
+       "Old tool results are stale"
+      ],
+      [
+       "Continue, one or two files changed",
+       "Resume and tell Claude what changed",
+       "Re-read just those files"
+      ],
+      [
+       "Try two directions from one baseline",
+       "fork_session",
+       "Independent branches"
+      ],
+      [
+       "Check which memory files load",
+       "/memory",
+       "Shows loaded CLAUDE.md files"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer keeps several named Claude Code sessions.",
+      "means": "There's more than one session to choose from."
+     },
+     {
+      "quote": "They want to continue that exact conversation today.",
+      "means": "A specific named session must be reopened."
+     },
+     {
+      "quote": "Nobody has changed the billing code since then.",
+      "means": "The decider. The old results are still accurate, so starting fresh (<b>[[0]]</b>, the runner-up) throws away good context."
+     },
+     {
+      "quote": "Their most recent session was about something else.",
+      "means": "Rules out <code>--continue</code> (<b>[[1]]</b>). <code>/memory</code> (<b>[[2]]</b>) doesn't restore conversations. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Unchanged files: resume the named session. Changed files: new session with a structured summary.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "--resume &lt;session-name&gt; continues a specific prior conversation."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-09",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks that block outgoing tool calls",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An Agent SDK script lets Claude investigate data bugs on the staging database through the MCP tool run_sql. Claude needs run_sql for many read queries in each investigation. Statements that change data must never run from this script. Last week Claude ran a DELETE that wiped a tester's data. <b>Which control should the team add?</b>",
+   "options": [
+    {
+     "t": "A system prompt rule naming the allowed statement types, with examples of write requests it must refuse.",
+     "why": "Incorrect. Prompt instructions are probabilistic; a rule that must hold every time needs code."
+    },
+    {
+     "t": "A permission rule in the script's settings that asks the engineer to approve each run_sql call.",
+     "why": "Incorrect. Human approval can stop writes, but it interrupts every one of the many read queries; it is disproportionate to the need."
+    },
+    {
+     "t": "A hook on outgoing run_sql calls that blocks any statement other than a read and tells Claude why.",
+     "why": "Correct. A hook that intercepts outgoing tool calls enforces the policy deterministically and lets Claude adjust."
+    },
+    {
+     "t": "A PostToolUse hook on run_sql that inspects the affected-row count and stops the script after any change.",
+     "why": "Runner-up. PostToolUse hooks are the right tool for inspecting or transforming results. They run after the call, so the first write has already happened."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "Write statements must never run, so the check has to happen before the call executes; if the goal were to inspect or normalize results, a PostToolUse hook would be right.",
+   "explanation": "Hooks give deterministic guarantees. Intercept outgoing tool calls to block policy-violating actions; PostToolUse hooks act on results after the call has run.",
+   "eli5": {
+    "question": "Claude must be able to read data but never change it. The question asks which control to add. The clue is: statements that change data must never run.",
+    "answer": "Think of a bank teller. A sign saying \"no withdrawals over the limit\" (a <b>prompt rule</b>) helps but can be ignored. A teller who checks the slip <i>before</i> handing over cash (a hook on <b>outgoing</b> calls) stops it every time. Counting the money <i>after</i> it's gone (<b>PostToolUse</b>) only tells you it happened. <b>Rule: to stop an action, check it before it runs.</b>",
+    "options": [
+     "A sign (<b>prompt rule</b>) makes it less likely, not impossible.",
+     "Asking a person to approve every call (<b>approval prompt</b>) stops writes but stalls all the reads too.",
+     "Correct. Check every statement before it runs, and block anything that writes.",
+     "Runner-up. Checking results afterwards (<b>PostToolUse</b>) can stop the next mistake, not the first one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>\"use a hook\" settles it</b>. Which hook matters. A <b>PostToolUse</b> hook runs after the tool has executed: perfect for cleaning results, useless for stopping a DELETE. To prevent an action, intercept the <b>outgoing</b> call.",
+    "diagram": "Claude -> [pre-call hook] -> run_sql -> [PostToolUse]\n           blocks writes       sees results after",
+    "mapTitle": "Which control acts at the right moment?",
+    "map": {
+     "head": [
+      "Goal",
+      "Mechanism",
+      "When it acts"
+     ],
+     "rows": [
+      [
+       "Action must never happen",
+       "Hook intercepting the outgoing call",
+       "Before execution"
+      ],
+      [
+       "Clean or normalize results",
+       "PostToolUse hook",
+       "After execution"
+      ],
+      [
+       "Encourage good behaviour",
+       "System prompt + examples",
+       "Probabilistic"
+      ],
+      [
+       "Agent never needs the tool",
+       "Remove it from allowedTools",
+       "Tool not offered"
+      ],
+      [
+       "Catch subtle errors in output",
+       "Independent review",
+       "After generation"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Claude needs run_sql for many read queries in each investigation.",
+      "means": "The tool must stay; only some calls must be stopped."
+     },
+     {
+      "quote": "Statements that change data must never run from this script.",
+      "means": "The decider. Must never means code, and it must act <i>before</i> the call: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Last week Claude ran a DELETE that wiped a tester's data.",
+      "means": "Damage happens at execution, so an after-the-fact check (<b>[[3]]</b>, the runner-up) is too late. Approving every call (<b>[[1]]</b>) stalls the many reads."
+     },
+     {
+      "quote": "Which control should the team add?",
+      "means": "A prompt rule (<b>[[0]]</b>) is probabilistic."
+     }
+    ],
+    "rule": "To stop an action, intercept the outgoing call. PostToolUse is for results.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "Hooks intercept outgoing tool calls to enforce compliance (e.g., block refunds above a threshold)."
+    }
+   }
+  },
+  {
+   "id": "m7-s4-10",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Model-driven tool use vs fixed sequence",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "An internal Agent SDK tool answers engineers' questions about the codebase. Its code runs a fixed sequence: Grep for the question's keywords, Read the top three hits, then ask Claude to answer. Answers fail when the logic sits in files those hits call into. Which files matter next depends on what each Read reveals. <b>Which TWO changes should the redesign include?</b>",
+   "options": [
+    {
+     "t": "Give Claude the Grep and Read tools, and let it pick each next call from what earlier results showed.",
+     "why": "Correct. Model-driven tool use lets Claude choose the next file from what it just read, which suits a trail that unfolds."
+    },
+    {
+     "t": "Keep the sequence, but add a step that follows the top hits' imports two levels deep before Claude answers.",
+     "why": "Runner-up. A fixed chain is right when the steps are known in advance. Here the next file depends on each read, so any fixed depth is a guess."
+    },
+    {
+     "t": "Run the fixed sequence once per keyword in parallel subagents, and merge their reads before Claude answers.",
+     "why": "Incorrect. Parallel subagents widen the search, but each still runs the same fixed steps and stops short of the trail."
+    },
+    {
+     "t": "Append each tool result to the conversation, and keep looping while stop_reason is tool_use.",
+     "why": "Correct. The loop feeds each result back and runs until Claude signals end_turn, so Claude decides when it has enough."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Which files matter depends on what each Read reveals, so Claude must choose its own calls inside a stop_reason loop; if the needed files were always the same known steps, a longer fixed chain would do.",
+   "explanation": "Agentic loops let the model decide the next tool call from results appended to its history, continuing on tool_use and stopping on end_turn. Pre-configured sequences suit work whose steps are known in advance.",
+   "eli5": {
+    "question": "A tool that always does the same three steps misses answers hidden deeper in the code. The question asks which two changes make a better design. The clue is: which files matter next depends on what each Read reveals.",
+    "answer": "Think of following a trail of clues. A fixed plan (\"check three places, then answer\") stops before the trail ends. A detective reads each clue, decides where to look next, and stops when the case is solved. In the Agent SDK that takes two parts: Claude <b>chooses each tool call</b>, and a <b>loop</b> feeds every result back until <code>stop_reason</code> says it is done. <b>Rule: if the next step depends on what you just found, let the model choose, in a stop_reason loop.</b>",
+    "options": [
+     "Correct. Claude picks where to look next.",
+     "Runner-up. A deeper fixed plan works when you know how deep to go. Here the trail decides.",
+     "More helpers running the same fixed plan still can't follow clues.",
+     "Correct. Feed each result back and keep going until Claude says it's done."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to fix a fixed sequence by <b>adding one more fixed step</b>. That works when you know what the next step is. When the next file depends on <b>what the last read revealed</b>, any fixed sequence eventually stops short. The model must drive, and the loop must keep feeding it results until it says it is finished.",
+    "diagram": "request -> stop_reason tool_use -> run Grep/Read\n   ^                                  |\n   +------ append result to history <-+\nstop_reason end_turn -> answer",
+    "mapTitle": "Fixed sequence or model-driven loop?",
+    "map": {
+     "head": [
+      "Situation",
+      "Design",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Next step depends on what was just found",
+       "Model-driven loop on stop_reason",
+       "Claude chooses each call"
+      ],
+      [
+       "Same known steps every time",
+       "Fixed sequence / prompt chain",
+       "Predictable, auditable"
+      ],
+      [
+       "Many lookups just to learn what exists",
+       "MCP resource catalog",
+       "Fewer exploratory calls"
+      ],
+      [
+       "Need to understand a flow",
+       "Grep entry points, then Read along calls",
+       "Incremental, not read-all"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Its code runs a fixed sequence",
+      "means": "The code, not Claude, decides each step."
+     },
+     {
+      "quote": "Answers fail when the logic sits in files those hits call into.",
+      "means": "The answer is further along the trail than the fixed steps reach."
+     },
+     {
+      "quote": "Which files matter next depends on what each Read reveals.",
+      "means": "The decider. Steps can't be fixed in advance, so another fixed step (<b>[[1]]</b>, the runner-up) still falls short. Claude must choose: <b>[[0]]</b>, inside a loop that feeds results back: <b>[[3]]</b>."
+     },
+     {
+      "quote": "Which TWO changes should the redesign include?",
+      "means": "Parallel copies of the fixed sequence (<b>[[2]]</b>) still can't follow the trail."
+     }
+    ],
+    "rule": "When each step depends on the last result, let the model choose the tool calls, and loop until stop_reason is end_turn.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Model-driven decision-making vs pre-configured decision trees / tool sequences."
+    }
+   }
+  }
+ ]
+}

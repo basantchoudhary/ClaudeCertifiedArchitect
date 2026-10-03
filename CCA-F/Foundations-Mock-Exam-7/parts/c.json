@@ -1,0 +1,2185 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D4 Prompt Engineering · D3 Claude Code Configuration · D2 Tool Design &amp; MCP",
+   "brief": "A travel-booking company runs Claude Code headlessly in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. Jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report across all modules. The review job connects to an internal MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  },
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 Prompt Engineering · D1 Agentic Architecture · D5 Context &amp; Reliability",
+   "brief": "An insurance broker extracts data from certificates of insurance and policy schedules sent by about sixty carriers. Some arrive as text PDFs, others as OCR'd scans. Claude returns insured name, carrier, policy number, coverage lines with limits and deductibles, and effective and expiry dates through a tool with a JSON schema. Pydantic validates each result before it posts to the broker's system. An <b>Agent SDK</b> coordinator handles multi-document submissions; account assistants review exceptions."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7-s5-01",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 CLAUDE.md hierarchy and scope",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A senior engineer wrote the team's review criteria into her own <code>~/.claude/CLAUDE.md</code>. Her local reviews follow them well. The CI review job and her teammates' sessions ignore them. The criteria apply to every file in the repository, in every language. Where should the criteria live so that the CI job and every developer load them <b>on every review</b>?",
+   "options": [
+    {
+     "t": "Commit them as a <code>.claude/rules/</code> file whose <code>paths:</code> globs cover the Kotlin and TypeScript sources.",
+     "why": "Runner-up. Committed and shared, and right for conventions tied to certain file types. These criteria apply to every file, and a path-scoped rule loads only when matching files are in play."
+    },
+    {
+     "t": "Commit them as <code>docs/review-criteria.md</code> and reference that file in the CI job's <code>-p</code> prompt.",
+     "why": "Incorrect. CI would get them, but developers' sessions never load a file that only the CI prompt mentions."
+    },
+    {
+     "t": "Commit them to the project <code>CLAUDE.md</code> at the repository root, under a review criteria section.",
+     "why": "Correct. Project CLAUDE.md is shared through version control and loads in every session, local or headless."
+    },
+    {
+     "t": "Commit them as a project skill in <code>.claude/skills/review/</code> that CI and developers invoke.",
+     "why": "Incorrect. Shared, but skills load on demand. Any session that doesn't invoke the skill skips the criteria."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The criteria apply to every file, so they belong in the always-loaded project CLAUDE.md; if they applied only to one file type spread across directories, a .claude/rules/ file with paths: would win.",
+   "explanation": "User-level CLAUDE.md is personal and never reaches teammates or CI. Universal standards for a repository go in the committed project CLAUDE.md; path-scoped rules are for conventions tied to particular files.",
+   "eli5": {
+    "question": "Her rules work for her and nobody else. Where should they live? The clue is: the criteria apply to every file in the repository, in every language. So this is about who gets the file, and how widely it applies.",
+    "answer": "Think of a note on your own fridge versus a notice on the office wall. Only you see the fridge note (the <b>user-level <code>~/.claude/CLAUDE.md</code></b>). The wall notice is seen by everyone who walks in (the <b>project <code>CLAUDE.md</code></b>, committed to the repo). CI and teammates clone the repo, so they only see the wall. Because the rules cover every file, they go on the main wall, not on a sign above one desk. <b>Rule: shared standards for the whole repo go in the committed project CLAUDE.md.</b>",
+    "options": [
+     "Runner-up. A rules file with <code>paths:</code> is a sign over certain desks. Great for test-file rules; these rules are for every file.",
+     "Naming the file in the CI prompt reaches CI only. Developers' sessions never see it.",
+     "Correct. The committed project file reaches CI and every developer, every session.",
+     "A skill is a recipe card someone has to pull out. These rules should be on the wall all the time."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the problem is <b>CI</b>, since that's where it shows up. But her teammates miss the rules too. The real issue is <b>scope</b>: a file in her home folder belongs to her alone. Once you move it into the repo, the remaining choice is how widely it applies, and \"every file\" means the always-loaded project file.",
+    "mapTitle": "Who needs this guidance, and for which files?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Personal preference for one developer",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Not shared via version control"
+      ],
+      [
+       "Standard for <b>every file</b>, shared with team and CI",
+       "Project <code>CLAUDE.md</code> (committed)",
+       "Loads in every session"
+      ],
+      [
+       "Convention for one file type <b>spread across directories</b>",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads only when matching files are touched"
+      ],
+      [
+       "Convention for one directory only",
+       "That directory's <code>CLAUDE.md</code>",
+       "Loads when working there"
+      ],
+      [
+       "A multi-step procedure run on demand",
+       "<code>.claude/skills/</code>",
+       "Loaded only when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A senior engineer wrote the team's review criteria into her own ~/.claude/CLAUDE.md",
+      "means": "User-level file. It is not shared via version control, so nobody else gets it."
+     },
+     {
+      "quote": "The CI review job and her teammates' sessions ignore them",
+      "means": "Both CI and teammates miss it. Pointing only the CI prompt at a file (<b>[[1]]</b>) fixes half."
+     },
+     {
+      "quote": "The criteria apply to every file in the repository, in every language",
+      "means": "The decider. Universal standards belong in always-loaded memory, not path-scoped rules (<b>[[0]]</b>, the runner-up) or an on-demand skill (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "Where should the criteria live so that the CI job and every developer load them on every review?",
+      "means": "Shared and always loaded: the committed project CLAUDE.md, <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Personal file → only you. Team-wide, every-file standards → committed project CLAUDE.md. Rules with paths are for conventions tied to certain files.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-02",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 Verifying loaded memory",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The project <code>CLAUDE.md</code> holds a single line, <code>@docs/testing-standards.md</code>, meant to pull in the team's testing rules. The CI test generator keeps writing tests that break those rules. A developer reproduces the problem in a local session. Nobody has yet checked whether the imported file is loaded at all. What should the developer do <b>first</b>?",
+   "options": [
+    {
+     "t": "Run <code>/memory</code> in that session and check whether the standards file is listed as loaded.",
+     "why": "Correct. It is the built-in way to see which memory files loaded, and it separates \"not loaded\" from \"loaded and ignored\"."
+    },
+    {
+     "t": "Add two finished tests that follow the rules to the generator's prompt as worked examples.",
+     "why": "Runner-up. Few-shot examples are the right fix once the rules are confirmed loaded and output still drifts. Until then, they may hide a broken import."
+    },
+    {
+     "t": "Ask Claude in that session to quote the testing rules it was given, and compare them with the file.",
+     "why": "Incorrect. A diagnostic idea, but the model's account of its own context is unreliable; it may paraphrase or invent rules."
+    },
+    {
+     "t": "Paste the rules inline in place of the <code>@import</code> line, then rerun the generator to compare.",
+     "why": "Incorrect. An experiment by changing config. It gives up the modular import and still doesn't show what was loaded."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Nobody knows whether the imported file loads, so verifying with /memory comes first; if it were confirmed loaded, adding example tests would be the next step.",
+   "explanation": "When guidance seems ignored, first confirm what Claude Code actually loaded. /memory lists the loaded memory files; only after that do you choose between fixing the import and improving the prompt.",
+   "eli5": {
+    "question": "The generator breaks rules that should come in through an import. What do you do first? The clue is: nobody has checked whether the imported file is loaded at all.",
+    "answer": "Think of a cook who ignores a recipe card. First check the card is actually pinned on the board before you retrain the cook. <code>/memory</code> shows which memory files Claude Code loaded (the board). If the testing file is missing, fix the import. If it's there and still ignored, then add examples. <b>Rule: when instructions seem ignored, check they were loaded before changing anything.</b>",
+    "options": [
+     "Correct. A direct look at what's loaded tells you which fix you need.",
+     "Runner-up. Showing finished tests helps when the rules are loaded but followed loosely. We don't know that yet.",
+     "Asking Claude what it was told is unreliable; it can paraphrase or make rules up.",
+     "Changing the config to see what happens is a guess, and you lose the tidy import."
+    ]
+   },
+   "deep": {
+    "premise": "It's tempting to treat this as a <b>prompting problem</b>: Claude ignored the rules, so show it better examples. But there are two different causes that look identical from outside. Either the rules <b>never reached the context</b>, or they arrived and were ignored. Only the second is a prompting problem.",
+    "mapTitle": "Rules ignored? Find out which of the two causes it is",
+    "map": {
+     "head": [
+      "What you observe",
+      "Likely cause",
+      "Next step"
+     ],
+     "rows": [
+      [
+       "Rules ignored, nobody knows if they load",
+       "Unknown",
+       "<code>/memory</code> to list loaded files"
+      ],
+      [
+       "File missing from <code>/memory</code>",
+       "Broken <code>@import</code> path or wrong scope",
+       "Fix the path or move the file"
+      ],
+      [
+       "File loaded, output follows rules loosely",
+       "Instructions alone are inconsistent",
+       "2–4 few-shot examples"
+      ],
+      [
+       "Rules apply only to test files across many dirs",
+       "Wrong home",
+       "<code>.claude/rules/</code> with <code>paths:</code>"
+      ],
+      [
+       "Rules work locally but not for teammates",
+       "User-level file",
+       "Move into project scope"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The project CLAUDE.md holds a single line, @docs/testing-standards.md, meant to pull in the team's testing rules",
+      "means": "The rules come in through an import. Imports can fail silently if the path is wrong."
+     },
+     {
+      "quote": "The CI test generator keeps writing tests that break those rules",
+      "means": "The symptom. It fits both causes: not loaded, or loaded and ignored."
+     },
+     {
+      "quote": "Nobody has yet checked whether the imported file is loaded at all",
+      "means": "The decider. Diagnose before you fix. Examples (<b>[[1]]</b>, the runner-up) and inlining (<b>[[3]]</b>) change things first; asking Claude (<b>[[2]]</b>) relies on its self-report."
+     },
+     {
+      "quote": "What should the developer do first?",
+      "means": "The cheapest diagnostic is <b>[[0]]</b>: <code>/memory</code>."
+     }
+    ],
+    "rule": "Before you tune a prompt, confirm the guidance is in the context. /memory shows what loaded.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "/memory command verifies which memory files are loaded."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-parseable CLI output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The review job runs <code>claude -p</code> and asks Claude to end its reply with a JSON block of findings. A script cuts out the block and posts each finding as an inline comment. On some runs Claude adds a sentence after the block, and the script posts nothing. The script needs a file, line, severity and message for every finding. Which change fixes this <b>most reliably</b>?",
+   "options": [
+    {
+     "t": "Add two complete sample replies to the prompt, each ending in a correctly placed findings block.",
+     "why": "Runner-up. Few-shot examples make output more consistent, and would be the right step if people read the reply and only its layout varied. A script needs a contract, not a likelier layout."
+    },
+    {
+     "t": "Define a <code>report_findings</code> tool with the findings schema and force it with <code>tool_choice</code>.",
+     "why": "Incorrect. That is the right pattern on the Messages API. This job calls the Claude Code CLI, which offers its own flags for structured output."
+    },
+    {
+     "t": "Have the script rerun the job with the parse error appended whenever it finds no block.",
+     "why": "Incorrect. Retry-with-feedback recovers some runs but pays for a second review and keeps the fragile text format."
+    },
+    {
+     "t": "Run the CLI with <code>--output-format json</code> and a <code>--json-schema</code> for the findings array.",
+     "why": "Correct. The CLI then returns machine-parseable output that matches the schema, with the required fields for each inline comment."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "A script consumes the output through the CLI, so the CLI's --output-format json with --json-schema wins; if people read the reply and only consistency mattered, examples would be enough.",
+   "explanation": "In CI, Claude Code's -p mode plus --output-format json and --json-schema gives findings a script can parse. Asking for JSON in prose, even with examples, leaves the format to chance.",
+   "eli5": {
+    "question": "A script breaks when Claude adds chatter after the JSON. How do you fix it for good? The clue is: a script, not a person, reads every finding and needs exact fields.",
+    "answer": "Think of a form with labelled boxes versus a letter that says \"please put the answers at the bottom\". A machine can read the form every time. <code>--output-format json</code> with <code>--json-schema</code> is the form: the Claude Code CLI returns fields that match your schema. Examples in the prompt make a tidy letter more likely, but not certain. <b>Rule: when code reads the output in CI, use the CLI's JSON output and schema flags.</b>",
+    "options": [
+     "Runner-up. Examples make the format more likely, which is fine when people read it. A script needs a guaranteed shape.",
+     "Forcing a tool is the API way to get structured output. This job runs the CLI, which has its own flags for it.",
+     "Retrying costs a second run and keeps the fragile format.",
+     "Correct. The CLI hands the script schema-shaped JSON."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the fix is to <b>ask more clearly</b> or show the format. But output read by a <b>program</b> needs a contract, not a habit. The Claude Code CLI already has that contract: JSON output validated against a schema you pass in. The API's tool-use pattern is the same idea at a different layer.",
+    "mapTitle": "Who reads the output, and through which interface?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "CI script reads findings from <code>claude -p</code>",
+       "<code>--output-format json</code> + <code>--json-schema</code>",
+       "Machine-parseable, schema-shaped"
+      ],
+      [
+       "Your own app calls the Messages API",
+       "<code>tool_use</code> with a schema, forced via <code>tool_choice</code>",
+       "Most reliable structured output on the API"
+      ],
+      [
+       "People read the review, layout varies",
+       "Few-shot examples of the format",
+       "Consistency, not a contract"
+      ],
+      [
+       "Job hangs waiting for input",
+       "<code>-p</code> / <code>--print</code>",
+       "Non-interactive mode"
+      ],
+      [
+       "Output parses but a value is wrong",
+       "Validate and retry with specific errors",
+       "Schemas stop syntax errors, not semantic ones"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The review job runs claude -p and asks Claude to end its reply with a JSON block of findings",
+      "means": "This is the Claude Code CLI, not the Messages API. It rules out <b>[[1]]</b>, the API-layer pattern."
+     },
+     {
+      "quote": "On some runs Claude adds a sentence after the block, and the script posts nothing",
+      "means": "Prose around JSON is a format-by-request problem. Retrying (<b>[[2]]</b>) keeps that fragility."
+     },
+     {
+      "quote": "The script needs a file, line, severity and message for every finding",
+      "means": "The decider. A program needs required fields every time, so examples (<b>[[0]]</b>, the runner-up) are not enough."
+     },
+     {
+      "quote": "Which change fixes this most reliably?",
+      "means": "Use the CLI's structured output: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "In CI, code reads Claude Code's output through -p with --output-format json and --json-schema.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings → inline PR comments."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-04",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resources for content catalogs",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job's MCP server has a <code>search_docs</code> tool over the team's API guidelines. Before judging a diff, the reviewer calls it many times with broad queries. Those calls are an attempt to learn which guideline documents exist and how they are organised. Most of them return nothing useful. Which change <b>best cuts these calls</b>?",
+   "options": [
+    {
+     "t": "Move the doc lookups into an Explore subagent that hands back a short summary to the reviewer.",
+     "why": "Incorrect. An Explore subagent keeps verbose output out of the main context, but it still makes the same blind calls."
+    },
+    {
+     "t": "Publish the documents' titles and section outline as an MCP resource read at the start of a run.",
+     "why": "Correct. A resource exposes the catalog directly, so the reviewer knows what exists without probing."
+    },
+    {
+     "t": "Expand the <code>search_docs</code> description with its input format, sample queries and the topics it covers.",
+     "why": "Runner-up. Better descriptions fix wrong or vague tool use. Here the tool is used correctly; the reviewer needs a map of the content, not a better label."
+    },
+    {
+     "t": "Split <code>search_docs</code> into one tool per documentation area, each with its own focused description.",
+     "why": "Incorrect. Purpose-specific tools help selection between overlapping tools. More tools to probe does not show what exists."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The calls exist only to discover which documents there are, which a resource catalog answers; if the reviewer were misusing or mis-selecting the tool, a fuller description would win.",
+   "explanation": "MCP resources expose content catalogs such as doc hierarchies so an agent can see what exists without exploratory tool calls. Tool descriptions fix how a tool is chosen and used, not what content exists.",
+   "eli5": {
+    "question": "The reviewer keeps searching just to find out what documents exist. How do you stop that? The clue is: the calls are an attempt to learn which guideline documents exist and how they are organised.",
+    "answer": "Think of walking into a library and shouting topics at the librarian, versus reading the catalogue by the door. An <b>MCP resource</b> is the catalogue: content the reviewer can read up front, like a list of documents and sections. Then searches become targeted. <b>Rule: if the agent is probing to learn what exists, publish a catalog as a resource.</b>",
+    "options": [
+     "A helper can do the probing out of sight, but it still probes blindly.",
+     "Correct. Hand over the catalogue and the blind searching stops.",
+     "Runner-up. A clearer label helps when the tool is misused. Here the tool works; the reviewer lacks a map.",
+     "More search tools give more places to probe, not a list of what exists."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think lots of useless tool calls means a <b>badly described tool</b>. But look at what the calls are for. The reviewer isn't confused about the tool; it is trying to learn <b>what content exists</b>. That is a catalog problem, and MCP has a primitive for catalogs: resources.",
+    "mapTitle": "Too many tool calls: what is the agent actually missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "What's missing",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Probing calls to learn what exists",
+       "A content catalog",
+       "MCP <b>resource</b> with the doc hierarchy"
+      ],
+      [
+       "Wrong tool picked among similar tools",
+       "Clear descriptions",
+       "Expand descriptions: inputs, examples, boundaries"
+      ],
+      [
+       "One generic tool doing several jobs",
+       "Purpose-specific tools",
+       "Split and rename"
+      ],
+      [
+       "Verbose search output floods the context",
+       "Isolation",
+       "Explore subagent returns a summary"
+      ],
+      [
+       "Built-in Grep preferred over a better MCP tool",
+       "Description of the MCP tool",
+       "Say what it does better"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Before judging a diff, the reviewer calls it many times with broad queries",
+      "means": "Many broad calls. Exploratory, not targeted."
+     },
+     {
+      "quote": "Those calls are an attempt to learn which guideline documents exist and how they are organised",
+      "means": "The decider. The need is a catalog, which a resource provides (<b>[[1]]</b>). A better description (<b>[[2]]</b>, the runner-up) would win if the tool were being misused."
+     },
+     {
+      "quote": "Most of them return nothing useful",
+      "means": "Hiding the calls in a subagent (<b>[[0]]</b>) or splitting the tool (<b>[[3]]</b>) leaves them blind."
+     },
+     {
+      "quote": "Which change best cuts these calls?",
+      "means": "Give the catalog up front: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Exploratory calls to discover content → expose a catalog as an MCP resource. Wrong tool choice → fix descriptions.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "MCP resources expose content catalogs (issue summaries, doc hierarchies, schemas) to reduce exploratory tool calls."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-05",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tool descriptions vs built-ins",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job's MCP server offers <code>find_usages</code>. It resolves every caller of a function across modules, including calls made through interfaces. The reviewer still runs Grep on function names and misses the interface calls. The tool's description reads only \"Find usages.\" When the reviewer does call it, the results are correct. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add a project <code>CLAUDE.md</code> rule: for callers of a function, use <code>find_usages</code>, not Grep.",
+     "why": "Runner-up. A project instruction is a reasonable nudge and would be worth adding if the description were already full. The description is the primary selection signal, and here it is two words."
+    },
+    {
+     "t": "Add a PreToolUse hook that redirects Grep calls on symbol names to <code>find_usages</code> instead.",
+     "why": "Incorrect. Deterministic, but brittle: deciding which Grep patterns are symbol lookups is guesswork, and it overrides legitimate text searches."
+    },
+    {
+     "t": "Rewrite the <code>find_usages</code> description: what it resolves, sample inputs, and when to use it over Grep.",
+     "why": "Correct. Descriptions are how the model picks tools. A two-word description gives it no reason to prefer the MCP tool over Grep."
+    },
+    {
+     "t": "Rename <code>find_usages</code> to <code>find_all_callers</code>, a name stating what the tool resolves.",
+     "why": "Incorrect. Purpose-specific naming helps, but a name can't carry inputs, interface coverage or when to prefer it; the description stays two words."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The description is only two words, so improving it is the first lever; if it already explained the tool's advantage and Grep was still chosen, a CLAUDE.md instruction would come next.",
+   "explanation": "Tool descriptions are the main signal for tool selection. When an agent prefers a built-in like Grep over a more capable MCP tool, enhance the MCP tool's description first.",
+   "eli5": {
+    "question": "A smarter search tool exists, but the reviewer keeps using plain Grep. What do you try first? The clue is: the tool's description reads only \"Find usages.\"",
+    "answer": "Think of two drawers in a workshop. One says \"Hammer\". The other says only \"Tools\", though it holds a much better nail gun. People grab the hammer. The <b>tool description</b> is the drawer label, and it's the main thing Claude reads when it picks a tool. Write what the MCP tool finds that Grep misses, and when to use it. <b>Rule: if a better tool is ignored, fix its description first.</b>",
+    "options": [
+     "Runner-up. A note on the wall helps, but the drawer label is read first and this one says almost nothing.",
+     "A redirect hook has to guess which Grep searches are about callers, and it blocks real text searches.",
+     "Correct. A clear label tells Claude why and when this tool beats Grep.",
+     "A better name helps a little, but a name can't say everything the description should."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think if Claude ignores a tool, you should <b>tell it</b> to use it, or take the alternative away. But Claude picks tools mainly from their <b>descriptions</b>. A two-word description gives no reason to prefer it over a familiar built-in. Fix the primary signal before adding secondary ones.",
+    "mapTitle": "A better tool is ignored: which lever comes first?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Built-in chosen over a better MCP tool; MCP description is thin",
+       "Tool description",
+       "Expand it: capabilities, inputs, when to prefer it"
+      ],
+      [
+       "Description is already full, built-in still chosen",
+       "Context elsewhere",
+       "Add a project instruction"
+      ],
+      [
+       "Agent probes to learn what exists",
+       "No catalog",
+       "MCP resource"
+      ],
+      [
+       "Two similar tools, misroutes between them",
+       "Overlapping descriptions",
+       "Clarify boundaries or split"
+      ],
+      [
+       "Agent has many off-role tools and misuses them",
+       "Tool distribution",
+       "Scope tools per agent"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It resolves every caller of a function across modules, including calls made through interfaces",
+      "means": "The MCP tool is more capable than Grep for this job."
+     },
+     {
+      "quote": "The reviewer still runs Grep on function names and misses the interface calls",
+      "means": "The symptom: a built-in is preferred. A redirect hook (<b>[[1]]</b>) has to guess which Grep calls to hijack."
+     },
+     {
+      "quote": "The tool's description reads only \"Find usages.\"",
+      "means": "The decider. The primary selection signal is nearly empty. Fix it before adding a CLAUDE.md nudge (<b>[[0]]</b>, the runner-up)."
+     },
+     {
+      "quote": "When the reviewer does call it, the results are correct",
+      "means": "The tool itself is fine. The gap is how it is presented: a two-word description. A new name (<b>[[3]]</b>) carries far less than a description."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "Expand the description: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "If an agent prefers Grep over a better MCP tool, the MCP tool's description is the first fix.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  },
+  {
+   "id": "m7-s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria over confidence wording",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Developers dismiss most of the reviewer's performance findings. The prompt's only guidance for the category is \"flag performance problems\". Last month the team added \"report only findings you are highly confident about\". The dismissal rate did not change. The team wants to keep the category, since real performance bugs have reached production. What should they change <b>next</b>?",
+   "options": [
+    {
+     "t": "Replace that guidance with concrete conditions, such as a query run inside a loop over fetched rows.",
+     "why": "Correct. Categorical criteria tell the reviewer exactly what counts. Vague wording plus a confidence plea does not."
+    },
+    {
+     "t": "Add three sample findings to the prompt, each with the flagged code and the reasoning for flagging it.",
+     "why": "Runner-up. Examples are the best tool when written criteria exist but are applied inconsistently. Here there are no criteria yet, so examples would have nothing to illustrate."
+    },
+    {
+     "t": "Switch off the performance category until its precision improves, then bring it back.",
+     "why": "Incorrect. Pausing a noisy category protects trust, but the team wants to keep catching real performance bugs."
+    },
+    {
+     "t": "Add a confidence score to each finding and post only the ones that score above a set threshold.",
+     "why": "Incorrect. Self-reported confidence is the same lever as the failed \"highly confident\" line, in numeric form."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The category has no definition, only \"flag performance problems,\" so explicit criteria come first; if written criteria existed and were applied inconsistently, examples would win.",
+   "explanation": "Vague instructions plus \"be conservative\" or \"only high-confidence\" wording do not raise precision. Define the category with concrete, checkable conditions; use few-shot to sharpen consistency once criteria exist.",
+   "eli5": {
+    "question": "The performance findings are mostly noise, and asking for confidence didn't help. What next? The clue is: the prompt's only guidance is \"flag performance problems.\"",
+    "answer": "Think of telling a new inspector \"report anything unsafe\". You get a hundred notes. Saying \"only report what you're sure about\" barely helps. Giving a checklist does: \"a loose railing, a blocked exit\". For code review, that checklist is <b>explicit criteria</b>, like \"a database query inside a loop over results\". <b>Rule: define what counts; don't ask for confidence.</b>",
+    "options": [
+     "Correct. A concrete checklist tells the reviewer what to flag.",
+     "Runner-up. Examples help once a checklist exists. Without one, they show cases but don't define the line.",
+     "Pausing the category would stop the noise, but also the real bugs the team wants caught.",
+     "A confidence number is the same \"be sure\" request that already failed."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think false positives come from the model being <b>too eager</b>, so you ask it to be careful. But the real problem is that nobody told it <b>what a performance problem is</b>. Precision comes from categorical criteria. Confidence wording has already been shown not to help.",
+    "mapTitle": "Too many false positives: what kind of fix does this category need?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Category has only a vague instruction",
+       "No definition",
+       "Explicit, concrete criteria"
+      ],
+      [
+       "Criteria exist, borderline cases decided inconsistently",
+       "Instructions alone inconsistent",
+       "2–4 few-shot examples with reasoning"
+      ],
+      [
+       "Category noisy and trust is collapsing; team can drop it for now",
+       "Trust erosion",
+       "Temporarily disable the category"
+      ],
+      [
+       "\"Only high-confidence\" added, no change",
+       "Wording isn't criteria",
+       "Replace with categorical rules"
+      ],
+      [
+       "Self-reported confidence used to filter",
+       "Unreliable proxy",
+       "Criteria or calibrated scoring"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The prompt's only guidance for the category is \"flag performance problems\"",
+      "means": "The decider. There are no criteria at all. Examples (<b>[[1]]</b>, the runner-up) would have nothing to illustrate."
+     },
+     {
+      "quote": "Last month the team added \"report only findings you are highly confident about\"",
+      "means": "A confidence plea. A numeric confidence filter (<b>[[3]]</b>) is the same lever."
+     },
+     {
+      "quote": "The dismissal rate did not change",
+      "means": "Confirms confidence wording doesn't improve precision."
+     },
+     {
+      "quote": "The team wants to keep the category, since real performance bugs have reached production",
+      "means": "Rules out switching it off (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "What should they change next?",
+      "means": "Define the category: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "No definition → write explicit criteria. Criteria exist but applied unevenly → add examples.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "\"Be conservative\" / \"only high-confidence\" don't improve precision like categorical criteria."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-07",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for generalisation",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The reviewer's dead-code rule says code is not dead if any feature flag can turn it on. Flags in this repository take many forms, from config lookups to annotations and environment checks. New forms appear as teams adopt new libraries. The reviewer honours the rule for some forms and flags the rest as dead. What should the team add to the prompt <b>first</b>?",
+   "options": [
+    {
+     "t": "A complete list of the flag forms in use today, with the exact call or annotation for each one.",
+     "why": "Runner-up. An exhaustive list works when the set of forms is small and stable. Here new forms keep appearing, so the list would always be behind."
+    },
+    {
+     "t": "A line telling the reviewer to treat any flag-guarded code as live unless it is certain otherwise.",
+     "why": "Incorrect. It restates the rule the reviewer already has, with a confidence condition that does not change behaviour."
+    },
+    {
+     "t": "A second pass in a fresh instance that rechecks each dead-code finding before it is posted.",
+     "why": "Incorrect. An independent reviewer applies the same rule with the same blind spot about unfamiliar flag forms."
+    },
+    {
+     "t": "Three or four worked cases using different flag forms, each giving the verdict and its reason.",
+     "why": "Correct. Varied examples with reasoning teach the pattern, so the reviewer generalises to forms it has not seen."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "New flag forms keep appearing, so examples that teach the pattern beat a list of today's forms; if the forms were a small fixed set, listing them would win.",
+   "explanation": "The rule is clear; the reviewer fails to recognise unfamiliar cases. Few-shot examples that show reasoning help the model generalise to novel patterns, which an enumerated list cannot do.",
+   "eli5": {
+    "question": "The rule is fine, but the reviewer misses some kinds of feature flags. What should go in the prompt? The clue is: new flag forms appear as teams adopt new libraries.",
+    "answer": "Think of teaching a child to spot dogs. You could list every breed, but new breeds turn up. Showing a few very different dogs and saying why each is a dog teaches the idea. <b>Few-shot examples</b> with reasoning do the same: Claude learns the pattern and spots flag forms it has never seen. <b>Rule: when cases keep changing shape, teach with varied examples, not a list.</b>",
+    "options": [
+     "Runner-up. A full list works if the kinds of flags never change. Here new ones keep arriving.",
+     "This repeats the rule with \"unless certain\", which doesn't help it recognise new flag types.",
+     "A second reviewer has the same blind spot about unfamiliar flags.",
+     "Correct. Varied worked cases teach the idea so it generalises."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a precise rule that is still misapplied needs <b>more precise wording</b>, maybe a full list. But the rule is already right. The model fails to <b>recognise</b> some instances of it. When instances keep changing shape, a list goes stale; examples with reasoning teach the underlying pattern.",
+    "mapTitle": "Rule clear but misapplied: what do you add to the prompt?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best addition",
+      "Why"
+     ],
+     "rows": [
+      [
+       "No clear rule for the category",
+       "Explicit criteria",
+       "Defines what counts"
+      ],
+      [
+       "Clear rule; instances take <b>new, varied forms</b>",
+       "2–4 varied worked examples with reasoning",
+       "Generalises to novel patterns"
+      ],
+      [
+       "Clear rule; instances are a <b>small fixed set</b>",
+       "Enumerate them",
+       "Complete and checkable"
+      ],
+      [
+       "Reviewer reviews its own output",
+       "Independent instance",
+       "Self-review is limited"
+      ],
+      [
+       "Output format varies",
+       "Examples of the format",
+       "Shows the shape"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The reviewer's dead-code rule says code is not dead if any feature flag can turn it on",
+      "means": "The rule exists and is clear. Restating it (<b>[[1]]</b>) adds nothing."
+     },
+     {
+      "quote": "Flags in this repository take many forms, from config lookups to annotations and environment checks",
+      "means": "The challenge is recognising instances, not defining the rule."
+     },
+     {
+      "quote": "New forms appear as teams adopt new libraries",
+      "means": "The decider. A list of today's forms (<b>[[0]]</b>, the runner-up) goes stale."
+     },
+     {
+      "quote": "The reviewer honours the rule for some forms and flags the rest as dead",
+      "means": "A second instance (<b>[[2]]</b>) would have the same blind spot."
+     },
+     {
+      "quote": "What should the team add to the prompt first?",
+      "means": "Varied worked cases with reasoning: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "When instances of a rule keep changing form, show varied examples with reasoning; enumerate only stable sets.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Demonstrate ambiguous-case handling; enable generalization to novel patterns; reduce extraction hallucination."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-08",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch fit and request trimming",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 2,
+   "question": "The weekly dependency-risk report sends one synchronous request per module on Saturday night. Nobody reads it until the Monday planning meeting. Each request carries the module's whole source tree, but the report uses only its build file and lockfile. The report must rate every module every week. Which TWO changes <b>cut its cost the most while keeping full coverage</b>?",
+   "options": [
+    {
+     "t": "Skip modules whose build file and lockfile have not changed since the previous week's run.",
+     "why": "Runner-up. A real saving, and fine if unchanged modules could reuse last week's rating. The report must rate every module weekly, and new advisories can hit unchanged lockfiles."
+    },
+    {
+     "t": "Submit the requests through the Message Batches API, with each module's path as its <code>custom_id</code>.",
+     "why": "Correct. Nobody needs the results before Monday, so the 50% batch discount costs nothing in practice; <code>custom_id</code> matches results to modules."
+    },
+    {
+     "t": "Merge the modules into a few large requests, each covering one whole product area.",
+     "why": "Incorrect. Fewer, bigger requests spread attention across many modules and lower the quality of each rating."
+    },
+    {
+     "t": "Send each module's dependency manifests alone and leave its application source out.",
+     "why": "Correct. Most tokens are source the report never uses. Trimming input to what matters cuts cost without losing coverage."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Results aren't read until Monday and the report reads only manifests, so batching and trimming both fit; if unchanged modules could keep last week's rating, skipping them would also qualify.",
+   "explanation": "Latency-tolerant work like a weekly report fits the Message Batches API. Sending only the content the task uses cuts tokens. Neither reduces coverage, unlike skipping work.",
+   "eli5": {
+    "question": "A weekly report is too expensive. Which two changes save the most but still rate every module? The clues are: nobody reads it until Monday, and the report uses only the build file and lockfile.",
+    "answer": "Think of posting parcels. If nobody needs them until Monday, use the cheap slow service (the <b>Message Batches API</b>: half price, up to 24 hours). And don't ship the whole house when only two letters are needed: send just the manifests (<b>trim the input</b>). Skipping some parcels would be cheapest of all, but every module must be rated. <b>Rule: batch work nobody waits for, and send only what the task reads.</b>",
+    "options": [
+     "Runner-up. Skipping saves money but breaks \"rate every module every week\"; a new advisory can affect an unchanged lockfile.",
+     "Correct. Half price, and Monday is plenty of time. <code>custom_id</code> links each result to its module.",
+     "Bundling many modules into one request spreads Claude's attention thin.",
+     "Correct. Most of each request is source code the report doesn't use."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the biggest saving must be <b>doing less work</b>, like skipping unchanged modules. But the requirement is full coverage every week. The savings that keep coverage are <b>paying less per request</b> (batch) and <b>sending fewer tokens per request</b> (trim the input).",
+    "mapTitle": "Cutting cost: which levers keep the output complete?",
+    "map": {
+     "head": [
+      "Lever",
+      "When it fits",
+      "Watch out for"
+     ],
+     "rows": [
+      [
+       "Message Batches API",
+       "Nobody waits on results (overnight, weekly)",
+       "No latency SLA; no multi-turn tools"
+      ],
+      [
+       "Trim input to the fields the task uses",
+       "Requests carry content the task ignores",
+       "Don't drop what's used"
+      ],
+      [
+       "Skip unchanged items",
+       "Old results stay valid",
+       "Breaks full-coverage requirements"
+      ],
+      [
+       "Pack many items per request",
+       "Rarely",
+       "Attention dilution, contradictions"
+      ],
+      [
+       "Real-time requests",
+       "Someone waits (pre-merge)",
+       "Full price"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The weekly dependency-risk report sends one synchronous request per module on Saturday night",
+      "means": "Full-price requests for work done overnight."
+     },
+     {
+      "quote": "Nobody reads it until the Monday planning meeting",
+      "means": "Latency-tolerant. Batch fits: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Each request carries the module's whole source tree, but the report uses only its build file and lockfile",
+      "means": "Most tokens are wasted. Trim the input: <b>[[3]]</b>."
+     },
+     {
+      "quote": "The report must rate every module every week",
+      "means": "Rules out skipping modules (<b>[[0]]</b>, the runner-up). Merging modules (<b>[[2]]</b>) hurts each rating."
+     },
+     {
+      "quote": "Which TWO changes cut its cost the most while keeping full coverage?",
+      "means": "<b>[[1]]</b> and <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Batch what nobody waits for; trim what the task doesn't read. Don't skip work a requirement says to cover.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits); bad for blocking (pre-merge)."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific error feedback",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The autofix job patches failing builds. When a patch does not compile, the job reruns Claude with the message \"The patch failed. Try again.\" Most second attempts fail the same way. The compiler output names each broken file, line and error. Every needed fix lies within the repository's own code. Which change <b>best raises the fix rate</b>?",
+   "options": [
+    {
+     "t": "On each retry, include the compiler's error lines for the failed patch with the original request.",
+     "why": "Correct. The errors are specific and fixable from the repository, so feeding them back gives the retry what it needs."
+    },
+    {
+     "t": "After one failed retry, open a draft pull request with the patch and build log for a developer.",
+     "why": "Runner-up. A hand-off is right when the fix needs information the job cannot reach. Here every fix lies in the repository, and the retry carried no feedback yet."
+    },
+    {
+     "t": "Run an independent review instance on each failed patch, and pass its comments into the retry.",
+     "why": "Incorrect. It adds feedback, but a reviewer's opinion is weaker than the compiler's exact errors, which already exist."
+    },
+    {
+     "t": "On each retry, attach the current contents of every file the failed patch touched.",
+     "why": "Incorrect. More context, but it omits the one thing that says what broke: the compiler's messages."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The compiler names each error and every fix lies within the repo, so retrying with that feedback works; if the fix needed information absent from the repository, routing to a person would win.",
+   "explanation": "Retries succeed when they carry the specific validation errors and the information exists in the source. A bare \"try again\" gives the model nothing new; absent information calls for a human instead.",
+   "eli5": {
+    "question": "Retries keep failing the same way. How do you make them work? The clue is: the compiler names each error, and every fix lies within the repository's own code.",
+    "answer": "Think of a teacher handing back an essay marked only \"wrong, redo it\". The student repeats the mistake. Circle the errors and they fix them. <b>Retry with error feedback</b> means sending the compiler's exact messages with the retry. This works because the fix is findable in the repo. If it needed a missing password, no feedback would help, and a person should take over. <b>Rule: retry with the specific errors when the fix is reachable.</b>",
+    "options": [
+     "Correct. Give the retry the exact errors.",
+     "Runner-up. A developer is the right call when the fix needs something outside the repo. Not here, and the retry hasn't had real feedback yet.",
+     "A reviewer's guesses are weaker than the compiler's exact errors.",
+     "Re-sending the files gives context, but not what went wrong."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think repeated failure means the job has <b>hit its limit</b> and needs a human. But look at what the retry received: nothing new. A retry only helps if it carries <b>specific feedback</b>, and only if the needed information <b>exists</b> where the model can reach it.",
+    "mapTitle": "A retry keeps failing: feed back the error, or hand off?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Specific errors available; fix reachable in the source",
+       "Retry with the errors appended",
+       "Model can correct with targeted feedback"
+      ],
+      [
+       "Needed information absent from the source",
+       "Route to a person",
+       "Retries can't create missing facts"
+      ],
+      [
+       "Retry message is generic (\"try again\")",
+       "Replace with specifics",
+       "Nothing new to act on"
+      ],
+      [
+       "Subtle logic bugs that tools don't report",
+       "Independent review instance",
+       "Fresh eyes catch them"
+      ],
+      [
+       "Output format inconsistent",
+       "Few-shot examples",
+       "Shows the shape"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When a patch does not compile, the job reruns Claude with the message \"The patch failed",
+      "means": "A generic retry. Nothing new to act on."
+     },
+     {
+      "quote": "Most second attempts fail the same way",
+      "means": "Expected: the model repeats its reasoning without feedback."
+     },
+     {
+      "quote": "The compiler output names each broken file, line and error",
+      "means": "Specific feedback exists. Use it: <b>[[0]]</b>. Reviewer comments (<b>[[2]]</b>) or file contents (<b>[[3]]</b>) are weaker substitutes."
+     },
+     {
+      "quote": "Every needed fix lies within the repository's own code",
+      "means": "The decider. Information is reachable, so a human hand-off (<b>[[1]]</b>, the runner-up) is premature."
+     },
+     {
+      "quote": "Which change best raises the fix rate?",
+      "means": "<b>[[0]]</b>."
+     }
+    ],
+    "rule": "Retry with the specific errors when the fix is reachable; hand off when the information is absent.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retry-with-error-feedback: append specific validation errors on retry."
+    }
+   }
+  },
+  {
+   "id": "m7-s5-10",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.6 Independent review instance",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After the autofix job's patch compiles, the same session is asked to check the patch for side effects. It approves nearly every patch. Several approved patches later broke callers in other modules. The check's prompt already lists the kinds of side effect to look for. Which change <b>best improves this check</b>?",
+   "options": [
+    {
+     "t": "Add worked examples of patches that broke callers, each with the clue the check should catch.",
+     "why": "Runner-up. Examples sharpen a reviewer that misses a category. They would be next if the check already ran independently. A session reviewing its own work keeps its original reasoning."
+    },
+    {
+     "t": "Turn on extended thinking for the check, and ask it to trace each changed signature step by step.",
+     "why": "Incorrect. Longer reasoning in the same session tends to confirm the patch it just wrote."
+    },
+    {
+     "t": "Run the check as a fresh <code>claude -p</code> call that sees the patch and the code but not the fixing session.",
+     "why": "Correct. An independent instance has no stake in the earlier reasoning and catches what self-review misses."
+    },
+    {
+     "t": "Give the check a required side_effects array in its output schema for every changed function.",
+     "why": "Incorrect. A schema shapes the report; a session reviewing its own patch fills it with \"none\" just as readily."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The check runs in the same session that wrote the patch, so an independent instance comes first; if the check were already independent and missed this pattern, examples would win.",
+   "explanation": "A model reviewing its own work in the same session keeps its generation reasoning and rarely questions it. An independent instance without that history catches more than self-review, extended thinking or examples.",
+   "eli5": {
+    "question": "The checker approves nearly everything, and broken patches slip through. What helps most? The clue is: the same session that wrote the patch is asked to check it.",
+    "answer": "Think of proofreading your own essay right after writing it. You read what you meant, not what you wrote. A friend who wasn't there spots the mistakes. An <b>independent review instance</b> is that friend: a fresh <code>claude -p</code> call that sees the patch but not the reasoning behind it. <b>Rule: don't let the writer check its own work in the same session.</b>",
+    "options": [
+     "Runner-up. Good examples sharpen a fresh reviewer. The author checking its own work stays blind either way.",
+     "Thinking longer in the same session mostly re-confirms its own patch.",
+     "Correct. A fresh pair of eyes, with no memory of writing the patch.",
+     "A required field gets filled with \"no side effects\" by the same confident author."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a reviewer that misses things needs <b>better instructions or more thinking time</b>. But this reviewer is the <b>author</b>. It keeps the reasoning that produced the patch and reads the code through it. The fix is a different reader, not a better prompt for the same one.",
+    "mapTitle": "Reviewer misses problems: what's limiting it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Limit",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Same session reviews its own output",
+       "Self-review bias",
+       "Independent instance, fresh context"
+      ],
+      [
+       "Independent reviewer misses one category",
+       "Unclear criteria or no examples",
+       "Criteria, then few-shot"
+      ],
+      [
+       "Large change, uneven depth across files",
+       "Attention dilution",
+       "Per-file passes + integration pass"
+      ],
+      [
+       "Findings unparseable by the next step",
+       "Output format",
+       "Schema-shaped output"
+      ],
+      [
+       "Longer thinking proposed for self-review",
+       "Same bias, more words",
+       "Still use an independent instance"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "After the autofix job's patch compiles, the same session is asked to check the patch for side effects",
+      "means": "The decider. Self-review. The checker carries the author's reasoning."
+     },
+     {
+      "quote": "It approves nearly every patch",
+      "means": "The classic sign of self-review."
+     },
+     {
+      "quote": "Several approved patches later broke callers in other modules",
+      "means": "Real misses. Extended thinking (<b>[[1]]</b>) or a schema field (<b>[[3]]</b>) leave the same reader."
+     },
+     {
+      "quote": "The check's prompt already lists the kinds of side effect to look for",
+      "means": "Criteria exist. Examples (<b>[[0]]</b>, the runner-up) would help an independent reviewer next."
+     },
+     {
+      "quote": "Which change best improves this check?",
+      "means": "<b>[[2]]</b>: a fresh instance."
+     }
+    ],
+    "rule": "The instance that wrote the code should not be the one that reviews it.",
+    "guide": {
+     "obj": "4.6 Multi-instance and multi-pass review architectures",
+     "quote": "Independent review instances (no prior reasoning) catch subtle issues better than self-review/extended thinking."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Nullable fields against fabrication",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "Many certificates print no deductible at all. The schema marks deductible as a required number. For these certificates the model returns 0 or copies the limit. Either value then posts as if it had been printed. Account assistants cannot tell these values from real ones. Which change <b>best stops these invented values</b>?",
+   "options": [
+    {
+     "t": "Keep the field required, and have the model enter -1 as a marker whenever no deductible is printed.",
+     "why": "Incorrect. A sentinel number is still a number: downstream code must know the convention, and -1 can be posted as a real value."
+    },
+    {
+     "t": "Make deductible nullable in the schema, and describe in the field when to return null.",
+     "why": "Correct. A required number forces the model to invent one. A nullable field gives it an honest way to report \"not printed\"."
+    },
+    {
+     "t": "Add two worked certificates with no printed deductible to the prompt, each with its expected output.",
+     "why": "Runner-up. Examples reduce extraction hallucination and would be the fix if the field were already optional. While the schema demands a number, there is no valid output to show."
+    },
+    {
+     "t": "Add a deductible_status enum, printed or not_printed, beside the number, and route not_printed.",
+     "why": "Incorrect. It labels the gap, but the required number still forces an invented value into the record."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The schema requires a number for a value that is often absent, so making it nullable is the fix; if the field were already optional and the model still filled it, worked examples would win.",
+   "explanation": "Required fields push the model to fabricate when the source lacks the value. Optional or nullable fields, with a description saying when to leave them empty, prevent that fabrication.",
+   "eli5": {
+    "question": "The model invents a deductible when none is printed. How do you stop it? The clue is: the schema marks deductible as a required number.",
+    "answer": "Think of a form that won't submit until every box is filled. If the box asks for your middle name and you have none, you scribble something. The <b>required</b> field is that box. Making it <b>nullable</b> adds \"none\" as a valid answer. Examples alone can't help while the form still rejects a blank. <b>Rule: if a value can be absent, let the schema say so.</b>",
+    "options": [
+     "A made-up marker number is still a number in the record, and someone has to remember what it means.",
+     "Correct. Let the box be empty when nothing is printed.",
+     "Runner-up. Examples help once a blank is allowed. While the box is required, there's no right answer to show.",
+     "A status flag beside a required box still leaves a guess in the box."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the model is <b>hallucinating</b>, so you teach it better with examples. But the schema is <b>making</b> it guess: a required number has no valid way to say \"not printed\". Fix the structure first. Examples are the next lever if it still fills an optional field.",
+    "mapTitle": "Invented values: is the schema forcing the guess?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Value often absent; field is required",
+       "Schema forces a value",
+       "Make it nullable, describe when"
+      ],
+      [
+       "Field optional, model still fills it",
+       "Behaviour, not structure",
+       "Few-shot examples showing null"
+      ],
+      [
+       "Value printed but outside an enum's list",
+       "Closed category",
+       "Add <code>other</code> + detail"
+      ],
+      [
+       "Value present but in a wrong field",
+       "Mapping mistake",
+       "Retry with the specific error"
+      ],
+      [
+       "Value present but unreadable",
+       "Source quality",
+       "Route to a person"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many certificates print no deductible at all",
+      "means": "The information is absent from the source."
+     },
+     {
+      "quote": "The schema marks deductible as a required number",
+      "means": "The decider. Required means the model must produce a number. Examples (<b>[[2]]</b>, the runner-up) can't show a valid empty output."
+     },
+     {
+      "quote": "For these certificates the model returns 0 or copies the limit",
+      "means": "Two kinds of guess, both forced by the required field. A marker value (<b>[[0]]</b>) is a third kind of number."
+     },
+     {
+      "quote": "Account assistants cannot tell these values from real ones",
+      "means": "A status beside a still-required number (<b>[[3]]</b>) keeps the invented value."
+     },
+     {
+      "quote": "Which change best stops these invented values?",
+      "means": "Allow null: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Absent value + required field = fabrication. Make the field nullable before anything else.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication; enum \"unclear\"/\"other\" + detail for extensible categories."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-02",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Extensible enums with other + detail",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Each coverage line has a line_type enum: general_liability, auto, workers_comp, umbrella and property. Certificates now often list other lines, such as cyber or professional liability. The model forces these into the nearest listed value, so cyber often posts as general liability. The line type is printed clearly on every certificate. Which schema change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Make line_type nullable and leave it empty when a line matches none of the listed values.",
+     "why": "Runner-up. Null is right when the value is missing or unreadable. Here the type is printed clearly; null throws it away."
+    },
+    {
+     "t": "Add cyber and professional liability to the enum, and extend the list as carriers add lines.",
+     "why": "Incorrect. It fixes today's two lines but leaves the same failure for each new line until someone edits the schema."
+    },
+    {
+     "t": "Keep the enum and add a validator that retries when a line's printed name differs from its value.",
+     "why": "Incorrect. Retrying cannot help when the correct value is not in the enum at all."
+    },
+    {
+     "t": "Add other to the enum, and keep the carrier's own wording for that line in a companion field.",
+     "why": "Correct. An <code>other</code> value plus a detail string captures any new line without forcing it into the wrong category."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The line type is printed clearly but falls outside the list, so other plus a detail field captures it; if the type were missing or unreadable, null would be right.",
+   "explanation": "Closed enums force novel values into the nearest wrong bucket. Add an \"other\" value with a detail field for categories that keep growing; reserve null for values the source doesn't provide.",
+   "eli5": {
+    "question": "Cyber cover gets posted as general liability. Which schema change fixes it? The clue is: the line type is printed clearly on every certificate.",
+    "answer": "Think of sorting mail into five labelled trays. A parcel arrives that fits none, so it goes in the closest tray and gets lost. Add a tray marked \"other\" with a sticky note saying what it is. That is an <b><code>other</code> enum value plus a detail field</b>. Leaving it unsorted (<b>null</b>) would waste a label that's clearly printed. <b>Rule: known-but-unlisted → other + detail; missing → null.</b>",
+    "options": [
+     "Runner-up. Leaving it blank fits when the type isn't printed. Here it is printed, so blank loses it.",
+     "Adding two trays helps today; the next new cover type has the same problem.",
+     "Retrying can't pick a right tray that doesn't exist.",
+     "Correct. An \"other\" tray with a note holds any new type."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a value that fits no category should be <b>left empty</b>. But empty means \"we don't know\". Here we <b>do</b> know: the line type is printed. The schema just has no place for it. Null is for absent information; <code>other</code> + detail is for present information outside the list.",
+    "mapTitle": "Value doesn't fit the schema: absent, or just unlisted?",
+    "map": {
+     "head": [
+      "Situation",
+      "Schema fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Value printed, outside a growing list",
+       "<code>other</code> + detail string",
+       "Keeps the value, extensible"
+      ],
+      [
+       "Value not printed / unreadable",
+       "Nullable field",
+       "Honest \"not available\""
+      ],
+      [
+       "Value ambiguous between two listed options",
+       "<code>unclear</code> + detail, or examples",
+       "Avoids a forced choice"
+      ],
+      [
+       "Small fixed set, one value missing",
+       "Add it to the enum",
+       "Stable list"
+      ],
+      [
+       "Value wrong type or format",
+       "Strict schema / retry with error",
+       "Syntax, not meaning"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each coverage line has a line_type enum: general_liability, auto, workers_comp, umbrella and property",
+      "means": "A closed list."
+     },
+     {
+      "quote": "Certificates now often list other lines, such as cyber or professional liability",
+      "means": "The list keeps growing. Adding two values (<b>[[1]]</b>) only fixes today."
+     },
+     {
+      "quote": "The model forces these into the nearest listed value",
+      "means": "A closed enum makes the model pick something. Retrying (<b>[[2]]</b>) can't find a value that isn't there."
+     },
+     {
+      "quote": "The line type is printed clearly on every certificate",
+      "means": "The decider. The value exists, so null (<b>[[0]]</b>, the runner-up) would lose it."
+     },
+     {
+      "quote": "Which schema change best fixes this?",
+      "means": "<b>[[3]]</b>: <code>other</code> plus a detail field."
+     }
+    ],
+    "rule": "Present but unlisted → other + detail. Absent → null.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication; enum \"unclear\"/\"other\" + detail for extensible categories."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-03",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific validation errors",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A Pydantic check rejects any policy whose expiry date falls before its effective date. On failure, the pipeline resends the document with \"Validation failed, please retry.\" Most retries fail again. In sampled failures both dates are printed clearly, and the model has put each date in the other's field. Which change <b>best fixes these failures</b>?",
+   "options": [
+    {
+     "t": "Swap the two dates in post-processing whenever the expiry date is earlier than the effective date.",
+     "why": "Incorrect. It hard-codes a guess about the cause and would also flip any genuine misprint, posting it as fact."
+    },
+    {
+     "t": "Send any document that fails the date check straight to the account assistants' review queue.",
+     "why": "Runner-up. Hand-off is right when the information is missing or illegible, where retries can't help. Here both dates are printed clearly."
+    },
+    {
+     "t": "Resend with the check's details: the two fields, the values returned and the rule they broke.",
+     "why": "Correct. The information is in the document and the error is a mapping mistake, so specific feedback lets the retry correct it."
+    },
+    {
+     "t": "Add worked certificates to the prompt showing where several carriers print their two dates.",
+     "why": "Incorrect. With some sixty carriers, a few examples cover few layouts; the specific error is already known per document."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Both dates are printed clearly, so a retry with the specific error can fix the mapping; if the dates were missing or illegible, routing to a person would win.",
+   "explanation": "Validation-retry loops work when the retry names the specific error and the information exists in the source. Generic retry messages fail; absent information should go to a person.",
+   "eli5": {
+    "question": "Retries keep failing on swapped dates. What fixes it? The clue is: both dates are printed clearly, and the model put each in the other's field.",
+    "answer": "Think of a clerk who files a form with the start and end dates swapped. Saying \"wrong, redo\" gets the same result. Saying \"the end date you wrote is before the start date; check which is which\" gets it fixed. That is <b>retry with specific error feedback</b>. It works because the dates are on the page. If they were smudged, a person should look instead. <b>Rule: name the exact error on retry when the answer is in the document.</b>",
+    "options": [
+     "Swapping blindly also flips real misprints and posts them as correct.",
+     "Runner-up. A person is the right call if the dates are missing or unreadable. Here they're clear.",
+     "Correct. Tell the retry exactly what broke.",
+     "A few examples can't cover sixty carriers' layouts; the exact error is already known."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think repeated failures mean the document is <b>too hard</b> and needs a human. But the dates are printed clearly, so the model can get them right. It just needs to be told <b>what</b> was wrong. Retries fail when they carry no new information, or when the information isn't in the source.",
+    "mapTitle": "Validation failed: retry with feedback, or route?",
+    "map": {
+     "head": [
+      "What failed",
+      "Information in source?",
+      "Right move"
+     ],
+     "rows": [
+      [
+       "Fields mapped wrongly (swapped, misplaced)",
+       "Yes",
+       "Retry with the specific error"
+      ],
+      [
+       "Required value not printed",
+       "No",
+       "Nullable field / route to a person"
+      ],
+      [
+       "Value illegible in the scan",
+       "No (not readable)",
+       "Route to a person"
+      ],
+      [
+       "Numbers don't add up",
+       "Yes",
+       "Extract stated + calculated, flag conflict"
+      ],
+      [
+       "Retry message is generic",
+       "—",
+       "Replace with specifics first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A Pydantic check rejects any policy whose expiry date falls before its effective date",
+      "means": "A semantic check with a precise rule."
+     },
+     {
+      "quote": "On failure, the pipeline resends the document with \"Validation failed, please retry.\"",
+      "means": "A generic retry: nothing tells the model what to fix."
+     },
+     {
+      "quote": "Most retries fail again",
+      "means": "Expected without specific feedback."
+     },
+     {
+      "quote": "In sampled failures both dates are printed clearly, and the model has put each date in the other's field",
+      "means": "The decider. Information present, mapping wrong. Retry with specifics (<b>[[2]]</b>). Routing (<b>[[1]]</b>, the runner-up) is for absent or unreadable data; a blind swap (<b>[[0]]</b>) masks misprints."
+     },
+     {
+      "quote": "Which change best fixes these failures?",
+      "means": "<b>[[2]]</b>."
+     }
+    ],
+    "rule": "Specific error + information present → retry with feedback. Information absent → route to a person.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retries are ineffective when info is absent from the source (vs format/structural errors)."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-04",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for varied document layouts",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Each schema field has a detailed description of what to extract. Accuracy is high on certificates that use the standard industry form. It drops on carriers' own policy schedules, which put limits in prose paragraphs, footnotes or multi-column tables. The prompt contains instructions only, with no complete document worked through. Which change <b>most improves accuracy on these schedules</b>?",
+   "options": [
+    {
+     "t": "Add three or four worked schedules with varied layouts, showing where every limit was found.",
+     "why": "Correct. Examples across varied structures show the model how to find fields in unfamiliar layouts, which descriptions alone do not."
+    },
+    {
+     "t": "Lengthen each field description with notes on where values sit in non-standard layouts.",
+     "why": "Runner-up. Fuller descriptions help when they are thin. These are already detailed; more prose about layout is weaker than showing complete documents."
+    },
+    {
+     "t": "Classify each document first, then send schedules to a separate prompt written for schedules.",
+     "why": "Incorrect. Routing narrows the prompt, but the schedule prompt still faces the same varied layouts without examples."
+    },
+    {
+     "t": "Make the limit fields nullable and send schedules with empty limits to the account assistants.",
+     "why": "Incorrect. The limits are in the documents. Nullable fields are for absent values, and this moves work to people."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Descriptions are already detailed and the prompt has no worked documents, so few-shot examples across layouts win; if the descriptions were thin, lengthening them would come first.",
+   "explanation": "Few-shot examples that span varied document structures are the strongest lever for extraction across inconsistent layouts, once field descriptions are already clear.",
+   "eli5": {
+    "question": "Accuracy drops on unusual layouts. What helps most? The clue is: field descriptions are already detailed, and the prompt has no complete document worked through.",
+    "answer": "Think of training someone to find the total on receipts. A written rule (\"it's near the bottom\") helps with standard receipts. For odd ones, showing three very different receipts with the total circled works much better. Those are <b>few-shot examples</b> across <b>varied layouts</b>. <b>Rule: when instructions are already clear but layouts vary, show worked documents.</b>",
+    "options": [
+     "Correct. Showing varied worked documents teaches where fields hide.",
+     "Runner-up. More words help when descriptions are thin. Here they're already detailed.",
+     "A separate prompt still faces the same unfamiliar layouts with no examples.",
+     "The limits are printed. Blanking them sends work to people for no reason."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think low accuracy means the instructions <b>aren't clear enough</b>. But the descriptions are already detailed and work on the standard form. The gap is <b>layout variety</b>. Prose describes; examples <b>show</b>. Varied worked documents are how the model learns to find fields in unfamiliar structures.",
+    "mapTitle": "Extraction weak on some documents: what's missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Gap",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Descriptions thin; errors everywhere",
+       "Unclear fields",
+       "Expand descriptions"
+      ],
+      [
+       "Descriptions detailed; errors on varied layouts",
+       "No demonstrations",
+       "2–4 worked examples across layouts"
+      ],
+      [
+       "One prompt covers very different document types",
+       "Mixed guidance",
+       "Classify, then type-specific prompt"
+      ],
+      [
+       "Value not printed in the document",
+       "Absent data",
+       "Nullable field"
+      ],
+      [
+       "Errors only on certain doc types",
+       "Hidden by aggregate",
+       "Measure by type and field"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each schema field has a detailed description of what to extract",
+      "means": "Descriptions are already good, which weakens <b>[[1]]</b>, the runner-up."
+     },
+     {
+      "quote": "Accuracy is high on certificates that use the standard industry form",
+      "means": "The instructions work when layout is familiar."
+     },
+     {
+      "quote": "It drops on carriers' own policy schedules, which put limits in prose paragraphs, footnotes or multi-column tables",
+      "means": "The problem is layout variety. The values are present, so nullable fields (<b>[[3]]</b>) don't fit."
+     },
+     {
+      "quote": "The prompt contains instructions only, with no complete document worked through",
+      "means": "The decider. No demonstrations yet. A separate prompt (<b>[[2]]</b>) would still lack them."
+     },
+     {
+      "quote": "Which change most improves accuracy on these schedules?",
+      "means": "<b>[[0]]</b>."
+     }
+    ],
+    "rule": "Clear descriptions but varied layouts → add worked examples that span the layouts.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "2-4 targeted examples showing reasoning for the chosen action; demonstrate desired output format (location, issue, severity, fix); handle varied doc structures."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-05",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch for latency-tolerant volume",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A schema change means 40,000 archived certificates must be extracted again. The results are due at the end of next week. Each document needs one extraction call and no other tools. Brokers keep using the live pipeline for new certificates meanwhile. Which approach <b>best fits this re-extraction</b>?",
+   "options": [
+    {
+     "t": "Submit the archive as Message Batches, each request asking Claude to fetch its PDF with a tool.",
+     "why": "Incorrect. Batch is the right channel, but the Batches API does not support multi-turn tool calling, and the document needs no tool anyway."
+    },
+    {
+     "t": "Submit the archive as Message Batches, one certificate per request, with its ID as <code>custom_id</code>.",
+     "why": "Correct. Single-call requests with a week of slack are a textbook batch fit: 50% cheaper, and <code>custom_id</code> maps results back."
+    },
+    {
+     "t": "Have a coordinator spawn parallel extraction subagents, several per response, across the archive.",
+     "why": "Runner-up. Parallel subagents are the right pattern when results are needed fast. With a deadline a week away, speed buys nothing and costs full price."
+    },
+    {
+     "t": "Send the archive through the live pipeline in nightly chunks, resubmitting failures by document ID.",
+     "why": "Incorrect. Sensible chunking and targeted resubmits, but at full real-time price for work with days of slack."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Results are due next week and each document is one call with no tools, so the Batches API fits; if results were needed within hours, parallel subagents would win.",
+   "explanation": "The Message Batches API gives 50% savings for latency-tolerant work with no multi-turn tool use, matched by custom_id. Real-time parallelism is for work someone is waiting on.",
+   "eli5": {
+    "question": "A big archive must be re-extracted by next week. What's the best way? The clues are: the deadline is a week away, and each document is one call with no tools.",
+    "answer": "Think of moving house. If the furniture must arrive tonight, you hire many vans at full price. If next week is fine, you book the cheap freight service. The <b>Message Batches API</b> is the cheap freight: half price, up to 24 hours, and it handles single requests (no back-and-forth tool calls). <b>Rule: big, single-call, not-urgent work → batch.</b>",
+    "options": [
+     "Batch is right, but batches can't do back-and-forth tool calls, and this job needs none.",
+     "Correct. Half price, plenty of time, and <code>custom_id</code> links each result to its document.",
+     "Runner-up. Many parallel helpers are great when you need results today. Next week doesn't need that speed.",
+     "Nightly chunks are tidy, but it's still full price."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a large job calls for <b>more parallel workers</b>. But speed only matters if someone is waiting. Here the deadline is a week away, and each request is a single call with no tools. That is exactly what the Batches API is for: <b>half the cost</b>, no latency promise needed.",
+    "mapTitle": "Big extraction job: batch or real-time?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Single-call requests, deadline days away",
+       "Message Batches API + <code>custom_id</code>",
+       "50% cheaper"
+      ],
+      [
+       "Results needed within hours",
+       "Parallel real-time (e.g. parallel subagents)",
+       "Batch has no latency SLA"
+      ],
+      [
+       "Each document needs multi-turn tool calls",
+       "Real-time",
+       "Batch can't do multi-turn tools"
+      ],
+      [
+       "Some batch requests failed",
+       "Resubmit by <code>custom_id</code>",
+       "Only the failures"
+      ],
+      [
+       "Live traffic must keep flowing",
+       "Keep it separate from the backfill",
+       "Don't compete with users"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A schema change means 40,000 archived certificates must be extracted again",
+      "means": "Every certificate must be re-extracted."
+     },
+     {
+      "quote": "The results are due at the end of next week",
+      "means": "The decider. Plenty of slack, so parallel speed (<b>[[2]]</b>, the runner-up) isn't needed."
+     },
+     {
+      "quote": "Each document needs one extraction call and no other tools",
+      "means": "One call, no tools: batch supports this. A batch that asks for a fetch tool (<b>[[0]]</b>) needs multi-turn tool use, which batches lack."
+     },
+     {
+      "quote": "Brokers keep using the live pipeline for new certificates meanwhile",
+      "means": "Chunking it through the live path (<b>[[3]]</b>) still pays full price."
+     },
+     {
+      "quote": "Which approach best fits this re-extraction?",
+      "means": "<b>[[1]]</b>."
+     }
+    ],
+    "rule": "Not urgent, single-call, large volume → Message Batches API with custom_id.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Message Batches API: 50% cost savings, up to 24-hour window, no latency SLA."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-06",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 stop_reason-driven loop",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "The extraction agent runs in a loop with two lookup tools. The loop ends when Claude's reply contains the phrase \"EXTRACTION COMPLETE\". Sometimes Claude writes that phrase while also requesting a tool call, and the loop exits before the tool runs. Other runs never write the phrase and stop at an iteration cap. How should the loop <b>decide when to stop</b>?",
+   "options": [
+    {
+     "t": "Have Claude return a structured status field, and stop when it reads complete with no tool call pending.",
+     "why": "Runner-up. Structured fields beat free-text parsing, and this covers the pending-tool case. But it is still model content acting as the stop signal; the API already reports why each turn ended."
+    },
+    {
+     "t": "Keep the phrase, but run any requested tools first and stop on the turn after they return.",
+     "why": "Incorrect. It patches one failure but keeps text parsing as the stop, and runs that skip the phrase still hit the cap."
+    },
+    {
+     "t": "Add a PostToolUse hook that ends the loop once every required schema field has a value.",
+     "why": "Incorrect. Code-driven, but it stops on a pre-set condition: the model may still be verifying or correcting values."
+    },
+    {
+     "t": "Continue while <code>stop_reason</code> is <code>tool_use</code>, and end the loop when it is <code>end_turn</code>.",
+     "why": "Correct. The stop reason is the API's own signal: run the requested tools and continue, or finish."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The loop is reading Claude's text to decide termination, so it should switch to stop_reason; a structured done flag would only win if no API stop signal existed.",
+   "explanation": "The agentic loop continues while stop_reason is tool_use and ends on end_turn. Parsing text for completion phrases and relying on iteration caps are named anti-patterns.",
+   "eli5": {
+    "question": "The loop stops at the wrong time. What should decide when it ends? The clue is: it looks for a phrase in Claude's reply, and sometimes the phrase appears while a tool call is still pending.",
+    "answer": "Think of a phone call where you hang up when the other person says \"that's all\", even mid-sentence. Better to wait for the call to actually end. The API tells you why each turn ended: <code>stop_reason</code>. If it's <code>tool_use</code>, run the tool and keep going. If it's <code>end_turn</code>, Claude is done. <b>Rule: let <code>stop_reason</code> run the loop, not words in the reply.</b>",
+    "options": [
+     "Runner-up. A status field is tidier than a phrase and checks for pending tools, but it's still Claude's words deciding. The API already says when it's done.",
+     "Running tools before obeying the phrase fixes one case; runs without the phrase still hit the cap.",
+     "Stopping when all fields are filled can cut Claude off while it is still checking its work.",
+     "Correct. Follow the API's stop signal."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the problem is a <b>fragile phrase</b>, so a cleaner signal like a boolean fixes it. But any signal written by the model is content, and content can say \"done\" while a tool call is still pending. The API already reports why each turn ended. The loop should follow <b><code>stop_reason</code></b>.",
+    "mapTitle": "When does an agent loop end?",
+    "map": {
+     "head": [
+      "Signal",
+      "Use it?",
+      "Why"
+     ],
+     "rows": [
+      [
+       "<code>stop_reason == \"tool_use\"</code>",
+       "Yes: run tools, continue",
+       "API says a tool is requested"
+      ],
+      [
+       "<code>stop_reason == \"end_turn\"</code>",
+       "Yes: stop",
+       "API says the turn is complete"
+      ],
+      [
+       "Phrase in the reply text",
+       "No",
+       "Text can say done while a tool is pending"
+      ],
+      [
+       "Structured done flag",
+       "No, not as the main stop",
+       "Still model content"
+      ],
+      [
+       "Iteration cap",
+       "Only as a safety net",
+       "Arbitrary; cuts runs short"
+      ],
+      [
+       "Fixed tool sequence",
+       "No",
+       "Ignores model-driven decisions"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The loop ends when Claude's reply contains the phrase \"EXTRACTION COMPLETE\"",
+      "means": "Parsing text for termination: a named anti-pattern."
+     },
+     {
+      "quote": "Sometimes Claude writes that phrase while also requesting a tool call, and the loop exits before the tool runs",
+      "means": "The decider. Content and the stop signal can disagree. A status field (<b>[[0]]</b>, the runner-up) is still content; patching the phrase (<b>[[1]]</b>) keeps it too."
+     },
+     {
+      "quote": "Other runs never write the phrase and stop at an iteration cap",
+      "means": "Caps as the primary stop. Neither the phrase patch nor a field-count hook (<b>[[2]]</b>) uses the API's signal."
+     },
+     {
+      "quote": "How should the loop decide when to stop?",
+      "means": "Use <code>stop_reason</code>: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Continue on tool_use, stop on end_turn. Never let reply text or a cap be the main stop.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Continue the loop when stop_reason == \"tool_use\"; terminate when \"end_turn\"."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-07",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit context in subagent prompts",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Some submissions hold a broker's cover email plus several certificates. The coordinator reads the email, which names the client and the locations each certificate covers. It then spawns one subagent per certificate with the instruction \"Extract this certificate.\" Subagents often assign certificates to the wrong location. A subagent receives only its certificate. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Add the client name and the location list from the email to each subagent's task prompt.",
+     "why": "Correct. Subagents don't inherit the coordinator's context, so what they need must be written into their own prompt."
+    },
+    {
+     "t": "Give subagents a scoped get_cover_email tool, and tell them to call it before extracting.",
+     "why": "Runner-up. A limited cross-role tool suits frequent, unpredictable lookups. Here the coordinator already holds the exact facts, so passing them is simpler and certain."
+    },
+    {
+     "t": "Add the client and the location list from the email to the coordinator's system prompt.",
+     "why": "Incorrect. Right facts, wrong agent. Subagents don't see the coordinator's system prompt."
+    },
+    {
+     "t": "Have subagents return a location guess, and let the coordinator check it against the email.",
+     "why": "Incorrect. Coordinator-side checking catches the field after the fact; the rest was still extracted without context."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The coordinator already has the client and location facts and subagents get only their certificate, so the facts go in the subagent prompt; if subagents needed varied, unpredictable lookups, a scoped fetch tool would win.",
+   "explanation": "Subagents have isolated context and inherit nothing automatically. The coordinator must pass the facts a subagent needs explicitly in its prompt.",
+   "eli5": {
+    "question": "Subagents get the location wrong. What fixes it? The clue is: the coordinator has read the email, but each subagent receives only its certificate.",
+    "answer": "Think of a manager who reads a client's letter, then hands a temp a single invoice with \"process this\". The temp never saw the letter. Write the key facts on the task note. <b>Subagents</b> start with an empty desk: they don't see the coordinator's context. The coordinator must put the client and locations into each subagent's prompt. <b>Rule: a subagent knows only what you put in its prompt.</b>",
+    "options": [
+     "Correct. Write the facts the subagent needs into its brief.",
+     "Runner-up. A fetch tool is handy for frequent, unpredictable needs. Here the manager already has the facts in hand.",
+     "Telling the manager more doesn't help the temp, who never sees the manager's notes.",
+     "Checking afterwards fixes one field; the rest was done without the context."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a subagent spawned by the coordinator <b>shares what the coordinator knows</b>. It doesn't. Subagents start with isolated context. Anything they need must be passed <b>explicitly in the prompt</b>. The coordinator here holds the exact facts, so it should hand them over.",
+    "mapTitle": "Subagent lacks context: how should it get it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Coordinator holds the specific facts the subagent needs",
+       "Write them into the subagent's prompt",
+       "No automatic inheritance"
+      ],
+      [
+       "Subagent needs frequent, unpredictable lookups",
+       "Scoped cross-role tool",
+       "Least privilege, fewer round trips"
+      ],
+      [
+       "Subagent needs prior agents' findings",
+       "Pass complete findings in its prompt",
+       "Isolated context"
+      ],
+      [
+       "Content vs metadata (source, page)",
+       "Structured format",
+       "Keeps attribution"
+      ],
+      [
+       "Facts not in any source",
+       "Ask or route to a person",
+       "Don't infer"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator reads the email, which names the client and the locations each certificate covers",
+      "means": "The coordinator holds the needed facts."
+     },
+     {
+      "quote": "It then spawns one subagent per certificate with the instruction \"Extract this certificate.\"",
+      "means": "The brief carries none of those facts."
+     },
+     {
+      "quote": "Subagents often assign certificates to the wrong location",
+      "means": "The symptom. Checking afterwards (<b>[[3]]</b>) patches one field."
+     },
+     {
+      "quote": "A subagent receives only its certificate",
+      "means": "The decider. Isolated context. Facts must go in the subagent's prompt (<b>[[0]]</b>), not the coordinator's (<b>[[2]]</b>). A fetch tool (<b>[[1]]</b>, the runner-up) adds a step for facts already in hand."
+     },
+     {
+      "quote": "Which change best fixes this?",
+      "means": "<b>[[0]]</b>."
+     }
+    ],
+    "rule": "Subagents don't inherit context. Put what they need in their prompt.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-08",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Programmatic prerequisite gate",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The agent calls verify_carrier to check a carrier against the licensing registry, then post_certificate to send results onward. One session handles several certificates in turn. Sometimes the agent posts a certificate without verifying its carrier first. Compliance requires that no certificate from an unverified carrier is ever posted. Which change <b>meets this requirement</b>?",
+   "options": [
+    {
+     "t": "Make a verification ID from verify_carrier a required input field in post_certificate's schema.",
+     "why": "Incorrect. A schema shapes the call but checks nothing: the model can fill the field without a successful verification."
+    },
+    {
+     "t": "Set <code>tool_choice</code> to force verify_carrier on each session's first request, then return to auto.",
+     "why": "Runner-up. Forcing a first tool is right when one call must lead a single-item session. Here each of several certificates needs its own check, and later turns are unforced."
+    },
+    {
+     "t": "Add a hook that rejects post_certificate unless verify_carrier has passed for that carrier.",
+     "why": "Correct. A programmatic gate checks every post, for every certificate, regardless of what the model decides."
+    },
+    {
+     "t": "Set <code>tool_choice</code> to any on every turn, with verify_carrier described as the step before posting.",
+     "why": "Incorrect. \"any\" forces some tool call, not the right one; order still rests on the description."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "One session posts several certificates and compliance is absolute, so a code gate on every post is needed; if each session handled one certificate, forcing verify_carrier first via tool_choice would suffice.",
+   "explanation": "When compliance must be deterministic, block downstream tool calls in code until prerequisites complete. Prompts and examples are probabilistic; forced tool_choice only shapes a single request.",
+   "eli5": {
+    "question": "The agent sometimes posts without verifying the carrier. What makes that impossible? The clues are: one session handles several certificates, and compliance says this must never happen.",
+    "answer": "Think of a ticket barrier. A sign saying \"show your ticket\" works most of the time. A barrier that only opens for a valid ticket works every time, for every passenger. A <b>programmatic gate</b> is the barrier: code that refuses <code>post_certificate</code> until that carrier is verified. Forcing the first tool call only checks the first passenger. <b>Rule: if it must never happen, enforce it in code on every call.</b>",
+    "options": [
+     "A required field can be filled without the check having passed.",
+     "Runner-up. Forcing the first call checks the first certificate. The next ones in the session aren't covered.",
+     "Correct. A barrier that checks every post.",
+     "\"any\" makes Claude call a tool, not the right tool first."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think forcing the verify tool with <code>tool_choice</code> is <b>enforcement</b>. It is, but only for the request you set it on. A session that posts <b>several certificates</b> needs the check before <b>each</b> post. Only a gate in code that inspects every post call covers that.",
+    "mapTitle": "Something must happen before something else: what enforces it?",
+    "map": {
+     "head": [
+      "Requirement",
+      "Mechanism",
+      "Coverage"
+     ],
+     "rows": [
+      [
+       "Must never be skipped, many items per session",
+       "Programmatic gate / hook on the downstream tool",
+       "Every call"
+      ],
+      [
+       "One specific tool must run first, single-item request",
+       "Forced <code>tool_choice</code>",
+       "That request only"
+      ],
+      [
+       "Preferred order, occasional slips acceptable",
+       "Prompt instruction + examples",
+       "Probabilistic"
+      ],
+      [
+       "Model must call some tool, not answer in text",
+       "<code>tool_choice: \"any\"</code>",
+       "That request"
+      ],
+      [
+       "Block an action above a threshold",
+       "Hook that blocks and redirects",
+       "Every call"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "then post_certificate to send results onward",
+      "means": "The downstream action to guard."
+     },
+     {
+      "quote": "One session handles several certificates in turn",
+      "means": "The decider. A first-request <code>tool_choice</code> (<b>[[1]]</b>, the runner-up) covers only the first."
+     },
+     {
+      "quote": "Sometimes the agent posts a certificate without verifying its carrier first",
+      "means": "The prompt-level ordering already slips."
+     },
+     {
+      "quote": "Compliance requires that no certificate from an unverified carrier is ever posted",
+      "means": "Deterministic requirement. A schema field (<b>[[0]]</b>) and <code>tool_choice: any</code> (<b>[[3]]</b>) don't check that verification passed."
+     },
+     {
+      "quote": "Which change meets this requirement?",
+      "means": "A code gate on every post: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Must-never rules need code on every call. Forced tool_choice shapes one request, not a whole session.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Block downstream tool calls until prerequisites complete"
+    }
+   }
+  },
+  {
+   "id": "m7-s6-09",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Stratified sampling and field-level routing",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The team wants to send only doubtful fields to account assistants and post the rest directly. Accuracy was measured on a uniform random sample and is high overall. Scans from small carriers are rare in that sample. Compliance wants error rates measured for each document type before anything skips review. Which TWO steps <b>together achieve this</b>?",
+   "options": [
+    {
+     "t": "Have the model report a confidence for each field, and send fields under a fixed cutoff to review.",
+     "why": "Runner-up. Per-field routing is the right shape, but uncalibrated self-reported confidence is unreliable. Calibrated against labelled data, it becomes the answer."
+    },
+    {
+     "t": "Label a new sample with a quota per document type, including enough small-carrier scans.",
+     "why": "Correct. Stratified sampling gives each document type enough labelled cases to measure its own error rate."
+    },
+    {
+     "t": "Label a larger uniform sample, and report accuracy for each field across all documents.",
+     "why": "Incorrect. Per-field figures are useful, but a uniform sample still under-represents rare types and pools them with the rest."
+    },
+    {
+     "t": "Calibrate each field's confidence against the labelled set, and send fields under their cutoff to review.",
+     "why": "Correct. Calibrated field-level confidence decides which individual fields are doubtful and go to a person."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Compliance needs per-type error rates and the team routes individual fields, so stratified sampling plus calibrated field-level confidence fits; uncalibrated self-reported confidence would only do if it had been validated against labelled data.",
+   "explanation": "Aggregate accuracy hides weak document types. Stratified sampling measures each type; field-level confidence calibrated on labelled data routes individual fields to review.",
+   "eli5": {
+    "question": "The team wants to auto-post confident fields and review doubtful ones, safely. Which two steps? The clues are: small-carrier scans are rare in the sample, and compliance wants error rates per document type.",
+    "answer": "Think of tasting soup from a big pot by taking random spoonfuls: you rarely taste the bits at the bottom. A <b>stratified sample</b> takes set spoonfuls from each layer, so rare scans get measured. Then you need a way to spot a doubtful value: <b>field-level confidence</b>, checked against labelled answers so its scores mean something. One measures, the other routes. <b>Rule: measure by type, route by calibrated field confidence.</b>",
+    "options": [
+     "Runner-up. Right idea, routing by field, but the model's own confidence isn't trustworthy until checked against real answers.",
+     "Correct. Guarantees enough rare scans to measure them.",
+     "Per-field numbers from a random sample still bury the rare scans.",
+     "Correct. Calibrated scores decide which fields are doubtful."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think high overall accuracy means it's <b>safe to automate</b>. But an aggregate can hide a weak type, especially a rare one barely present in the sample. You need two things: a <b>measurement</b> per document type, and a <b>routing signal</b> per field. Stratified sampling gives the first; calibrated field confidence gives the second.",
+    "mapTitle": "Automating review: what does each step give you?",
+    "map": {
+     "head": [
+      "Step",
+      "Gives you",
+      "Limit"
+     ],
+     "rows": [
+      [
+       "Stratified sample by document type",
+       "Error rate per type, rare types included",
+       "Needs labelling"
+      ],
+      [
+       "Field-level confidence calibrated on labelled data",
+       "Which fields to send to review",
+       "Needs a labelled set"
+      ],
+      [
+       "Larger uniform sample",
+       "Tighter overall number",
+       "Still hides rare types"
+      ],
+      [
+       "Independent second extraction, compare",
+       "Disagreement signal",
+       "Double cost; no per-type rate"
+      ],
+      [
+       "Self-reported confidence (uncalibrated)",
+       "A number",
+       "Unreliable"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team wants to send only doubtful fields to account assistants and post the rest directly",
+      "means": "Needs a per-field routing signal: calibrated confidence (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "Accuracy was measured on a uniform random sample and is high overall",
+      "means": "An aggregate."
+     },
+     {
+      "quote": "Scans from small carriers are rare in that sample",
+      "means": "A bigger uniform sample (<b>[[2]]</b>) keeps them rare, even reported per field."
+     },
+     {
+      "quote": "Compliance wants error rates measured for each document type before anything skips review",
+      "means": "Needs a per-type measurement: stratified sampling (<b>[[1]]</b>). Raw self-reported confidence (<b>[[0]]</b>, the runner-up) routes by field but is not calibrated."
+     },
+     {
+      "quote": "Which TWO steps together achieve this?",
+      "means": "<b>[[1]]</b> and <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Measure per type with a stratified sample; route per field with calibrated confidence.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Stratified random sampling measures high-confidence error rates; field-level confidence calibrated on labeled sets routes review."
+    }
+   }
+  },
+  {
+   "id": "m7-s6-10",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Provenance for human review",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Account assistants check flagged certificates against the source PDF. Policy schedules run to dozens of pages. Most of each review is spent hunting for where a value was printed. The extraction output holds the values and nothing else. Assistants do not need the model's reasoning, only the place to look. Which change <b>most speeds up these reviews</b>?",
+   "options": [
+    {
+     "t": "Return each value with the page number and the exact span of text it was read from.",
+     "why": "Correct. Source location and quoted text let the assistant jump straight to the evidence."
+    },
+    {
+     "t": "Return a calibrated confidence per field, and open the review on the lowest-scoring fields first.",
+     "why": "Runner-up. Calibrated confidence helps decide which fields to check first. The time is lost finding where each value came from, which a score does not tell."
+    },
+    {
+     "t": "Highlight in the PDF viewer every place where each extracted value's text appears.",
+     "why": "Incorrect. Close, but common values such as limits repeat across a schedule, so the assistant still has to work out which match was used."
+    },
+    {
+     "t": "Return the values grouped under the schedule's own section headings, in document order.",
+     "why": "Incorrect. It narrows the search to a section, but sections span pages; the exact place is still unknown."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The time goes into finding where each value was printed, so per-value source location wins; if the time went into choosing which fields to check, confidence ordering would win.",
+   "explanation": "Keep a structured mapping from each extracted value to its source location. Provenance lets a reviewer verify quickly; scores and reasoning do not show where to look.",
+   "eli5": {
+    "question": "Reviews are slow because assistants hunt through long PDFs. What helps most? The clue is: most of the time is spent finding where a value was printed.",
+    "answer": "Think of a textbook answer key that says \"42\" versus one that says \"42, see page 17, line 3\". The second lets you check in seconds. Returning the page and quoted text for each value is <b>provenance</b> (a value-to-source mapping). <b>Rule: if people verify extracted values, give them the source location for each one.</b>",
+    "options": [
+     "Correct. Page and exact text point straight to the evidence.",
+     "Runner-up. Scores tell you which fields to check first, not where to find them.",
+     "Highlighting every match helps, but the same amount often appears in several places.",
+     "Knowing the section narrows the hunt but doesn't end it."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think slow review means reviewers need help <b>deciding what to check</b>, so you add confidence scores. But the stem says the time goes into <b>finding</b> each value. That needs a link from value to source: page and quoted text. Provenance, not prioritisation.",
+    "mapTitle": "Human review is slow: where is the time going?",
+    "map": {
+     "head": [
+      "Where time goes",
+      "What helps",
+      "Mechanism"
+     ],
+     "rows": [
+      [
+       "Finding where each value came from",
+       "Source location per value",
+       "Page + quoted text (provenance)"
+      ],
+      [
+       "Deciding which fields to check",
+       "Prioritisation",
+       "Calibrated confidence, low first"
+      ],
+      [
+       "Understanding a long document's layout",
+       "Orientation",
+       "Summary + section headers"
+      ],
+      [
+       "Reconstructing why a value was chosen",
+       "Rationale",
+       "Brief reasoning per value"
+      ],
+      [
+       "Conflicting values across documents",
+       "Attribution of each",
+       "Keep both with source and date"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Account assistants check flagged certificates against the source PDF",
+      "means": "Reviewers verify against the source."
+     },
+     {
+      "quote": "Policy schedules run to dozens of pages",
+      "means": "Long documents make finding a value slow."
+     },
+     {
+      "quote": "Most of each review is spent hunting for where a value was printed",
+      "means": "The decider. The cost is location, not choice. Confidence (<b>[[1]]</b>, the runner-up) helps prioritise; text matches (<b>[[2]]</b>) and section grouping (<b>[[3]]</b>) only narrow the search."
+     },
+     {
+      "quote": "Assistants do not need the model's reasoning, only the place to look",
+      "means": "Reasoning is not what they need; the place to look is."
+     },
+     {
+      "quote": "Which change most speeds up these reviews?",
+      "means": "<b>[[0]]</b>: page and quoted text."
+     }
+    ],
+    "rule": "When people verify extracted values, give each value its source: page and exact text.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Preserve structured claim-source mappings through synthesis"
+    }
+   }
+  }
+ ]
+}

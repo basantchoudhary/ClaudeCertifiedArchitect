@@ -1,0 +1,2090 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A meal-kit subscription company runs its support agent on the Claude Agent SDK. Its custom MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds need a human. Eligibility checks go to a policy subagent through the Task tool. Most contacts are about missing or spoiled ingredients."
+  },
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 Claude Code Configuration &amp; Workflows · D4 Prompt Engineering · D5 Context &amp; Reliability",
+   "brief": "A clinic-scheduling startup uses Claude Code in one TypeScript repository: <code>server/</code> (Node and Prisma), <code>mobile/</code> (React Native) and <code>packages/shared/</code> (types used by both). A committed <code>.claude/</code> directory holds the team's commands and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets. Some also call it from small scripts."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7-s1-01",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Agentic loop and stop_reason",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The agent's loop ends a turn whenever Claude's response contains a text block. Claude often writes a short line, such as “Let me check that box,” in the same response as a request to call <code>lookup_order</code>. In those chats the lookup never runs. The customer waits for an answer that never comes. Which change to the loop <b>fixes this</b>?",
+   "options": [
+    {
+     "t": "Set <code>tool_choice</code> to <code>\"any\"</code> on the first request after each customer message, then back to <code>auto</code>.",
+     "why": "Runner-up. \"any\" is the right lever when Claude answers in text instead of requesting a tool. Here Claude did request the tool; the loop ended the turn before running it, and it would still do so."
+    },
+    {
+     "t": "Append each tool's output as a <code>tool_result</code> block carrying its <code>tool_use_id</code> before the next request.",
+     "why": "Incorrect. Returning results correctly matters, but here the tool never ran, so there is no result to return."
+    },
+    {
+     "t": "Branch on the <code>stop_reason</code> of each response: run requested tools and loop on <code>tool_use</code>, stop on <code>end_turn</code>.",
+     "why": "Correct. A response can hold text and a tool request together. stop_reason is the signal for what happens next: tool_use means run the tools and continue, end_turn means the turn is over."
+    },
+    {
+     "t": "End the turn only when the reply text has no pending-action phrase, and cap the loop at a fixed number of rounds.",
+     "why": "Incorrect. Matching phrases in the text and using an iteration cap as the stop are both loop anti-patterns; the response already carries an explicit signal."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Claude did request the tool in the same response that held text; if Claude had answered in text with no tool request, forcing a call with tool_choice \"any\" would be the fix.",
+   "explanation": "Agentic loops branch on stop_reason, not on what the content looks like. One response can contain both a text block and a tool_use block; tool_use means execute and continue, end_turn means stop.",
+   "eli5": {
+    "question": "The loop stops as soon as Claude writes any words. The clue is: “in the same response as a request to call lookup_order.” Claude <i>did</i> ask for a tool; the loop just stopped listening.",
+    "answer": "Picture a waiter who walks off the moment you say “hmm”, while you are still ordering. Every reply from Claude carries a label saying why it stopped (the <b>stop_reason</b>). <code>tool_use</code> means “run this tool and come back”; <code>end_turn</code> means “I'm done”. The loop should read the label, not guess from the words. <b>Rule: continue on tool_use, finish on end_turn; never judge by the text.</b>",
+    "options": [
+     "Runner-up. Forcing a tool call (<b>tool_choice \"any\"</b>) helps when Claude answers instead of asking for a tool. Here it asked; the loop stopped anyway.",
+     "Handing results back properly (<b>tool_result</b> blocks) is a later step. The tool never ran, so there is nothing to hand back.",
+     "Correct. Read the label: run tools on tool_use, stop on end_turn.",
+     "Guessing from the words, plus a round limit, is still guessing. The reply already says why it stopped."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a response is either words or a tool call</b>, so any text means Claude has finished. It isn't. One response can hold a text block <i>and</i> a <code>tool_use</code> block. The official signal for what to do next is <code>stop_reason</code>, not the shape of the content.",
+    "diagram": "one response\n ├ content: [text \"Let me check\", tool_use]\n └ stop_reason: tool_use   ← this decides\n tool_use → run tools, send results, loop\n end_turn → finished",
+    "mapTitle": "Loop misbehaving? Ask what signal it is reading",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Loop stops when the reply <b>contains text</b>; tool requests are dropped",
+       "Termination judged from content",
+       "Branch on <code>stop_reason</code>"
+      ],
+      [
+       "Claude replies in <b>text with no tool request</b> when a call is required",
+       "Tool choice",
+       "<code>tool_choice: \"any\"</code> or a forced tool"
+      ],
+      [
+       "Claude repeats calls or forgets what a tool returned",
+       "Results not added to history",
+       "Send <code>tool_result</code> blocks with matching ids"
+      ],
+      [
+       "Loop ends on phrases like “anything else?”",
+       "Parsing natural language",
+       "Branch on <code>stop_reason</code>"
+      ],
+      [
+       "Loop stops mid-task after a fixed number of rounds",
+       "Iteration cap used as the stop",
+       "Cap only as a safety net; stop on <code>end_turn</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent's loop ends a turn whenever Claude's response contains a text block.",
+      "means": "The loop decides by looking at content. The guide names this anti-pattern: checking assistant text as a completion signal."
+     },
+     {
+      "quote": "in the same response as a request to call lookup_order",
+      "means": "Claude <i>did</i> request a tool. So Claude is not avoiding tools, and forcing a call with <b>[[0]]</b> fixes a problem that isn't there."
+     },
+     {
+      "quote": "In those chats the lookup never runs.",
+      "means": "The tool never executed, so there is no result to return; <b>[[1]]</b> is about a later step."
+     },
+     {
+      "quote": "Which change to the loop fixes this?",
+      "means": "The fix belongs in the loop's control logic, and phrase-matching with a cap (<b>[[3]]</b>) is the same anti-pattern in a new form. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "One response can hold text and a tool call. Let stop_reason decide: tool_use → run and continue; end_turn → stop.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops",
+     "quote": "Continue the loop when stop_reason == \"tool_use\"; terminate when \"end_turn\"."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-02",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit context passing to subagents",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The coordinator sends eligibility questions to the policy subagent with the Task tool. Its prompt reads: “Check whether this customer's claim is eligible.” The subagent's verdicts are generic and often hedge. The facts it needs are only in the chat: which items spoiled, when the box arrived, and what the customer wants. Which change <b>best improves the verdicts</b>?",
+   "options": [
+    {
+     "t": "Have the coordinator restate the case, with products, arrival day and desired remedy, in its Task call.",
+     "why": "Correct. Subagents do not inherit the coordinator's history. Whatever the subagent needs must be written into the prompt it receives."
+    },
+    {
+     "t": "Give the policy subagent read-only <code>get_customer</code> and <code>lookup_order</code> and let it gather the case itself.",
+     "why": "Runner-up. Scoped lookup tools are right when the facts live in backend records. Which items spoiled and what the customer wants exist only in the chat, and no tool returns them."
+    },
+    {
+     "t": "Add the eligibility policy and two worked verdicts to the subagent's <code>AgentDefinition</code> system prompt.",
+     "why": "Incorrect. Better instructions and examples improve how the subagent reasons, but it still lacks this case's facts."
+    },
+    {
+     "t": "Have the subagent return a structured verdict listing eligibility, the reason and any facts it still needs.",
+     "why": "Incorrect. Asking back for missing facts adds a round trip for every claim; the coordinator already has the facts and can send them."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The needed facts exist only in the chat, which the subagent cannot see; if they lived in backend records, scoped lookup tools for the subagent could compete.",
+   "explanation": "Subagents start with isolated context: they see only the prompt the coordinator writes. Facts that exist only in the conversation must be passed explicitly in the Task prompt.",
+   "eli5": {
+    "question": "A helper (the <b>policy subagent</b>) gives vague answers. The clue is: “The facts it needs are only in the chat.” The helper never sees the chat.",
+    "answer": "It is like asking a colleague in another office “is this claim OK?” without sending the claim. They can only guess. A subagent starts with a blank page; it does not see the coordinator's conversation. So the coordinator must write the facts into the request (the <b>Task prompt</b>). <b>Rule: a subagent knows only what you put in its prompt.</b>",
+    "options": [
+     "Correct. Send the facts with the question.",
+     "Runner-up. Letting the helper look things up works when the facts are in a database. These are in the customer's own words, which no tool returns.",
+     "Teaching the helper the policy with examples doesn't tell it what happened in this case.",
+     "Letting the helper ask for what's missing works, but costs a round trip every time when the facts could be sent up front."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a subagent can see what the coordinator saw</b>, so a short question is enough. It can't. Subagents have <b>isolated context</b>: no shared memory, no inherited history. A one-line Task prompt gives the subagent one line of information.",
+    "diagram": "coordinator context: chat + tool results\n        │ Task(prompt)  ← the only bridge\n        ▼\nsubagent context: prompt only",
+    "mapTitle": "Subagent output weak? Ask what it was given",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Generic or hedged answers; facts are <b>in the conversation</b>",
+       "Context not passed",
+       "Write the facts into the Task prompt"
+      ],
+      [
+       "Subagent needs <b>backend records</b> it cannot reach",
+       "Missing tools",
+       "Give it scoped lookup tools"
+      ],
+      [
+       "Subagent understands the case but misapplies policy",
+       "Weak instructions",
+       "Improve its system prompt / AgentDefinition"
+      ],
+      [
+       "Answers good but hard for the coordinator to use",
+       "Output format",
+       "Ask for a structured result"
+      ],
+      [
+       "Later subagent repeats earlier work",
+       "Prior findings not handed on",
+       "Include complete prior findings in its prompt"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Its prompt reads: “Check whether this customer's claim is eligible.”",
+      "means": "That is everything the subagent knows about the case."
+     },
+     {
+      "quote": "The subagent's verdicts are generic and often hedge.",
+      "means": "A sign of missing input, not of bad reasoning or bad format (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "The facts it needs are only in the chat",
+      "means": "The decider. No tool returns the customer's words, so fetching (<b>[[1]]</b>) cannot supply them, and more policy text (<b>[[2]]</b>) is not the gap."
+     },
+     {
+      "quote": "Which change best improves the verdicts?",
+      "means": "Pass the facts explicitly: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "A subagent knows only what its prompt tells it. If the facts live in the conversation, write them into the Task prompt.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-03",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Prompt guidance vs programmatic enforcement",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 2,
+   "question": "Cancellations are handled by people, so the agent routes them through <code>escalate_to_human</code>. Product wants the agent to offer a pause before it escalates a cancellation. This is a retention nudge, not a policy. Missing it in some chats is acceptable. The change should be light to maintain. Which <b>TWO</b> changes fit best?",
+   "options": [
+    {
+     "t": "Force <code>pause_subscription</code> through <code>tool_choice</code> on the turn where a customer first asks to cancel.",
+     "why": "Incorrect. Forcing the tool pauses the subscription without the customer agreeing. The goal is to offer a pause, not to apply one."
+    },
+    {
+     "t": "Add a system-prompt instruction to suggest pausing deliveries before routing a cancellation request to a person.",
+     "why": "Correct. A soft goal where occasional misses are fine is exactly what prompt guidance is for. It is one line to maintain."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that denies <code>escalate_to_human</code> on cancellations until a pause has been offered.",
+     "why": "Runner-up. A hook is the right tool when a step must happen every time. Here misses are acceptable, so code that must detect cancellations and offers is more machinery than the goal needs."
+    },
+    {
+     "t": "Include two or three sample chats where the agent suggests a pause and then escalates once the customer declines.",
+     "why": "Correct. A few examples show the order of steps and the tone, and make the nudge consistent without any code."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "Missing the offer in some chats is acceptable; if it had to happen in every cancellation, a hook would beat prompt guidance.",
+   "explanation": "Programmatic enforcement is for steps that must happen every time. A soft, best-effort behaviour is best shaped with a clear instruction plus a few examples.",
+   "eli5": {
+    "question": "Product wants a friendly “would you like to pause instead?” before cancellations go to a person. The clue is: “Missing it in some chats is acceptable.” That makes it a nudge, not a rule.",
+    "answer": "A shop asks staff to mention the loyalty card at the till. A reminder note and a short demo do the job; nobody installs a till that locks until the card is mentioned. Here, an instruction in the <b>system prompt</b> plus a few <b>example chats</b> is enough. <b>Rule: must-happen-every-time → code; nice-to-have → prompt and examples.</b>",
+    "options": [
+     "Forcing the pause tool would pause people who only wanted to talk about cancelling.",
+     "Correct. A plain instruction sets the nudge.",
+     "Runner-up. A guard in code (a <b>PreToolUse hook</b>) is for steps that must never be skipped. Here skipping is allowed.",
+     "Correct. Examples show exactly how the offer and the hand-off should sound."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>code is the more professional answer</b> whenever behaviour must change. The guide's line is narrower: code (hooks, gates) is for <b>deterministic compliance</b>, where a single miss is a failure. When misses are acceptable, a hook adds logic to maintain and a way to block legitimate escalations.",
+    "mapTitle": "Prompt or code? Ask what one miss costs",
+    "map": {
+     "head": [
+      "Requirement",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Nice-to-have behaviour; <b>misses acceptable</b>",
+       "Prompt instruction + a few examples",
+       "Cheap and good enough"
+      ],
+      [
+       "Step that <b>must happen every time</b> before an action",
+       "Hook or prerequisite gate",
+       "Prompts have a non-zero failure rate"
+      ],
+      [
+       "Hard limit on an action (e.g. refund ceiling)",
+       "<code>PreToolUse</code> hook that denies and redirects",
+       "Deterministic block"
+      ],
+      [
+       "Model must call some tool instead of replying",
+       "<code>tool_choice: \"any\"</code>",
+       "Guarantees a call"
+      ],
+      [
+       "Tone or format varies between chats",
+       "Few-shot examples",
+       "Shows the pattern"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Product wants the agent to offer a pause before it escalates a cancellation.",
+      "means": "The behaviour is an offer, so forcing the pause tool (<b>[[0]]</b>) does the wrong thing."
+     },
+     {
+      "quote": "This is a retention nudge, not a policy.",
+      "means": "Nothing breaks if it is skipped."
+     },
+     {
+      "quote": "Missing it in some chats is acceptable.",
+      "means": "The decider. Deterministic enforcement (<b>[[2]]</b>) solves a requirement nobody has."
+     },
+     {
+      "quote": "The change should be light to maintain.",
+      "means": "An instruction (<b>[[1]]</b>) and a few examples (<b>[[3]]</b>) are the lightest pair that works."
+     }
+    ],
+    "rule": "Code for must-always; prompt and examples for should-usually.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "When deterministic compliance is required (e.g., identity verification before financial ops), prompt instructions have a non-zero failure rate."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-04",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 PostToolUse hooks for transformation",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "<code>get_customer</code> returns the full card number on file, because the billing team's tools need it. That team owns the server and will not change it. Twice, the support agent read a card number back to a customer. Security says a card number must not reach a customer in any chat. Which change <b>meets this requirement</b>?",
+   "options": [
+    {
+     "t": "Add a system-prompt rule to refer to cards by their last four digits only, with two example replies to copy.",
+     "why": "Runner-up. A clear rule with examples is the right fix for a should-usually behaviour. Security needs a must-never, and prompt compliance has a non-zero failure rate."
+    },
+    {
+     "t": "Register a <code>PostToolUse</code> hook that masks the card field in each <code>get_customer</code> result before Claude reads it.",
+     "why": "Correct. The hook rewrites the result before the model sees it, so the agent cannot repeat a number it never had. It needs no change to the billing team's server."
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that logs any card number found in a tool result for security to review.",
+     "why": "Incorrect. Right hook, wrong action: logging records exposure after the model has the number; it does not stop the number reaching a reply."
+    },
+    {
+     "t": "Route <code>get_customer</code> through a subagent whose definition returns only name, plan and box IDs.",
+     "why": "Incorrect. The subagent still receives the full number and decides what to pass on; its definition is an instruction, not a filter."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The rule is “must not reach a customer in any chat” and the server cannot change; if the goal were only to reduce leaks, a prompt rule with an example could do.",
+   "explanation": "When a tool returns data the model must never use, transform the result with a PostToolUse hook before the model sees it. Prompt rules only make misuse less likely.",
+   "eli5": {
+    "question": "The agent sometimes reads out a customer's card number. The clue is: “a card number must not reach a customer in any chat.” That is a must-never.",
+    "answer": "If you do not want a receptionist reading out card numbers, do not hand them the number: black it out on the paper first. A <b>PostToolUse hook</b> is that black marker. It edits each tool result before Claude reads it. Claude cannot repeat what it never saw. <b>Rule: if the model must never use some data, remove it before the model sees it.</b>",
+    "options": [
+     "Runner-up. A written rule with examples usually works, but “usually” is not enough for a must-never.",
+     "Correct. Mask the number before Claude ever sees it.",
+     "A hook that only writes a log entry notices the number but still hands it to Claude.",
+     "A helper told to pass on only some fields still sees the number, and might pass it on."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a firm instruction stops the model saying something</b>. It lowers the chance, but prompt compliance is probabilistic. For data that must never reach a customer, the reliable layer is the tool result itself: change it before the model reads it.",
+    "diagram": "get_customer → [PostToolUse hook: mask card] → Claude\n server unchanged        model never sees full number",
+    "mapTitle": "Sensitive or messy tool data? Ask where to change it",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Model <b>must never</b> use a field; server can't change",
+       "<code>PostToolUse</code> hook masks it",
+       "Deterministic, no server change"
+      ],
+      [
+       "Model <b>should usually</b> phrase things a certain way",
+       "Prompt rule + example",
+       "Probabilistic is fine"
+      ],
+      [
+       "You own the tool and the field isn't needed",
+       "Stop returning it from the tool",
+       "Fix at the source"
+      ],
+      [
+       "Results arrive in mixed formats (dates, codes)",
+       "<code>PostToolUse</code> hook normalises",
+       "Model reasons on one format"
+      ],
+      [
+       "An action must be blocked (refund over limit)",
+       "<code>PreToolUse</code> hook denies the call",
+       "Intercepts outgoing calls"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "That team owns the server and will not change it.",
+      "means": "Fixing at the source is off the table; the change has to happen on the agent side."
+     },
+     {
+      "quote": "Twice, the support agent read a card number back to a customer.",
+      "means": "Leaks happen in ordinary chats, so the fix must act on every result. Logging them (<b>[[2]]</b>) records the exposure without preventing it."
+     },
+     {
+      "quote": "Security says a card number must not reach a customer in any chat.",
+      "means": "The decider: a must-never. A prompt rule (<b>[[0]]</b>) and a subagent told what to return (<b>[[3]]</b>) both still rely on the model choosing."
+     },
+     {
+      "quote": "Which change meets this requirement?",
+      "means": "Only a hook on the result removes the number before Claude sees it: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Must never use the data? Strip it from the tool result with a PostToolUse hook, before the model reads it.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "PostToolUse hooks intercept results for transformation before the model sees them."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-05",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 tool_choice any vs forced",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After each chat, a wrap-up request asks Claude to log the outcome. It should call one of three tools: <code>record_resolved</code>, <code>record_escalated</code> or <code>record_abandoned</code>. Each feeds a queue another team owns, so they cannot be merged. Claude picks the right tool when it calls one. Sometimes it replies with a text summary instead. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Merge the three into one <code>record_outcome</code> tool with an outcome enum, forced by name in <code>tool_choice</code>.",
+     "why": "Runner-up. Forcing one named tool is the cleanest guarantee when a single tool fits. The tools feed separate queues and cannot be merged, so this is not available."
+    },
+    {
+     "t": "Keep <code>tool_choice</code> on <code>auto</code> and add a when-to-use line and an example to each record tool's description.",
+     "why": "Incorrect. Better descriptions improve which tool is picked, and selection already works; with auto, Claude can still reply in text."
+    },
+    {
+     "t": "Check <code>stop_reason</code> on the wrap-up reply and resend with a reminder line whenever it comes back as <code>end_turn</code>.",
+     "why": "Incorrect. Detecting the miss and resending lowers the failure rate at the cost of extra calls; the API can require a tool call in the first place."
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>{\"type\": \"any\"}</code> on the wrap-up request only, keeping <code>auto</code> for the chat.",
+     "why": "Correct. \"any\" requires a tool call while still letting Claude choose which one, and its choices are already right."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Claude must choose among three tools that cannot be merged; if a single tool were always the right one, forcing it by name would win.",
+   "explanation": "tool_choice \"auto\" allows text; \"any\" requires some tool call; a forced tool requires a specific one. When the model must pick among several tools but must not answer in text, use \"any\".",
+   "eli5": {
+    "question": "Claude sometimes writes a note instead of filling in one of three forms. The clue is: Claude “picks the right tool when it calls one”, and the three tools “cannot be merged.”",
+    "answer": "Think of a clerk who must stamp a file with one of three stamps. Sometimes they write a sticky note instead. You don't tape one stamp to their hand; you say “you must use a stamp, your choice which.” That is <code>tool_choice: \"any\"</code>: some tool must be called, and Claude picks which. <b>Rule: one specific tool → force it by name; must pick among several → \"any\".</b>",
+    "options": [
+     "Runner-up. Forcing one named tool is perfect when there is only one right tool. Here the three can't be merged into one.",
+     "Clearer tool labels help Claude pick the right tool. It already does; the problem is it sometimes picks none.",
+     "Catching the miss and asking again works most of the time, but costs calls and still isn't certain.",
+     "Correct. A tool call is required; Claude still chooses which."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>“force a tool” is the only way to stop text replies</b>. There are two forcing modes. A named tool forces <i>which</i> tool; <code>\"any\"</code> forces <i>that</i> a tool is called but leaves the choice to Claude. When the choice is already right, keep it and only remove the text option.",
+    "diagram": "auto   → text OR any tool\nany    → some tool (Claude picks)\nforced → this one named tool",
+    "mapTitle": "Wrong output type? Ask what Claude may still choose",
+    "map": {
+     "head": [
+      "Situation",
+      "tool_choice",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Must call a tool; <b>several valid</b>, Claude chooses well",
+       "<code>\"any\"</code>",
+       "Removes text, keeps the choice"
+      ],
+      [
+       "Must call <b>one specific</b> tool (e.g. first step)",
+       "Forced <code>{\"type\":\"tool\",\"name\":…}</code>",
+       "Removes the choice too"
+      ],
+      [
+       "Tool optional; text answers are fine",
+       "<code>\"auto\"</code>",
+       "Default"
+      ],
+      [
+       "Claude calls the <b>wrong</b> tool",
+       "Not tool_choice: fix descriptions",
+       "Selection problem"
+      ],
+      [
+       "Structured output from one schema",
+       "Forced extraction tool",
+       "Schema-compliant output"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It should call one of three tools",
+      "means": "Several valid tools, so Claude must keep the choice."
+     },
+     {
+      "quote": "Each feeds a queue another team owns, so they cannot be merged.",
+      "means": "The decider: rules out merging into one forced tool (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Claude picks the right tool when it calls one.",
+      "means": "Selection is fine; only the text replies are wrong."
+     },
+     {
+      "quote": "Sometimes it replies with a text summary instead.",
+      "means": "Descriptions (<b>[[1]]</b>) fix selection, which already works, and a resend (<b>[[2]]</b>) only lowers the rate. <code>\"any\"</code> (<b>[[3]]</b>) removes text as an option."
+     }
+    ],
+    "rule": "Need a tool call but Claude should pick which: tool_choice \"any\". Need one exact tool: force it by name.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "\"any\" guarantees a tool call rather than text"
+    }
+   }
+  },
+  {
+   "id": "m7-s1-06",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions: input formats",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "<code>lookup_order</code> takes a box ID, and its whole description reads “Looks up a box”. Customers usually name a box by when it came, such as “last Tuesday's box”. The agent then passes that date as the box ID, and the call fails. Each customer's box IDs are listed in the <code>get_customer</code> record. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Expand the description with the ID format, a sample call, and how to go from a date to an ID.",
+     "why": "Correct. Descriptions are the main way the model learns how to call a tool. This one gives no input format and no route from a date to an ID, and fixing that is cheap."
+    },
+    {
+     "t": "Return a structured validation error from <code>lookup_order</code> that names the expected ID format and an example.",
+     "why": "Incorrect. A clear validation error helps the agent recover after a bad call. The first step is to stop the bad call."
+    },
+    {
+     "t": "Add a few-shot example to the system prompt that resolves a date-based request through <code>get_customer</code> first.",
+     "why": "Runner-up. Examples help once the descriptions are clear but behaviour is still inconsistent. With a one-line description, the root cause is the description, and examples add tokens without fixing it."
+    },
+    {
+     "t": "Add a <code>lookup_order_by_date</code> tool that accepts a delivery date and returns the customer's matching box.",
+     "why": "Incorrect. A new tool is more work than a first step, and with minimal descriptions the agent may misuse it too."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The description is one line with no input format; if it already listed formats and examples and the misuse continued, examples or a validation error would come next.",
+   "explanation": "Tool descriptions are the primary signal for how to call a tool. A minimal description should first be expanded with input format, examples, edge cases and boundaries.",
+   "eli5": {
+    "question": "The agent passes a date where an ID belongs. The clue is: its whole description reads “Looks up a box.” Nobody told the agent what to pass in.",
+    "answer": "A form with a box that just says “Box” gets filled with all sorts of things. Write “Box ID, like BX-1234; find it on the customer's record” and people fill it right. The <b>tool description</b> is that label. Fix it first: it is cheap and goes at the root. <b>Rule: a tool is called the way its description explains it; start there.</b>",
+    "options": [
+     "Correct. Say what the input looks like and how to get it from a date.",
+     "A helpful error message helps after the mistake. Better to prevent the mistake.",
+     "Runner-up. Example chats (<b>few-shot</b>) help once the label is clear. With a one-line label, fix the label first.",
+     "A whole new tool is a bigger job than a first step."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>misuse is a reasoning problem</b> that examples or error messages should fix. Usually it is an information problem. The model decides how to call a tool mainly from its description. A one-line description gives no input format, no examples and no boundaries.",
+    "mapTitle": "Tool called badly? Ask what the model was told about it",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Wrong inputs; description is <b>one line</b>",
+       "Description",
+       "Add input format, examples, edge cases"
+      ],
+      [
+       "Description is full, behaviour <b>still inconsistent</b>",
+       "Needs demonstration",
+       "A few targeted examples"
+      ],
+      [
+       "Bad calls happen and the agent can't recover",
+       "Error response",
+       "Structured validation error"
+      ],
+      [
+       "One generic tool does several jobs",
+       "Tool design",
+       "Split into purpose-specific tools"
+      ],
+      [
+       "Two tools with overlapping descriptions",
+       "Boundaries",
+       "State when to use each"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "its whole description reads “Looks up a box”",
+      "means": "The decider: no format, no examples, no boundaries. The root cause is visible."
+     },
+     {
+      "quote": "The agent then passes that date as the box ID, and the call fails.",
+      "means": "The model doesn't know what a box ID looks like. Better error text (<b>[[1]]</b>) helps only after the fact."
+     },
+     {
+      "quote": "Each customer's box IDs are listed in the get_customer record.",
+      "means": "The route already exists; the description just needs to say so. No new tool (<b>[[3]]</b>) is required."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "Cheap and at the root: <b>[[0]]</b>. Examples (<b>[[2]]</b>) come after the description is fixed."
+     }
+    ],
+    "rule": "Minimal description → bad calls. First step: input format, examples, edge cases and boundaries in the description.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Include input formats, example queries, edge cases, boundaries."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-07",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Structured business errors",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "<code>pause_subscription</code> fails when the next box is past its packing cut-off. The cut-off varies by delivery region, and only the backend knows it. Today the tool returns <code>isError</code> with the text “Request failed.” The agent retries several times, then tells the customer the system is down. Which change is <b>best</b>?",
+   "options": [
+    {
+     "t": "Describe the packing cut-off in the tool description and tell the agent to check the box date before calling.",
+     "why": "Runner-up. Putting a rule in the description works when the agent can check it in advance. The cut-off varies by region and only the backend knows it, so the agent cannot check it."
+    },
+    {
+     "t": "Return <code>errorCategory</code> “transient” with <code>isRetryable</code> false and the text “Pause unavailable for this box.”",
+     "why": "Incorrect. Structured, but mislabelled and empty: transient says outage, and the agent still has nothing true to tell the customer."
+    },
+    {
+     "t": "Return <code>errorCategory</code> “business” with <code>isRetryable</code> false, the region's cut-off and the next pausable box.",
+     "why": "Correct. The failure is a policy outcome, not an outage. A business category with a retryable flag of false stops the retries, and the note gives the agent something true to tell the customer."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks repeat <code>pause_subscription</code> calls and tells the agent to escalate.",
+     "why": "Incorrect. This stops the retries but sends a policy outcome the agent could explain to a human, and still gives no reason."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Only the backend knows the region's cut-off, so the agent learns it only from the error; if the cut-off were fixed and known in advance, describing it in the tool description could prevent the call.",
+   "explanation": "A generic failure gives the agent no basis for recovery. Business-rule failures should carry a category, a not-retryable flag and a customer-friendly explanation.",
+   "eli5": {
+    "question": "The pause fails because the box is already being packed, but the tool only says “Request failed.” The clue is: “only the backend knows it.” The agent can't know the cut-off in advance.",
+    "answer": "If a shop till just beeps “error”, the cashier tries again and again. If it says “too late, this order already left; next one can be changed”, the cashier explains it and moves on. A <b>structured error</b> with a category, “don't retry”, and a plain note does that. <b>Rule: say what kind of failure it is and whether retrying can help.</b>",
+    "options": [
+     "Runner-up. Explaining the rule up front works when the agent can check it. Here only the backend knows the cut-off.",
+     "A labelled error helps, but this label says “outage” and gives no reason the customer can understand.",
+     "Correct. Name it a rule outcome, say don't retry, and give a sentence to pass on.",
+     "Blocking repeats and escalating stops the loop, but a person gets a case the agent could have explained itself."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>repeated retries are the bug to fix</b>. They are a symptom. The agent retries because “Request failed” looks like an outage. Give it the <b>kind</b> of failure and whether retrying can help, and the retries and the wrong message both go away.",
+    "mapTitle": "Tool failing? Ask what the agent needs to know to recover",
+    "map": {
+     "head": [
+      "Failure",
+      "What to return",
+      "Agent then"
+     ],
+     "rows": [
+      [
+       "Policy / business rule (past cut-off)",
+       "Business category, not retryable, friendly note",
+       "Explains, offers the next option"
+      ],
+      [
+       "Timeout or brief outage",
+       "Transient category, retryable",
+       "Retries or tells the customer to wait"
+      ],
+      [
+       "Bad input (wrong ID format)",
+       "Validation category with the expected format",
+       "Fixes the call"
+      ],
+      [
+       "Not allowed for this user",
+       "Permission category",
+       "Escalates or explains"
+      ],
+      [
+       "Rule the agent <b>can check in advance</b>",
+       "Put it in the tool description",
+       "Avoids the call"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The cut-off varies by delivery region, and only the backend knows it.",
+      "means": "The decider: the agent can't check this beforehand, so describing it (<b>[[0]]</b>) won't prevent the call."
+     },
+     {
+      "quote": "Today the tool returns isError with the text “Request failed.”",
+      "means": "A uniform failure message gives no basis for recovery."
+     },
+     {
+      "quote": "The agent retries several times, then tells the customer the system is down.",
+      "means": "It treats a rule as an outage. Labelling it transient (<b>[[1]]</b>) repeats that mistake; blocking repeats (<b>[[3]]</b>) still gives the customer no reason."
+     },
+     {
+      "quote": "Which change is best?",
+      "means": "Classify the error and give a relayable note: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Business-rule failures: say so, mark them not retryable, and include a sentence the agent can tell the customer.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "retriable: false + customer-friendly explanation for business violations"
+    }
+   }
+  },
+  {
+   "id": "m7-s1-08",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Explicit request for a human",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A customer writes: “My salmon was missing again. I want to speak to a real person.” The refund is well inside the agent's limit, so it could settle the case alone. The customer sounds calm. The request for a person is direct and unambiguous. How should the agent <b>respond</b>?",
+   "options": [
+    {
+     "t": "Acknowledge the problem, offer the refund it can issue now, and escalate if the customer asks for a person again.",
+     "why": "Runner-up. Offering a resolution first is right when a customer is frustrated but has not asked for a person. Here the request is direct, so the agent should not make the customer ask twice."
+    },
+    {
+     "t": "Run <code>lookup_order</code> to confirm the missing item first, then decide between refunding and escalating.",
+     "why": "Incorrect. Investigating before honouring an explicit request delays the customer for a decision that is already made."
+    },
+    {
+     "t": "Check the customer's refund history first, and escalate only if the item has gone missing on an earlier box too.",
+     "why": "Incorrect. Repeat issues can matter for policy, but the customer asked for a person; that trigger does not depend on history."
+    },
+    {
+     "t": "Call <code>escalate_to_human</code> straight away, with the customer ID, the box and the missing item in the handoff.",
+     "why": "Correct. An explicit request for a human is an escalation trigger on its own. Honour it immediately and pass the facts so the person can pick up without re-asking."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The customer explicitly asks for a person; if they were only frustrated without asking, offering the in-limit refund first would be right.",
+   "explanation": "Escalation triggers include an explicit request for a human, policy gaps and inability to progress. Explicit requests are honoured immediately, with a handoff summary.",
+   "eli5": {
+    "question": "A calm customer asks for a real person, about a refund the agent could do itself. The clue is: “The request for a person is direct and unambiguous.”",
+    "answer": "If a hotel guest says “I'd like to speak to the manager”, the desk clerk fetches the manager. They don't first say “let me try to fix it myself”. An <b>explicit request for a human</b> is an escalation trigger by itself. Hand over at once, with the facts so the person doesn't re-ask. <b>Rule: when the customer asks for a person, escalate now.</b>",
+    "options": [
+     "Runner-up. Offering a fix first is right for an upset customer who hasn't asked for a person. This one asked.",
+     "Checking the order first delays a decision that is already made.",
+     "History might matter for policy, but the request for a person doesn't depend on it.",
+     "Correct. Hand over now, with the key facts."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>escalation is for cases the agent cannot solve</b>, so an easy refund should be done first. The guide lists the customer's explicit request as its own trigger. Whether the agent <i>could</i> solve it does not change that.",
+    "mapTitle": "Escalate or resolve? Ask which trigger is present",
+    "map": {
+     "head": [
+      "Situation",
+      "Agent should",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Customer <b>explicitly asks</b> for a person",
+       "Escalate immediately, with a handoff summary",
+       "Explicit demand is a trigger"
+      ],
+      [
+       "Customer <b>frustrated</b>, hasn't asked; issue is simple",
+       "Acknowledge and offer resolution",
+       "Straightforward case"
+      ],
+      [
+       "Policy is silent or needs an exception",
+       "Escalate",
+       "Policy gap"
+      ],
+      [
+       "Agent cannot make progress",
+       "Escalate",
+       "Inability to progress"
+      ],
+      [
+       "Several accounts match the name",
+       "Ask for an identifier",
+       "Don't guess"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "I want to speak to a real person.",
+      "means": "An explicit request."
+     },
+     {
+      "quote": "The refund is well inside the agent's limit, so it could settle the case alone.",
+      "means": "Tempting, and it is what makes <b>[[0]]</b> attractive. But being able to solve it is not a reason to override the request."
+     },
+     {
+      "quote": "The customer sounds calm.",
+      "means": "Sentiment is not the trigger either way."
+     },
+     {
+      "quote": "The request for a person is direct and unambiguous.",
+      "means": "The decider. Investigating first (<b>[[1]]</b>, <b>[[2]]</b>) or offering a fix first (<b>[[0]]</b>) delays it. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Explicit request for a person → escalate now, with the facts. Frustration alone → offer resolution first.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Escalate immediately on explicit demand; offer resolution when straightforward."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-09",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Access failure vs valid empty result",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The policy subagent checks a customer's past refunds through a payments API. When that API times out, the subagent tells the coordinator “No previous refunds found.” The coordinator then approves refunds that repeat earlier ones. The API's outages usually last about an hour. How should the subagent <b>report this case</b>?",
+   "options": [
+    {
+     "t": "Retry with backoff inside the subagent, then report “history unavailable” to the coordinator if every retry fails.",
+     "why": "Runner-up. Local recovery first is good practice for brief blips. With hour-long outages the retries run out, and a bare “unavailable” status hides what was tried and what was retrieved."
+    },
+    {
+     "t": "Report the timeout as a failed lookup, naming the query it tried and any past refunds it did retrieve.",
+     "why": "Correct. An access failure must look different from a valid empty result. With the failure type, the query and partial results, the coordinator can hold the refund, escalate or try later."
+    },
+    {
+     "t": "Return <code>isError</code> with <code>errorCategory</code> “transient” and let the coordinator rerun the subagent later.",
+     "why": "Incorrect. This separates failure from empty, which is half the fix, but drops the attempted query and any partial results the coordinator could act on now."
+    },
+    {
+     "t": "Have the coordinator call the payments API itself and skip the subagent for refund-history checks.",
+     "why": "Incorrect. Moving the call does not fix how a timeout is reported; the coordinator would face the same ambiguity."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Outages last about an hour, so retries alone fail and the report itself must distinguish failure from empty; if timeouts were brief blips, local retry would come first.",
+   "explanation": "A timeout reported as “nothing found” turns an access failure into a false fact. Subagents should propagate structured failure context: type, attempted query, partial results.",
+   "eli5": {
+    "question": "When the payments system is down, the helper says “no previous refunds”. The clue is: the outages “usually last about an hour.” Waiting a few seconds won't fix it.",
+    "answer": "If you phone a shop and nobody answers, you don't tell your friend “they have no stock”. You say “I couldn't get through”. The subagent must say <b>“I couldn't check”</b>, not “there's nothing”, and give what it tried and anything it did get. Then the coordinator can decide what to do. <b>Rule: “couldn't look” and “looked and found nothing” must never look the same.</b>",
+    "options": [
+     "Runner-up. A quick retry then “unavailable” is decent, but hour-long outages beat the retries and the bare message hides the details.",
+     "Correct. Say it failed, what it tried, and what it got.",
+     "Saying “it failed, try later” is better than “nothing found”, but leaves out what was tried and what came back.",
+     "Moving the call to the coordinator doesn't change how a timeout gets reported."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the fix is to make the lookup succeed more often</b>. That helps, but the dangerous part is the <i>report</i>: a timeout became “nothing found”, a false fact the coordinator acted on. Separating access failures from empty results is the guide's rule.",
+    "mapTitle": "Lookup came back empty? Ask whether it actually looked",
+    "map": {
+     "head": [
+      "What happened",
+      "Subagent should report",
+      "Coordinator can"
+     ],
+     "rows": [
+      [
+       "Lookup <b>succeeded</b>, found nothing",
+       "Valid empty result",
+       "Act on it"
+      ],
+      [
+       "Lookup <b>failed</b> (timeout, outage)",
+       "Failure type, query tried, partial results",
+       "Hold, escalate, retry later"
+      ],
+      [
+       "Brief blip, retry likely works",
+       "Retry locally first, then report",
+       "Usually sees success"
+      ],
+      [
+       "Bad input to the lookup",
+       "Validation error",
+       "Fix and resend"
+      ],
+      [
+       "Generic “search unavailable”",
+       "Anti-pattern: hides context",
+       "—"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When that API times out, the subagent tells the coordinator “No previous refunds found.”",
+      "means": "An access failure is disguised as a valid empty result."
+     },
+     {
+      "quote": "The coordinator then approves refunds that repeat earlier ones.",
+      "means": "The false fact causes real harm. Moving the call (<b>[[3]]</b>) leaves the same ambiguity."
+     },
+     {
+      "quote": "The API's outages usually last about an hour.",
+      "means": "The decider: retries (<b>[[0]]</b>) won't outlast this, so the report must change."
+     },
+     {
+      "quote": "How should the subagent report this case?",
+      "means": "A failure type alone (<b>[[2]]</b>) drops the query and partial results; the guide's structured context carries them: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Never let a failed lookup look like an empty one. Report the failure, the query and any partial results.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Distinguish access failures (retry) from valid empty results."
+    }
+   }
+  },
+  {
+   "id": "m7-s1-10",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Case facts across summarisation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Spoilage disputes can run long. When a chat nears the context limit, the SDK summarises older turns. Afterwards the agent sometimes offers a smaller credit than it promised earlier. It also forgets which items the customer listed. The tool results in these chats are short. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Keep a running block of promised amounts, listed items and IDs, and put it at the top of every request.",
+     "why": "Correct. Transactional facts kept outside the summarised history survive every summarisation pass, and placing them first keeps them prominent."
+    },
+    {
+     "t": "Trim each tool result to the few fields the agent uses before it is added to the conversation history.",
+     "why": "Runner-up. Trimming is the fix when verbose tool output fills the context. These tool results are already short, so trimming saves little and the summaries still blur the promises."
+    },
+    {
+     "t": "Raise the context threshold at which older turns are summarised, keeping more of each chat verbatim.",
+     "why": "Incorrect. This delays the loss rather than preventing it; long disputes still cross the threshold."
+    },
+    {
+     "t": "Ask the summariser to write longer summaries that quote every amount and item from the earlier turns.",
+     "why": "Incorrect. A better summary prompt helps, but facts still pass through a lossy step each time. A separate facts block avoids that step."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The tool results are short and the loss comes from summarising turns that hold promises; if bulky tool output were filling the context, trimming results would compete.",
+   "explanation": "Progressive summarisation blurs numbers, dates and commitments. Extract them into a persistent case-facts block that is included in every request rather than summarised.",
+   "eli5": {
+    "question": "After long chats get squashed into a summary, the agent forgets what it promised. The clue is: “The tool results in these chats are short.” So the space isn't going on bulky tool output.",
+    "answer": "A nurse at shift change doesn't rely on a retold story. They keep a chart on the bed: doses, times, allergies. The agent needs that chart (a <b>case-facts block</b>): promised amounts, items, IDs, sent at the top of every request. Summaries can blur; the chart doesn't. <b>Rule: keep the numbers and promises in a fixed block, not in the summary.</b>",
+    "options": [
+     "Correct. A fixed list of the facts that travels with every request.",
+     "Runner-up. Cutting tool output down helps when tool output is the bulk. Here it is short.",
+     "Summarising later only delays the forgetting.",
+     "A better summary still squashes things; a separate fact list doesn't get squashed at all."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>context problems are always about size</b>, so shrinking something is the fix. Here the issue is what summarisation does to <b>exact facts</b>: amounts and promises become vague. The fix is to keep those facts out of the summary path altogether.",
+    "mapTitle": "Facts drifting in long chats? Ask what is losing them",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Promised amounts and items drift <b>after summarisation</b>",
+       "Facts inside the summarised history",
+       "Persistent case-facts block in every request"
+      ],
+      [
+       "Context fills with <b>40+ field</b> tool results",
+       "Verbose tool output",
+       "Trim results to the fields used"
+      ],
+      [
+       "Facts present but missed in a long prompt",
+       "Lost in the middle",
+       "Put key facts first, with headers"
+      ],
+      [
+       "Old session resumed with stale results",
+       "Stale context",
+       "New session with a structured summary"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When a chat nears the context limit, the SDK summarises older turns.",
+      "means": "The lossy step."
+     },
+     {
+      "quote": "Afterwards the agent sometimes offers a smaller credit than it promised earlier.",
+      "means": "Exact amounts are blurred by summarisation, which a longer summary (<b>[[3]]</b>) or a later threshold (<b>[[2]]</b>) only softens."
+     },
+     {
+      "quote": "The tool results in these chats are short.",
+      "means": "The decider: trimming (<b>[[1]]</b>) has little to cut."
+     },
+     {
+      "quote": "Which change best fixes this?",
+      "means": "Take the facts out of the summary path: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Numbers and promises go in a case-facts block that every request carries; don't trust summaries with them.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Extract transactional facts into a persistent \"case facts\" block"
+    }
+   }
+  },
+  {
+   "id": "m7-s2-01",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Personal vs project commands",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "An engineer wrote a <code>/standup</code> command that summarises their own commits and reads notes from their home folder. They want it in every repository they open. Teammates have their own standup habits. They have asked not to see this command in their lists. Where should the command file <b>live</b>?",
+   "options": [
+    {
+     "t": "In this repository's <code>.claude/commands/</code>, committed, with a README note marking it optional.",
+     "why": "Runner-up. Project commands are the right home for workflows shared on clone. This one is personal, wanted in every repository, and teammates do not want it listed."
+    },
+    {
+     "t": "In the engineer's <code>~/.claude/CLAUDE.md</code>, as a section describing the standup steps.",
+     "why": "Incorrect. Memory files hold always-loaded instructions, not invocable commands."
+    },
+    {
+     "t": "In <code>.claude/commands/</code> of each repository, with the file listed in each repository's <code>.gitignore</code>.",
+     "why": "Incorrect. It stays private, but has to be copied into every repository and ignored in each; user-level commands already follow the user everywhere."
+    },
+    {
+     "t": "In <code>~/.claude/commands/</code> in the engineer's home directory, outside any repository.",
+     "why": "Correct. User-level commands are personal and available in every project that person opens; nobody else sees them."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The command is personal, wanted in every repository and unwanted by teammates; if the team wanted it on clone, the project's .claude/commands/ would win.",
+   "explanation": "Project commands in .claude/commands/ are shared through version control; user commands in ~/.claude/commands/ are personal and follow the user across projects.",
+   "eli5": {
+    "question": "Where to keep a personal shortcut. The clue is: teammates “have asked not to see this command”, and the engineer wants it in every repository.",
+    "answer": "Your own keyring goes in your own pocket, not on the office key board. A command in your home folder (<b><code>~/.claude/commands/</code></b>) goes with you into every project and stays out of everyone else's way. <b>Rule: team command → repo's .claude/commands/; personal command → ~/.claude/commands/.</b>",
+    "options": [
+     "Runner-up. The repo folder is for commands the whole team should get on clone. This one is personal.",
+     "The memory file is for standing instructions, not commands you run.",
+     "Keeping a private copy in every repo works but means setting it up again in each one.",
+     "Correct. Personal, follows the engineer everywhere."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>committing things to the repo is always the tidy choice</b>. Scope decides. A repository's <code>.claude/commands/</code> reaches everyone who clones it and nobody's other repositories. A personal, cross-project command belongs at user level.",
+    "mapTitle": "Where does it live? Ask who needs it and where",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Home",
+      "Shared?"
+     ],
+     "rows": [
+      [
+       "Whole team, this repo, on clone",
+       "<code>.claude/commands/</code>",
+       "Yes, via git"
+      ],
+      [
+       "<b>Only me, every repo</b>",
+       "<code>~/.claude/commands/</code>",
+       "No"
+      ],
+      [
+       "Always-on team standard",
+       "Project <code>CLAUDE.md</code>",
+       "Yes"
+      ],
+      [
+       "Always-on personal preference",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "No"
+      ],
+      [
+       "Shared MCP server",
+       "<code>.mcp.json</code>",
+       "Yes"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "summarises their own commits and reads notes from their home folder",
+      "means": "A personal workflow."
+     },
+     {
+      "quote": "They want it in every repository they open.",
+      "means": "Anything placed per repository (<b>[[0]]</b>, <b>[[2]]</b>) has to exist in each one; user level follows the engineer."
+     },
+     {
+      "quote": "They have asked not to see this command in their lists.",
+      "means": "The decider: shared scope is unwanted."
+     },
+     {
+      "quote": "Where should the command file live?",
+      "means": "A command, not a memory note (<b>[[1]]</b>), at user level: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Shared on clone → .claude/commands/. Personal everywhere → ~/.claude/commands/.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Project commands in .claude/commands/ (shared) vs user ~/.claude/commands/ (personal)."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-02",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-scoped rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Accessibility conventions apply to every screen component. Screens are files named <code>*.screen.tsx</code>. Most sit in feature folders under <code>mobile/</code>, but some live in <code>packages/shared/ui/</code>. Today the conventions are in the root <code>CLAUDE.md</code>, so they load even for server work. Where should the conventions <b>go</b>?",
+   "options": [
+    {
+     "t": "Into <code>mobile/CLAUDE.md</code>, plus a <code>packages/shared/ui/CLAUDE.md</code> file that imports it.",
+     "why": "Runner-up. Directory CLAUDE.md files work when a convention belongs to a folder. Screens are a filename pattern across trees: this needs a file per tree and also loads for non-screen files there."
+    },
+    {
+     "t": "Into an <code>/a11y</code> skill whose description says to use it whenever a screen file is edited.",
+     "why": "Incorrect. Skills load on demand; relying on Claude to invoke one from its description is less dependable than a rule that loads by path."
+    },
+    {
+     "t": "Into a <code>.claude/rules/</code> file whose <code>paths:</code> frontmatter is a glob for that filename pattern.",
+     "why": "Correct. A rule with a paths glob loads whenever Claude works on a matching file, wherever it sits, and stays out of server sessions."
+    },
+    {
+     "t": "Into a separate markdown file pulled into the root <code>CLAUDE.md</code> through an <code>@import</code> line.",
+     "why": "Incorrect. @import organises memory into modules, but an imported file still loads in every session."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Screens live in two trees; if they all sat under mobile/, a directory CLAUDE.md would serve as well.",
+   "explanation": "Conventions tied to a file type that spans directories belong in .claude/rules/ with a paths glob. They load only for matching files, wherever those files are.",
+   "eli5": {
+    "question": "Screen rules are loaded even for server work, and screens live in two places. The clue is: “some live in packages/shared/ui/.”",
+    "answer": "Put the instructions on the type of item, not on one shelf. A <b>rule file with a path pattern</b> says “whenever you touch a <code>*.screen.tsx</code> file, read this”, wherever that file is. Server work never triggers it. <b>Rule: conventions for a kind of file spread across folders → .claude/rules/ with paths:.</b>",
+    "options": [
+     "Runner-up. Folder files in both places cover the screens, but also load for every other file in those folders and need one per folder.",
+     "A skill is fetched when Claude decides to; a path rule loads on its own.",
+     "Correct. Loads for every screen file, in any folder, and only then.",
+     "An imported file is still part of the always-loaded memory."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>conventions belong to folders</b>, so a folder CLAUDE.md is the scoped answer. Path rules scope by <b>file pattern</b> instead. When a file type is spread across trees, only the pattern catches all of them.",
+    "mapTitle": "Scoping conventions? Ask how the files are grouped",
+    "map": {
+     "head": [
+      "Files the convention covers",
+      "Home",
+      "Loads when"
+     ],
+     "rows": [
+      [
+       "A <b>file type across several trees</b>",
+       "<code>.claude/rules/</code> with <code>paths:</code> glob",
+       "Editing a matching file"
+      ],
+      [
+       "Everything <b>inside one directory</b>",
+       "Directory <code>CLAUDE.md</code>",
+       "Working in that directory"
+      ],
+      [
+       "Every file, every session",
+       "Root <code>CLAUDE.md</code> (or <code>@import</code>)",
+       "Always"
+      ],
+      [
+       "A task run occasionally",
+       "Skill or command",
+       "When invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Screens are files named *.screen.tsx.",
+      "means": "A filename pattern defines the set."
+     },
+     {
+      "quote": "Most sit in feature folders under mobile/, but some live in packages/shared/ui/.",
+      "means": "The decider: two trees. Folder files (<b>[[0]]</b>) need one per tree and also load for the non-screen files beside them."
+     },
+     {
+      "quote": "Today the conventions are in the root CLAUDE.md, so they load even for server work.",
+      "means": "The goal is conditional loading; @import (<b>[[3]]</b>) is still always loaded."
+     },
+     {
+      "quote": "Where should the conventions go?",
+      "means": "Automatic, pattern-scoped, not on demand (<b>[[1]]</b>): <b>[[2]]</b>."
+     }
+    ],
+    "rule": "File type spread across folders → .claude/rules/ with a paths: glob.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m7-s2-03",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode for open design choices",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A ticket asks to replace the hand-written API client in <code>mobile/</code> with one generated from the server's OpenAPI spec. Many screens call the old client. The team has not yet chosen between two generator libraries, and each one shapes the calls differently. How should the engineer <b>start</b>?",
+   "options": [
+    {
+     "t": "Work directly on one feature folder with the likelier library, run its tests, then roll the pattern out.",
+     "why": "Runner-up. A direct spike plus tests suits a migration whose target is settled. With the library undecided, the spike bakes in a guess, and later folders follow it."
+    },
+    {
+     "t": "Use plan mode: have Claude survey call sites, compare both libraries and agree a design before edits.",
+     "why": "Correct. An open choice with multi-file impact is what plan mode is for: explore and decide before committing to edits."
+    },
+    {
+     "t": "Send an Explore subagent to map the call sites and how each library would change them, then edit.",
+     "why": "Incorrect. Exploring in a subagent keeps output out of the main context, but goes straight to edits with no agreed design."
+    },
+    {
+     "t": "Have Claude interview the engineer about the old client's edge cases, then make the change with direct edits.",
+     "why": "Incorrect. Interviewing gathers requirements; the open question here is a design choice that needs the code surveyed."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The team has not chosen between two generators that shape calls differently; if the library were already chosen, incremental direct edits with tests would be fine.",
+   "explanation": "Plan mode fits large changes with multiple valid approaches or architectural decisions. Direct execution fits well-scoped changes whose approach is settled.",
+   "eli5": {
+    "question": "A big change across many screens, with a choice still open. The clue is: “The team has not yet chosen between two generator libraries.”",
+    "answer": "You don't start knocking down walls before choosing between two floor plans. <b>Plan mode</b> is the drawing board: Claude looks around, compares the options and proposes a plan before touching code. <b>Rule: open design choice or many files → plan first; settled and small → just do it.</b>",
+    "options": [
+     "Runner-up. Trying one folder first is sensible once the library is picked. It isn't yet.",
+     "Correct. Look, compare, decide, then edit.",
+     "A scout maps the ground, but nobody agrees a plan before the digging starts.",
+     "Questions about edge cases don't settle which library to use."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>small careful steps make any change safe</b>. Steps and tests protect against breaking things, not against building on a choice that turns out wrong. With an <b>unmade design decision</b>, every early folder is a bet.",
+    "mapTitle": "Plan mode or direct? Ask what is still undecided",
+    "map": {
+     "head": [
+      "Situation",
+      "Approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Many files and an <b>open design choice</b>",
+       "Plan mode",
+       "Decide before editing"
+      ],
+      [
+       "Many files, <b>approach settled</b>",
+       "Direct, in increments with tests",
+       "Nothing left to design"
+      ],
+      [
+       "Single, well-scoped fix",
+       "Direct execution",
+       "Simple change"
+      ],
+      [
+       "Unfamiliar code, verbose discovery",
+       "Explore subagent",
+       "Keeps main context clean"
+      ],
+      [
+       "Requirements unclear",
+       "Interview pattern",
+       "Gather requirements"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many screens call the old client.",
+      "means": "Multi-file impact."
+     },
+     {
+      "quote": "The team has not yet chosen between two generator libraries",
+      "means": "The decider: an open design choice. Direct increments (<b>[[0]]</b>) would bake in a guess."
+     },
+     {
+      "quote": "each one shapes the calls differently",
+      "means": "The choice changes every call site; mapping them (<b>[[2]]</b>) or interviewing (<b>[[3]]</b>) doesn't produce an agreed design."
+     },
+     {
+      "quote": "How should the engineer start?",
+      "means": "Plan first: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Multi-file change with an open design choice → plan mode before any edits.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Plan mode: large-scale changes, multiple valid approaches, architectural decisions, multi-file mods."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-04",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills vs always-loaded memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team stores money as integer cents in server, mobile and shared code alike. That rule lives inside a <code>/money</code> skill. Claude sees it only when someone invokes the skill. Generated code often uses floats for prices. Every engineer should get the rule in every session. Where should the rule <b>live</b>?",
+   "options": [
+    {
+     "t": "In the committed root <code>CLAUDE.md</code>, as a short rule next to the team's other conventions.",
+     "why": "Correct. A universal team standard belongs in always-loaded project memory, which every engineer gets through the repository."
+    },
+    {
+     "t": "In a <code>.claude/rules/</code> file with <code>paths:</code> globs for the server, mobile and shared price modules.",
+     "why": "Runner-up. Path rules suit conventions tied to particular files. Floats appear wherever new code is generated, and the rule must reach every session, not only sessions that open price modules."
+    },
+    {
+     "t": "In each engineer's <code>~/.claude/CLAUDE.md</code>, copied from a snippet kept in the team wiki.",
+     "why": "Incorrect. User-level memory is not shared through version control and drifts per person."
+    },
+    {
+     "t": "In the skill, with <code>context: fork</code> and a description telling Claude to use it for pricing work.",
+     "why": "Incorrect. A skill stays on demand; a fork also isolates it from the main session's work."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The rule must reach every engineer in every session; if it mattered only when specific price files were edited, a path-scoped rule would be the leaner home.",
+   "explanation": "Skills are on-demand workflows; CLAUDE.md holds always-loaded universal standards. A rule every session needs belongs in the project CLAUDE.md.",
+   "eli5": {
+    "question": "A team-wide rule is hidden in a tool people must remember to open. The clue is: “Every engineer should get the rule in every session,” and money code is in all three folders.",
+    "answer": "House rules go on the fridge, not in a recipe book you open twice a month. The fridge is the project's <b>CLAUDE.md</b>: always loaded, shared through the repository. A <b>skill</b> is the recipe book: opened when needed. <b>Rule: always-on team standard → project CLAUDE.md; on-demand task → skill.</b>",
+    "options": [
+     "Correct. Always loaded, shared with everyone.",
+     "Runner-up. A path rule loads only when matching files are touched. The rule must be there in every session.",
+     "Personal files aren't shared and drift apart.",
+     "A skill still waits to be called."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a skill is the modern home for any instruction</b>. Skills are <i>on-demand</i>: Claude sees them when invoked. A standard that should shape every line of generated code must be <b>always loaded</b>.",
+    "mapTitle": "Where does an instruction live? Ask when it must apply",
+    "map": {
+     "head": [
+      "Must apply",
+      "Home",
+      "Loaded"
+     ],
+     "rows": [
+      [
+       "Everywhere, every session, whole team",
+       "Project <code>CLAUDE.md</code>",
+       "Always"
+      ],
+      [
+       "Only for files in one area or pattern",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "When matching files are edited"
+      ],
+      [
+       "A multi-step task, now and then",
+       "Skill in <code>.claude/skills/</code>",
+       "When invoked"
+      ],
+      [
+       "Personal preference",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Always, for me only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team stores money as integer cents in server, mobile and shared code alike.",
+      "means": "Applies across all trees, not to particular files."
+     },
+     {
+      "quote": "Claude sees it only when someone invokes the skill.",
+      "means": "The root cause: on-demand loading. Staying a skill (<b>[[3]]</b>) keeps that."
+     },
+     {
+      "quote": "Every engineer should get the rule in every session.",
+      "means": "The decider: shared and always loaded. Path rules (<b>[[1]]</b>) load only for matching files; personal files (<b>[[2]]</b>) aren't shared."
+     },
+     {
+      "quote": "Where should the rule live?",
+      "means": "<b>[[0]]</b>."
+     }
+    ],
+    "rule": "Universal team standard → project CLAUDE.md. On-demand workflow → skill.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Skills = on-demand task workflows; CLAUDE.md = always-loaded universal standards."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-05",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 User-level memory is not shared",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A new engineer's Claude ignores the team's test-naming conventions, while a senior engineer's Claude follows them. The senior checks and finds the conventions in their own <code>~/.claude/CLAUDE.md</code>. They are not in the repository at all. The team wants every engineer to get them. What should the team <b>do</b>?",
+   "options": [
+    {
+     "t": "Turn the conventions into a <code>/test-names</code> command in <code>.claude/commands/</code> for engineers to run on new tests.",
+     "why": "Incorrect. Naming conventions should apply automatically while tests are written, not when someone remembers a command."
+    },
+    {
+     "t": "Have the senior run <code>/memory</code> in the repository to confirm which loaded file holds the conventions first.",
+     "why": "Runner-up. /memory is the right first step when nobody knows where instructions come from. The senior has already found them in their home-level file, so the next step is the fix."
+    },
+    {
+     "t": "Put the conventions in a shared file and add an <code>@import</code> line for it to each engineer's <code>~/.claude/CLAUDE.md</code>.",
+     "why": "Incorrect. One source file helps, but each person must still edit their own user-level memory, and new joiners miss it."
+    },
+    {
+     "t": "Move the conventions into the committed project <code>CLAUDE.md</code> and remove the senior's personal copy.",
+     "why": "Correct. User-level memory is not shared through version control. Moving the conventions to project memory gives them to everyone on clone, and removing the personal copy avoids two versions."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The cause is already confirmed (the conventions sit only in one person's user-level file); if nobody knew why the new engineer's Claude missed them, /memory would be the first step.",
+   "explanation": "User-level CLAUDE.md is personal and not shared via version control. Team conventions belong in project-level memory.",
+   "eli5": {
+    "question": "One person's Claude knows the team's rules; a newcomer's doesn't. The clue is: the senior “finds the conventions in their own ~/.claude/CLAUDE.md.” The mystery is already solved.",
+    "answer": "If the team handbook is actually a page in one person's private notebook, new people will never see it. Copy the page into the shared handbook (the project's <b>CLAUDE.md</b>) and take it out of the notebook. <b>Rule: home-folder memory is personal; team rules go in the repository.</b>",
+    "options": [
+     "A command waits to be run; naming rules should apply on their own.",
+     "Runner-up. Checking loaded files (<b>/memory</b>) is the first move when the cause is unknown. Here it is known.",
+     "One shared file is good, but everyone still has to wire it into their own personal file.",
+     "Correct. Put it where everyone gets it, and keep one copy."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the first step is always to diagnose</b>, and /memory is the diagnostic tool. Diagnosis is done. The senior already found the conventions in a <b>user-level</b> file, and user-level memory never reaches anyone else.",
+    "mapTitle": "Instructions missing for some people? Ask where they live",
+    "map": {
+     "head": [
+      "Finding",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Cause <b>unknown</b>",
+       "—",
+       "<code>/memory</code> to list loaded files"
+      ],
+      [
+       "Conventions only in someone's <b><code>~/.claude/CLAUDE.md</code></b>",
+       "User-level is not shared",
+       "Move to project <code>CLAUDE.md</code>"
+      ],
+      [
+       "Rule file with <code>paths:</code> never loads",
+       "Glob doesn't match",
+       "Fix the glob"
+      ],
+      [
+       "Conventions apply to only some files",
+       "Too broad",
+       "<code>.claude/rules/</code> with <code>paths:</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A new engineer's Claude ignores the team's test-naming conventions",
+      "means": "Something reaches one person and not another."
+     },
+     {
+      "quote": "The senior checks and finds the conventions in their own ~/.claude/CLAUDE.md.",
+      "means": "The decider: cause found, so diagnosing again (<b>[[1]]</b>) adds nothing."
+     },
+     {
+      "quote": "They are not in the repository at all.",
+      "means": "Nothing shared exists yet."
+     },
+     {
+      "quote": "The team wants every engineer to get them.",
+      "means": "Shared and automatic: not per-person copies (<b>[[2]]</b>) or a command (<b>[[0]]</b>). So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Home-folder CLAUDE.md is personal. Team conventions go in the committed project CLAUDE.md.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-06",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-readable CLI output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 2,
+   "question": "A script runs <code>claude -p</code> to generate tests for each new endpoint. It then reads Claude's reply to learn which files were created and whether the tests passed. The wording changes from run to run, and the parser keeps breaking. The script needs named fields it can rely on. Which <b>TWO</b> changes fit best?",
+   "options": [
+    {
+     "t": "Add <code>--output-format json</code> to the command and read the result out of the JSON it prints.",
+     "why": "Correct. JSON output gives the script a machine-readable envelope instead of free text."
+    },
+    {
+     "t": "Put a JSON example of the reply in the prompt and ask Claude to answer with only that JSON object.",
+     "why": "Runner-up. A format example in the prompt usually gets the shape right and suits output a person reads. A parser needs the structure enforced by the CLI, not usually followed."
+    },
+    {
+     "t": "Supply a <code>--json-schema</code> defining a list of new files and a pass or fail field for the run.",
+     "why": "Correct. The schema fixes which named fields the result contains. Together with JSON output, the script gets the fields it needs."
+    },
+    {
+     "t": "Add <code>--verbose</code> to the command and read the created files from the tool-call log it prints.",
+     "why": "Incorrect. Verbose output is diagnostic text whose layout is not a contract; the script would parse a different free-text stream."
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "A script parses the output and needs reliable named fields; if a person read the reply, a format example in the prompt would be enough.",
+   "explanation": "For scripts, use the CLI's structured output: --output-format json for a machine-readable envelope and --json-schema for the fields. Prompt-level format requests remain probabilistic.",
+   "eli5": {
+    "question": "A script reads Claude's reply and breaks when the wording changes. The clue is: “The script needs named fields it can rely on.”",
+    "answer": "A program reading a chatty letter will trip over it. Give it a filled-in form instead. <b><code>--output-format json</code></b> turns the reply into data; <b><code>--json-schema</code></b> says exactly which boxes the form has. You need both: one makes it a form, the other fixes the boxes. <b>Rule: if a program reads it, ask for JSON with a schema.</b>",
+    "options": [
+     "Correct. Makes the reply machine-readable.",
+     "Runner-up. Showing a JSON sample usually works. A parser needs “every time”, which the CLI flags give.",
+     "Correct. Fixes the exact fields inside it.",
+     "The detailed log is meant for people debugging, not for programs to read."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a clearer prompt fixes unstable output</b>. For a human reader, often yes. For a parser, “usually the same layout” still breaks. The CLI has flags for exactly this: <b>JSON output</b> plus a <b>schema</b> for the fields.",
+    "diagram": "claude -p \"…\" --output-format json --json-schema s.json\n        → {\"files\": [...], \"passed\": true}  ← script reads",
+    "mapTitle": "Claude in a script? Ask who reads the output",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Run without waiting for input",
+       "<code>-p</code> / <code>--print</code>",
+       "Non-interactive"
+      ],
+      [
+       "Output a <b>program</b> parses",
+       "<code>--output-format json</code>",
+       "Machine-readable"
+      ],
+      [
+       "Specific <b>named fields</b>",
+       "<code>--json-schema</code>",
+       "Fixes the structure"
+      ],
+      [
+       "Output a <b>person</b> reads, consistent style",
+       "Format example in the prompt",
+       "Good enough for humans"
+      ],
+      [
+       "Findings posted as PR comments",
+       "JSON + schema, then the script posts",
+       "Structured findings"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A script runs claude -p to generate tests for each new endpoint.",
+      "means": "Already non-interactive; the gap is the output."
+     },
+     {
+      "quote": "The wording changes from run to run, and the parser keeps breaking.",
+      "means": "Free text. Verbose logs (<b>[[3]]</b>) are still free text."
+     },
+     {
+      "quote": "The script needs named fields it can rely on.",
+      "means": "The decider: a machine reader. A prompt example (<b>[[1]]</b>) is probabilistic."
+     },
+     {
+      "quote": "Which TWO changes fit best?",
+      "means": "JSON output (<b>[[0]]</b>) and a schema for its fields (<b>[[2]]</b>)."
+     }
+    ],
+    "rule": "A program reads it → --output-format json plus --json-schema.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings"
+    }
+   }
+  },
+  {
+   "id": "m7-s2-07",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for consistent output",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The <code>/new-endpoint</code> command describes the team's error-response format in prose. On simple endpoints Claude follows it. On endpoints with several failure cases, the error shapes differ from run to run. Claude can quote the prose rules when asked, so they are loading. What is the <b>most effective</b> change?",
+   "options": [
+    {
+     "t": "Rewrite the prose as a numbered checklist, one rule per failure case, stating the exact error JSON shape.",
+     "why": "Incorrect. Sharper written rules help when rules are vague, but rules are already loaded and understood; output still varies on complex cases."
+    },
+    {
+     "t": "Add two or three complete handlers from the repo showing the error format across varied failures.",
+     "why": "Correct. When instructions are loaded but output is still inconsistent, a few concrete examples are the most effective way to get consistent structure, especially on the hard cases."
+    },
+    {
+     "t": "Move the error rules into a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches the route handlers.",
+     "why": "Runner-up. A path rule is the fix when conventions are not loading for the files being edited. Claude can quote these rules, so loading is not the problem."
+    },
+    {
+     "t": "Have a second, fresh Claude session review each generated endpoint against the error rules before it merges.",
+     "why": "Incorrect. Independent review catches mistakes after generation; it does not make generation consistent."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Claude can quote the rules, so they are loaded but not applied consistently; if they were not loading for handler files, a path-scoped rule would be the fix.",
+   "explanation": "Few-shot examples are the most effective technique for consistent output when instructions alone are inconsistent. Pick examples that cover the hard cases.",
+   "eli5": {
+    "question": "Claude knows the error rules but applies them differently on complicated endpoints. The clue is: “Claude can quote the prose rules when asked, so they are loading.”",
+    "answer": "A new cook who has read the recipe still plates differently each time. Show them three finished plates and they match. A few complete <b>examples</b> from the repo show the exact shape, including the tricky cases. <b>Rule: rules loaded but output inconsistent → add a few good examples.</b>",
+    "options": [
+     "A tidier checklist is still instructions, and instructions alone are what vary on hard cases.",
+     "Correct. Show the shape with real examples that cover the hard cases.",
+     "Runner-up. A path rule fixes rules that don't load. These do load.",
+     "A reviewer catches mistakes afterwards; it doesn't stop them."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>inconsistent output means the instructions aren't reaching Claude</b>. Here they are: Claude can quote them. The gap is between knowing a rule and applying it the same way on complex cases. Examples close that gap better than more prose.",
+    "mapTitle": "Output inconsistent? Ask whether the rules are loading",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Rules <b>loaded</b>, output varies on hard cases",
+       "Prose alone is not enough",
+       "2–4 targeted examples"
+      ],
+      [
+       "Rules <b>not loading</b> for some files",
+       "Scope",
+       "<code>.claude/rules/</code> with <code>paths:</code>"
+      ],
+      [
+       "Rules vague (“handle errors well”)",
+       "Missing criteria",
+       "Explicit criteria"
+      ],
+      [
+       "Generated code has bugs a fresh eye would spot",
+       "Self-review limits",
+       "Independent review instance"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "On simple endpoints Claude follows it.",
+      "means": "The rules are understood in easy cases."
+     },
+     {
+      "quote": "On endpoints with several failure cases, the error shapes differ from run to run.",
+      "means": "Inconsistency on hard cases: the classic sign for examples. A tighter checklist (<b>[[0]]</b>) is still instructions, which is what is failing."
+     },
+     {
+      "quote": "Claude can quote the prose rules when asked, so they are loading.",
+      "means": "The decider: rules load, so rescoping them (<b>[[2]]</b>) changes nothing."
+     },
+     {
+      "quote": "What is the most effective change?",
+      "means": "Fix generation, not catch errors later (<b>[[3]]</b>): <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Instructions loaded but output inconsistent → a few concrete examples covering the hard cases.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-08",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria for precision",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "A <code>/check-migration</code> command asks Claude to “flag risky Prisma migrations”. It flags almost every migration, and engineers now skip its output. The team counts as risky only dropping a column, changing a column's type, or adding a required column with no default. Which change <b>best improves precision</b>?",
+   "options": [
+    {
+     "t": "Tell Claude to be conservative and to report a migration only when it is highly confident of a risk.",
+     "why": "Incorrect. Confidence wording does not improve precision the way categorical criteria do."
+    },
+    {
+     "t": "Add several past migrations labelled risky or safe, each with a line explaining the verdict.",
+     "why": "Runner-up. Labelled examples are the fix when the line is hard to state and ambiguous cases need demonstrating. Here the team can list the categories outright."
+    },
+    {
+     "t": "Name those operations as the flag criteria, each with a small migration snippet, and say other changes pass.",
+     "why": "Correct. The team can state exactly what counts. Categorical criteria with concrete snippets replace the vague word “risky” and cut false positives."
+    },
+    {
+     "t": "Have Claude give each finding a severity score and show engineers only the findings scored high.",
+     "why": "Incorrect. Without criteria, the scores are as vague as the flags; filtering them hides the problem."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The team can name exactly which operations count; if the boundary were fuzzy and hard to state, labelled examples would lead.",
+   "explanation": "Vague instructions like “risky” produce false positives that erode trust. Replace them with explicit categorical criteria, ideally with concrete examples of each.",
+   "eli5": {
+    "question": "A checker flags nearly everything as “risky”. The clue is: the team “counts as risky only” three specific operations. The rule can be written down exactly.",
+    "answer": "Telling a guard “stop anyone suspicious” gets everyone stopped. Telling them “stop anyone without a badge” works. Write the three operations down as the <b>explicit criteria</b>, with a tiny example of each, and say everything else passes. <b>Rule: if you can name what counts, name it; don't say “be careful”.</b>",
+    "options": [
+     "“Be careful” and “only if sure” don't sharpen what counts.",
+     "Runner-up. Labelled examples help when the line is hard to describe. Here it's easy to describe.",
+     "Correct. Name exactly what counts, with a small example each.",
+     "Scores on vague flags are still vague."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>examples are always the strongest prompt tool</b>. They shine when a boundary is fuzzy. When the team can <b>state the categories exactly</b>, explicit criteria are the direct fix, and the guide says vague words like “risky” are what cause false positives.",
+    "mapTitle": "Too many false positives? Ask whether you can state the rule",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Team can <b>list exactly</b> what counts",
+       "Explicit categorical criteria + snippets",
+       "Removes the vague word"
+      ],
+      [
+       "Boundary <b>hard to state</b>; ambiguous cases",
+       "Labelled examples with reasons",
+       "Shows the judgement"
+      ],
+      [
+       "“Be conservative” already tried",
+       "Not a fix",
+       "Doesn't improve precision"
+      ],
+      [
+       "One noisy category hides good findings",
+       "Drop or tighten that category",
+       "Restores trust"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "asks Claude to “flag risky Prisma migrations”",
+      "means": "A vague criterion."
+     },
+     {
+      "quote": "It flags almost every migration, and engineers now skip its output.",
+      "means": "False positives have eroded trust; hiding low scores (<b>[[3]]</b>) or asking for confidence (<b>[[0]]</b>) doesn't define “risky”."
+     },
+     {
+      "quote": "The team counts as risky only dropping a column, changing a column's type, or adding a required column with no default.",
+      "means": "The decider: the rule can be stated exactly, so demonstrating it with examples (<b>[[1]]</b>) is indirect."
+     },
+     {
+      "quote": "Which change best improves precision?",
+      "means": "<b>[[2]]</b>."
+     }
+    ],
+    "rule": "If you can name what counts, write it as explicit criteria with a small example of each.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "\"Be conservative\" / \"only high-confidence\" don't improve precision like categorical criteria."
+    }
+   }
+  },
+  {
+   "id": "m7-s2-09",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 /compact for context pressure",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Midway through generating a set of screens, an engineer sees the context is nearly full. Most of it is long test output from earlier runs. Claude's recent answers are still accurate and refer to specific files. Nothing has changed in the repository outside this session. What should the engineer <b>do next</b>?",
+   "options": [
+    {
+     "t": "Have Claude write its decisions to a notes file, then open a new session that starts by reading that file.",
+     "why": "Runner-up. A scratchpad plus a fresh session is right when answers have degraded or the work spans sessions. Here answers are still specific and the session is current."
+    },
+    {
+     "t": "Start routing future test runs through a subagent that returns only the failing tests and their causes.",
+     "why": "Incorrect. Good for future runs, but it does not free the context that is already nearly full."
+    },
+    {
+     "t": "Resume the same session by name with <code>--resume</code> in a new terminal and continue from there.",
+     "why": "Incorrect. Resuming reloads the same conversation, with the same full context."
+    },
+    {
+     "t": "Run <code>/compact</code> to condense the conversation so far, then carry on generating the remaining screens.",
+     "why": "Correct. The session is healthy and current; only space is short. Compacting frees context while keeping the work in the same session."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Answers are still accurate and specific and nothing changed outside the session, so only space is short; if answers had turned vague or contradictory, a notes file and a fresh session would win.",
+   "explanation": "/compact reduces context usage within a session. Scratchpads and fresh sessions are for degradation or work that crosses session boundaries; subagents prevent future bloat.",
+   "eli5": {
+    "question": "The session is nearly full, mostly with old test logs, but Claude is still sharp. The clue is: “Claude's recent answers are still accurate and refer to specific files.”",
+    "answer": "Your desk is covered in old printouts but you still know exactly what you're doing. Clear the desk and keep working; don't move to a new office. <b><code>/compact</code></b> squeezes the conversation so far and lets you carry on. <b>Rule: healthy but full → /compact; confused or switching sessions → notes file and a fresh start.</b>",
+    "options": [
+     "Runner-up. Notes plus a fresh session fit when Claude has started to get vague. It hasn't.",
+     "Good habit for later runs, but the desk is already full now.",
+     "Resuming brings back the same full desk.",
+     "Correct. Free the space and keep going."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a full context always calls for a fresh session</b>. A fresh session with notes is the remedy for <b>degraded</b> answers or work across sessions. When the session is still sharp and current, the lighter tool is <code>/compact</code>.",
+    "mapTitle": "Context trouble? Ask whether the session is still healthy",
+    "map": {
+     "head": [
+      "What you observe",
+      "Diagnosis",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Nearly full, answers <b>still specific</b>",
+       "Space only",
+       "<code>/compact</code>"
+      ],
+      [
+       "Answers <b>vague</b>, “typical patterns”, contradictions",
+       "Degradation",
+       "Notes file + fresh session"
+      ],
+      [
+       "Each test run floods context",
+       "Verbose output",
+       "Subagent returns a summary"
+      ],
+      [
+       "Coming back after files changed",
+       "Stale context",
+       "New session with a summary"
+      ],
+      [
+       "Long job may crash mid-way",
+       "No recovery state",
+       "Manifest / progress file"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most of it is long test output from earlier runs.",
+      "means": "The bulk is old logs. A subagent for future runs (<b>[[1]]</b>) won't clear what is already there."
+     },
+     {
+      "quote": "Claude's recent answers are still accurate and refer to specific files.",
+      "means": "The decider: no degradation, so a notes file and new session (<b>[[0]]</b>) is more than needed."
+     },
+     {
+      "quote": "Nothing has changed in the repository outside this session.",
+      "means": "No stale state to escape."
+     },
+     {
+      "quote": "What should the engineer do next?",
+      "means": "Free space now; resuming (<b>[[2]]</b>) brings the full context back. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Healthy but full → /compact. Degraded or crossing sessions → notes file and a fresh session.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "/compact to reduce context usage"
+    }
+   }
+  },
+  {
+   "id": "m7-s2-10",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Lost in the middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An engineer pastes a long product spec into Claude to build a booking endpoint. The spec opens with an overview and ends with acceptance criteria. The generated code meets both. It misses rules from the middle sections, such as the late-cancellation window. Every section fits easily in the context. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Put a short list of the key rules first in the prompt, with the full spec below under clear headings.",
+     "why": "Correct. Models attend reliably to the start and end of long input and can miss the middle. Lifting the key rules to the top under clear headings counters that."
+    },
+    {
+     "t": "Split the spec by section, have Claude implement each in its own pass, then run one integration pass.",
+     "why": "Runner-up. Per-section passes plus integration suit input too large for one context. The spec fits easily, and the miss is about position, not size."
+    },
+    {
+     "t": "Move the acceptance criteria to the top of the prompt, ahead of the overview and the rest of the spec.",
+     "why": "Incorrect. Right idea, wrong content: the acceptance criteria are already honoured; the missed rules stay in the middle."
+    },
+    {
+     "t": "Have Claude summarise the spec first, then build the endpoint from that summary in place of the full text.",
+     "why": "Incorrect. Summaries compress details like time windows; this risks losing the very rules being missed."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The missed rules sit in the middle of input that fits easily; if the spec were too large for one context, splitting it into passes would be the stronger choice.",
+   "explanation": "Long inputs suffer from “lost in the middle”: beginnings and ends are processed reliably, middles less so. Put key facts first and use explicit section headings.",
+   "eli5": {
+    "question": "Claude follows the start and end of a long spec but misses the middle. The clue is: “It misses rules from the middle sections.” And it all fits, so size isn't the issue.",
+    "answer": "People remember the first and last items on a long list best. Models do too (<b>lost in the middle</b>). Pull the key rules to the top as a short list, then give the full spec with clear headings. <b>Rule: put what matters first, and label the sections.</b>",
+    "options": [
+     "Correct. Key rules first, clear headings below.",
+     "Runner-up. Splitting helps when the input is too big or naturally separate. This fits and is one endpoint.",
+     "Moving things up is right, but these criteria were already followed. The missed rules are still buried.",
+     "A summary squashes exactly the small details being missed."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>missed requirements mean the input is too big</b>, so it should be split. The pattern here is positional: start and end are honoured, the middle isn't, and it all fits. That is <b>lost in the middle</b>, fixed by layout.",
+    "mapTitle": "Requirements missed in long input? Ask where they sit",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Start and end followed, <b>middle missed</b>; fits in context",
+       "Lost in the middle",
+       "Key points first + section headings"
+      ],
+      [
+       "Input <b>too large</b> or naturally separate parts",
+       "Too much at once",
+       "Split into passes, then integrate"
+      ],
+      [
+       "Details blurred after summarising",
+       "Lossy summary",
+       "Keep exact facts in a fixed block"
+      ],
+      [
+       "Rules vague, results vary",
+       "Missing criteria",
+       "Explicit criteria / examples"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The spec opens with an overview and ends with acceptance criteria.",
+      "means": "Content at both ends."
+     },
+     {
+      "quote": "The generated code meets both.",
+      "means": "Start and end are honoured."
+     },
+     {
+      "quote": "It misses rules from the middle sections, such as the late-cancellation window.",
+      "means": "A positional pattern. Moving the already-honoured criteria (<b>[[2]]</b>) leaves these rules buried, and a summary (<b>[[3]]</b>) compresses them."
+     },
+     {
+      "quote": "Every section fits easily in the context.",
+      "means": "The decider: size isn't the problem, so splitting (<b>[[1]]</b>) isn't needed. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Middle of a long input ignored → put key points first and use clear section headings.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "models reliably process beginning/end but may omit middle sections"
+    }
+   }
+  }
+ ]
+}
