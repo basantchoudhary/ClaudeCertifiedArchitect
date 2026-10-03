@@ -134,7 +134,7 @@ window.EXAM = {
     },
     {
      "t": "Open a new session whose first message is a structured claim summary (IDs, commitments, amounts), then re-query current state.",
-     "why": "Correct. By the time the customer returns, most of the earlier tool output describes a record that has since been rewritten. A new session built from a structured summary, plus fresh reads, avoids reasoning from stale results."
+     "why": "Correct. By the time the customer returns, most of the earlier tool output describes a record that has since been rewritten. A new session built from a structured summary, plus fresh reads, avoids reasoning from stale results. In production, make the fresh read deterministic: application code fetches the current order record and injects it into the first message, so the model never depends on remembering to call lookup_order. Keep volatile fields such as shipment status out of the summary, or the stale value comes back."
     }
    ],
    "answer": [
@@ -142,7 +142,7 @@ window.EXAM = {
    ],
    "runnerUp": 1,
    "decider": "The repair centre rewrites many fields of the order record during the pause; if only one or two known values changed, resuming with a note about them would be the better choice.",
-   "explanation": "Resume when the earlier context is mostly still valid, and tell the agent what changed. When much of the earlier tool output is stale, start a new session from a structured summary."
+   "explanation": "Resume when the earlier context is mostly still valid, and tell the agent what changed. When much of the earlier tool output is stale, start a new session from a structured summary. The summary carries only stable facts (IDs, commitments, amounts); volatile state is fetched fresh, ideally by code rather than left to the agent — a must-never-happen-again requirement calls for a deterministic step, not an instruction."
   },
   {
    "id": "m6-s1-04",
