@@ -912,7 +912,25 @@ window.EXAM = {
      "obj": "5.1 Preserve critical information across long interactions",
      "quote": "Tool results accumulate and consume tokens disproportionately (40+ fields when 5 are relevant)."
     }
-   }
+   },
+   "faq": [
+    {
+     "q": "How does the PostToolUse hook know which 6 fields to keep and which 52 to drop?",
+     "a": "It doesn't work it out. <b>The developer decides once, at design time, from the agent's job</b> (a support agent quotes totals, statuses, items and dates), checks it against logs, and writes the list into the hook as an allowlist. The hook applies that list on every call. Here the stem says someone already measured it: the replies draw on about six attributes."
+    },
+    {
+     "q": "Why doesn't the tool itself just return the 6 fields?",
+     "a": "Because <b>the tool is shared</b>. lookup_order serves other consumers who need the other 52 fields: the warehouse needs warehouse codes, finance needs tax lines, logistics needs carrier events. It may also be owned by another team. So you <b>trim where the data is used, not where it comes from</b>. If you owned the tool and this agent were its only user, a purpose-specific tool with a lean contract would be equally good."
+    },
+    {
+     "q": "Another agent might need 12 different fields. Then what?",
+     "a": "Then <b>that agent's hook keeps its own 12</b>. Same tool, a different allowlist per agent. That is exactly why trimming at each agent's boundary scales better than changing the shared tool."
+    },
+    {
+     "q": "What if the agent occasionally needs one of the dropped fields?",
+     "a": "Trimming doesn't have to mean losing data. Add a second tool such as <code>get_order_detail(order_id, section)</code> that the model calls only when it needs more. Or, if the needed fields vary a lot per request, give the tool a <code>fields</code> parameter the model fills in. That is more flexible, but the model chooses, so it is not guaranteed."
+    }
+   ]
   },
   {
    "id": "m6-s1-09",

@@ -209,6 +209,8 @@
              '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
       deepHtml(s) +
       '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
+      (s.q.faq ? '<details class="deep faq" open><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
+        return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +
       (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary>' : '') +
       (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
       '<div class="ebody">' + s.q.explanation + '</div>' +
