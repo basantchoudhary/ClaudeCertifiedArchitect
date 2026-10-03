@@ -16,6 +16,19 @@ CAPS = re.compile(r"\b[A-Z]{4,}\b")
 ALLOWED_CAPS = {"JSON", "HTML", "CLAUDE", "PDF", "HTTP", "UUID", "OAUTH", "SKILL", "TODO", "README", "STDIN", "STDOUT"}
 
 
+def norm(s):
+    s = s.replace("\u2019", "'").replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"').replace("`", "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+GUIDE = ""
+try:
+    import pathlib
+    GUIDE = norm(pathlib.Path(__file__).with_name("..").joinpath("CCAR-F-Exam-Guide.md").resolve().read_text().replace("**", ""))
+except Exception:
+    pass
+
+
 def plain(s):
     return re.sub(r"<[^>]+>", "", s).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
 
@@ -50,6 +63,35 @@ def check(qs, errors, warns):
     for q in qs:
         qid = q.get("id", "?")
         e = lambda m: errors.append(f"{qid}: {m}")
+        dp = q.get("deep")
+        if not dp:
+            e("missing deep")
+        else:
+            for k in ("premise", "mapTitle", "map", "evidence", "rule", "guide"):
+                if not dp.get(k):
+                    e(f"deep.{k} missing")
+            m = dp.get("map") or {}
+            if len(m.get("head", [])) != 3 or len(m.get("rows", [])) < 4 or any(len(r) != 3 for r in m.get("rows", [])):
+                e("deep.map needs 3 headers and >=4 rows of 3 cells")
+            ev = dp.get("evidence") or []
+            if not 3 <= len(ev) <= 6:
+                e(f"deep.evidence has {len(ev)} entries (want 3–6)")
+            stem = norm(plain(q.get("question", ""))).lower()
+            for j, x in enumerate(ev):
+                qt = norm(plain(x.get("quote", ""))).rstrip(".;:?! ").lower()
+                if not qt or qt not in stem:
+                    e(f"deep.evidence[{j}] quote not verbatim in stem: {x.get('quote','')[:60]!r}")
+            g = dp.get("guide") or {}
+            if norm(plain(g.get("quote", ""))).rstrip(".;: ") not in GUIDE:
+                e(f"deep.guide.quote not verbatim in exam guide: {g.get('quote','')[:60]!r}")
+            blob = json.dumps(dp, ensure_ascii=False)
+            if re.search(r"<b>[A-D]</b>|\b[Oo]ption [A-D]\b|\([A-D]\)", blob):
+                e("deep refers to a fixed option letter; use [[i]]")
+            for n in re.findall(r"\[\[(\d)\]\]", blob):
+                if int(n) >= len(q.get("options", [])):
+                    e(f"deep placeholder [[{n}]] out of range")
+            if dp.get("diagram") and any(len(l) > 60 for l in dp["diagram"].split("\n")):
+                e("deep.diagram line wider than 60 chars")
         el = q.get("eli5")
         if not el or not el.get("question") or not el.get("answer") or len(el.get("options", [])) != len(q.get("options", [])):
             e("missing or incomplete eli5 (question, answer, one options entry per option)")

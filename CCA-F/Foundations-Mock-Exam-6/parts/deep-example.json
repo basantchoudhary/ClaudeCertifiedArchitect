@@ -1,0 +1,66 @@
+{
+ "premise": "It is tempting to think <b>the tool call is decided only by the tool description</b>. It isn't. The description is the <i>main</i> signal, but the model reads everything in its context before picking a tool, and the system prompt is part of that context. A system-prompt line such as \"when the customer mentions money back, use process_refund\" reads like an order from the boss, and it beats a description that reads like a label on a drawer.",
+ "diagram": "Which tool? the model reads ALL of these:\n ├ tool descriptions  ← main signal\n ├ system prompt      ← can override them\n ├ customer's words   ← trigger words\n ├ few-shot examples  ← copied patterns\n └ tool_choice        ← forces a call",
+ "mapTitle": "Wrong tool picked? Diagnose by the pattern of the mistakes",
+ "map": {
+  "head": [
+   "What you observe",
+   "Where the fault is",
+   "Fix"
+  ],
+  "rows": [
+   [
+    "Wrong tool picked <b>randomly</b>, descriptions are one-liners",
+    "Tool descriptions",
+    "Expand descriptions: inputs, examples, when <i>not</i> to use"
+   ],
+   [
+    "Descriptions already good, but misroutes <b>always follow certain words</b>",
+    "Something else that mentions those words: the <b>system prompt</b> or examples",
+    "Find and rewrite that wording in terms of the customer's goal"
+   ],
+   [
+    "One tool does two different jobs",
+    "Tool design",
+    "Split into purpose-specific tools"
+   ],
+   [
+    "Wrong <b>order</b> of calls that must never happen",
+    "Instructions can't guarantee it",
+    "Hook or prerequisite gate (code)"
+   ],
+   [
+    "Agent answers in text when it must call a tool",
+    "Tool choice",
+    "<code>tool_choice: \"any\"</code> or a forced tool"
+   ]
+  ]
+ },
+ "evidence": [
+  {
+   "quote": "Each tool's schema text now lists its inputs, two sample requests and a when-not-to-use line.",
+   "means": "The descriptions have already been fixed, so that lever is used up. This rules out <b>[[0]]</b>, the runner-up, which would win only if the descriptions were still one-liners."
+  },
+  {
+   "quote": "Status questions without those words go to lookup_order correctly.",
+   "means": "This proves the descriptions <i>work</i>. Without the trigger words, routing is fine."
+  },
+  {
+   "quote": "Every misrouted conversation contains phrases like 'money back', 'credit' or 'compensation'.",
+   "means": "The mistakes track specific words, not confusion between the tools. Something is mapping those words to <code>process_refund</code>."
+  },
+  {
+   "quote": "The system prompt's escalation, tone and reimbursement sections were written by different teams over the past year.",
+   "means": "The quiet clue. Nobody has reviewed the prompt as a whole, and its reimbursement section is the likeliest place to say \"money back → refund tool\"."
+  },
+  {
+   "quote": "Which change is the most effective first step?",
+   "means": "Reading that section is cheap and diagnostic. Splitting tools (<b>[[1]]</b>) or adding examples (<b>[[3]]</b>) changes more and treats the symptom. So <b>[[2]]</b>."
+  }
+ ],
+ "rule": "Descriptions are the main signal, not the only one. If misroutes follow specific words and the descriptions are already good, look for those words in the system prompt.",
+ "guide": {
+  "obj": "2.1 Design effective tool interfaces",
+  "quote": "Ambiguous/overlapping descriptions cause misrouting; keyword-sensitive system-prompt wording creates unintended tool associations."
+ }
+}

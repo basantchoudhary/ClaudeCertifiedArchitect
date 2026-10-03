@@ -2,7 +2,7 @@
 import json, pathlib, subprocess, sys
 
 here = pathlib.Path(__file__).parent
-parts = sorted((here / "parts").glob("*.json"))
+parts = sorted(p for p in (here / "parts").glob("*.json") if "scenarios" in json.loads(p.read_text()))
 if subprocess.call([sys.executable, str(here / "validate.py"), *map(str, parts)]):
     sys.exit("validation failed — not building")
 scen, qs = [], []

@@ -145,6 +145,25 @@
     sb.classList.add('show');
   }
 
+  function deepHtml(s) {
+    var d = s.q.deep; if (!d) return '';
+    var letter = {}; s.order.forEach(function (orig, pos) { letter[orig] = String.fromCharCode(65 + pos); });
+    var L = function (t) { return String(t).replace(/\[\[(\d)\]\]/g, function (_, i) { return letter[+i] || '?'; }); };
+    var table = '<div class="dtable"><table><tr>' + d.map.head.map(function (h) { return '<th>' + L(h) + '</th>'; }).join('') + '</tr>' +
+      d.map.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + L(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '</table></div>';
+    var ev = '<ol class="dev">' + d.evidence.map(function (x) {
+      return '<li><q>' + L(x.quote) + '</q><div>' + L(x.means) + '</div></li>'; }).join('') + '</ol>';
+    return '<details class="deep" open><summary>Think it through</summary>' +
+      '<h4>1 · The premise to correct</h4><p>' + L(d.premise) + '</p>' +
+      (d.diagram ? '<pre class="ddia">' + esc(d.diagram) + '</pre>' : '') +
+      '<h4>2 · Mind map: ' + L(d.mapTitle) + '</h4>' + table +
+      '<h4>3 · Apply it to this question</h4>' + ev +
+      '<h4>4 · Rule to remember</h4><blockquote class="drule">' + L(d.rule) + '</blockquote>' +
+      '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>\u201c' + esc(d.guide.quote) + '\u201d</i></p>' +
+      '</details>';
+  }
+
   function grade(qi) {
     var s = state[qi]; if (s.graded) return;
     s.graded = true; answered++;
@@ -188,6 +207,7 @@
       '<div class="eh">Explanation ' + res + '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
       (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
              '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
+      deepHtml(s) +
       '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
       (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary>' : '') +
       (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
