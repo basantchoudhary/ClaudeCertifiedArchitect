@@ -22,7 +22,7 @@
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The review job links findings to tickets through the tracker vendor's community MCP server. A staff engineer set it up by adding the server to the user-level Claude Code config in the runner image, credential included, and last week the registry's image scanner flagged that credential as exposed. When a review run behaves oddly, the on-call engineer reproduces it by checking out the branch on a laptop and running the same command; the tracker tools are missing there, so reproductions rarely match CI. What is the <b>best change</b>?",
+   "question": "The review job uses the tracker vendor's community MCP server to link findings to tickets. An engineer added the server to the user-level Claude Code config in the runner image, with the API token written into it. Security has flagged the stored token. The on-call engineer must also be able to reproduce a review run from a plain checkout of the repository on a laptop. Today the tracker tools are missing there. What is the <b>best change</b>?",
    "options": [
     {
      "t": "Keep the server in the runner's <code>~/.claude.json</code>, delete the stored secret from the image, and inject it from the CI secret store at job start.",
@@ -37,7 +37,7 @@
      "why": "Incorrect. settings.local.json is the personal, uncommitted settings file and is not where shared MCP servers are declared; the shared home is <code>.mcp.json</code>."
     },
     {
-     "t": "Move the definition into a <code>.mcp.json</code> at the repository root, with the credential written as <code>${TRACKER_TOKEN}</code> and supplied by CI or the laptop.",
+     "t": "Move the definition into a <code>.mcp.json</code> at the repository root, with the credential written as <code>${TRACKER_TOKEN}</code> and set by CI or the laptop.",
      "why": "Correct. Project-scope <code>.mcp.json</code> is version-controlled, so any checkout gets the server, and env var expansion keeps the secret out of both the repository and the image."
     }
    ],
@@ -45,10 +45,10 @@
     3
    ],
    "runnerUp": 0,
-   "decider": "The on-call engineer reproduces from a plain checkout, so the server must travel with the repository; if only the runner used it, user-level config with an injected secret would be enough.",
+   "decider": "The server must be available from a plain checkout on a laptop, so it has to be declared in the repository; if only the runner used it, user-level config with an injected secret would be enough.",
    "explanation": "Shared MCP servers belong in project-level <code>.mcp.json</code>; personal or experimental ones in <code>~/.claude.json</code>. Environment variable expansion lets a committed config carry no secret.",
    "eli5": {
-    "question": "Where should a shared tool connection be written down so that everyone who copies the project gets it? The leaked token is loud, but it is not the deciding fact. The clue is: the on-call engineer checks out the branch on a laptop, and the tracker tools are missing there.",
+    "question": "Where should a shared tool connection be declared so it reaches every checkout without storing a secret? The clue is: the on-call engineer must reproduce a run from a plain checkout on a laptop.",
     "answer": "Think of a shared office recipe book versus a note in one cook's pocket. The recipe book travels with the kitchen; the pocket note stays with one person. A committed <code>.mcp.json</code> is the recipe book (the <b>project-scope MCP config</b>), so every checkout gets the tool. Writing the token as <code>${TRACKER_TOKEN}</code> (<b>environment variable expansion</b>) means the book names the key but never contains it. <b>Rule: shared tool, shared file; secrets go in as ${VARS}, never as values.</b>",
     "options": [
      "Runner-up. This takes the key out of the cook's pocket note, which fixes the leak. It would win if only the CI runner needed the tool. A laptop checkout still has no note.",
@@ -97,24 +97,24 @@
     },
     "evidence": [
      {
-      "quote": "A staff engineer set it up by adding the server to the user-level Claude Code config in the runner image, credential included",
-      "means": "Two problems in one sentence: the scope is personal and the secret is stored. Any fix must address <b>both</b>."
+      "quote": "An engineer added the server to the user-level Claude Code config in the runner image, with the API token written into it",
+      "means": "Two problems in one sentence: the scope is personal and the secret is stored. The fix must address <b>both</b>."
      },
      {
-      "quote": "last week the registry's image scanner flagged that credential as exposed",
-      "means": "The vivid symptom. It invites <b>[[0]]</b>, which removes the stored secret but keeps the user-level scope."
+      "quote": "Security has flagged the stored token",
+      "means": "Removing the stored secret is necessary. <b>[[0]]</b> does that, but keeps the user-level scope."
      },
      {
-      "quote": "the on-call engineer reproduces it by checking out the branch on a laptop and running the same command",
-      "means": "The quiet clue. A checkout carries only what is committed, so the server must be declared in the repository. This rules out <b>[[0]]</b> and the per-run user-scope registration <b>[[1]]</b>."
+      "quote": "The on-call engineer must also be able to reproduce a review run from a plain checkout of the repository on a laptop",
+      "means": "The decider. A checkout carries only what is committed, so the server must be declared in the repository. This rules out <b>[[0]]</b> and the per-run user-scope registration <b>[[1]]</b>."
      },
      {
-      "quote": "the tracker tools are missing there, so reproductions rarely match CI",
+      "quote": "Today the tracker tools are missing there",
       "means": "Confirms the scope problem. <b>[[2]]</b> names a committed file, but <code>settings.local.json</code> is personal and not where MCP servers are declared."
      },
      {
       "quote": "What is the best change?",
-      "means": "One change that fixes both: committed <code>.mcp.json</code> with <code>${TRACKER_TOKEN}</code>. So <b>[[3]]</b>."
+      "means": "One change that fixes both: a committed <code>.mcp.json</code> with <code>${TRACKER_TOKEN}</code>. So <b>[[3]]</b>."
      }
     ],
     "rule": "If a tool must reach everyone who clones the repo, declare it in .mcp.json; put secrets in as ${VARS}, never as values.",
@@ -132,7 +132,7 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The autofix job must raise a timeout constant in <code>client_factory.py</code>, for the payments client only. The agent's Edit call returns an error saying the target text matches three locations, and the log shows it reissuing that Edit. The file is codegen output: a template emits one 60-line retry helper per client class, identical apart from the class declaration that precedes each copy, and the constant sits near the middle of the helper. The payments client is the second of three. What should the agent do <b>next</b>?",
+   "question": "The autofix job must change a timeout constant in <code>client_factory.py</code>, for the payments client only. The file is generated from a template. It holds one retry helper per client class, and the helper bodies are identical, line for line. Only the class declaration above each copy differs. The agent's Edit call fails because the target text matches several locations. What should the agent do <b>next</b>?",
    "options": [
     {
      "t": "Lengthen <code>old_string</code> with neighbouring lines above and below the constant until it identifies exactly one place, then reissue the Edit.",
@@ -155,10 +155,10 @@
     2
    ],
    "runnerUp": 0,
-   "decider": "The three helpers are identical for their whole 60-line body; if the text around the constant differed per copy, widening old_string would be the better move.",
+   "decider": "The helper bodies are identical line for line, so no nearby context is unique; if the text around the constant differed per copy, widening old_string would be the better move.",
    "explanation": "Edit makes targeted changes through a unique text match. When no unique anchor exists, Read the file and Write it back with the change.",
    "eli5": {
-    "question": "The edit tool keeps failing because the text it is told to change appears three times. What should the agent do instead? The clue is: the three copies are identical for their whole 60-line body, apart from the class line above each.",
+    "question": "The edit tool keeps failing because the text appears in several places. What should the agent do instead? The clue is: the helper bodies are identical, line for line.",
     "answer": "Picture find-and-replace in a document where the same paragraph is printed three times. If you can't describe which copy you mean, find-and-replace can't help. So you open the whole document, change the one copy by hand, and save it (<b>Read, then Write</b>). Edit works only when the text you point at is unique; that is the fallback the exam guide names. <b>Rule: if Edit can't find a unique match, Read the whole file and Write it back.</b>",
     "options": [
      "Runner-up. Adding nearby lines is the normal way to make a match unique. It would win if the copies differed near the constant. Here they are identical for 60 lines.",
@@ -207,20 +207,20 @@
     },
     "evidence": [
      {
-      "quote": "The agent's Edit call returns an error saying the target text matches three locations",
-      "means": "A non-unique match. The textbook first move is to widen the anchor, which is <b>[[0]]</b>."
-     },
-     {
-      "quote": "a template emits one 60-line retry helper per client class, identical apart from the class declaration that precedes each copy",
-      "means": "The quiet clue. The copies are identical for 60 lines, so no small widening is unique. This defeats <b>[[0]]</b>, the runner-up."
-     },
-     {
       "quote": "for the payments client only",
-      "means": "Only one copy may change. Editing the template <b>[[3]]</b> changes all three clients."
+      "means": "Only one copy may change. Editing the template <b>[[3]]</b> changes every client."
+     },
+     {
+      "quote": "the helper bodies are identical, line for line",
+      "means": "The decider. No small widening of the anchor can be unique, which defeats <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "The agent's Edit call fails because the target text matches several locations",
+      "means": "A non-unique match. Edit matches text, not line numbers, so finding the line with Grep <b>[[1]]</b> doesn't help."
      },
      {
       "quote": "What should the agent do next?",
-      "means": "Edit matches text, not line numbers, so <b>[[1]]</b> doesn't work. The fallback is Read the whole file and Write it back: <b>[[2]]</b>."
+      "means": "The fallback is Read the whole file and Write it back with the one change: <b>[[2]]</b>."
      }
     ],
     "rule": "Edit needs a unique text anchor. When none exists, Read the whole file and Write it back with the change.",
@@ -238,7 +238,7 @@
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Migration conventions (no column drop without a two-release deprecation; indexes built concurrently) are a section of the root <code>CLAUDE.md</code>, now 600 lines and loaded on every review. Roughly four in five merge requests touch no migration. Each service owns its schema history next to its code, as in <code>services/billing/db/migrations/</code> and <code>services/claims/db/migrations/</code>, fourteen in all. Reviewers say the concurrency rule is missed most often on long diffs. Where should these conventions <b>live</b>?",
+   "question": "Migration conventions sit in the root <code>CLAUDE.md</code>, which loads on every review. Most merge requests touch no migrations, so the section wastes context. Each service keeps its migrations in its own folder, such as <code>services/billing/db/migrations/</code>. There are fourteen services, and the layout will not change. The team wants the conventions loaded only when a migration file is under review. Where should the conventions <b>live</b>?",
    "options": [
     {
      "t": "In a <code>CLAUDE.md</code> placed in each service's schema-history folder, with a CI job that fails if the fourteen copies drift apart.",
@@ -254,17 +254,17 @@
     },
     {
      "t": "In a separate <code>docs/migrations.md</code> pulled into the root file with <code>@import</code> and placed at the top under its own heading.",
-     "why": "Incorrect. Better placement may help on long diffs, but imported content still loads on every review, including the four in five with no migration."
+     "why": "Incorrect. Imported content still loads on every review, including the four in five with no migration."
     }
    ],
    "answer": [
     1
    ],
    "runnerUp": 0,
-   "decider": "The schema folders are spread across fourteen services; if they all sat in one folder, a directory CLAUDE.md there would serve as well.",
+   "decider": "Migration files are spread across fourteen service folders; if they all sat in one folder, a directory CLAUDE.md there would serve as well.",
    "explanation": "<code>.claude/rules/</code> files with <code>paths:</code> globs load conventions only for matching files and beat directory CLAUDE.md when those files span many directories. <code>@import</code> organises content but does not make it conditional.",
    "eli5": {
-    "question": "Where should rules about database migrations live so they appear only when a migration is being reviewed? The \"missed on long diffs\" remark is a distraction. The clue is: migrations sit in fourteen separate service folders, and four in five reviews touch none.",
+    "question": "Where should rules about migrations live so they load only when a migration is being reviewed? The clue is: each of the fourteen services keeps its migrations in its own folder.",
     "answer": "Think of a library sticker that says \"handle with gloves\" put on every rare book, wherever it is shelved. A <b>path-scoped rule</b> in <code>.claude/rules/</code> with a <code>paths:</code> glob is that sticker: it loads only when matching files are involved. One file covers all fourteen folders, and reviews without migrations never load it. <b>Rule: conventions for files spread across many folders go in a .claude/rules/ file with paths:.</b>",
     "options": [
      "Runner-up. A folder-level CLAUDE.md loads only in its own folder. It would win if all migrations were in one folder; here you would keep fourteen copies in sync.",
@@ -274,7 +274,7 @@
     ]
    },
    "deep": {
-    "premise": "The remark about long diffs makes you think this is a <b>placement</b> problem: move the rules to the top. But the real waste is that 600 lines load on <b>every</b> review, mostly ones with no migrations. The question is about <i>when</i> conventions load, and that depends on where the matching files live.",
+    "premise": "You'd think the fix is to <b>tidy the root file</b>: move the section into its own document and <code>@import</code> it. That organises the text but changes nothing about <b>when</b> it loads. The question is about loading conventions only when they apply, and that depends on where the matching files live.",
     "diagram": "services/billing/db/migrations/\nservices/claims/db/migrations/\n... 14 folders\n one rule: paths: services/*/db/migrations/**",
     "mapTitle": "Conventions for some files: where should they live?",
     "map": {
@@ -313,24 +313,24 @@
     },
     "evidence": [
      {
-      "quote": "are a section of the root CLAUDE.md, now 600 lines and loaded on every review",
+      "quote": "Migration conventions sit in the root CLAUDE.md, which loads on every review",
       "means": "Everything in the root file loads every time. An <code>@import</code> <b>[[3]]</b> keeps that problem."
      },
      {
-      "quote": "Roughly four in five merge requests touch no migration",
-      "means": "Most reviews pay for rules they don't need. The fix must load conditionally."
+      "quote": "Each service keeps its migrations in its own folder",
+      "means": "The decider: the files are spread across folders. A directory <code>CLAUDE.md</code> <b>[[0]]</b> would need one copy per folder."
      },
      {
-      "quote": "Each service owns its schema history next to its code",
-      "means": "The quiet clue: migrations are spread across folders. A directory <code>CLAUDE.md</code> <b>[[0]]</b> would need fourteen copies; it would win only if they sat in one folder."
+      "quote": "There are fourteen services, and the layout will not change",
+      "means": "Fourteen copies to keep in sync, and no chance of gathering the files into one folder."
      },
      {
-      "quote": "Reviewers say the concurrency rule is missed most often on long diffs",
-      "means": "The distraction. It tempts you toward moving text to the top <b>[[3]]</b>."
+      "quote": "The team wants the conventions loaded only when a migration file is under review",
+      "means": "Loading should follow the files automatically. A skill <b>[[2]]</b> relies on the prompt deciding when to load it."
      },
      {
-      "quote": "Where should these conventions live?",
-      "means": "Conventions attach to files, not to a workflow you invoke, so not a skill <b>[[2]]</b>. One glob-scoped rule: <b>[[1]]</b>."
+      "quote": "Where should the conventions live?",
+      "means": "One rule file with a <code>paths:</code> glob that matches every service's migration folder: <b>[[1]]</b>."
      }
     ],
     "rule": "Conventions for files scattered across many folders go in a .claude/rules/ file with a paths: glob.",
@@ -348,7 +348,7 @@
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Developers and the release job both draft the changelog with a 60-line procedure: walk the git log since the last tag, group commits by service, and fetch each linked ticket's title. It lives in the root <code>CLAUDE.md</code>, which every review run also loads. Run interactively, it prints around 4,000 lines of log into the session, and developers say Claude's later answers in that session start missing details from earlier work. The release manager wants changes to the procedure reviewed in merge requests like code. Which home <b>fits best</b>?",
+   "question": "Developers and the release job both draft the changelog with a long procedure. It walks the git log since the last tag and groups commits by service. The procedure lives in the root <code>CLAUDE.md</code>, which every review run also loads. When run interactively, it prints thousands of lines of log into the session, and later answers degrade. The procedure must be versioned with the repository. Which home <b>fits best</b>?",
    "options": [
     {
      "t": "A project command file at <code>.claude/commands/changelog.md</code>, invoked as a slash command from CI and from interactive sessions.",
@@ -371,13 +371,13 @@
     3
    ],
    "runnerUp": 0,
-   "decider": "The procedure's output degrades the developer's session and the root file loads on every review; with little output, a project command would serve equally well.",
+   "decider": "The procedure floods the session with output; with little output, a project command in .claude/commands/ would serve equally well.",
    "explanation": "CLAUDE.md holds always-loaded standards; skills are on-demand workflows, and <code>context: fork</code> runs one in an isolated sub-agent context.",
    "eli5": {
-    "question": "Where should a long, noisy changelog procedure live? The clue is: running it dumps about 4,000 lines into the session, and the root file it sits in loads on every review.",
+    "question": "Where should a long, noisy changelog procedure live? The clue is: it prints thousands of lines into the session, and later answers degrade.",
     "answer": "Imagine sending a helper to the archive room to sort old letters. They come back with one neat summary, not a cartful of paper on your desk. A project <b>skill</b> with <code>context: fork</code> works like that: it runs in its own side room (an <b>isolated sub-agent context</b>) and keeps the log out of your conversation. It sits in <code>.claude/skills/</code>, so it is versioned and loads only when called. <b>Rule: an on-demand workflow with noisy output belongs in a skill with context: fork.</b>",
     "options": [
-     "Runner-up. A project command is shared and on demand. It would win if the procedure printed little. It runs in your conversation, so the 4,000 lines still land there.",
+     "Runner-up. A project command is shared and on demand. It would win if the procedure printed little. It runs in your conversation, so the thousands of lines still land there.",
      "Path rules carry conventions for matching files. They do not run a procedure in a separate room, so the log still lands in the session.",
      "Handing the work to the Explore subagent would keep the log out, but the procedure stays in a file every review loads.",
      "Correct. A versioned skill that runs in its own isolated context, called only when needed."
@@ -385,7 +385,7 @@
    },
    "deep": {
     "premise": "You'd think any on-demand, versioned home is fine, so a <b>project command</b> and a <b>skill</b> are equal. They differ in <i>where the work happens</i>. A command runs inside your current conversation, so its output lands there. A skill with <code>context: fork</code> runs in a separate sub-agent context and hands back only the result.",
-    "diagram": "command  → runs in your session → 4,000 lines in\nskill + context: fork\n         → runs in a side context → summary back",
+    "diagram": "command  → runs in your session → thousands of lines in\nskill + context: fork\n         → runs in a side context → summary back",
     "mapTitle": "Reusable procedure: where should it live?",
     "map": {
      "head": [
@@ -423,24 +423,20 @@
     },
     "evidence": [
      {
-      "quote": "It lives in the root CLAUDE.md, which every review run also loads",
+      "quote": "The procedure lives in the root CLAUDE.md, which every review run also loads",
       "means": "Keeping it in the root file costs every review. Delegating from there <b>[[2]]</b> still leaves it in that file."
      },
      {
-      "quote": "it prints around 4,000 lines of log into the session",
-      "means": "The quiet clue. Output volume is the problem. A command <b>[[0]]</b> runs in the session and would win only if output were small."
+      "quote": "it prints thousands of lines of log into the session, and later answers degrade",
+      "means": "The decider. Output volume is the problem. A command <b>[[0]]</b> runs in the session, so it would win only if the output were small."
      },
      {
-      "quote": "developers say Claude's later answers in that session start missing details from earlier work",
-      "means": "Context pollution. The fix must run the procedure somewhere else."
-     },
-     {
-      "quote": "The release manager wants changes to the procedure reviewed in merge requests like code",
-      "means": "It must be committed, so a project-level home. Path rules <b>[[1]]</b> are for conventions, not procedures."
+      "quote": "The procedure must be versioned with the repository",
+      "means": "It needs a project-level home. Path rules <b>[[1]]</b> carry conventions, not procedures."
      },
      {
       "quote": "Which home fits best?",
-      "means": "Versioned, on demand, isolated output: a project skill with <code>context: fork</code>, <b>[[3]]</b>."
+      "means": "Versioned, on demand, output isolated: a project skill with <code>context: fork</code>, <b>[[3]]</b>."
      }
     ],
     "rule": "On-demand workflow with noisy output: a project skill with context: fork. CLAUDE.md is for always-on standards.",
@@ -458,15 +454,15 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A nightly job asks Claude Code to fix a currency-rounding helper that is a cent off for some locales, after a customer reported a wrong invoice total in Swiss francs. The helper's module ships with a parametrized pytest file of 140 cases; 23 are red on main, and the job's container has the project's dev dependencies installed. The job runs with <code>-p</code> overnight, unattended, and the fix touches one function. How should the prompt be structured to reach a correct fix <b>most reliably</b>?",
+   "question": "A nightly job asks Claude Code to fix a currency-rounding helper that is wrong for some locales. The helper has a parametrized test file, and several of its cases currently fail. The job's container can run the test suite. The job runs with <code>-p</code>, unattended, and the fix touches one function. How should the prompt be structured to reach a correct fix <b>most reliably</b>?",
    "options": [
     {
      "t": "Have Claude run the module's suite, change the code against the reported failures, and loop until no case is failing.",
      "why": "Correct. Test-driven iteration uses the existing failing cases as specification and feedback, and the full suite catches regressions in other locales."
     },
     {
-     "t": "Give Claude several worked amounts with locale and expected rounded output, including the Swiss franc invoice, inside the prompt.",
-     "why": "Runner-up. Concrete input/output pairs beat prose and would be the best choice if no runnable suite existed. Here 140 executable cases already exist, and a handful of pairs cannot catch a regression."
+     "t": "Give Claude several worked amounts with locale and expected rounded output, for each failing locale, inside the prompt.",
+     "why": "Runner-up. Concrete input/output pairs beat prose and would be the best choice if no runnable suite existed. Here a runnable suite already exists, and a handful of pairs cannot catch a regression."
     },
     {
      "t": "Open by having Claude ask its clarifying questions about the rounding rules before it proposes any change to the code.",
@@ -481,11 +477,11 @@
     0
    ],
    "runnerUp": 1,
-   "decider": "A runnable 140-case suite is available in the job's container; without it, concrete input/output pairs in the prompt would be the strongest option.",
+   "decider": "A test file with failing cases exists and the container can run it; without runnable tests, concrete input/output pairs in the prompt would be the strongest option.",
    "explanation": "Concrete examples and test-driven iteration both beat prose. When executable tests exist, iterating against them gives a verifiable stop condition.",
    "eli5": {
-    "question": "How should an unattended overnight job be told to fix a rounding bug? The Swiss-franc invoice is the vivid detail. The clue is: a 140-case test file already exists, and the job's container can run it.",
-    "answer": "Think of a recipe with a tasting panel standing by. Instead of describing the perfect cake in words, you bake, let the panel taste, adjust, and repeat until every taster is happy. The 140 tests are the panel (<b>test-driven iteration</b>). They also catch it when fixing one locale breaks another. <b>Rule: if runnable tests exist, let Claude iterate against them.</b>",
+    "question": "How should an unattended overnight job be told to fix a rounding bug? The clue is: a test file with failing cases exists, and the job's container can run it.",
+    "answer": "Think of a recipe with a tasting panel standing by. Instead of describing the perfect cake in words, you bake, let the panel taste, adjust, and repeat until every taster is happy. The test file is the panel (<b>test-driven iteration</b>). They also catch it when fixing one locale breaks another. <b>Rule: if runnable tests exist, let Claude iterate against them.</b>",
     "options": [
      "Correct. Run the tests, fix against the failures, and repeat until nothing fails.",
      "Runner-up. Concrete input-and-output pairs beat prose and would be best if no tests existed. A handful of pairs can't catch a regression the full suite would.",
@@ -494,7 +490,7 @@
     ]
    },
    "deep": {
-    "premise": "The Swiss-franc invoice makes you think the answer is <b>concrete input/output pairs</b>, because examples beat prose. They do. But a <b>runnable test suite</b> is better still: it is a large set of examples that the job can check automatically and repeatedly. Whether the tests exist and can run is what decides this.",
+    "premise": "You'd think the answer is <b>concrete input/output pairs</b>, because examples beat prose. They do. But a <b>runnable test suite</b> is better still: it is a large set of examples that the job can check automatically and repeatedly. Whether the tests exist and can run is what decides this.",
     "mapTitle": "How do I tell Claude what \"correct\" means?",
     "map": {
      "head": [
@@ -532,24 +528,20 @@
     },
     "evidence": [
      {
-      "quote": "after a customer reported a wrong invoice total in Swiss francs",
-      "means": "The vivid detail. It tempts you toward pasting that case as a pair, <b>[[1]]</b>."
+      "quote": "The helper has a parametrized test file, and several of its cases currently fail",
+      "means": "The behaviour is already captured as executable cases, with failures to work from."
      },
      {
-      "quote": "The helper's module ships with a parametrized pytest file of 140 cases; 23 are red on main",
-      "means": "The quiet clue: a full set of executable cases already exists, with failures to work from."
+      "quote": "The job's container can run the test suite",
+      "means": "The decider. The suite can run inside the job, so Claude can loop against it. Pasted pairs <b>[[1]]</b> would win only without this."
      },
      {
-      "quote": "the job's container has the project's dev dependencies installed",
-      "means": "The suite can actually run in the job. That makes the loop possible."
-     },
-     {
-      "quote": "The job runs with -p overnight, unattended, and the fix touches one function",
-      "means": "Nobody to answer questions, so no interview <b>[[2]]</b>. One function, so plan mode <b>[[3]]</b> adds little."
+      "quote": "The job runs with -p, unattended, and the fix touches one function",
+      "means": "Nobody can answer questions, so no interview <b>[[2]]</b>. One function, so plan mode <b>[[3]]</b> adds little."
      },
      {
       "quote": "How should the prompt be structured to reach a correct fix most reliably?",
-      "means": "Run the tests, fix, rerun until green: <b>[[0]]</b>. Pairs <b>[[1]]</b> would win only with no runnable tests."
+      "means": "Run the tests, fix, rerun until nothing fails: <b>[[0]]</b>."
      }
     ],
     "rule": "If runnable tests exist, have Claude iterate against them. Use pasted examples only when there are no tests.",
@@ -567,7 +559,7 @@
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "The reviewer's unhandled-error category produces about 40% of comments, and developers dismiss three in four. A manager's sample of 100 dismissed ones found two kinds: calls already wrapped by the service framework's error middleware, and errors re-raised on purpose to a caller that handles them. The category appears in the company's SOC 2 control matrix as an automated check run on every merge request. The prompt asks Claude to \"flag missing or inadequate error handling\". What is the <b>most effective change</b>?",
+   "question": "The reviewer's unhandled-error category produces most of the comments that developers dismiss. A sample of dismissed comments shows two kinds: calls already wrapped by the framework's error middleware, and errors re-raised on purpose. The prompt says \"flag missing or inadequate error handling\". The category is a compliance control and must keep running on every merge request. What is the <b>most effective change</b>?",
    "options": [
     {
      "t": "Switch the category off in the review prompt while a rewritten version is tested against past merge requests, then restore it.",
@@ -578,7 +570,7 @@
      "why": "Incorrect. Pattern tracking finds unknown false-positive sources; the sample has already named both, so it delays the fix."
     },
     {
-     "t": "Redefine the check as an exception caught and dropped or a returned value left unused, with snippets on both sides.",
+     "t": "Redefine the category as an exception caught and dropped or a returned error left unused, with snippets on both sides.",
      "why": "Correct. Categorical criteria with concrete code cut false positives while the check keeps running."
     },
     {
@@ -590,10 +582,10 @@
     2
    ],
    "runnerUp": 0,
-   "decider": "The category is a compliance control that must run on every merge request; if it could be paused, switching it off while it is rewritten would come first.",
+   "decider": "The category must keep running on every merge request; if it could be paused, switching it off while it is rewritten would come first.",
    "explanation": "Vague instructions produce false positives that erode trust. Replace them with categorical criteria and concrete code, not with more review layers.",
    "eli5": {
-    "question": "A noisy review category annoys developers. How do you make it accurate? The angry dismissal numbers invite you to switch it off. The clue is: the category is a compliance control that must run on every merge request.",
+    "question": "A noisy review category annoys developers. How do you make it accurate? The clue is: the category is a compliance control and must keep running on every merge request.",
     "answer": "Picture a smoke alarm that goes off whenever someone makes toast. You can't unplug it, because the fire code requires it. So you make it smarter about what counts as smoke. Here that means stating exactly what to flag, an error caught and thrown away or a result ignored, with short code samples on both sides (<b>explicit categorical criteria</b>). <b>Rule: to cut false positives, define the category precisely; vague words breed noise.</b>",
     "options": [
      "Runner-up. Pausing a noisy check is a good way to win back trust. It would win if the check were optional. Compliance says it must keep running.",
@@ -603,7 +595,7 @@
     ]
    },
    "deep": {
-    "premise": "The numbers (40% of comments, 75% dismissed) make <b>pausing the category</b> look obvious, and it is a recommended trust-restoring move. But you can only pause something that is optional. The real fix for a noisy category is to <b>define it precisely</b>; pausing just buys time.",
+    "premise": "When most dismissed comments come from one category, <b>pausing the category</b> looks obvious, and it is a recommended trust-restoring move. But you can only pause something that is optional. The real fix for a noisy category is to <b>define it precisely</b>; pausing just buys time.",
     "mapTitle": "A review category is noisy: what fixes precision?",
     "map": {
      "head": [
@@ -641,24 +633,20 @@
     },
     "evidence": [
      {
-      "quote": "The reviewer's unhandled-error category produces about 40% of comments, and developers dismiss three in four",
-      "means": "The vivid symptom. It invites switching the category off, <b>[[0]]</b>."
-     },
-     {
-      "quote": "A manager's sample of 100 dismissed ones found two kinds",
+      "quote": "A sample of dismissed comments shows two kinds",
       "means": "The causes are already known, so more tracking <b>[[1]]</b> delays the fix."
      },
      {
-      "quote": "The category appears in the company's SOC 2 control matrix as an automated check run on every merge request",
-      "means": "The quiet clue. A listed control can't be paused, which rules out <b>[[0]]</b>, the runner-up."
-     },
-     {
-      "quote": "The prompt asks Claude to \"flag missing or inadequate error handling\"",
+      "quote": "The prompt says \"flag missing or inadequate error handling\"",
       "means": "The root cause: a vague definition. A second reviewer <b>[[3]]</b> applies the same vague words."
      },
      {
+      "quote": "The category is a compliance control and must keep running on every merge request",
+      "means": "The decider. It can't be paused, which rules out <b>[[0]]</b>, the runner-up."
+     },
+     {
       "quote": "What is the most effective change?",
-      "means": "State exactly what counts, with snippets on both sides: <b>[[2]]</b>."
+      "means": "State exactly what counts, with code on both sides: <b>[[2]]</b>."
      }
     ],
     "rule": "To cut false positives, define the category as specific, testable conditions with code samples. Pausing is only for optional checks.",
@@ -676,7 +664,7 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Findings come back through <code>--json-schema</code> with file, line, severity, issue and <code>suggested_fix</code> on every one, and parsing has not failed in a month. Developers act on about 20% of findings. Interviews show they act when the fix shows replacement code and ignore the rest; today a third of fixes read like \"consider refactoring\" and a few restate the issue. The prompt already describes the expected fix format in a paragraph. What is the <b>most effective first step</b>?",
+   "question": "Review findings come back through <code>--json-schema</code>. Every finding has file, line, severity, issue and <code>suggested_fix</code>, and parsing has not failed in a month. The problem is the content of <code>suggested_fix</code>. Some entries show replacement code, but many say things like \"consider refactoring\". The prompt already describes the expected fix format in a paragraph. What is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Turn <code>suggested_fix</code> in the schema into an object with required <code>replacement_code</code> and <code>explanation</code> strings.",
@@ -702,7 +690,7 @@
    "decider": "Structure already validates and a written description of the format is in place; if fields were missing or mis-shaped, tightening the schema would come first.",
    "explanation": "Schemas govern shape, not whether a field's content is useful. Few-shot samples are the strongest first lever for consistent, actionable content once instructions exist.",
    "eli5": {
-    "question": "Every finding has the right fields, but many suggested fixes are vague. What should you try first? The clue is: parsing has not failed in a month, and a paragraph already describes the fix format.",
+    "question": "Every finding has the right fields, but many suggested fixes are vague. What should you try first? The clue is: parsing never fails, and a paragraph already describes the fix format.",
     "answer": "Think of training a new waiter. Telling them \"describe the dish well\" gets mixed results. Showing three good descriptions gets consistent ones. A form (the <b>schema</b>) makes sure each box exists; it can't make what's written in the box useful. A few complete samples in the prompt (<b>few-shot examples</b>) teach the content. <b>Rule: a schema fixes shape; samples fix content.</b>",
     "options": [
      "Runner-up. A stricter schema helps when fields are missing or malformed. Here every field already parses, and a required string can still say \"consider refactoring\".",
@@ -751,20 +739,16 @@
     },
     "evidence": [
      {
-      "quote": "parsing has not failed in a month",
-      "means": "Syntax and shape are fine. A schema change <b>[[0]]</b> would win only if fields were missing or mis-shaped."
+      "quote": "Every finding has file, line, severity, issue and suggested_fix, and parsing has not failed in a month",
+      "means": "The decider. Syntax and shape are fine, so a schema change <b>[[0]]</b> would win only if fields were missing or mis-shaped."
      },
      {
-      "quote": "Developers act on about 20% of findings",
-      "means": "The goal is useful content, not valid JSON."
-     },
-     {
-      "quote": "today a third of fixes read like \"consider refactoring\" and a few restate the issue",
-      "means": "A required string can still say \"consider refactoring\". The content varies, not the structure."
+      "quote": "The problem is the content of suggested_fix",
+      "means": "Content, not structure. A required string can still say \"consider refactoring\"."
      },
      {
       "quote": "The prompt already describes the expected fix format in a paragraph",
-      "means": "Instructions alone are already in place and still inconsistent. That is exactly when few-shot is the strongest lever."
+      "means": "Instructions alone are in place and still inconsistent. That is exactly when few-shot is the strongest lever."
      },
      {
       "quote": "What is the most effective first step?",
@@ -786,11 +770,11 @@
    "trap": "Unreliable proxy",
    "fam": 6,
    "select": 1,
-   "question": "The post-merge migration scan posts to the on-call channel and gates nothing. Finance wants it on the Message Batches API for the 50% discount, pointing out that three trial batches returned in under 20 minutes. On-call engineers read each scan before the next production deploy train, which leaves every 90 minutes, and pull a risky change from the train if needed. About 60 merges a day are scanned. How should the team <b>evaluate the proposal</b>?",
+   "question": "The post-merge migration scan posts its results to the on-call channel. It does not block any merge. Finance wants to move it to the Message Batches API for the discount. On-call engineers must read each scan within 90 minutes of the merge, before the next deploy leaves. A late scan means a risky change can ship. How should the team <b>evaluate the proposal</b>?",
    "options": [
     {
      "t": "Adopt the batch endpoint for the scan, one request per merged change, using its merge commit SHA as the <code>custom_id</code> for matching.",
-     "why": "Runner-up. Non-blocking work correlated by <code>custom_id</code> is a textbook batch fit and would win if results were read the next day. Batches can take up to 24 hours with no latency SLA, and trial timings promise nothing."
+     "why": "Runner-up. Non-blocking work correlated by <code>custom_id</code> is a textbook batch fit and would win if results were read the next day. Batches can take up to 24 hours with no latency SLA, so typical timings promise nothing."
     },
     {
      "t": "Adopt the batch endpoint, and resend a change as a synchronous request when its batch result has not arrived within 45 minutes.",
@@ -809,10 +793,10 @@
     3
    ],
    "runnerUp": 0,
-   "decider": "Each scan must be read before a train that leaves every 90 minutes; if the output were read the next day, batching with custom_id would be right.",
+   "decider": "Each scan must be read within 90 minutes of the merge; if the output were read the next day, batching with custom_id would be right.",
    "explanation": "The Batches API saves 50% but has up to a 24-hour window and no latency SLA. Fit depends on whether someone waits on the result within a deadline, not on whether the job blocks a merge.",
    "eli5": {
-    "question": "Should a scan that blocks nothing move to the cheaper, slower batch service? The 20-minute trial results are the bait. The clue is: on-call reads each scan before a deploy train that leaves every 90 minutes.",
+    "question": "Should a scan that blocks nothing move to the cheaper, slower batch service? The clue is: on-call must read each scan within 90 minutes of the merge.",
     "answer": "Think of a parcel service that is half price but promises delivery only \"within 24 hours\". Most parcels may arrive in 20 minutes, but nothing is promised. If you need it before the 90-minute train, you pay for the courier. The <b>Message Batches API</b> is the cheap service: 50% off, up to 24 hours, no delivery-time guarantee (<b>no latency SLA</b>). Keep this scan on normal requests, and batch work nobody reads until tomorrow. <b>Rule: if someone waits on the result by a deadline, don't batch it.</b>",
     "options": [
      "Runner-up. One request per change, matched back by <code>custom_id</code>, is a textbook batch setup. It would win if the scan were read the next day. A 90-minute deadline needs a guarantee batches don't give.",
@@ -822,7 +806,7 @@
     ]
    },
    "deep": {
-    "premise": "The usual test for batch is <b>\"does it block a merge?\"</b>. This scan blocks nothing, so batch looks right. But the real test is <b>\"is someone waiting on the result by a deadline?\"</b>. The Batches API offers no latency promise, so a fast trial run tells you nothing about tomorrow.",
+    "premise": "The usual test for batch is <b>\"does it block a merge?\"</b>. This scan blocks nothing, so batch looks right. But the real test is <b>\"is someone waiting on the result by a deadline?\"</b>. The Batches API offers no latency promise, so a fast run today tells you nothing about tomorrow.",
     "diagram": "Batches API: 50% cheaper\n  window up to 24 h, no latency SLA\n deadline?  none / next day → batch\n            90 minutes      → real-time",
     "mapTitle": "Batch or real-time? Ask who waits, and for how long",
     "map": {
@@ -861,24 +845,20 @@
     },
     "evidence": [
      {
-      "quote": "The post-merge migration scan posts to the on-call channel and gates nothing",
-      "means": "Non-blocking. This is what makes batch look right."
+      "quote": "It does not block any merge",
+      "means": "Non-blocking. This is what makes batch look right, and what <b>[[0]]</b> relies on."
      },
      {
-      "quote": "pointing out that three trial batches returned in under 20 minutes",
-      "means": "The bait. Observed speed is not a promise; batches can take up to 24 hours."
+      "quote": "Finance wants to move it to the Message Batches API for the discount",
+      "means": "Batches are 50% cheaper but can take up to 24 hours, with no latency promise."
      },
      {
-      "quote": "On-call engineers read each scan before the next production deploy train, which leaves every 90 minutes",
-      "means": "The quiet clue: a 90-minute deadline. This rules out <b>[[0]]</b>, the runner-up, which wins only if results are read the next day."
-     },
-     {
-      "quote": "About 60 merges a day are scanned",
-      "means": "Low volume, so the saving is small. Packing merges into one request <b>[[2]]</b> trades accuracy for little gain."
+      "quote": "On-call engineers must read each scan within 90 minutes of the merge, before the next deploy leaves",
+      "means": "The decider: a hard deadline. This rules out <b>[[0]]</b>, the runner-up, which wins only if results are read the next day."
      },
      {
       "quote": "How should the team evaluate the proposal?",
-      "means": "A 45-minute fallback <b>[[1]]</b> adds machinery and can still miss the train. Keep real-time: <b>[[3]]</b>."
+      "means": "A fallback timer <b>[[1]]</b> adds machinery and can still miss; packing merges together <b>[[2]]</b> dilutes attention. Keep real-time: <b>[[3]]</b>."
      }
     ],
     "rule": "Batch only work that nobody waits on by a deadline. Non-blocking is not the same as latency-tolerant.",
@@ -896,7 +876,7 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "In a nine-file merge request, the settings loader renamed <code>retry_limit</code> to <code>max_retries</code> while two consumers kept reading the old key, and review passed it. A month of post-mortems found 11 escapes of the same shape, such as a function's return tuple gaining a field while callers in sibling modules still unpacked two values. The review container starts fresh per merge request, apart from the autofix job. Each file gets its own review pass, and defects inside a single file are caught well. What change <b>addresses the root cause</b>?",
+   "question": "Each file in a merge request gets its own review pass, and bugs inside a single file are caught well. The review runs in a fresh session, separate from the job that wrote any code. Yet bugs that span files keep slipping through. In one case, the settings loader renamed a config key while two other files still read the old key. What change <b>addresses the root cause</b>?",
    "options": [
     {
      "t": "After the file-level passes, run a pass given the changed signatures and keys, checking each against its call sites in the diff.",
@@ -922,13 +902,13 @@
    "decider": "Every escape spans files and the reviewer is already independent of the author; if misses sat inside single files reviewed by the authoring session, an independent instance would be the fix.",
    "explanation": "Split large reviews into per-file local passes plus a cross-file integration pass. Independent instances address self-review bias, a different failure.",
    "eli5": {
-    "question": "Each file is reviewed well on its own, yet bugs slip through. What is the real cause? The clue is: every escape is a mismatch between two files, and the reviewer already starts fresh, separate from the code's author.",
+    "question": "Each file is reviewed well on its own, yet bugs slip through. What is the real cause? The clue is: the misses span files, and the reviewer already runs in a fresh session.",
     "answer": "Think of checking each page of a contract on its own. Every page can be fine while page 2 and page 9 disagree. You need one more read that compares the pages against each other. That is a <b>cross-file integration pass</b>: it takes what changed (signatures, keys) and checks every place that uses them. <b>Rule: per-file passes catch local bugs; a separate integration pass catches mismatches between files.</b>",
     "options": [
      "Correct. One more pass, after the per-file ones, that checks changed names and signatures against their callers.",
      "Runner-up. A fresh second reviewer helps when the reviewer shares context with the author. This one already starts fresh, and still looks at one file at a time.",
      "A hand-written map in CLAUDE.md goes stale, and the per-file passes still never compare two changed files.",
-     "One big pass over all nine files spreads attention thin. A bigger context window is not sharper attention."
+     "One big pass over all the files spreads attention thin. A bigger context window is not sharper attention."
     ]
    },
    "deep": {
@@ -971,24 +951,24 @@
     },
     "evidence": [
      {
-      "quote": "the settings loader renamed retry_limit to max_retries while two consumers kept reading the old key",
-      "means": "The bug lives <b>between</b> files: the producer and its consumers disagree."
-     },
-     {
-      "quote": "A month of post-mortems found 11 escapes of the same shape",
-      "means": "It is a pattern, not a one-off. Every escape is a cross-file mismatch."
-     },
-     {
-      "quote": "The review container starts fresh per merge request, apart from the autofix job",
-      "means": "The quiet clue. The reviewer is already independent of the code's author, so <b>[[1]]</b>, the runner-up, fixes a problem that doesn't exist here."
-     },
-     {
-      "quote": "Each file gets its own review pass, and defects inside a single file are caught well",
+      "quote": "Each file in a merge request gets its own review pass, and bugs inside a single file are caught well",
       "means": "Per-file review works. Replacing it with one big pass <b>[[3]]</b> brings attention dilution back."
      },
      {
+      "quote": "The review runs in a fresh session, separate from the job that wrote any code",
+      "means": "The reviewer is already independent, so <b>[[1]]</b>, the runner-up, fixes a problem that doesn't exist here."
+     },
+     {
+      "quote": "Yet bugs that span files keep slipping through",
+      "means": "The decider. No per-file pass can see a mismatch between files."
+     },
+     {
+      "quote": "the settings loader renamed a config key while two other files still read the old key",
+      "means": "A producer and its consumers disagree. A hand-kept map in CLAUDE.md <b>[[2]]</b> goes stale."
+     },
+     {
       "quote": "What change addresses the root cause?",
-      "means": "A hand-kept map in CLAUDE.md <b>[[2]]</b> goes stale. Add an integration pass: <b>[[0]]</b>."
+      "means": "Add an integration pass that checks changed names against their callers: <b>[[0]]</b>."
      }
     ],
     "rule": "Per-file passes catch local bugs; a separate integration pass catches mismatches between files. Independent reviewers fix self-review bias, a different problem.",
@@ -1006,7 +986,7 @@
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 2,
-   "question": "About 6% of review findings cite a line the inline-comment API rejects because it lies outside every hunk. Sampling shows most are off by exactly the hunk's starting offset: the reviewer reads the raw unified diff and counts lines from each header itself. The pre-merge budget allows one extra model call on runs that need it, but not on every run. A post step already parses hunk headers. Which TWO changes together <b>bring rejected findings close to zero within that budget</b>?",
+   "question": "Some review findings cite a line outside every diff hunk, and the inline-comment API rejects them. Most are off by exactly the hunk's starting offset. The reviewer reads the raw unified diff and counts lines from each hunk header itself. A post step already parses the hunk headers. The budget allows an extra model call only on runs that need one. Which TWO changes together <b>bring rejected findings close to zero within that budget</b>?",
    "options": [
     {
      "t": "Route all findings through a second, independent Claude instance that confirms each cited location against the diff before posting.",
@@ -1033,7 +1013,7 @@
    "decider": "The errors are mechanical miscounts and the budget allows an extra call only when needed; if they were judgement errors and every run could afford a second call, an independent verifier would earn a place.",
    "explanation": "Give the model the facts it is miscomputing, validate what it emits against them, and retry with the specific error. Spend extra calls only where validation shows they are needed.",
    "eli5": {
-    "question": "Comments land on lines the code-review tool rejects. Which two changes fix it within the budget? The clue is: the errors are simple counting mistakes, and only runs that need it may spend an extra call.",
+    "question": "Comments land on lines the code-review tool rejects. Which two changes fix it within the budget? The clue is: the errors are counting mistakes, and an extra call is allowed only on runs that need one.",
     "answer": "Think of a delivery driver who counts house numbers by hand from the corner and keeps getting it wrong. First, paint the numbers on the doors: give the model the line numbers instead of making it count. Then check each address before delivery and send the driver back once with the exact mistake (<b>validate, then retry with specific feedback</b>). The second step spends a call only when something fails. <b>Rule: give the model the facts it keeps miscomputing, then check its output and retry with the exact error.</b>",
     "options": [
      "Runner-up. A second checker is useful for judgement calls. It costs a call on every run, which the budget forbids, and reading the same raw diff it can miscount too.",
@@ -1082,20 +1062,20 @@
     },
     "evidence": [
      {
-      "quote": "Sampling shows most are off by exactly the hunk's starting offset",
+      "quote": "Most are off by exactly the hunk's starting offset",
       "means": "A mechanical counting error, not a judgement error. That weakens <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "the reviewer reads the raw unified diff and counts lines from each header itself",
+      "quote": "The reviewer reads the raw unified diff and counts lines from each hunk header itself",
       "means": "The root cause: the model computes something code could compute. Give it the numbers: <b>[[1]]</b>. Samples <b>[[3]]</b> still leave it counting."
      },
      {
-      "quote": "The pre-merge budget allows one extra model call on runs that need it, but not on every run",
-      "means": "A second checker on every run <b>[[0]]</b> breaks the budget. A retry only on a miss fits."
+      "quote": "A post step already parses the hunk headers",
+      "means": "The valid ranges are known in code, so a deterministic check with specific feedback is cheap: <b>[[2]]</b>."
      },
      {
-      "quote": "A post step already parses hunk headers",
-      "means": "The valid ranges are known in code, so a deterministic check plus specific feedback is cheap: <b>[[2]]</b>."
+      "quote": "The budget allows an extra model call only on runs that need one",
+      "means": "A second checker on every run <b>[[0]]</b> breaks the budget. A retry only on a miss fits."
      },
      {
       "quote": "Which TWO changes together bring rejected findings close to zero within that budget?",
@@ -1117,7 +1097,7 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The coordinator runs the same chain on every packet: base lease, then amendments in filename order, then a reconcile step. Filename order differs from execution order in over half of packets, and that is the most common cause of wrong rent schedules. Packets hold anywhere from no amendments to eleven. In about a quarter, an amendment cites an exhibit or side letter missing from the upload, which must be requested with <code>fetch_exhibit</code> and may itself amend further terms. Which decomposition <b>fits these packets best</b>?",
+   "question": "The coordinator runs a fixed chain on every packet: base lease, then each amendment, then a reconcile step. Amendments are not always uploaded in date order. Some amendments also cite an exhibit or side letter that is missing from the upload. The agent must fetch it with <code>fetch_exhibit</code>, and the fetched document may change further terms. Which decomposition <b>fits these packets best</b>?",
    "options": [
     {
      "t": "Sort the documents by execution date before the chain runs, and add a final integration pass that reconciles every field across all extractions.",
@@ -1140,10 +1120,10 @@
     2
    ],
    "runnerUp": 0,
-   "decider": "A quarter of packets cite documents that must be fetched and can change further terms; if every packet arrived complete, a date-sorted chain with a reconciliation pass would serve.",
+   "decider": "Some packets cite documents that must be fetched and can change further terms; if every packet arrived complete, a date-sorted chain with a reconciliation pass would serve.",
    "explanation": "Use fixed prompt chains for predictable inputs and adaptive decomposition when the subtasks depend on what is found along the way.",
    "eli5": {
-    "question": "How should the system split up the work on lease packets that vary a lot? Filename order is the vivid cause. The clue is: a quarter of packets refer to documents that aren't there yet and must be fetched, and those can change more terms.",
+    "question": "How should the work on lease packets be split up? The clue is: some amendments cite documents that are missing and must be fetched, and those can change more terms.",
     "answer": "Think of a detective case file. A fixed checklist (\"read file 1, then 2, then 3\") breaks when file 2 says \"see the letter in the bank vault\". A good detective reads first, notes what points where, then plans the next steps, including fetching the vault letter. That is <b>adaptive decomposition</b>: subtasks are created from what is discovered. <b>Rule: fixed steps for predictable inputs; plan as you go when the inputs reveal new work.</b>",
     "options": [
      "Runner-up. Sorting by date and adding a final check fixes the most common error. It would win if every packet arrived complete. It has no step for fetching missing documents.",
@@ -1192,19 +1172,19 @@
     },
     "evidence": [
      {
-      "quote": "Filename order differs from execution order in over half of packets, and that is the most common cause of wrong rent schedules",
-      "means": "The vivid symptom. It points at sorting plus reconciliation, <b>[[0]]</b>."
+      "quote": "The coordinator runs a fixed chain on every packet",
+      "means": "Every packet gets the same steps, decided before anything is read."
      },
      {
-      "quote": "Packets hold anywhere from no amendments to eleven",
-      "means": "The shape varies a lot from packet to packet."
+      "quote": "Amendments are not always uploaded in date order",
+      "means": "Sorting by date <b>[[0]]</b> would fix this part on its own."
      },
      {
-      "quote": "an amendment cites an exhibit or side letter missing from the upload, which must be requested with fetch_exhibit",
-      "means": "The quiet clue. Some work only appears while reading. A fixed chain <b>[[0]]</b> and parallel per-upload subagents <b>[[1]]</b> have no step for it."
+      "quote": "Some amendments also cite an exhibit or side letter that is missing from the upload",
+      "means": "The decider. Some work only appears while reading. A fixed chain <b>[[0]]</b> and per-upload subagents <b>[[1]]</b> have no step for it."
      },
      {
-      "quote": "may itself amend further terms",
+      "quote": "the fetched document may change further terms",
       "means": "Fetched documents can create still more work, so the plan must grow as you go."
      },
      {
@@ -1227,23 +1207,23 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Five extraction subagents launch together from one coordinator response. The rent-schedule subagent converts terms like \"Lease Year 3\" into calendar dates, which depends on the commencement date; that date is usually set in a separate commencement memorandum, and in 14% of packets the rent subagent misses the memorandum and guesses. The term subagent, which reads the memorandum anyway, gets the date right in 99% of packets. The rent work needs that one value once per packet. Which change <b>fits best</b>?",
+   "question": "Five extraction subagents run in parallel. The rent-schedule subagent turns phrases like \"Lease Year 3\" into calendar dates, so it needs the lease's commencement date. That date is often in a separate memorandum, and the rent subagent sometimes misses it and guesses. The term subagent already extracts the commencement date reliably. The rent subagent needs only that one value, once per packet. Which change <b>fits best</b>?",
    "options": [
     {
      "t": "Give the rent subagent a narrowly scoped <code>find_commencement_date</code> tool for the memorandum, keeping all five subagents in one concurrent round.",
      "why": "Runner-up. A scoped cross-role tool suits a frequent need during a task. Here one value is needed once, and another subagent already finds it reliably; a second lookup duplicates work and can disagree."
     },
     {
-     "t": "Sequence term before rent, with the coordinator writing the established start date into the rent task's brief.",
+     "t": "Sequence term before rent, with the coordinator writing the commencement date into the rent task's brief.",
      "why": "Correct. Subagents do not inherit context; the coordinator passes the prior finding explicitly and serialises only the dependent pair."
     },
     {
      "t": "Add the memorandum layouts seen so far to the rent subagent's system prompt, with annotated samples marking where the date appears.",
-     "why": "Incorrect. Few-shot samples would improve the rent subagent's own search but still duplicate a value the term subagent already finds 99% of the time."
+     "why": "Incorrect. Few-shot samples would improve the rent subagent's own search but still duplicate a value the term subagent already finds reliably."
     },
     {
      "t": "After both finish, check each rent schedule against the term subagent's date and rerun the rent subagent with the mismatch described.",
-     "why": "Incorrect. Retry-with-feedback recovers, but it reruns 14% of rent tasks to deliver a value that could have been passed in up front."
+     "why": "Incorrect. Retry-with-feedback recovers, but it reruns every missed rent task to deliver a value that could have been passed in up front."
     }
    ],
    "answer": [
@@ -1253,18 +1233,18 @@
    "decider": "The rent work needs one reliably found value once per packet; if it needed many lookups during its work, a scoped tool would win.",
    "explanation": "Subagents have isolated context, so the coordinator must pass prior findings in the prompt. Serialise only true dependencies and keep independent work parallel.",
    "eli5": {
-    "question": "One worker needs a date that another worker reliably finds. How should it get it? The clue is: the rent work needs that one value once per packet, and the term worker gets it right 99% of the time.",
+    "question": "One subagent needs a date that another subagent reliably finds. How should it get it? The clue is: it needs only that one value, once per packet.",
     "answer": "Think of a kitchen. The pastry chef needs the oven temperature that the head chef already set. The manager just tells the pastry chef, rather than sending them to measure it again. Helpers (<b>subagents</b>) don't share memory, so the coordinator must hand over the fact in the task brief (<b>explicit context passing</b>). Only the two linked jobs run in order; the rest stay parallel. <b>Rule: subagents know only what you put in their prompt.</b>",
     "options": [
      "Runner-up. A small dedicated lookup tool is good when a helper needs a fact often during its work. Here it needs one value once, and finding it twice can give two answers.",
      "Correct. Run the term work first, then pass its date into the rent task. Everything else stays parallel.",
      "Better layout samples help the rent worker search, but it still repeats work another worker already does well.",
-     "Checking afterwards and rerunning works, but it repeats 14% of rent jobs to deliver a date you could hand over at the start."
+     "Checking afterwards and rerunning works, but it repeats every missed rent job to deliver a date you could hand over at the start."
     ]
    },
    "deep": {
     "premise": "It is tempting to think a subagent that needs a fact should get <b>a tool to look it up</b>. That is right when it needs facts often during its work. But subagents don't share memory, and here another subagent already finds this exact fact reliably. Looking it up twice wastes work and risks two different answers.",
-    "diagram": "coordinator\n ├ term ──date──┐  (99% right)\n │              ▼ passed in the prompt\n ├ rent ← needs date once\n └ 3 others     (parallel)",
+    "diagram": "coordinator\n ├ term ──date──┐  (reliable)\n │              ▼ passed in the prompt\n ├ rent ← needs date once\n └ 3 others     (parallel)",
     "mapTitle": "A subagent needs a fact: how should it get it?",
     "map": {
      "head": [
@@ -1302,24 +1282,24 @@
     },
     "evidence": [
      {
-      "quote": "Five extraction subagents launch together from one coordinator response",
-      "means": "All run at once, so the rent subagent starts before the term subagent finishes."
+      "quote": "Five extraction subagents run in parallel",
+      "means": "All start at once, so the rent subagent starts before the term subagent finishes."
      },
      {
-      "quote": "in 14% of packets the rent subagent misses the memorandum and guesses",
-      "means": "The vivid symptom. It invites a lookup tool <b>[[0]]</b> or layout samples <b>[[2]]</b>."
+      "quote": "the rent subagent sometimes misses it and guesses",
+      "means": "The rent subagent's own search is unreliable."
      },
      {
-      "quote": "The term subagent, which reads the memorandum anyway, gets the date right in 99% of packets",
-      "means": "The fact already exists, reliably. Re-deriving it duplicates work."
+      "quote": "The term subagent already extracts the commencement date reliably",
+      "means": "The fact already exists. Re-deriving it with a tool <b>[[0]]</b> or better samples <b>[[2]]</b> duplicates work."
      },
      {
-      "quote": "The rent work needs that one value once per packet",
-      "means": "The quiet clue. One value, once: no need for a tool. That rules out <b>[[0]]</b>, the runner-up."
+      "quote": "The rent subagent needs only that one value, once per packet",
+      "means": "The decider. One value, once: no need for a lookup tool. That rules out <b>[[0]]</b>, the runner-up."
      },
      {
       "quote": "Which change fits best?",
-      "means": "Checking afterwards and rerunning <b>[[3]]</b> repeats 14% of tasks. Pass the date in up front: <b>[[1]]</b>."
+      "means": "Checking afterwards and rerunning <b>[[3]]</b> repeats work. Pass the date in up front: <b>[[1]]</b>."
      }
     ],
     "rule": "Subagents know only what is in their prompt. Pass a single dependent fact through the coordinator; use a scoped tool only for frequent lookups.",
@@ -1337,10 +1317,10 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "About 90 packets a week land in the paralegal queue, chosen by calibrated field-level thresholds. Paralegals work only in the lease-administration system and never see the agent's session. Each receives the packet PDF and a \"needs review\" note, and a median review takes 35 minutes, most of it spent finding which field is in doubt and where the competing figures sit across 40–140 pages. What should the agent <b>attach to each escalation</b>?",
+   "question": "Packets the agent cannot resolve go to a paralegal queue. Calibrated field-level thresholds already decide which packets go there. Paralegals work in the lease-administration system and cannot see the agent's session. Today each one gets the packet PDF and a \"needs review\" note. Most of their review time goes on finding which field is in doubt and where the competing values are. What should the agent <b>attach to each escalation</b>?",
    "options": [
     {
-     "t": "The confidence score for every extracted value, sorted lowest first, with the PDF pages behind the lowest-scoring values highlighted.",
+     "t": "The confidence score for every extracted field, sorted lowest first, with the PDF pages behind the lowest-scoring values highlighted.",
      "why": "Incorrect. Calibrated confidence is the right tool for routing, which is already done; scores point at pages but show neither the candidates nor what was checked."
     },
     {
@@ -1348,7 +1328,7 @@
      "why": "Runner-up. Claim-to-source mapping is valuable provenance and would win if reviewers re-verified whole abstracts. They need the disputed items, the rival values and a proposal, which a full map buries."
     },
     {
-     "t": "The case-facts block the agent maintained during the run, holding amounts, dates and parties exactly as extracted, pasted into the note.",
+     "t": "The case-facts block the agent kept during its session, holding amounts, dates and parties exactly as extracted, pasted into the note.",
      "why": "Incorrect. A case-facts block protects the agent's own context; it records what was extracted, not what is disputed or why."
     },
     {
@@ -1363,7 +1343,7 @@
    "decider": "Reviewers lack the session and spend their time locating the disputed item; if they had to re-verify every value, a full source map would be the better attachment.",
    "explanation": "When escalating to humans without the transcript, compile a structured handoff: identifiers, the specific issue, evidence with locations, what was tried, and the recommended action.",
    "eli5": {
-    "question": "What should a human reviewer receive when the agent gives up on a packet? The clue is: reviewers never see the agent's session, and most of their 35 minutes goes on finding what is in doubt.",
+    "question": "What should a human reviewer receive when the agent gives up on a packet? The clue is: reviewers can't see the agent's session, and their time goes on finding what is in doubt.",
     "answer": "Think of a hospital shift change. The next nurse doesn't get the whole night's recording; they get a short card: patient, problem, what was tried, what to do next. That card is a <b>structured handoff</b>: packet ID, the disputed items, each candidate value with document and page, checks run, and a suggested answer. The reviewer can act at once. <b>Rule: hand humans a short structured brief, not raw data.</b>",
     "options": [
      "Confidence scores are for deciding who goes to review, and that is already done. They point at pages but don't show the rival values or what was checked.",
@@ -1411,20 +1391,20 @@
     },
     "evidence": [
      {
-      "quote": "chosen by calibrated field-level thresholds",
+      "quote": "Calibrated field-level thresholds already decide which packets go there",
       "means": "Routing is already solved. Confidence scores <b>[[0]]</b> answer a question nobody is asking."
      },
      {
-      "quote": "Paralegals work only in the lease-administration system and never see the agent's session",
+      "quote": "Paralegals work in the lease-administration system and cannot see the agent's session",
       "means": "The reader has no transcript. Whatever they get must stand alone."
      },
      {
-      "quote": "most of it spent finding which field is in doubt and where the competing figures sit across 40–140 pages",
-      "means": "The quiet clue. They need the disputed items and the rival values located. A full source map <b>[[1]]</b> buries those; it wins only if they must recheck everything."
+      "quote": "Most of their review time goes on finding which field is in doubt and where the competing values are",
+      "means": "The decider. They need the disputed items and rival values located. A full source map <b>[[1]]</b> buries those; it wins only if they must recheck everything."
      },
      {
       "quote": "What should the agent attach to each escalation?",
-      "means": "A case-facts block <b>[[2]]</b> lists what was extracted, not what's in doubt. A structured brief: <b>[[3]]</b>."
+      "means": "A case-facts block <b>[[2]]</b> lists what was extracted, not what is in doubt. A structured brief: <b>[[3]]</b>."
      }
     ],
     "rule": "When handing work to a human without the transcript, send a short structured brief: what, where, what was tried, what you recommend.",
@@ -1442,7 +1422,7 @@
    "trap": "Losing or fabricating information",
    "fam": 7,
    "select": 1,
-   "question": "The schema's <code>renewal_option</code> field is an enum: fixed_rent, fair_market, cpi_linked, none. Auditors found that 7% of abstracts claim fair_market where the lease says something else, which the team is calling fabrication. In those leases the clause reads, for example, \"the greater of prevailing market rent or 105% of the expiring rent\" or \"rent fixed by an appointed surveyor\". Renewal terms are negotiated lease by lease. What schema change <b>represents these leases best</b>?",
+   "question": "The schema's <code>renewal_option</code> field is an enum: fixed_rent, fair_market, cpi_linked, none. Some leases state a renewal rent mechanism that fits none of these. Examples are \"the greater of market rent or 105% of the expiring rent\" and \"rent fixed by an appointed surveyor\". The model forces these into fair_market. New wordings keep appearing, since renewal terms are negotiated lease by lease. What schema change <b>represents these leases best</b>?",
    "options": [
     {
      "t": "Add an <code>other</code> member alongside a free-text <code>renewal_basis_detail</code> holding the mechanism in the lease's own words.",
@@ -1468,7 +1448,7 @@
    "decider": "The clauses state a definite mechanism that none of the four values covers; if the lease said nothing about renewal rent, a nullable field would be right.",
    "explanation": "Use nullable fields when the source lacks the information, <code>unclear</code> when the text is ambiguous, and <code>other</code> plus a detail field when a clear value falls outside the categories.",
    "eli5": {
-    "question": "A category list is missing some real answers, so the model forces a wrong one. What schema change fits? \"Fabrication\" tempts you toward allowing null. The clue is: these clauses clearly state how rent is set, just in terms the list doesn't include.",
+    "question": "A category list is missing some real answers, so the model forces a wrong one. What schema change fits? The clue is: these leases clearly state how renewal rent is set, in terms the list doesn't include.",
     "answer": "Think of a form with tick boxes for \"tea, coffee, juice\" when the guest clearly asked for hot chocolate. Leaving it blank loses the order; ticking coffee is wrong. Add an \"other\" box with a line to write it in (<b>an <code>other</code> enum value plus a detail field</b>). Null is for when the guest said nothing at all. <b>Rule: null for missing information, other plus detail for a clear answer outside the list.</b>",
     "options": [
      "Correct. An \"other\" choice with the lease's own wording records the real mechanism instead of forcing it into a wrong box.",
@@ -1478,7 +1458,7 @@
     ]
    },
    "deep": {
-    "premise": "The word <b>\"fabrication\"</b> sends you to the textbook fix: make the field nullable. Nullable is the fix when the document <b>doesn't contain</b> the information. Here the lease contains it plainly; the schema just has no box for it. Null would throw away a real, clear answer.",
+    "premise": "When a model puts a wrong value in a field, the textbook fix is <b>make the field nullable</b>. Nullable is the fix when the document <b>doesn't contain</b> the information. Here the lease contains it plainly; the schema just has no box for it. Null would throw away a real, clear answer.",
     "diagram": "Is the info in the document?\n ├ no                 → null / optional\n ├ yes, but ambiguous → \"unclear\" + detail\n └ yes, clear, not in list → \"other\" + detail",
     "mapTitle": "The schema can't hold what the document says: which escape hatch?",
     "map": {
@@ -1517,16 +1497,16 @@
     },
     "evidence": [
      {
-      "quote": "Auditors found that 7% of abstracts claim fair_market where the lease says something else, which the team is calling fabrication",
-      "means": "The vivid word. It points to nullable, <b>[[1]]</b>."
+      "quote": "Some leases state a renewal rent mechanism that fits none of these",
+      "means": "The decider. The information is present and clear. Null <b>[[1]]</b> would discard it, and <code>unclear</code> <b>[[2]]</b> mislabels clear text."
      },
      {
-      "quote": "the clause reads, for example, \"the greater of prevailing market rent or 105% of the expiring rent\" or \"rent fixed by an appointed surveyor\"",
-      "means": "The quiet clue. The information is present and clear. Null <b>[[1]]</b> would discard it, and <code>unclear</code> <b>[[2]]</b> mislabels clear text."
+      "quote": "The model forces these into fair_market",
+      "means": "Coercion into the nearest box: the schema has no place for a real answer."
      },
      {
-      "quote": "Renewal terms are negotiated lease by lease",
-      "means": "New variants will keep appearing, so the list can't be closed. Samples mapping onto the four values <b>[[3]]</b> would standardise a wrong answer."
+      "quote": "New wordings keep appearing, since renewal terms are negotiated lease by lease",
+      "means": "The list can't be closed. Samples mapping onto the four values <b>[[3]]</b> would standardise a wrong answer."
      },
      {
       "quote": "What schema change represents these leases best?",
@@ -1548,10 +1528,10 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A Pydantic validator recomputes each year of the rent schedule from the clause's base rent and escalation. On a mismatch the pipeline resends the original request with \"Output failed validation. Try again.\" and allows five attempts. Only 31% pass on the second attempt, and one packet used all five. The lease's rent table puts base rent and CAM reimbursement in adjacent columns, and the escalation steps on each anniversary of commencement rather than each January. Which change <b>most improves the second-attempt pass rate</b>?",
+   "question": "A Pydantic validator recomputes each year of the rent schedule from the base rent and escalation clause. On a mismatch, the pipeline resends the request with \"Output failed validation. Try again.\" Second attempts rarely pass. The correct figures are in the lease. The model misreads them, for example taking the CAM column next to base rent, or stepping rent each January instead of each anniversary. Which change <b>most improves the second-attempt pass rate</b>?",
    "options": [
     {
-     "t": "Send packets that fail the rent check to the paralegal queue with the schedule attached, and stop automatic resubmission for that check.",
+     "t": "Send packets that fail validation to the paralegal queue with the schedule attached, and stop automatic resubmission for that check.",
      "why": "Runner-up. Resubmission cannot recover information absent from the source, and this would win if the figures were missing. They are in the table, so an informed retry can fix them."
     },
     {
@@ -1571,10 +1551,10 @@
     2
    ],
    "runnerUp": 0,
-   "decider": "The correct figures are in the lease's table, so a retry can succeed if told what failed; if they were absent, routing to a human would be right.",
+   "decider": "The correct figures are in the lease, so a retry can succeed if told what failed; if they were absent, routing to a human would be right.",
    "explanation": "Retry-with-error-feedback appends the specific validation failure. It works for misreads and format errors, not for information missing from the document.",
    "eli5": {
-    "question": "Retries after a failed rent check rarely work. What makes the second try succeed? The clue is: the right numbers are in the lease, in a column next to a similar one, and the steps follow anniversaries, not January.",
+    "question": "Retries after a failed rent check rarely work. What makes the second try succeed? The clue is: the correct figures are in the lease; the model misreads them.",
     "answer": "Think of a teacher handing back homework marked only \"wrong, try again\". The student guesses. If the teacher writes \"year 3 should be 41,200, you wrote 46,900\", the student finds the mistake fast. That is <b>retry with specific error feedback</b>. It works because the answer is in the lease. If it were missing, no retry would help. <b>Rule: when retrying, say exactly what failed.</b>",
     "options": [
      "Runner-up. Sending to a human is right when the information isn't in the document. Here it is, so an informed retry can fix it.",
@@ -1584,7 +1564,7 @@
     ]
    },
    "deep": {
-    "premise": "A 31% retry success rate makes you think <b>retries don't work here, so send it to a human</b>. That is right when the information is missing from the document. But a retry can also fail because it is <b>blind</b>: \"try again\" tells the model nothing. Whether the answer is in the source decides which.",
+    "premise": "When retries rarely succeed, you'd think <b>retries don't work here, so send it to a human</b>. That is right when the information is missing from the document. But a retry can also fail because it is <b>blind</b>: \"try again\" tells the model nothing. Whether the answer is in the source decides which.",
     "diagram": "Retry fails. Is the answer in the document?\n ├ no  → stop retrying, route to a human\n └ yes → retry WITH the specific error",
     "mapTitle": "Validation failed: retry, or hand off?",
     "map": {
@@ -1623,20 +1603,16 @@
     },
     "evidence": [
      {
-      "quote": "On a mismatch the pipeline resends the original request with \"Output failed validation. Try again.\"",
+      "quote": "On a mismatch, the pipeline resends the request with \"Output failed validation. Try again.\"",
       "means": "The retry carries no information about what failed. That is the root cause."
      },
      {
-      "quote": "Only 31% pass on the second attempt, and one packet used all five",
-      "means": "The vivid symptom. It invites giving up and routing to a human, <b>[[0]]</b>."
+      "quote": "The correct figures are in the lease",
+      "means": "The decider. The data is present, so routing to a human <b>[[0]]</b>, the runner-up, isn't needed."
      },
      {
-      "quote": "The lease's rent table puts base rent and CAM reimbursement in adjacent columns",
-      "means": "The quiet clue: the right figure is printed, next to a similar one. The data is present, so <b>[[0]]</b>, the runner-up, isn't needed."
-     },
-     {
-      "quote": "the escalation steps on each anniversary of commencement rather than each January",
-      "means": "Another misreadable but present fact. A specific error message points straight at it."
+      "quote": "taking the CAM column next to base rent, or stepping rent each January instead of each anniversary",
+      "means": "Specific, findable misreads. A precise error message points straight at them."
      },
      {
       "quote": "Which change most improves the second-attempt pass rate?",
@@ -1658,7 +1634,7 @@
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "Each document in a packet is sent alone to an extraction request offering <code>extract_lease</code>, <code>extract_amendment</code> and <code>extract_guaranty</code>. Uploads carry no type label. With <code>tool_choice</code> on auto, about 4% of responses are prose, such as \"This appears to be a personal guaranty of the tenant's obligations…\", and the parser drops them. In an audit of 1,000 responses that did call a tool, the tool matched the document type every time. What is the <b>best fix</b>?",
+   "question": "Each document is sent alone to an extraction request with three tools: <code>extract_lease</code>, <code>extract_amendment</code> and <code>extract_guaranty</code>. Uploads carry no type label. With <code>tool_choice</code> on auto, some responses are prose with no tool call, and the parser drops them. When the model does call a tool, it always picks the right one. What is the <b>best fix</b>?",
    "options": [
     {
      "t": "Expand each extractor's description with distinguishing features and sample headings for its document type.",
@@ -1694,7 +1670,7 @@
     ]
    },
    "deep": {
-    "premise": "Seeing \"This appears to be a guaranty…\" makes you think the model is <b>unsure which tool</b> to use, so classify first and force the tool. But the audit shows it picks correctly every time it calls one. The only failure is <b>not calling a tool at all</b>, and a single setting fixes that.",
+    "premise": "Prose replies make you think the model is <b>unsure which tool</b> to use, so classify first and force the tool. But when it calls a tool, it always picks correctly. The only failure is <b>not calling a tool at all</b>, and a single setting fixes that.",
     "diagram": "tool_choice:\n auto  → may answer in text\n any   → must call a tool, model picks which\n {name}→ must call THAT tool",
     "mapTitle": "Tool-calling failure: wrong tool, or no tool?",
     "map": {
@@ -1737,12 +1713,12 @@
       "means": "The right tool isn't known before reading, so forcing one named tool needs an extra step first."
      },
      {
-      "quote": "With tool_choice on auto, about 4% of responses are prose",
+      "quote": "With tool_choice on auto, some responses are prose with no tool call, and the parser drops them",
       "means": "<code>auto</code> allows text. That is the setting causing the failure."
      },
      {
-      "quote": "In an audit of 1,000 responses that did call a tool, the tool matched the document type every time",
-      "means": "The quiet clue. Selection is perfect, so better descriptions <b>[[0]]</b> and classify-then-force <b>[[1]]</b> fix nothing that is broken."
+      "quote": "When the model does call a tool, it always picks the right one",
+      "means": "The decider. Selection is fine, so better descriptions <b>[[0]]</b> and classify-then-force <b>[[1]]</b> fix nothing that is broken."
      },
      {
       "quote": "What is the best fix?",
@@ -1764,7 +1740,7 @@
    "trap": "More context or reasoning instead of structure",
    "fam": 5,
    "select": 1,
-   "question": "Each abstract carries a <code>non_standard_clauses</code> list for the legal team, produced from the instruction \"list any unusual or non-standard clauses\". In one abstract a co-tenancy right sat 27th in a list of 31 items, most of them routine assignment and repair language. Across a month, 65% of listed items were routine. Legal's playbook defines non-standard as five clause families, each with trigger language. The list format is consistent. What change <b>most improves precision</b>?",
+   "question": "Each abstract includes a <code>non_standard_clauses</code> list for the legal team. The instruction says \"list any unusual or non-standard clauses\". Most listed items turn out to be routine assignment and repair language, and the important ones get lost. Legal's playbook already defines non-standard as five clause families, each with trigger language. The list format is consistent. What change <b>most improves precision</b>?",
    "options": [
     {
      "t": "Add three annotated leases to the prompt marking which provisions belonged on the list and which routine ones were left off.",
@@ -1790,7 +1766,7 @@
    "decider": "Legal's playbook already defines the categories in words; if the boundary could not be stated, few-shot samples would be the strongest lever.",
    "explanation": "Precision comes from explicit categorical criteria. Few-shot samples complement criteria for consistency and hard cases; review layers do not fix a vague definition.",
    "eli5": {
-    "question": "A \"list unusual clauses\" output is full of routine items. How do you make it precise? The buried co-tenancy right is the vivid detail. The clue is: legal's playbook already defines the five kinds that count.",
+    "question": "A \"list unusual clauses\" output is full of routine items. How do you make it precise? The clue is: legal's playbook already defines the five kinds that count.",
     "answer": "Think of telling a library volunteer to pull \"interesting books\". You get a cartful. Give them the five shelf codes you actually want and you get exactly those. Replacing a vague word with a closed list of categories and their trigger wording is <b>explicit categorical criteria</b>, the main lever for precision. <b>Rule: if you can write the categories down, write them down.</b>",
     "options": [
      "Runner-up. Worked samples help when the boundary is hard to put into words. Here legal has already put it into words.",
@@ -1838,16 +1814,16 @@
     },
     "evidence": [
      {
-      "quote": "produced from the instruction \"list any unusual or non-standard clauses\"",
+      "quote": "The instruction says \"list any unusual or non-standard clauses\"",
       "means": "The root cause: \"unusual\" is undefined."
      },
      {
-      "quote": "In one abstract a co-tenancy right sat 27th in a list of 31 items",
-      "means": "The vivid detail. It makes it look like ordering or filtering, not definition."
+      "quote": "Most listed items turn out to be routine assignment and repair language",
+      "means": "A precision problem: too much is included."
      },
      {
-      "quote": "Legal's playbook defines non-standard as five clause families, each with trigger language",
-      "means": "The quiet clue. The criteria exist in words. Few-shot <b>[[0]]</b> wins only when they don't; tracking <b>[[2]]</b> discovers what is already known."
+      "quote": "Legal's playbook already defines non-standard as five clause families, each with trigger language",
+      "means": "The decider. The criteria exist in words. Few-shot <b>[[0]]</b> wins only when they don't; tracking <b>[[2]]</b> discovers what is already known."
      },
      {
       "quote": "The list format is consistent",
@@ -1873,7 +1849,7 @@
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "The escalation object has <code>type</code> (fixed_pct, fixed_amount, cpi, stepped) plus <code>floor_pct</code>, <code>cap_pct</code> and <code>steps</code>; legal has confirmed every clause seen so far fits it. The prompt defines each type and where floors and caps go. Hybrid clauses such as \"CPI, not below 2% or above 5%\" or \"the greater of 3% or CPI\" are encoded differently across runs, sometimes as cpi with bounds, sometimes as fixed_pct with a bound dropped. Reviewers reject 18% of escalations. What is the <b>most effective next step</b>?",
+   "question": "The escalation object has a <code>type</code> (fixed_pct, fixed_amount, cpi, stepped) plus <code>floor_pct</code>, <code>cap_pct</code> and <code>steps</code>. Legal has confirmed that every clause seen so far fits this shape. The prompt defines each type and where floors and caps go. Yet hybrid clauses, such as CPI with a floor and a cap, come out differently from run to run. What is the <b>most effective next step</b>?",
    "options": [
     {
      "t": "Work three mixed-mechanism clauses through in the prompt, each with its expected JSON and a line on why that category applies.",
@@ -1899,7 +1875,7 @@
    "decider": "The schema already represents every clause and only the mapping varies; if clauses fell outside the schema, an other-plus-detail value would be right.",
    "explanation": "Few-shot cases, including ambiguous ones with the reasoning shown, are the most effective way to get consistent output when instructions alone are inconsistent.",
    "eli5": {
-    "question": "Mixed escalation clauses come out differently on different runs. What is the best next step? The clue is: legal confirms every clause fits the existing format, and the prompt already defines each type.",
+    "question": "Mixed escalation clauses come out differently on different runs. What is the best next step? The clue is: legal confirms every clause fits the format, and the prompt already defines each type.",
     "answer": "Think of teaching someone to file mixed receipts. The rules are written down, yet they file tricky ones differently each time. Walk them through three tricky receipts, showing where each goes and why. Worked cases that show the reasoning (<b>few-shot examples</b>) are the strongest fix when written rules alone give inconsistent results. <b>Rule: when definitions exist but tricky cases vary, show worked cases.</b>",
     "options": [
      "Correct. Three tricky clauses with the expected output and a one-line reason teach the mapping.",
@@ -1947,20 +1923,16 @@
     },
     "evidence": [
      {
-      "quote": "legal has confirmed every clause seen so far fits it",
-      "means": "The schema is adequate, which rules out <b>[[1]]</b>, the runner-up."
+      "quote": "Legal has confirmed that every clause seen so far fits this shape",
+      "means": "The decider. The schema is adequate, which rules out <b>[[1]]</b>, the runner-up."
      },
      {
       "quote": "The prompt defines each type and where floors and caps go",
       "means": "Written instructions already exist, so more prose isn't the lever."
      },
      {
-      "quote": "are encoded differently across runs",
+      "quote": "hybrid clauses, such as CPI with a floor and a cap, come out differently from run to run",
       "means": "Inconsistency on ambiguous cases: the textbook trigger for few-shot."
-     },
-     {
-      "quote": "Reviewers reject 18% of escalations",
-      "means": "The cost of the inconsistency, not a different problem."
      },
      {
       "quote": "What is the most effective next step?",
@@ -1982,7 +1954,7 @@
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "The same premises often show several rents across a packet: $38.50 per square foot in the base lease, $41.00 in a 2021 amendment, $39.75 in a side letter. Reviewers log these as conflicts, and reconciliation keeps whichever figure its prompt finds most authoritative, discarding the others. Each amendment and side letter states the date it takes effect; the side letter was signed after the amendment but takes effect before it. What should reconciliation do <b>with these figures</b>?",
+   "question": "A packet can state different rents for the same premises: one in the base lease, another in an amendment, another in a side letter. Reconciliation keeps whichever figure its prompt finds most authoritative and drops the rest. Each amendment and side letter states the date it takes effect. A document signed later can take effect earlier. What should reconciliation do <b>with these figures</b>?",
    "options": [
     {
      "t": "Mark the field as disputed, store each rent with its source and page, and send the packet to a paralegal to choose the current figure.",
@@ -1997,7 +1969,7 @@
      "why": "Incorrect. Agreement between passes still discards the other values and never uses the dates."
     },
     {
-     "t": "Store each rent with source, page and effective date, take the current figure from the latest one, and keep the rest as history.",
+     "t": "Store each rent with its document, page and effective date, take the current figure from the latest, and keep the rest as history.",
      "why": "Correct. Capturing dates with attribution shows a sequence over time, not contradictions, and keeps provenance for every value."
     }
    ],
@@ -2008,7 +1980,7 @@
    "decider": "Each document states when it takes effect, so the values form a sequence; if they lacked dates or applied at the same time, flagging the conflict for a person would be correct.",
    "explanation": "Keep claim-to-source mappings through synthesis and capture dates so temporal differences are not misread as contradictions. Real conflicts get annotated with sources, not resolved arbitrarily.",
    "eli5": {
-    "question": "Three documents show three different rents. Is that a conflict? Reviewers call it one, which is the bait. The clue is: each document states when it takes effect, and the side letter was signed last but took effect earlier.",
+    "question": "Three documents show three different rents. Is that a conflict? The clue is: each document states when it takes effect, and signing order is not effect order.",
     "answer": "Think of a price board in a shop over the years: £38.50, then £39.75, then £41.00. Those aren't three competing prices; they're a history. Record each value with its source, page and effective date, take today's price from the latest effective date, and keep the rest as history (<b>source attribution with dates</b>). A real conflict would be two prices in force at once. <b>Rule: check the dates before calling it a contradiction.</b>",
     "options": [
      "Runner-up. Flagging with sources is right for a true conflict, two values in force at the same time. These follow each other, and their dates order them.",
@@ -2018,8 +1990,8 @@
     ]
    },
    "deep": {
-    "premise": "Reviewers call three different rents a <b>conflict</b>, so you'd annotate it and send it to a person. That is the right move for a real contradiction. But values that change <b>over time</b> are not contradictions; they are a history. The dates tell you which is which.",
-    "diagram": "base lease   $38.50\nside letter  $39.75  takes effect 2nd\n2021 amend.  $41.00  takes effect last\n → current = latest effective date",
+    "premise": "Three different rents look like a <b>conflict</b>, so you'd annotate it and send it to a person. That is the right move for a real contradiction. But values that change <b>over time</b> are not contradictions; they are a history. The dates tell you which is which.",
+    "diagram": "base lease   rent A\nside letter  rent B  takes effect 2nd\namendment    rent C  takes effect last\n → current = latest effective date",
     "mapTitle": "Sources disagree: conflict, or change over time?",
     "map": {
      "head": [
@@ -2057,19 +2029,19 @@
     },
     "evidence": [
      {
-      "quote": "Reviewers log these as conflicts",
-      "means": "The bait. It points at flagging the conflict, <b>[[0]]</b>."
+      "quote": "A packet can state different rents for the same premises",
+      "means": "Different values look like a conflict, which is what <b>[[0]]</b> assumes."
      },
      {
-      "quote": "reconciliation keeps whichever figure its prompt finds most authoritative, discarding the others",
-      "means": "Provenance is being thrown away. A second pass agreeing <b>[[2]]</b> still discards values."
+      "quote": "Reconciliation keeps whichever figure its prompt finds most authoritative and drops the rest",
+      "means": "Provenance is being thrown away. A second pass agreeing <b>[[2]]</b> still drops values."
      },
      {
       "quote": "Each amendment and side letter states the date it takes effect",
-      "means": "The quiet clue. The values can be ordered in time, so they're not a true conflict. That rules out <b>[[0]]</b>, the runner-up."
+      "means": "The decider. The values can be ordered in time, so they are not a true conflict. That rules out <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "the side letter was signed after the amendment but takes effect before it",
+      "quote": "A document signed later can take effect earlier",
       "means": "Signing order isn't effect order. This defeats <b>[[1]]</b>, which keeps the most recently signed value."
      },
      {
@@ -2092,11 +2064,11 @@
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 2,
-   "question": "On a labelled set of 2,000 packets, field-level accuracy is 97%, and the business plans to let some abstracts post without paralegal review from launch next month. US office leases make up 82% of the set; UK retail and ground leases make up the rest. Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted. The model returns a per-field confidence value. Which TWO together <b>meet that requirement at launch</b>?",
+   "question": "The business wants some abstracts to post without paralegal review from launch day. Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted. A labelled set of past packets is available. It mixes US office leases with a smaller share of UK retail and ground leases. The model returns a confidence value per field. Which TWO together <b>meet that requirement at launch</b>?",
    "options": [
     {
      "t": "Break the results out by document type and by field, and let only type-field pairs under the error bar bypass review.",
-     "why": "Correct. A 97% aggregate can hide weak lease types or fields; measuring each pair is what shows which can skip review."
+     "why": "Correct. A high aggregate can hide weak lease types or fields; measuring each pair is what shows which can skip review."
     },
     {
      "t": "Sample auto-posted abstracts weekly with stratification by lease type, and track the measured error rate for each stratum.",
@@ -2119,10 +2091,10 @@
    "decider": "The error rate must be measured before the first post, which only the labelled set allows; after launch, stratified sampling of posted abstracts would be the ongoing check.",
    "explanation": "Aggregate accuracy masks weak segments. Before automating, validate by document type and field and calibrate field-level confidence on labelled data; after launch, monitor with stratified sampling.",
    "eli5": {
-    "question": "Which two steps prove, before launch, which fields can skip human review? The clue is: the error rate must be measured from the very first posted abstract, and only the labelled set exists before launch.",
+    "question": "Which two steps prove, before launch, which fields can skip human review? The clue is: the error rate must be measured from the very first abstract posted.",
     "answer": "Think of a restaurant inspection before opening day. You test each dish on its own, not just an average score. You also check how well the chef's \"I'm sure\" matches reality. Break accuracy down by lease type and field, and tune each field's confidence cut-off on the labelled set (<b>calibration</b>). Spot-checking real orders comes after opening. <b>Rule: before automating, validate by segment and calibrate on labelled data; after launch, sample.</b>",
     "options": [
-     "Correct. A 97% average can hide weak lease types or fields. Measuring each pair shows which can skip review.",
+     "Correct. A high average can hide weak lease types or fields. Measuring each pair shows which can skip review.",
      "Runner-up. Stratified spot-checks of live output are the right ongoing monitor. They need posted abstracts, so they can't qualify anything on day one.",
      "Correct. Confidence tuned on labelled data sends just the doubtful values to a person.",
      "A totals check catches some errors but measures no error rate, and most fields have no total to check."
@@ -2162,25 +2134,25 @@
       [
        "Headline accuracy looks high",
        "Break it down",
-       "97% can mask a weak type"
+       "A high average can mask a weak type"
       ]
      ]
     },
     "evidence": [
      {
-      "quote": "On a labelled set of 2,000 packets, field-level accuracy is 97%",
-      "means": "An aggregate. It can hide weak lease types or fields, which <b>[[0]]</b> uncovers."
-     },
-     {
-      "quote": "US office leases make up 82% of the set; UK retail and ground leases make up the rest",
-      "means": "Minority types are swamped in the average. Break results out by type."
-     },
-     {
       "quote": "Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted",
-      "means": "The quiet clue: measured before anything posts. Sampling production output <b>[[1]]</b> can't help on day one; a totals check <b>[[3]]</b> measures no rate."
+      "means": "The decider: measured before anything posts. Sampling production output <b>[[1]]</b> can't help on day one; a totals check <b>[[3]]</b> measures no rate."
      },
      {
-      "quote": "The model returns a per-field confidence value",
+      "quote": "A labelled set of past packets is available",
+      "means": "The only data available before launch. Both answers must come from it."
+     },
+     {
+      "quote": "It mixes US office leases with a smaller share of UK retail and ground leases",
+      "means": "Minority types get swamped in an average. Break results out by type and field: <b>[[0]]</b>."
+     },
+     {
+      "quote": "The model returns a confidence value per field",
       "means": "Usable only once calibrated on labelled data: <b>[[2]]</b>."
      },
      {

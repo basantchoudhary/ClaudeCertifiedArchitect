@@ -56,6 +56,11 @@ def echo(q, i):
     return len(content(t) & content(stem)) + 2 * len(bigrams(t) & bigrams(stem))
 
 
+# Clarity rules (REVISION-2): on for papers that have been through the clarity pass.
+CLARITY = "--clarity" in sys.argv
+STEM_MIN, STEM_MAX = (45, 90) if CLARITY else (55, 135)
+
+
 def check(qs, errors, warns):
     echo_top = echo_bottom = 0
     longest = shortest = 0
@@ -113,8 +118,20 @@ def check(qs, errors, warns):
         if isinstance(ru, int) and not opts[ru]["why"].startswith("Runner-up."):
             e("runner-up why must start with 'Runner-up.'")
         w = words(q.get("question", ""))
-        if not 55 <= w <= 135:
-            e(f"stem {w} words (want 55–130)")
+        if not STEM_MIN <= w <= STEM_MAX:
+            e(f"stem {w} words (want {STEM_MIN}–{STEM_MAX})")
+        if CLARITY:
+            stem_txt = plain(q.get("question", ""))
+            sents = [x for x in re.split(r"(?<=[.?!])\s+", stem_txt) if x.strip()]
+            avg = sum(len(x.split()) for x in sents) / max(len(sents), 1)
+            if avg > 16:
+                e(f"stem averages {avg:.1f} words per sentence (max 16)")
+            longest_s = max(len(x.split()) for x in sents)
+            if longest_s > 28:
+                e(f"stem has a {longest_s}-word sentence (max 28)")
+            nums = re.findall(r"\$?\d[\d,.]*%?", stem_txt)
+            if len(nums) > 2:
+                e(f"stem has {len(nums)} numbers {nums} (max 2)")
         if "<b>" in q["question"]:
             last = q["question"].rsplit(".", 1)[-1] if q["question"].count("<b>") == 1 else ""
             if q["question"].count("<b>") > 1 or "<b>" not in last:
@@ -198,4 +215,4 @@ def main(paths):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main([a for a in sys.argv[1:] if not a.startswith("--")]))

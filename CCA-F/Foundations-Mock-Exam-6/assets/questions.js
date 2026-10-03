@@ -50,11 +50,11 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Policy says a refund may go out only after the agent has read the order's <code>refund_eligible</code> flag, which only <code>lookup_order</code> returns. An audit of 3,000 refunds found 41 paid on ineligible orders, and in 37 of those conversations <code>lookup_order</code> was never called at all: the agent refunded against the order number the customer typed. Nearly half of all conversations involve more than one order, and the later ones tend to come up well after the greeting. The refund rule is a compliance requirement. Which change is the <b>best fit</b>?",
+   "question": "Policy says the agent must read an order's <code>refund_eligible</code> flag before refunding it. Only <code>lookup_order</code> returns that flag. An audit found refunds paid on ineligible orders where <code>lookup_order</code> was never called. Many conversations involve more than one order. Customers often raise the second order late in the conversation. The rule is a compliance requirement. Which change is the <b>best fit</b>?",
    "options": [
     {
      "t": "Set <code>tool_choice</code> to force <code>lookup_order</code> as the first call in every conversation, then return to <code>auto</code> for the remaining turns.",
-     "why": "Runner-up. Forcing a first tool call is deterministic and would be enough if each conversation concerned one order known at the start. Nearly half involve further orders raised later, which a single forced first call does not cover."
+     "why": "Runner-up. Forcing a first tool call is deterministic and would be enough if each conversation concerned one order known at the start. Many conversations involve further orders raised later, which a single forced first call does not cover."
     },
     {
      "t": "Expand the <code>process_refund</code> tool description to state that <code>lookup_order</code> must run first, with the input format and an example call sequence.",
@@ -66,23 +66,23 @@ window.EXAM = {
     },
     {
      "t": "Add a <code>PostToolUse</code> hook that lifts <code>refund_eligible</code> to the top of every <code>lookup_order</code> result before the agent reasons over it.",
-     "why": "Incorrect. Normalising tool output is a real hook use, but here the problem is that the lookup never happened in 37 of 41 cases. Reshaping a result that does not exist changes nothing."
+     "why": "Incorrect. Normalising tool output is a real hook use, but here the problem is that the lookup never happened in the audited cases. Reshaping a result that does not exist changes nothing."
     }
    ],
    "answer": [
     2
    ],
    "runnerUp": 0,
-   "decider": "Nearly half of conversations involve more than one order, raised later; if every conversation concerned a single order known at the outset, forcing lookup_order first would suffice.",
+   "decider": "Customers often raise a second order late in the conversation; if every conversation concerned a single order known at the start, forcing lookup_order as the first call would suffice.",
    "explanation": "Deterministic prerequisites belong on the downstream call and must be keyed to the entity being acted on. tool_choice controls what happens on a given turn; it cannot express 'before every refund, for that order'.",
    "eli5": {
-    "question": "A shop rule says: check the order before giving money back. The agent sometimes skips the check. The clue is: nearly half of conversations involve more than one order, and the extra ones come up later. The question is not about the 37 missed lookups as such. It is about which fix still works for the second and third order.",
+    "question": "The agent sometimes refunds an order without checking it first. The clue is: \"Customers often raise the second order late in the conversation.\" So the fix has to work for every order, not just the first one.",
     "answer": "Put a guard at the till who looks at every refund before it goes out (a <b>PreToolUse hook</b> on <code>process_refund</code>). The guard asks one thing: was this exact purchase checked earlier in the chat? That works for the first order, the third order, or an order mentioned at the very end. Code checks every time; instructions only work most of the time. <b>Rule: a must-happen-every-time rule goes in code, checked at the moment of the risky action.</b>",
     "options": [
      "Runner-up. Forcing one lookup at the start (<code>tool_choice</code>) is like checking the first customer in the queue only. It would win if every chat had one order, known from the start.",
      "A better label on the tool (the tool description) helps the agent pick tools. It is still a request, not a lock.",
      "Correct. A guard on the refund itself, keyed to that purchase, catches every order, whenever it comes up.",
-     "Tidying the lookup result (a <b>PostToolUse hook</b>) helps only when a lookup happened. In 37 of 41 cases there was no lookup to tidy."
+     "Tidying the lookup result (a <b>PostToolUse hook</b>) helps only when a lookup happened. In the audited cases there was no lookup to tidy."
     ]
    },
    "deep": {
@@ -125,19 +125,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Policy says a refund may go out only after the agent has read the order's refund_eligible flag, which only lookup_order returns.",
+      "quote": "Policy says the agent must read an order's refund_eligible flag before refunding it.",
       "means": "There is a strict ordering rule: lookup, then refund, for the same order."
      },
      {
-      "quote": "In 37 of those conversations lookup_order was never called at all",
-      "means": "The lookup was missing, not ignored. Reshaping its output (<b>[[3]]</b>) cannot help when there is no output."
+      "quote": "An audit found refunds paid on ineligible orders where lookup_order was never called.",
+      "means": "The lookup was missing entirely. Reshaping its output (<b>[[3]]</b>) cannot help when there is no output."
      },
      {
-      "quote": "Nearly half of all conversations involve more than one order, and the later ones tend to come up well after the greeting.",
-      "means": "The quiet clue. A single forced first call (<b>[[0]]</b>) covers only the order known at the start; the later orders slip through."
+      "quote": "Customers often raise the second order late in the conversation.",
+      "means": "The key fact. A single forced first call (<b>[[0]]</b>) covers only the order known at the start."
      },
      {
-      "quote": "The refund rule is a compliance requirement.",
+      "quote": "The rule is a compliance requirement.",
       "means": "It must hold every time. A description (<b>[[1]]</b>) is guidance with a failure rate, so it is out."
      },
      {
@@ -160,14 +160,14 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Customers increasingly open with several problems at once: a cracked hinge on one order, a double charge on another, a warranty question. Follow-up tickets show the cost. 18% of these customers write back days later saying the double charge was never dealt with, and staff on the human queue complain that nothing in the record shows it was raised. In the transcripts, the agent's first reply already covers only the hinge, and the other problems never come up again. Which change <b>best addresses</b> this?",
+   "question": "Customers often open with several problems in one message. One might report a cracked hinge on one order and a double charge on another. Transcripts show a consistent pattern. The agent's first reply deals only with the first problem. The other problems are never mentioned again, and customers have to raise them later. Which change <b>best addresses</b> this?",
    "options": [
     {
      "t": "Keep a case-facts block listing every open concern with its order ID and amount, placed at the top of each prompt until it is closed.",
      "why": "Runner-up. A case-facts block is the right fix when facts raised earlier fade over a long conversation. Here the agent's very first reply already ignores two of the three problems, so nothing has had time to fade."
     },
     {
-     "t": "Have the agent itemise each concern in the message, run the lookups for them in parallel, and cover every item in one reply.",
+     "t": "Have the agent itemise each concern up front, run the lookups for them in parallel, and cover every item in a single response.",
      "why": "Correct. The concerns are lost when the request is first read, before any context has built up. Decomposing the request, investigating each part with shared context and answering together fixes that step."
     },
     {
@@ -183,10 +183,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "The agent's first reply already omits the other problems; if they had been acknowledged and then lost many turns later, a persistent case-facts block would be the better fix.",
+   "decider": "The agent's first reply already drops the other problems; if they had been acknowledged and then lost many turns later, a persistent case-facts block would be the better fix.",
    "explanation": "Multi-concern requests should be decomposed up front, investigated in parallel with shared context, and answered together. Case-facts blocks address a different failure: facts fading over long interactions.",
    "eli5": {
-    "question": "A customer hands over a list of three problems, and the agent answers only the first. The clue is: the agent's very first reply already skips the other two. The angry follow-ups and the empty case record are the vivid part, but they are results, not the cause.",
+    "question": "A customer lists several problems and the agent answers only the first. The clue is: \"The agent's first reply deals only with the first problem.\" Nothing was forgotten over time; the other problems were never picked up.",
     "answer": "Think of a waiter taking a table's order. They should write down every dish first, then send them all to the kitchen together. Here that means splitting the message into separate concerns, looking each one up (in parallel), and answering them all in one reply (<b>multi-concern decomposition</b>). Nothing was forgotten over time. The other concerns were never picked up. <b>Rule: split a request into its parts before you start working on any of them.</b>",
     "options": [
      "Runner-up. A pinned list of open issues (a <b>case-facts block</b>) stops facts fading in long chats. It would win if the issues had been noted and then lost many turns later.",
@@ -235,20 +235,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Customers increasingly open with several problems at once",
+      "quote": "Customers often open with several problems in one message.",
       "means": "This is a multi-concern request arriving in one message."
      },
      {
-      "quote": "staff on the human queue complain that nothing in the record shows it was raised",
-      "means": "The vivid symptom. It tempts you toward record-keeping fixes: a handoff summary (<b>[[2]]</b>) or a case-facts block (<b>[[0]]</b>)."
+      "quote": "The agent's first reply deals only with the first problem.",
+      "means": "The key fact. Nothing had time to fade, so the memory fix (<b>[[0]]</b>, the runner-up) is aimed at the wrong moment."
      },
      {
-      "quote": "In the transcripts, the agent's first reply already covers only the hinge",
-      "means": "The quiet clue. Nothing had time to fade, so the memory fix (<b>[[0]]</b>, the runner-up) is aimed at the wrong moment."
-     },
-     {
-      "quote": "the other problems never come up again",
-      "means": "Handling issues one per turn (<b>[[3]]</b>) is exactly the habit that lets these drop."
+      "quote": "The other problems are never mentioned again, and customers have to raise them later.",
+      "means": "Handling issues one per turn (<b>[[3]]</b>) is the habit that lets these drop. A handoff summary (<b>[[2]]</b>) helps humans, but these chats were not escalated."
      },
      {
       "quote": "Which change best addresses this?",
@@ -270,7 +266,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Warranty claims usually pause for around nine days while a repair centre inspects the device. The team stores each Agent SDK session and resumes it by name when the customer returns, so the agent has the whole history. Last week a resumed agent told a customer their laptop was 'still in transit' when it had reached the repair centre days earlier, and the customer posted the transcript online. While a device is at the centre, its system writes the inspection verdict, refund state, return label and shipment status back to the order record. Which approach <b>best fits</b> returning warranty customers?",
+   "question": "Warranty claims often pause for about a week while a repair centre inspects the device. The team stores each Agent SDK session and resumes it by name when the customer returns. During the pause, the repair centre updates many fields on the order. These include its status, refund state, inspection verdict and return label. Resumed agents have quoted old values as current. Which approach <b>best fits</b> returning customers?",
    "options": [
     {
      "t": "Call <code>fork_session</code> on the stored session when the customer returns, keeping the original branch intact for audit and comparison.",
@@ -293,11 +289,11 @@ window.EXAM = {
     3
    ],
    "runnerUp": 1,
-   "decider": "The repair centre rewrites many fields of the order record during the pause; if only one or two known values changed, resuming with a note about them would be the better choice.",
+   "decider": "The repair centre updates many fields on the order during the pause; if only one or two known values had changed, resuming with a note about them would be the better choice.",
    "explanation": "Resume when the earlier context is mostly still valid, and tell the agent what changed. When much of the earlier tool output is stale, start a new session from a structured summary. The summary carries only stable facts (IDs, commitments, amounts); volatile state is fetched fresh, ideally by code rather than left to the agent — a must-never-happen-again requirement calls for a deterministic step, not an instruction.",
    "eli5": {
-    "question": "A customer comes back after about nine days, and the agent picks up the old conversation where it left off. The clue is: while the device is at the repair centre, its system rewrites many parts of the order record. The wrong 'still in transit' quote is the vivid part. It is one example of a bigger problem, not the whole problem.",
-    "answer": "Imagine coming back to a recipe after nine days and finding someone has changed half the ingredients. You would not cook from your old notes. You would start a fresh page from a short summary and re-check the cupboard. Here that means a new session that opens with a structured summary of the claim, followed by fresh lookups (<b>new session with a structured summary</b>). Resuming would keep all the old, now-wrong tool results in front of the agent. One more thing: the re-check of the cupboard should be done by the system, not left to the agent's memory. Your code fetches the current order record and puts it in that first message (a <b>deterministic</b> step), and the summary holds only things that don't change, like IDs and promised amounts. <b>Rule: if little has changed, resume and say what changed; if a lot has changed, start fresh from a summary.</b>",
+    "question": "A customer comes back after a week and the agent picks up the old conversation. The clue is: \"During the pause, the repair centre updates many fields on the order.\" So most of what the old conversation says about the order is now wrong.",
+    "answer": "Imagine coming back to a recipe after a week and finding someone has changed half the ingredients. You would not cook from your old notes. You would start a fresh page from a short summary and re-check the cupboard. Here that means a new session that opens with a structured summary of the claim, followed by fresh lookups (<b>new session with a structured summary</b>). Resuming would keep all the old, now-wrong tool results in front of the agent. One more thing: the re-check of the cupboard should be done by the system, not left to the agent's memory. Your code fetches the current order record and puts it in that first message (a <b>deterministic</b> step), and the summary holds only things that don't change, like IDs and promised amounts. <b>Rule: if little has changed, resume and say what changed; if a lot has changed, start fresh from a summary.</b>",
     "options": [
      "Branching the old conversation (<code>fork_session</code>) is for trying two different approaches from the same starting point. The branch still carries the same outdated notes.",
      "Runner-up. Resuming with a note about what changed works when one or two values moved. It would win if only the shipment status had changed.",
@@ -345,20 +341,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Warranty claims usually pause for around nine days while a repair centre inspects the device.",
+      "quote": "Warranty claims often pause for about a week while a repair centre inspects the device.",
       "means": "There is a long gap, so things may have changed in the meantime."
      },
      {
-      "quote": "Last week a resumed agent told a customer their laptop was 'still in transit'",
-      "means": "The vivid symptom is one stale field. It tempts you to resume and correct that field (<b>[[1]]</b>)."
+      "quote": "The team stores each Agent SDK session and resumes it by name when the customer returns.",
+      "means": "The current design keeps the whole old history, including old tool results."
      },
      {
-      "quote": "its system writes the inspection verdict, refund state, return label and shipment status back to the order record",
-      "means": "The quiet clue. Many fields change, not one. Most of the old tool output is stale, which defeats the runner-up."
+      "quote": "During the pause, the repair centre updates many fields on the order.",
+      "means": "The key fact. Many fields change, not one. Most of the old tool output is stale, which defeats the runner-up (<b>[[1]]</b>)."
      },
      {
-      "quote": "Which approach best fits returning warranty customers?",
-      "means": "Forking (<b>[[0]]</b>) copies the stale history; a case-facts block (<b>[[2]]</b>) keeps it in view. A new session from a summary plus fresh reads fits. So <b>[[3]]</b>."
+      "quote": "Which approach best fits returning customers?",
+      "means": "Forking (<b>[[0]]</b>) copies the stale history; a case-facts block (<b>[[2]]</b>) leaves it in view. A new session from a summary plus fresh reads fits. So <b>[[3]]</b>."
      }
     ],
     "rule": "If little changed, resume and say what changed. If a lot changed, start fresh from a structured summary.",
@@ -376,7 +372,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "A <code>PreToolUse</code> hook rejects any <code>process_refund</code> above $250 with an error saying the amount needs human approval. Reviewing 40 conversations about $300–$600 bundles, the team saw a striking pattern: after a rejection, the agent immediately calls <code>process_refund</code> again with a smaller amount, and again, until the customer's figure is reached. In 22 of the 40, the agent's first call was already one of two $200 payments it had announced to the customer. Which change <b>closes the gap</b>?",
+   "question": "A <code>PreToolUse</code> hook rejects any single <code>process_refund</code> call above $250, the per-order limit. For large bundles, the agent now splits one refund into several smaller calls against the same order. Each call is under the limit, so the hook never rejects any of them. The agent plans the split before making the first call. Which change <b>closes the gap</b>?",
    "options": [
     {
      "t": "Make the interception check the purchase's paid-back total plus the new amount, denying above $250 and routing to <code>escalate_to_human</code>.",
@@ -392,17 +388,17 @@ window.EXAM = {
     },
     {
      "t": "Return the rejection as a structured error with <code>errorCategory: \"business\"</code>, <code>isRetryable: false</code> and a customer-facing explanation of approval.",
-     "why": "Runner-up. A non-retryable business error is the right fix for an agent that keeps retrying after a rejection, and it fits the vivid pattern. But in 22 of 40 cases nothing was rejected: the split was planned up front, below the per-call limit."
+     "why": "Runner-up. A non-retryable business error is the right fix for an agent that keeps retrying after a rejection. Here no call is ever rejected: each split payment is below the per-call limit."
     }
    ],
    "answer": [
     0
    ],
    "runnerUp": 3,
-   "decider": "In 22 of 40 cases the split was planned before any rejection; if every split followed a rejection, a non-retryable structured business error would be the fix.",
+   "decider": "The split calls are each under the limit and are never rejected; if the agent were splitting only after a rejection, a non-retryable structured business error would be the fix.",
    "explanation": "A hook enforces only the condition it evaluates. When the policy concerns a cumulative amount, the interception must evaluate the cumulative amount and redirect to escalation.",
    "eli5": {
-    "question": "There is a $250 limit per order, and a guard blocks any single refund over $250. The agent pays a $400 refund as two $200 refunds. The clue is: in 22 of 40 cases nothing was ever rejected; the split was planned from the start. The question is not about how the agent reacts to a rejection.",
+    "question": "There is a $250 limit per order, and a guard blocks any single refund over it. The clue is: \"Each call is under the limit, so the hook never rejects any of them.\" So the problem is what the guard checks, not how the agent reacts to a rejection.",
     "answer": "A bouncer who checks each person, but not how many have already gone in, can be beaten by sending people in one at a time. The guard (the <b>PreToolUse hook</b>) has to count the running total for that order. Then it blocks once the total passes $250 and sends the case to a human (<code>escalate_to_human</code>). The limit is about the total, so the check must be about the total too. <b>Rule: a hook enforces only what it actually checks; check the thing the policy is about.</b>",
     "options": [
      "Correct. Count what has already been paid on that order plus the new amount, and block anything above $250.",
@@ -451,16 +447,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "A PreToolUse hook rejects any process_refund above $250",
-      "means": "The hook checks a single call's amount."
+      "quote": "A PreToolUse hook rejects any single process_refund call above $250, the per-order limit.",
+      "means": "The hook checks one call; the policy is about the whole order."
      },
      {
-      "quote": "after a rejection, the agent immediately calls process_refund again with a smaller amount",
-      "means": "The vivid pattern looks like retrying, which invites the structured non-retryable error (<b>[[3]]</b>)."
+      "quote": "the agent now splits one refund into several smaller calls against the same order",
+      "means": "The total per order goes over the limit through several calls."
      },
      {
-      "quote": "In 22 of the 40, the agent's first call was already one of two $200 payments it had announced to the customer.",
-      "means": "The quiet clue. Most splits never hit a rejection, so the runner-up never fires. The check itself must change."
+      "quote": "Each call is under the limit, so the hook never rejects any of them.",
+      "means": "The key fact. A better rejection message (<b>[[3]]</b>, the runner-up) never gets shown."
      },
      {
       "quote": "Which change closes the gap?",
@@ -482,7 +478,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Each tool's schema text now lists its inputs, two sample requests and a when-not-to-use line. Even so, the agent calls <code>process_refund</code> in 7% of conversations where the customer only wants to know where an existing refund has got to. Every misrouted conversation contains phrases like 'money back', 'credit' or 'compensation'; status questions without those words go to <code>lookup_order</code> correctly. The system prompt's escalation, tone and reimbursement sections were written by different teams over the past year. Which change is the <b>most effective first step</b>?",
+   "question": "Each tool's schema text now lists its inputs, two sample requests and a when-not-to-use line. Even so, the agent sometimes calls <code>process_refund</code> when the customer only asks about an existing refund. Every misrouted conversation contains phrases like 'money back', 'credit' or 'compensation'. Status questions without those words go to <code>lookup_order</code> correctly. The system prompt's escalation, tone and reimbursement sections were written by different teams over the past year. Which change is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Expand the <code>process_refund</code> and <code>lookup_order</code> descriptions with refund-status cases and a sharper boundary between checking and issuing.",
@@ -592,11 +588,11 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "<code>process_refund</code> calls a payment provider. On busy afternoons the provider times out in bursts, and most of those calls succeed on a second attempt; support leads have flagged the afternoon spikes in failures. Both kinds of failure come back to the agent as <code>isError: true</code> with the text 'Refund failed'. Across the month, about nine in ten failures are declines because the customer's original card has been closed, and the provider returns the same decline code however often it is called. The agent typically tries five times and then tells the customer to try again tomorrow. Which change to the tool <b>most improves</b> outcomes?",
+   "question": "<code>process_refund</code> calls a payment provider, and its calls fail in two ways. Some calls time out and succeed on a second try. Most failures, about nine in ten, are declines because the customer's card has been closed. A closed-card decline fails the same way on every attempt. Both kinds reach the agent as <code>isError: true</code> with the text 'Refund failed'. The agent retries several times and then gives up. Which change to the tool <b>most improves</b> outcomes?",
    "options": [
     {
      "t": "Retry timed-out provider calls inside the tool with exponential backoff, and report an error to the agent only when the retries run out.",
-     "why": "Runner-up. Local retry is the right handling for transient failures, and the afternoon spikes make it look urgent. It would win if timeouts were the bulk of failures, but nine in ten are permanent declines."
+     "why": "Runner-up. Local retry is the right handling for transient failures. It would win if timeouts were most of the failures, but about nine in ten are permanent declines."
     },
     {
      "t": "Map permanent declines to a business error with <code>isRetryable: false</code> and a relayable note naming the payout options left.",
@@ -615,10 +611,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "About nine in ten failures are permanent declines; if timeouts made up most failures, retrying inside the tool would be the bigger improvement.",
+   "decider": "About nine in ten failures are permanent closed-card declines; if timeouts made up most failures, retrying inside the tool would be the bigger improvement.",
    "explanation": "Generic errors like 'Refund failed' hide what the agent needs to recover. Return a structured category and a retryable flag; business errors need an explanation the customer can act on.",
    "eli5": {
-    "question": "Refunds fail, and the agent tries five times, then tells the customer to come back tomorrow. The clue is: about nine in ten failures are closed cards, which fail the same way every time. The afternoon timeouts are the vivid part, but they are the small share.",
+    "question": "Refunds fail and the agent keeps retrying. The clue is: \"Most failures, about nine in ten, are declines because the customer's card has been closed.\" Those fail the same way every time, so retrying cannot help them.",
     "answer": "If a letter is returned 'address no longer exists', posting it again will not help. You need a new address. So the tool should label that failure as a business problem that will not go away (<code>errorCategory</code> business, <code>isRetryable: false</code>). It should also give a message the agent can pass on, listing other ways to pay the refund. Then the agent stops retrying and offers a real way forward (<b>structured error responses</b>). <b>Rule: tell the agent what kind of failure it is and whether retrying can help.</b>",
     "options": [
      "Runner-up. Trying again with growing waits (<b>retry with backoff</b>) is right for brief outages. It would win if timeouts were most of the failures.",
@@ -628,7 +624,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the loudest failure is the main failure</b>. The afternoon timeouts are visible and flagged, so in-tool retries look like the fix. But the stem also tells you the share: about nine in ten failures are closed cards, and those fail identically every time. Retrying cannot fix a permanent failure. The agent needs to be <i>told</i> it is permanent, and what to offer instead.",
+    "premise": "It is tempting to think <b>every tool failure should be retried</b>, so in-tool retries look like the fix. That is right for timeouts. But the stem gives the share: about nine in ten failures are closed cards, and those fail identically every time. Retrying cannot fix a permanent failure. The agent needs to be <i>told</i> it is permanent, and what to offer instead.",
     "diagram": "Failure mix:\n  closed card  ~90%  same code every time -> permanent\n  timeout      ~10%  succeeds on retry    -> transient\n Biggest win: tell the agent which one it is",
     "mapTitle": "A tool fails: what does the agent need to know to recover?",
     "map": {
@@ -667,24 +663,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "On busy afternoons the provider times out in bursts, and most of those calls succeed on a second attempt",
-      "means": "The vivid part: transient failures. This is what makes in-tool retry (<b>[[0]]</b>) tempting."
+      "quote": "Some calls time out and succeed on a second try.",
+      "means": "A transient failure exists, so in-tool retry (<b>[[0]]</b>) is a real option for this share."
      },
      {
-      "quote": "Both kinds of failure come back to the agent as isError: true with the text 'Refund failed'.",
-      "means": "The agent cannot tell a permanent failure from a passing one. That is the core defect."
+      "quote": "Most failures, about nine in ten, are declines because the customer's card has been closed.",
+      "means": "The key fact: the big share is permanent. Retrying helps only the small share."
      },
      {
-      "quote": "about nine in ten failures are declines because the customer's original card has been closed",
-      "means": "The quiet clue: the big share is permanent. Retrying (<b>[[0]]</b>) helps only the small share."
-     },
-     {
-      "quote": "the provider returns the same decline code however often it is called",
-      "means": "Deterministic, so it needs <code>isRetryable: false</code>. Plain-language codes (<b>[[2]]</b>) still give no retry signal. Empty results (<b>[[3]]</b>) are a different case."
+      "quote": "Both kinds reach the agent as isError: true with the text 'Refund failed'.",
+      "means": "The agent cannot tell a permanent failure from a passing one. Plain-language codes (<b>[[2]]</b>) still give no retry signal, and empty results (<b>[[3]]</b>) are a different case."
      },
      {
       "quote": "Which change to the tool most improves outcomes?",
-      "means": "Fix the 90% with a structured, non-retryable business error and a way forward. So <b>[[1]]</b>."
+      "means": "Fix the biggest share with a structured, non-retryable business error and a way forward. So <b>[[1]]</b>."
      }
     ],
     "rule": "Tell the agent what kind of failure it is and whether a retry can help. Fix the biggest share first.",
@@ -702,7 +694,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "<code>search_policy</code> takes a keyword and returns matching handbook passages. Conversations average seven <code>search_policy</code> calls, and the early ones are vague, such as 'returns', 'refund' or 'electronics', before the agent narrows down. Each call returns passages relevant to its keyword. Once the agent has seen a section title in a result, its later calls in that conversation quote titles verbatim and land first time. The handbook has 46 short sections with stable titles, revised quarterly, and most conversations need one or two of them. Which change is the <b>best fit</b> for cutting the call count?",
+   "question": "<code>search_policy</code> takes a keyword and returns matching handbook passages. The agent makes several calls per conversation, trying broad keywords before it finds the right section. Each call returns relevant passages for its keyword. Once the agent has seen a section's title, its next search finds that section first time. The handbook has 46 short sections whose titles rarely change. Which change <b>best cuts</b> the number of calls?",
    "options": [
     {
      "t": "Add a <code>PostToolUse</code> hook that trims each <code>search_policy</code> result to the two most relevant passages before the agent sees it.",
@@ -710,7 +702,7 @@ window.EXAM = {
     },
     {
      "t": "Rewrite the <code>search_policy</code> description with sample queries, the expected keyword granularity, and what to do when nothing matches.",
-     "why": "Runner-up. Better descriptions improve badly formed calls, and the vague early queries invite this fix. But the searches already return relevant passages; what the agent lacks is knowing which sections exist."
+     "why": "Runner-up. Better descriptions improve badly formed calls. But the searches already return relevant passages; what the agent lacks is knowing which sections exist."
     },
     {
      "t": "Route policy questions to a policy subagent that runs the searches in its own context and returns a short summary.",
@@ -725,10 +717,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 1,
-   "decider": "Later calls land first time once a title has been seen, and the titles are stable; if the searches were returning irrelevant passages, a better tool description would be the fix.",
+   "decider": "Once the agent has seen a section title its next search lands first time, and the titles are stable; if the searches were returning irrelevant passages, a better tool description would be the fix.",
    "explanation": "MCP resources expose content catalogues so the agent does not spend exploratory tool calls finding out what exists. Tool descriptions help it form and choose calls.",
    "eli5": {
-    "question": "The agent makes about seven policy searches per chat, starting with vague guesses. The clue is: once it has seen a section title, its next search lands first time. So the agent is not bad at searching. It just does not know which sections exist.",
+    "question": "The agent makes several policy searches per chat before it finds the right section. The clue is: \"Once the agent has seen a section's title, its next search finds that section first time.\" So it can search fine; it just does not know which sections exist.",
     "answer": "In a library, you would read the contents page before pulling books off shelves. Give the agent the handbook's contents list as something it can read up front (an <b>MCP resource</b>). With 46 stable titles, it can go straight to the right section. A resource is for 'what is available'; a tool is for doing a lookup. <b>Rule: if the agent is searching to discover what exists, give it a catalogue.</b>",
     "options": [
      "Shortening results (<b>trimming tool output</b>) saves space. It does not reduce the number of searches.",
@@ -777,24 +769,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "the early ones are vague, such as 'returns', 'refund' or 'electronics', before the agent narrows down",
-      "means": "The vivid part. Vague queries tempt you toward a better tool description (<b>[[1]]</b>)."
+      "quote": "trying broad keywords before it finds the right section",
+      "means": "The agent is probing to find out what exists."
      },
      {
-      "quote": "Each call returns passages relevant to its keyword.",
-      "means": "The tool works. The runner-up fixes a problem the tool does not have."
+      "quote": "Each call returns relevant passages for its keyword.",
+      "means": "The tool works. A better search description (<b>[[1]]</b>, the runner-up) fixes a problem the tool does not have."
      },
      {
-      "quote": "Once the agent has seen a section title in a result, its later calls in that conversation quote titles verbatim and land first time.",
-      "means": "The quiet clue. Knowing the titles is all it needs. This is a catalogue problem."
+      "quote": "Once the agent has seen a section's title, its next search finds that section first time.",
+      "means": "The key fact. Knowing the titles is all it needs. This is a catalogue problem."
      },
      {
-      "quote": "The handbook has 46 short sections with stable titles",
+      "quote": "The handbook has 46 short sections whose titles rarely change.",
       "means": "A small, stable list is ideal to publish as a resource."
      },
      {
-      "quote": "Which change is the best fit for cutting the call count?",
-      "means": "Trimming (<b>[[0]]</b>) and a subagent (<b>[[2]]</b>) leave the number of probing calls unchanged. A readable index cuts them. So <b>[[3]]</b>."
+      "quote": "Which change best cuts the number of calls?",
+      "means": "Trimming (<b>[[0]]</b>) and a subagent (<b>[[2]]</b>) leave the probing calls in place. A readable index cuts them. So <b>[[3]]</b>."
      }
     ],
     "rule": "If the agent is calling tools to find out what exists, give it a catalogue (a resource). Better descriptions fix badly formed calls.",
@@ -812,7 +804,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "In conversations covering three or more orders, the agent starts misquoting order totals around turn twelve; one customer was told $1,240 when the order came to $1,420. The SDK summarises older turns once the context fills, and the summaries blur figures. Every <code>lookup_order</code> response carries 58 attributes, including warehouse codes, carrier events and tax lines, and the agent's replies draw on about six of them. By turn ten those responses take up roughly 80% of the context. Which change <b>best addresses</b> the problem?",
+   "question": "In conversations about several orders, the agent starts misquoting order totals after many turns. The SDK summarises older turns once the context fills, and the summaries blur figures. Each <code>lookup_order</code> response carries 58 attributes, such as warehouse codes and tax lines. The agent's replies use about six of them. These responses take up most of the context. Which change <b>best addresses</b> the problem?",
    "options": [
     {
      "t": "Use a <code>PostToolUse</code> hook to cut each <code>lookup_order</code> payload to the half-dozen attributes the agent actually reasons with.",
@@ -820,7 +812,7 @@ window.EXAM = {
     },
     {
      "t": "Keep a case-facts block holding each order's total, status and items, and carry it verbatim through every summarisation of older turns.",
-     "why": "Runner-up. A case-facts block protects the values it contains, and the misquoted total invites it. But the context would still fill with unused attributes by turn ten; it would win if the payloads were already lean."
+     "why": "Runner-up. A case-facts block protects the values it contains, and the misquoted total invites it. But the context would still fill with unused attributes after a few lookups; it would win if the payloads were already lean."
     },
     {
      "t": "Place a summary of the key figures at the start of the context under explicit section headers, ahead of the conversation history.",
@@ -835,10 +827,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "Roughly 80% of the context is tool payloads, most of it unused; if the payloads were already lean and the conversation was simply long, a case-facts block would be the fix.",
+   "decider": "The lookup_order responses carry 58 attributes, use about six, and take up most of the context; if the payloads were already lean and the conversation was simply long, a case-facts block would be the fix.",
    "explanation": "Tool results can take up context far out of proportion to their value. Trim them to the relevant fields as they arrive, and use case-facts blocks for values that must survive long conversations.",
    "eli5": {
-    "question": "After many turns, the agent misquotes order totals. The clue is: each order lookup brings back 58 fields when about six are used, and these fill about 80% of the space. The wrong dollar figure is the vivid part. The question is what is filling the room.",
+    "question": "After many turns, the agent misquotes order totals. The clue is: \"These responses take up most of the context.\" So the question is what is filling the room, not how to protect one number.",
     "answer": "Imagine a desk buried under full delivery manifests when you only need six numbers from each. The desk fills up, old papers get squashed into summaries, and the numbers blur. Cut each lookup down to the few fields used as it arrives (a <b>PostToolUse hook</b> that trims tool output). Then the space does not fill, and old turns do not get squashed so early. <b>Rule: fix the source of the clutter before protecting things from it.</b>",
     "options": [
      "Correct. Trim each order result to the few fields the agent uses, before the agent sees it.",
@@ -849,7 +841,7 @@ window.EXAM = {
    },
    "deep": {
     "premise": "It is tempting to think <b>a misquoted number calls for protecting the number</b>, with a case-facts block. That works for the facts you pin. But ask why the numbers blur: the context fills up, the SDK summarises, and summaries lose detail. What fills the context is 58-field tool payloads that are mostly unused. Remove that clutter and summarisation happens much later, or not at all.",
-    "diagram": "Context by turn 10:\n [###### tool payloads ~80% ######][rest]\n -> fills early -> summarise -> figures blur\n Trim payloads -> room to spare -> no early squash",
+    "diagram": "Context in a multi-order chat:\n [###### tool payloads (most) ######][rest]\n -> fills early -> summarise -> figures blur\n Trim payloads -> room to spare -> no early squash",
     "mapTitle": "Facts get lost in long conversations: what is filling the context?",
     "map": {
      "head": [
@@ -887,20 +879,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "one customer was told $1,240 when the order came to $1,420",
-      "means": "The vivid symptom: a wrong figure. It tempts you to protect figures with a case-facts block (<b>[[1]]</b>)."
-     },
-     {
       "quote": "The SDK summarises older turns once the context fills, and the summaries blur figures.",
       "means": "The blur comes from summarisation, and summarisation comes from a full context."
      },
      {
-      "quote": "Every lookup_order response carries 58 attributes",
-      "means": "The quiet clue, with the next sentences: the agent uses about six of 58."
+      "quote": "Each lookup_order response carries 58 attributes, such as warehouse codes and tax lines.",
+      "means": "Each response is large."
      },
      {
-      "quote": "By turn ten those responses take up roughly 80% of the context.",
-      "means": "The payloads are what fill the context. A summary at the top (<b>[[2]]</b>) or a fresh session (<b>[[3]]</b>) leaves them in place."
+      "quote": "The agent's replies use about six of them.",
+      "means": "Almost all of each response is unused."
+     },
+     {
+      "quote": "These responses take up most of the context.",
+      "means": "The key fact. The payloads are what fill the context. A case-facts block (<b>[[1]]</b>), a summary at the top (<b>[[2]]</b>) or a fresh session (<b>[[3]]</b>) leave them in place."
      },
      {
       "quote": "Which change best addresses the problem?",
@@ -916,7 +908,7 @@ window.EXAM = {
    "faq": [
     {
      "q": "How does the PostToolUse hook know which 6 fields to keep and which 52 to drop?",
-     "a": "It doesn't work it out. <b>The developer decides once, at design time, from the agent's job</b> (a support agent quotes totals, statuses, items and dates), checks it against logs, and writes the list into the hook as an allowlist. The hook applies that list on every call. Here the stem says someone already measured it: the replies draw on about six attributes."
+     "a": "It doesn't work it out. <b>The developer decides once, at design time, from the agent's job</b> (a support agent quotes totals, statuses, items and dates), checks it against logs, and writes the list into the hook as an allowlist. The hook applies that list on every call. Here the stem says someone already measured it: the agent's replies use about six of the 58 attributes."
     },
     {
      "q": "Why doesn't the tool itself just return the 6 fields?",
@@ -940,11 +932,11 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Human agents approve every warranty replacement the agent proposes. Leadership wants the agent to approve replacements under $250 on its own, citing last month's audit: of 500 conversations sampled uniformly, reviewers agreed with the agent in 96%. The audit notes say the disagreements cluster on claims where the serial number or purchase date in the customer's message was ambiguous. Warranty replacements were 4% of the conversations sampled. Which step is <b>most appropriate</b> before making the change?",
+   "question": "Human agents approve every warranty replacement the agent proposes. Leadership wants the agent to approve replacements on its own. They cite last month's audit, where reviewers agreed with the agent in 96% of uniformly sampled conversations. Warranty replacements made up only about 20 of the conversations in that sample. Which step is <b>most appropriate</b> before making the change?",
    "options": [
     {
      "t": "Add field-level confidence for serial number and purchase date, calibrated on a labelled set, and send low-confidence claims to a human.",
-     "why": "Runner-up. Calibrated field-level confidence is a sound way to route review, and the audit notes point straight at it. It would be the next step once replacement accuracy has been measured; that has not happened yet."
+     "why": "Runner-up. Calibrated field-level confidence is a sound way to route review. It would be the next step once replacement accuracy has been measured; that has not happened yet."
     },
     {
      "t": "Write explicit criteria for when a replacement needs a human, such as unclear identifiers or out-of-warranty dates, with worked conversations for each.",
@@ -955,7 +947,7 @@ window.EXAM = {
      "why": "Incorrect. A hook is the right way to enforce the $250 limit, but it says nothing about the quality of decisions below it."
     },
     {
-     "t": "Oversample warranty replacements at random until their own agreement rate is measured with a usable margin, then decide.",
+     "t": "Oversample replacement conversations at random until their own agreement rate is measured with a usable margin, then decide.",
      "why": "Correct. The 96% figure rests on about twenty replacement conversations and says almost nothing about that category. Accuracy has to be measured for the type being automated before it is automated."
     }
    ],
@@ -963,10 +955,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "Replacements were only 4% (about 20) of the audited conversations; if their accuracy had been measured separately, calibrated field-level routing would be the right next step.",
+   "decider": "Replacements were only about 20 of the audited conversations, so their own accuracy is unknown; if it had been measured separately, calibrated field-level routing would be the right next step.",
    "explanation": "Aggregate accuracy can hide poor performance on a particular type. Validate by category with enough samples before extending automation, and then use calibrated confidence to route review.",
    "eli5": {
-    "question": "Leadership wants the agent to approve warranty replacements alone, citing 96% overall agreement. The clue is: replacements were only 4% of the 500 checked, about 20 conversations. The note about unclear serial numbers is vivid, but it is not the first thing to fix.",
+    "question": "Leadership wants the agent to approve warranty replacements alone, citing 96% overall agreement. The clue is: \"Warranty replacements made up only about 20 of the conversations in that sample.\" That is too few to know how good the agent is at replacements.",
     "answer": "A school's overall average can look great while one small class is struggling. Twenty replacement cases are too few to know how good the agent is at replacements. So check more replacement cases on their own (<b>stratified sampling</b>), then decide. Only after that is it worth fine-tuning how cases are routed. <b>Rule: measure the specific type you plan to automate, not the overall average.</b>",
     "options": [
      "Runner-up. A tested confidence score per field (<b>calibrated field-level confidence</b>) is a good way to route reviews. It comes next, once replacement accuracy is actually known.",
@@ -1015,20 +1007,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "of 500 conversations sampled uniformly, reviewers agreed with the agent in 96%",
+      "quote": "reviewers agreed with the agent in 96% of uniformly sampled conversations",
       "means": "An aggregate figure over every ticket type."
      },
      {
-      "quote": "The audit notes say the disagreements cluster on claims where the serial number or purchase date in the customer's message was ambiguous.",
-      "means": "The vivid part. It points at field-level confidence (<b>[[0]]</b>), the runner-up."
-     },
-     {
-      "quote": "Warranty replacements were 4% of the conversations sampled.",
-      "means": "The quiet clue: about 20 cases. Replacement accuracy has not really been measured."
+      "quote": "Warranty replacements made up only about 20 of the conversations in that sample.",
+      "means": "The key fact. Replacement accuracy has not really been measured."
      },
      {
       "quote": "Which step is most appropriate before making the change?",
-      "means": "\"Before\" means validate first. Criteria (<b>[[1]]</b>) and a hook (<b>[[2]]</b>) change behaviour; neither measures it. So <b>[[3]]</b>."
+      "means": "\"Before\" means validate first. Field-level confidence (<b>[[0]]</b>) comes after the category is measured. Criteria (<b>[[1]]</b>) and a hook (<b>[[2]]</b>) change behaviour; neither measures it. So <b>[[3]]</b>."
      }
     ],
     "rule": "Measure the type you plan to automate, not the overall average. Calibrated routing comes after.",
@@ -1046,7 +1034,7 @@ window.EXAM = {
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 2,
-   "question": "First-contact resolution is 72%. A review of 400 escalations finds the agent handing off routine cases a human closes in one step, while pressing on with requests the policy does not cover. The team wants the agent's hand-off judgment recalibrated within the current sprint. The 400 reviewed conversations are the only labelled data available, because earlier tickets were never tagged with the right outcome. Which TWO changes together <b>best recalibrate</b> the agent?",
+   "question": "First-contact resolution is below target. A review of recent escalations shows the agent handing off routine cases a human closes in one step. It also keeps working on requests the policy does not cover. The fix must ship within the current sprint. Only a few hundred past conversations are labelled with the right outcome. Which TWO changes together <b>best recalibrate</b> the agent?",
    "options": [
     {
      "t": "Spell out in the system prompt when to escalate: the customer asks for a person, policy is silent or needs an exception, or no path remains.",
@@ -1058,7 +1046,7 @@ window.EXAM = {
     },
     {
      "t": "Train a routing classifier on the reviewed escalations that decides, before the agent replies, whether each conversation should go to a human agent.",
-     "why": "Runner-up. A dedicated classifier can work with plenty of labelled history and time. With 400 labelled conversations and a sprint, it is over-engineered compared with fixing the agent's own criteria."
+     "why": "Runner-up. A dedicated classifier can work with plenty of labelled history and time. With a few hundred labelled conversations and a sprint, it is over-engineered compared with fixing the agent's own criteria."
     },
     {
      "t": "Attach a structured summary (customer ID, root cause, refund amount, recommended action) to every <code>escalate_to_human</code> call the agent makes.",
@@ -1070,20 +1058,20 @@ window.EXAM = {
     1
    ],
    "runnerUp": 2,
-   "decider": "Only 400 labelled conversations exist and the fix must land this sprint; with a large labelled history and more time, a separate classifier might compete.",
+   "decider": "The fix must ship this sprint and only a few hundred conversations are labelled; with a large labelled history and more time, a separate classifier might compete.",
    "explanation": "Unclear escalation boundaries are best fixed with explicit criteria plus a few contrasting examples. Classifiers are disproportionate here, and handoff summaries improve the hand-off, not the decision.",
    "eli5": {
-    "question": "The agent escalates easy cases and keeps going on cases the policy does not cover. The team wants better judgment about when to escalate. The clue is: there is one sprint, and only 400 labelled conversations. That rules out building something new and big.",
+    "question": "The agent escalates easy cases and keeps going on cases the policy does not cover. The clue is: \"The fix must ship within the current sprint\", with only a few hundred labelled conversations. That rules out building something new and big.",
     "answer": "Training a new staff member works best with a clear rule sheet plus a few worked examples of tricky calls. The rule sheet says when to hand over: the customer asks for a person, the policy is silent, or there is no way forward (<b>explicit criteria</b>). The examples show near-identical cases going different ways, with the reason (<b>few-shot</b>). Together they fix a fuzzy boundary quickly. <b>Rule: fuzzy decisions get clear criteria plus a few contrasting examples.</b>",
     "options": [
      "Correct. Written hand-over triggers draw the line the agent was guessing at.",
      "Correct. A few borderline examples with reasons show how to apply those triggers.",
-     "Runner-up. A separate trained sorter (a <b>classifier</b>) needs lots of labelled history and time. It might compete with years of tagged tickets, not 400 and one sprint.",
+     "Runner-up. A separate trained sorter (a <b>classifier</b>) needs lots of labelled history and time. It might compete with years of tagged tickets, not a few hundred and one sprint.",
      "A tidy summary for the human (a <b>structured handoff</b>) makes each escalation easier to act on. It does not change which cases get escalated."
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>a judgment problem needs a new model</b>: train a classifier on past escalations and let it decide. That can work with plenty of labelled history and time. Here there are 400 labelled conversations and one sprint. The cheaper, guide-endorsed fix is to make the boundary explicit: write the triggers down, then show contrasting examples of how to apply them.",
+    "premise": "It is tempting to think <b>a judgment problem needs a new model</b>: train a classifier on past escalations and let it decide. That can work with plenty of labelled history and time. Here there are a few hundred labelled conversations and one sprint. The cheaper, guide-endorsed fix is to make the boundary explicit: write the triggers down, then show contrasting examples of how to apply them.",
     "mapTitle": "Escalation is miscalibrated: what is the proportionate fix?",
     "map": {
      "head": [
@@ -1121,16 +1109,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "A review of 400 escalations finds the agent handing off routine cases a human closes in one step, while pressing on with requests the policy does not cover.",
-      "means": "Both directions are wrong. The decision boundary is unclear."
+      "quote": "the agent handing off routine cases a human closes in one step",
+      "means": "It escalates too much in one direction."
      },
      {
-      "quote": "The team wants the agent's hand-off judgment recalibrated within the current sprint.",
+      "quote": "It also keeps working on requests the policy does not cover.",
+      "means": "And too little in the other. The decision boundary is unclear."
+     },
+     {
+      "quote": "The fix must ship within the current sprint.",
       "means": "Time is short, which favours changing the agent's instructions over building something new."
      },
      {
-      "quote": "The 400 reviewed conversations are the only labelled data available",
-      "means": "The quiet clue. Too little labelled data for a classifier (<b>[[2]]</b>, the runner-up)."
+      "quote": "Only a few hundred past conversations are labelled with the right outcome.",
+      "means": "Too little labelled data for a classifier (<b>[[2]]</b>, the runner-up)."
      },
      {
       "quote": "Which TWO changes together best recalibrate the agent?",
@@ -1152,7 +1144,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The platform guild owns the company's Python style guide, kept at <code>docs/standards/python-style.md</code> in this monorepo and revised every couple of weeks through the guild's own pull requests. The root <code>CLAUDE.md</code> carries a hand-written paraphrase of about a third of it, which two engineers noticed contradicts the current guide on import ordering and exception handling. The guide covers every Python file in all four trees, and the team wants Claude to follow the current version. Which approach is the <b>best fit</b>?",
+   "question": "The platform guild owns the company's Python style guide. It lives at <code>docs/standards/python-style.md</code> in this monorepo. The guild revises it every couple of weeks. The root <code>CLAUDE.md</code> holds a hand-written paraphrase of part of it, which is already out of date. The guide applies to every Python file in the repo. Which approach is the <b>best fit</b>?",
    "options": [
     {
      "t": "Move the guide's rules into a <code>.claude/rules/</code> file with <code>paths: [\"**/*.py\"]</code> and drop the paraphrase from the root <code>CLAUDE.md</code>.",
@@ -1178,7 +1170,7 @@ window.EXAM = {
    "decider": "The guide is owned and revised every couple of weeks by another group; if it were a team-owned convention, a rules file would be an equally good home.",
    "explanation": "@import lets CLAUDE.md reference a file maintained elsewhere without copying it. .claude/rules/ suits topic-specific conventions the team owns, especially ones scoped to particular paths.",
    "eli5": {
-    "question": "A style guide written by another team lives in the repo, and the root <code>CLAUDE.md</code> holds an out-of-date copy of part of it. The clue is: the guild revises its file every couple of weeks. So any copy will keep going stale.",
+    "question": "A style guide written by another team lives in the repo, and the root <code>CLAUDE.md</code> holds an out-of-date copy of part of it. The clue is: \"The guild revises it every couple of weeks.\" So any copy will keep going stale.",
     "answer": "Rather than photocopying a recipe that keeps changing, pin a note saying 'see the recipe card in the drawer'. In <code>CLAUDE.md</code>, an <code>@path</code> line pulls in the real file each time (<b>@import</b>). Delete the paraphrase, and Claude always reads the current guide. <b>Rule: if someone else owns and updates the document, reference it; don't copy it.</b>",
     "options": [
      "Runner-up. A rules file (<code>.claude/rules/</code>) is a fine home for conventions your own team writes. It would win if the team owned the guide, but here it is just another copy.",
@@ -1227,20 +1219,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "revised every couple of weeks through the guild's own pull requests",
-      "means": "The quiet clue. Another group owns and updates the file, so any copy will drift. This weakens the rules-file move (<b>[[0]]</b>)."
+      "quote": "The guild revises it every couple of weeks.",
+      "means": "The key fact. Another group owns and updates the file, so any copy will drift. This weakens the rules-file move (<b>[[0]]</b>)."
      },
      {
-      "quote": "The root CLAUDE.md carries a hand-written paraphrase of about a third of it",
+      "quote": "The root CLAUDE.md holds a hand-written paraphrase of part of it, which is already out of date.",
       "means": "The current setup is already a copy, and it has gone stale."
      },
      {
-      "quote": "The guide covers every Python file in all four trees",
-      "means": "It should be always loaded. An on-demand skill (<b>[[2]]</b>) does not fit."
-     },
-     {
-      "quote": "the team wants Claude to follow the current version",
-      "means": "It must be shared and current. Per-engineer user files (<b>[[3]]</b>) are neither."
+      "quote": "The guide applies to every Python file in the repo.",
+      "means": "It should be always loaded and shared. An on-demand skill (<b>[[2]]</b>) and per-engineer user files (<b>[[3]]</b>) do not fit."
      },
      {
       "quote": "Which approach is the best fit?",
@@ -1262,7 +1250,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Tenant isolation adds data-access conventions: every repository method takes a <code>tenant_id</code>, queries go through <code>scoped_session()</code>, and raw SQL is banned. About 80% of repository modules sit in <code>api/app/repositories/</code>, where most new ones are being written this month. The rest are spread across <code>workers/</code> subpackages and two legacy folders in <code>sdk/internal/</code>; the conventions must hold there too, and nowhere else. Engineers should not have to remember to load anything. Where should the conventions <b>live</b>?",
+   "question": "Tenant isolation adds conventions for data-access code. Every repository method takes a <code>tenant_id</code>, and raw SQL is banned. Most repository modules sit in <code>api/app/repositories/</code>. Others are spread across <code>workers/</code> subpackages and two legacy folders in <code>sdk/internal/</code>. The conventions must apply in all of these places and nowhere else. Engineers should not have to remember to load anything. Where should the conventions <b>live</b>?",
    "options": [
     {
      "t": "In the root <code>CLAUDE.md</code> under a 'Tenant data access' heading, with the three conventions and one scoped method as a model.",
@@ -1285,10 +1273,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 1,
-   "decider": "Part of the code lives outside api/app/repositories/, in workers and legacy SDK folders; if all of it lived in one folder, a directory-level CLAUDE.md would serve.",
+   "decider": "Some repository modules live outside api/app/repositories/, in workers and legacy SDK folders; if all of them lived in one folder, a directory-level CLAUDE.md would serve.",
    "explanation": "Path-scoped rules load conventions by glob regardless of directory, which beats directory CLAUDE.md files for conventions that span trees and beats root memory for conventions that are not universal.",
    "eli5": {
-    "question": "New coding rules apply only to data-access files. Most of those files are in one folder, but some are scattered elsewhere. The clue is: the rules must also hold in the <code>workers/</code> and legacy <code>sdk/</code> folders. The '80% in one folder' detail is there to tempt you.",
+    "question": "New coding conventions apply only to data-access files, which are spread over several folders. The clue is: \"Others are spread across workers/ subpackages and two legacy folders in sdk/internal/.\" So a home tied to one folder will miss some of them.",
     "answer": "Think of a sticky note that appears on a certain kind of drawer, wherever that drawer is in the house. A rules file with path patterns (<code>.claude/rules/</code> with <code>paths:</code> globs) loads whenever Claude edits a matching file, in any folder. It stays out of the way for everything else, and nobody has to remember to load it. <b>Rule: conventions that follow a file type across folders belong in path-scoped rules.</b>",
     "options": [
      "Root memory loads in every session. That puts these rules in front of Claude even for code they do not apply to.",
@@ -1299,7 +1287,7 @@ window.EXAM = {
    },
    "deep": {
     "premise": "It is tempting to think <b>\"most of the files are in one folder\" means a CLAUDE.md in that folder will do</b>. A directory-level CLAUDE.md loads only for files in that directory. The conventions must also hold in <code>workers/</code> and two legacy <code>sdk/</code> folders, and nowhere else. Conventions that follow a <i>kind of file</i> across folders need path patterns, not a folder.",
-    "diagram": "api/app/repositories/   80%  <- folder CLAUDE.md\n workers/**/...          ?    <- missed\n sdk/internal/(legacy)   ?    <- missed\n rules + paths: globs    all three, nothing else",
+    "diagram": "api/app/repositories/   most <- folder CLAUDE.md\n workers/**/...          some <- missed\n sdk/internal/(legacy)   some <- missed\n rules + paths: globs    all three, nothing else",
     "mapTitle": "Where do conventions go? Ask which files they follow",
     "map": {
      "head": [
@@ -1337,15 +1325,15 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "About 80% of repository modules sit in api/app/repositories/",
-      "means": "The vivid part. It tempts you toward a CLAUDE.md in that folder (<b>[[1]]</b>, the runner-up)."
+      "quote": "Most repository modules sit in api/app/repositories/.",
+      "means": "One folder holds most of the files, which makes a folder-level CLAUDE.md (<b>[[1]]</b>, the runner-up) look enough."
      },
      {
-      "quote": "The rest are spread across workers/ subpackages and two legacy folders in sdk/internal/",
-      "means": "The quiet clue. The files span three trees, so a single folder misses some."
+      "quote": "Others are spread across workers/ subpackages and two legacy folders in sdk/internal/.",
+      "means": "The key fact. The files span three trees, so a single folder misses some."
      },
      {
-      "quote": "the conventions must hold there too, and nowhere else",
+      "quote": "The conventions must apply in all of these places and nowhere else.",
       "means": "\"Nowhere else\" rules out root <code>CLAUDE.md</code> (<b>[[0]]</b>), which loads for everything."
      },
      {
@@ -1482,15 +1470,15 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Claude is implementing <code>tenant_quota()</code> from a spec with eight worked input/output cases, including month-boundary and plan-downgrade cases. When the month-boundary fix broke the downgrade case, the engineer suspected the two interact. Over the last four rounds, each fix has broken a different case that had been passing (the trial-plan case, the zero-quota case, and so on), and the engineer notices only when checking all eight by hand. Which approach should the engineer use <b>next</b>?",
+   "question": "Claude is implementing <code>tenant_quota()</code> from a spec with eight worked input/output cases. Each round, Claude fixes the case the engineer reports. But each fix breaks a different case that had been passing. The engineer finds these regressions only by checking all eight cases by hand. Which approach should the engineer use <b>next</b>?",
    "options": [
     {
      "t": "Add more concrete input/output pairs at each boundary to the spec, showing the exact expected result for every edge case.",
      "why": "Incorrect. Concrete examples help when Claude misunderstands the intended behaviour. Here the behaviour is specified; the problem is regressions going unseen."
     },
     {
-     "t": "Send the month-boundary and downgrade problems together in one message and ask for a single change that satisfies both of them.",
-     "why": "Runner-up. Interacting problems belong in one message, and the first regression makes them look like a pair. But each round breaks a different case, not the same two; it would win if only that pair interfered."
+     "t": "Send the two most recently broken cases together in one message and ask for a single change that satisfies both.",
+     "why": "Runner-up. Interacting problems belong in one message, and two cases breaking each other looks like that. But each round breaks a different case, not the same two; it would win if one pair kept interfering."
     },
     {
      "t": "Ask Claude to interview the engineer about the quota rules it is unsure of before it writes the next revision.",
@@ -1505,10 +1493,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 1,
-   "decider": "Each round breaks a different case, caught only by manual checking; if only the month-boundary and downgrade cases interfered with each other, fixing them together in one message would be the better move.",
+   "decider": "Each fix breaks a different case, caught only by manual checking; if the same two cases kept breaking each other, fixing them together in one message would be the better move.",
    "explanation": "Test-driven iteration gives Claude objective feedback on every case after every change. Use a single message when two specific problems interact, and examples when the transformation is misunderstood.",
    "eli5": {
-    "question": "Each fix to the function breaks some other case that used to work. The clue is: it is a different case each round, and the engineer only notices by checking all eight by hand. The first two cases clashing is the distraction.",
+    "question": "Each fix to the function breaks some other case that used to work. The clue is: \"each fix breaks a different case that had been passing\", and the engineer finds out only by checking by hand.",
     "answer": "If every time you fix one tap another starts leaking, you want a gauge on every pipe, not a guess about which two are linked. Turn the eight cases into automated tests and run them after every change (<b>test-driven iteration</b>). Claude then sees exactly which cases fail and fixes them with that feedback. <b>Rule: if fixes keep breaking other things, make the checks automatic and run them every time.</b>",
     "options": [
      "More worked examples (<b>concrete input/output examples</b>) help when Claude misunderstands the goal. The goal is clear here; the regressions go unnoticed.",
@@ -1557,20 +1545,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "When the month-boundary fix broke the downgrade case, the engineer suspected the two interact.",
-      "means": "The vivid part. It invites the single-message fix for interacting problems (<b>[[1]]</b>)."
-     },
-     {
-      "quote": "each fix has broken a different case that had been passing",
-      "means": "The quiet clue. It is not one pair, so the runner-up's premise fails."
-     },
-     {
-      "quote": "the engineer notices only when checking all eight by hand",
-      "means": "The feedback is slow and manual. Automated tests make it immediate."
-     },
-     {
-      "quote": "Claude is implementing tenant_quota() from a spec with eight worked input/output cases",
+      "quote": "Claude is implementing tenant_quota() from a spec with eight worked input/output cases.",
       "means": "The behaviour is already specified. More pairs (<b>[[0]]</b>) or an interview (<b>[[2]]</b>) add nothing new."
+     },
+     {
+      "quote": "But each fix breaks a different case that had been passing.",
+      "means": "The key fact. It is not one pair of cases colliding, so the single-message fix (<b>[[1]]</b>, the runner-up) does not fit."
+     },
+     {
+      "quote": "The engineer finds these regressions only by checking all eight cases by hand.",
+      "means": "The feedback is slow and manual. Automated tests make it immediate."
      },
      {
       "quote": "Which approach should the engineer use next?",
@@ -1592,14 +1576,14 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The team's 22-item pre-PR checklist lives in the root <code>CLAUDE.md</code>. Most items concern files under <code>migrations/</code> and <code>sdk/</code>, and Claude now raises checklist points even during routine debugging in those folders. Engineers go through the checklist once, as the last step before opening a pull request, and it is revised about monthly; new joiners should have the current version from their first clone. Where should the checklist <b>go</b>?",
+   "question": "The team's pre-PR checklist lives in the root <code>CLAUDE.md</code>. Its items cover files under <code>migrations/</code> and <code>sdk/</code>. Claude now raises checklist points during routine work in those folders. Engineers use the checklist once, as the last step before opening a pull request. It changes about monthly. New joiners should get the current version when they clone the repo. Where should the checklist <b>go</b>?",
    "options": [
     {
      "t": "Into a <code>.claude/rules/</code> file with <code>paths:</code> globs for <code>migrations/**</code> and <code>sdk/**</code>, removed from the root file.",
      "why": "Runner-up. Path rules suit standards that should apply whenever matching files are edited, and the focus on those folders invites it. But the checklist is a one-time step before a PR; as a rule it would still appear during routine debugging there."
     },
     {
-     "t": "Into a project slash command under <code>.claude/commands/</code>, run by engineers when they are ready to open a PR.",
+     "t": "Into a project slash command under <code>.claude/commands/</code> holding the checklist, invoked before a PR.",
      "why": "Correct. A project command is version-controlled, arrives on clone, and loads only when invoked, which suits a check run once before a PR."
     },
     {
@@ -1615,10 +1599,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "The checklist is a one-time step before opening a PR; if it had to apply whenever migrations/ or sdk/ files were edited, a path-scoped rule would be the right home.",
+   "decider": "Engineers use the checklist once, right before opening a PR; if it had to apply whenever migrations/ or sdk/ files were edited, a path-scoped rule would be the right home.",
    "explanation": "CLAUDE.md, imports and rules are loaded automatically; commands and skills are on-demand. Project-level .claude/commands/ is shared through version control.",
    "eli5": {
-    "question": "A pre-PR checklist sits in always-loaded memory and leaks into everyday work. The clue is: engineers use it once, as the last step before opening a pull request. Most items being about <code>migrations/</code> and <code>sdk/</code> is the tempting detail.",
+    "question": "A pre-PR checklist sits in always-loaded memory and leaks into everyday work. The clue is: \"Engineers use the checklist once, as the last step before opening a pull request.\" So it should load only when someone asks for it.",
     "answer": "A pre-flight checklist lives in the cockpit drawer and comes out before take-off. It is not taped to the windscreen for the whole flight. A project slash command (<code>.claude/commands/</code>) loads only when someone runs it. It is in the repo, so new joiners get the current version on clone. <b>Rule: use-on-request steps become commands; always-true standards go in memory.</b>",
     "options": [
      "Runner-up. Path rules (<code>.claude/rules/</code> with <code>paths:</code>) load whenever matching files are edited. They would win if the checklist had to apply during all work on those folders.",
@@ -1667,19 +1651,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Most items concern files under migrations/ and sdk/",
-      "means": "The vivid part. It invites path-scoped rules (<b>[[0]]</b>, the runner-up)."
+      "quote": "Its items cover files under migrations/ and sdk/.",
+      "means": "This makes loading by path (<b>[[0]]</b>, the runner-up) look natural."
      },
      {
-      "quote": "Claude now raises checklist points even during routine debugging in those folders",
+      "quote": "Claude now raises checklist points during routine work in those folders.",
       "means": "Loading by path would keep this exact leak."
      },
      {
-      "quote": "Engineers go through the checklist once, as the last step before opening a pull request",
-      "means": "The quiet clue: it is used on request. An <code>@import</code> (<b>[[3]]</b>) still loads it every session."
+      "quote": "Engineers use the checklist once, as the last step before opening a pull request.",
+      "means": "The key fact: it is used on request. An <code>@import</code> (<b>[[3]]</b>) still loads it every session."
      },
      {
-      "quote": "new joiners should have the current version from their first clone",
+      "quote": "New joiners should get the current version when they clone the repo.",
       "means": "It must be shared through the repo. Personal commands (<b>[[2]]</b>) drift."
      },
      {
@@ -1702,7 +1686,7 @@ window.EXAM = {
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "An incident review produced an exact fix for <code>workers/billing/invoice_task.py</code>: on one task, change <code>max_retries=10</code> to <code>max_retries=3</code> and add <code>countdown=60</code>. The ticket quotes the before and after lines. Billing is the team's most sensitive area. The module is 900 lines with eleven other tasks, and the last billing incident came from an edit that touched more than intended. A regression test for the fix already exists. How should the engineer <b>have Claude make</b> the change?",
+   "question": "An incident review produced an exact fix for <code>workers/billing/invoice_task.py</code>. The ticket gives the before and after lines for one retry decorator. No other file needs to change. A regression test for the fix already exists. The module is large and contains several other billing tasks. How should the engineer <b>have Claude make</b> the change?",
    "options": [
     {
      "t": "Send an Explore subagent through the billing module first to summarise how retries are configured, then make the edit in the main session.",
@@ -1710,7 +1694,7 @@ window.EXAM = {
     },
     {
      "t": "Enter plan mode so Claude reads the 900-line module, maps the other eleven tasks, and proposes the edit for sign-off first.",
-     "why": "Runner-up. Plan mode is right when the change is open or spans many files, and the module's sensitivity makes it tempting. The fix is already decided; it would win if the incident review had left the approach open."
+     "why": "Runner-up. Plan mode is right when the change is open or spans many files, and the module's size makes it tempting. The fix is already decided; it would win if the incident review had left the approach open."
     },
     {
      "t": "Work directly: give Claude the ticket's replacement text and the test, have it make that one edit and run the test, then review the resulting diff.",
@@ -1725,11 +1709,11 @@ window.EXAM = {
     2
    ],
    "runnerUp": 1,
-   "decider": "The ticket quotes the exact before and after lines; if the review had left the fix's approach open, plan mode would be right despite the change being in a single file.",
+   "decider": "The ticket gives the exact before and after lines; if the review had left the approach open, plan mode would be right even for a single file.",
    "explanation": "Choose plan mode or direct execution based on how settled and how broad the change is, not how sensitive the area is. A fully specified single-site fix calls for direct execution and review of the diff.",
    "eli5": {
-    "question": "A bug fix in a sensitive billing file is already decided down to the exact lines. The clue is: the ticket quotes the before and after lines, and a test exists. The file's size and the scary past incident are the distraction.",
-    "answer": "If the mechanic already knows exactly which bolt to tighten, you do not need a full inspection first. Give Claude the exact change and the test, let it make that one edit (<b>direct execution</b>), run the test, and read the diff. Reading the diff is how you check nothing else was touched. <b>Rule: choose the mode by how settled and how wide the change is, not by how scary the area is.</b>",
+    "question": "A bug fix in a billing file is already decided down to the exact lines. The clue is: \"The ticket gives the before and after lines for one retry decorator.\" So there is nothing left to plan or discover.",
+    "answer": "If the mechanic already knows exactly which bolt to tighten, you do not need a full inspection first. Give Claude the exact change and the test, let it make that one edit (<b>direct execution</b>), run the test, and read the diff. Reading the diff is how you check nothing else was touched. <b>Rule: choose the mode by how settled and how wide the change is, not by how big or sensitive the file is.</b>",
     "options": [
      "A scout (an <b>Explore subagent</b>) is for open-ended discovery. There is nothing to discover; the fix is known.",
      "Runner-up. <b>Plan mode</b> fits open or multi-file changes. It would win if the incident review had not already decided the fix.",
@@ -1777,19 +1761,19 @@ window.EXAM = {
     "evidence": [
      {
       "quote": "An incident review produced an exact fix",
-      "means": "The decision has already been made by humans."
+      "means": "The decision has already been made."
      },
      {
-      "quote": "The ticket quotes the before and after lines.",
-      "means": "The quiet clue: specified down to the line, so nothing is left to plan. This defeats the runner-up (<b>[[1]]</b>)."
-     },
-     {
-      "quote": "the last billing incident came from an edit that touched more than intended",
-      "means": "The vivid part. It pushes toward caution, but the right caution is a single targeted edit plus a diff check."
+      "quote": "The ticket gives the before and after lines for one retry decorator.",
+      "means": "The key fact: specified down to the line, so there is nothing to plan. This defeats the runner-up (<b>[[1]]</b>)."
      },
      {
       "quote": "A regression test for the fix already exists.",
       "means": "Verification is ready. An Explore pass (<b>[[0]]</b>) or an interview (<b>[[3]]</b>) adds no information."
+     },
+     {
+      "quote": "The module is large and contains several other billing tasks.",
+      "means": "Care is needed, but the right care is one targeted edit plus a diff check, not re-planning."
      },
      {
       "quote": "How should the engineer have Claude make the change?",
@@ -1811,11 +1795,11 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The <code>/pre-pr</code> command asks Claude to 'flag anything that could cause problems, but be conservative'. Engineers complain about inconsistency: the same unused-import finding is 'high' on one run and 'low' on the next. Of 300 sampled findings, 55% are dismissed, almost all of them style or naming points the CI linter already enforces, while tenant-scoping findings are acted on 90% of the time. Leadership's goal for the quarter is that engineers can trust a raised finding is worth reading. Which change <b>contributes most</b> to that goal?",
+   "question": "The <code>/pre-pr</code> command asks Claude to 'flag anything that could cause problems, but be conservative'. Engineers ignore most of its findings. Over half are style or naming points that the CI linter already enforces. Tenant-scoping findings, by contrast, are almost always acted on. The goal is that engineers can trust a raised finding is worth reading. Which change <b>contributes most</b> to that goal?",
    "options": [
     {
      "t": "Add three few-shot findings that fix the layout and severity scale, one showing a borderline case and why it was rated as it was.",
-     "why": "Runner-up. Few-shot examples are the best fix for unstable severity and format, which the complaint highlights. But the goal is precision, and 55% of findings are a category that should not be reported at all."
+     "why": "Runner-up. Few-shot examples are the best fix for unstable severity and format. But the goal is precision, and 55% of findings are a category that should not be reported at all."
     },
     {
      "t": "Have an independent Claude instance review each finding without the generation context, posting only those it agrees with.",
@@ -1834,10 +1818,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The goal is that raised findings are worth reading (precision), and 55% are a category that should be excluded; if the goal were stable severity and format, few-shot examples would contribute most.",
+   "decider": "Over half the findings are a category that should not be raised at all, and the goal is precision; if the goal were stable layout and severity, few-shot examples would contribute most.",
    "explanation": "Explicit categorical criteria, including what to skip, improve precision. Few-shot examples mainly improve consistency, and 'be conservative' improves neither.",
    "eli5": {
-    "question": "A review command raises lots of findings that people ignore. The clue is: the goal is that a raised finding is worth reading, and 55% of findings are style points the linter already covers. The severity flipping between runs is the distraction.",
+    "question": "A review command raises lots of findings that people ignore. The clue is: \"Over half are style or naming points that the CI linter already enforces.\" Those should not be raised at all.",
     "answer": "If a smoke alarm keeps going off for toast, you change what it reacts to. Making the beep sound the same every time does not help. Tell Claude exactly which kinds of problem to raise and which to skip, with a small code sample for each (<b>explicit criteria</b>). That cuts false alarms (better <b>precision</b>), which is what earns trust. <b>Rule: to cut noise, say exactly what to report and what to skip.</b>",
     "options": [
      "Runner-up. Worked examples (<b>few-shot</b>) make format and severity consistent. They would win if consistency were the goal, but here it is precision.",
@@ -1847,7 +1831,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>\"inconsistent\" output calls for few-shot examples</b>, and the severity flip is vivid. Examples are the best tool for consistency. But read the goal: engineers should trust that a raised finding is worth reading. That is <i>precision</i>, and 55% of findings are a category that should not be raised at all. Consistent labels on noise are still noise.",
+    "premise": "It is tempting to think <b>noisy review output calls for few-shot examples</b>. Examples are the best tool for <i>consistency</i> of layout and severity. But read the goal: engineers should trust that a raised finding is worth reading. That is <i>precision</i>, and over half the findings are a category that should not be raised at all. Consistent labels on noise are still noise.",
     "diagram": "300 findings\n ├ 55% style/naming (linter already enforces) -> dismissed\n └ tenant-scoping -> acted on 90%\n Goal = fewer false alarms -> say what to skip",
     "mapTitle": "Review output is poor: is it noise or inconsistency?",
     "map": {
@@ -1890,16 +1874,12 @@ window.EXAM = {
       "means": "A vague instruction. \"Be conservative\" is known not to improve precision."
      },
      {
-      "quote": "the same unused-import finding is 'high' on one run and 'low' on the next",
-      "means": "The vivid part. It points to few-shot examples for consistency (<b>[[0]]</b>, the runner-up)."
+      "quote": "Over half are style or naming points that the CI linter already enforces.",
+      "means": "The key fact. The noise is a whole category that should be excluded. An independent reviewer (<b>[[1]]</b>) with the same vague brief would keep it."
      },
      {
-      "quote": "55% are dismissed, almost all of them style or naming points the CI linter already enforces",
-      "means": "The quiet clue. The noise is a whole category that should be excluded. An independent reviewer (<b>[[1]]</b>) with the same vague brief would keep it."
-     },
-     {
-      "quote": "Leadership's goal for the quarter is that engineers can trust a raised finding is worth reading.",
-      "means": "The goal is precision, not consistency. Tracking (<b>[[2]]</b>) would only rediscover what the sample already shows."
+      "quote": "The goal is that engineers can trust a raised finding is worth reading.",
+      "means": "The goal is precision, not consistency, so examples of layout and severity (<b>[[0]]</b>, the runner-up) are aimed elsewhere. Tracking (<b>[[2]]</b>) would only rediscover the noise."
      },
      {
       "quote": "Which change contributes most to that goal?",
@@ -1921,7 +1901,7 @@ window.EXAM = {
    "trap": "More context or reasoning instead of structure",
    "fam": 5,
    "select": 1,
-   "question": "A <code>/new-task</code> command generates Celery tasks that must be idempotent. Over three revisions its instructions have grown into a page of rules: keys for payment calls, upserts for inserts, a status check before emails. On straightforward tasks the output is now right every time. Where a task combines side effects, such as a database write followed by a carrier API call, five runs produced three different strategies, two of them unsafe. Which change is <b>most likely</b> to make the output consistent?",
+   "question": "A <code>/new-task</code> command generates Celery tasks that must be idempotent. Its instructions have been revised three times and now form a page of rules. On simple tasks the output is right every time. Tasks that combine side effects are different. For a database write followed by a carrier API call, five runs produced three different strategies. Which change is <b>most likely</b> to make the output consistent?",
    "options": [
     {
      "t": "Include two to four complete reference tasks spanning the hard cases, each annotated with why its idempotency choice was made.",
@@ -1944,10 +1924,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "The rules have already been refined three times and work on simple cases; if the instructions were still vague, making the criteria explicit would come first.",
+   "decider": "The rules have already been refined three times and work on simple tasks; if the instructions were still vague, making the criteria explicit would come first.",
    "explanation": "When detailed instructions still give inconsistent results on ambiguous cases, two to four examples that show the reasoning are the most effective way to get consistent output.",
    "eli5": {
-    "question": "Generated tasks are right on simple cases but inconsistent on mixed ones. The clue is: the rules have already been rewritten three times. So more rules are not the answer.",
+    "question": "Generated tasks are right on simple cases but inconsistent on mixed ones. The clue is: \"Its instructions have been revised three times and now form a page of rules.\" So more rules are not the answer.",
     "answer": "When a written recipe has been rewritten three times and people still get the tricky dish wrong, show them two or three finished dishes. Explain why each was made that way. Here that means a few complete reference tasks covering the hard cases, with the reasoning attached (<b>few-shot examples</b>). Examples generalise to cases the rules do not cleanly cover. <b>Rule: when detailed instructions stop improving, show a few worked examples with reasons.</b>",
     "options": [
      "Correct. Two to four worked examples of the hard cases, each with its reasoning.",
@@ -1995,19 +1975,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Over three revisions its instructions have grown into a page of rules",
-      "means": "Explicit rules are already used up as a lever. This weakens the decision table (<b>[[1]]</b>, the runner-up)."
+      "quote": "Its instructions have been revised three times and now form a page of rules.",
+      "means": "The key fact. Explicit rules are used up as a lever, which weakens the decision table (<b>[[1]]</b>, the runner-up)."
      },
      {
-      "quote": "On straightforward tasks the output is now right every time.",
+      "quote": "On simple tasks the output is right every time.",
       "means": "The rules work where they apply. The gap is elsewhere."
      },
      {
-      "quote": "Where a task combines side effects",
-      "means": "The quiet clue: the failures are in combinations the rules don't cleanly cover."
+      "quote": "Tasks that combine side effects are different.",
+      "means": "The failures are in combinations the rules don't cleanly cover."
      },
      {
-      "quote": "five runs produced three different strategies, two of them unsafe",
+      "quote": "five runs produced three different strategies",
       "means": "A judgment problem, not a structure problem. A schema enum (<b>[[3]]</b>) fixes the shape, not the choice. A reviewer (<b>[[2]]</b>) uses the same unclear rules."
      },
      {
@@ -2030,7 +2010,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 2,
-   "question": "An engineer has spent four hours auditing tenant leaks in <code>workers/</code> and has reviewed 60 of 140 task modules. Claude's recent answers have started citing 'typical' patterns that contradict specific earlier findings, and the context is close to full. A teammate takes over tomorrow on her own laptop, and a merge this morning changed 35 of the reviewed modules. The goal is for the teammate to continue from accurate findings. Which TWO actions <b>together</b> achieve that?",
+   "question": "An engineer has spent hours auditing tenant leaks across 140 task modules in <code>workers/</code>. Claude's recent answers cite 'typical' patterns that contradict specific earlier findings. The context is nearly full. Tomorrow a teammate will finish the audit on her own laptop. A merge this morning changed many of the modules already reviewed. The teammate must continue from accurate findings. Which TWO actions <b>together</b> achieve that?",
    "options": [
     {
      "t": "Have the teammate <code>--resume</code> the session by name and open with a note listing the modules the merge changed.",
@@ -2046,7 +2026,7 @@ window.EXAM = {
     },
     {
      "t": "Have the teammate start a clean session from a structured summary of the audit, rechecking the merged modules first.",
-     "why": "Correct. With 35 reviewed modules changed and the work moving to another machine, a clean session built from a structured summary is more reliable than one carrying stale tool results."
+     "why": "Correct. With many reviewed modules changed and the work moving to another machine, a clean session built from a structured summary is more reliable than one carrying stale tool results."
     }
    ],
    "answer": [
@@ -2057,7 +2037,7 @@ window.EXAM = {
    "decider": "The teammate works on a different laptop and many reviewed modules have changed; if the same engineer continued on the same machine with few changes, resuming with a change note would be reasonable.",
    "explanation": "Scratchpad files carry key findings across context limits and sessions. When earlier tool results are largely stale, start a new session from a structured summary rather than resuming.",
    "eli5": {
-    "question": "A long audit session is getting muddled, and a teammate takes over tomorrow on her own laptop. The clue is: it is a different laptop, and a merge has changed 35 of the reviewed modules. So the old session cannot be relied on.",
+    "question": "A long audit session is getting muddled, and a teammate takes over tomorrow. The clue is: \"Tomorrow a teammate will finish the audit on her own laptop\", after a merge changed many reviewed modules. So the old session cannot be relied on.",
     "answer": "At a shift change, you write a handover sheet and leave it where the next person can find it. The next person starts their shift from that sheet. Here, Claude writes the findings to a file in the repo (a <b>scratchpad file</b>). The teammate then starts a clean session from a structured summary, rechecking the changed modules first. The file survives the move; the clean start avoids outdated results. <b>Rule: write findings down outside the chat, and start fresh when much has changed.</b>",
     "options": [
      "Runner-up. Resuming the session with a note (<code>--resume</code>) works when the same person continues with few changes. Here the session is on another laptop and already muddled.",
@@ -2067,7 +2047,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>resuming the session hands over everything</b>. The session is the problem. It lives on another laptop, its context is already degrading, and 35 of the modules it reviewed have changed. The findings need to live <i>outside</i> the conversation, and the teammate needs a clean start built from them.",
+    "premise": "It is tempting to think <b>resuming the session hands over everything</b>. The session is the problem. It lives on another laptop, its context is already degrading, and many of the modules it reviewed have changed. The findings need to live <i>outside</i> the conversation, and the teammate needs a clean start built from them.",
     "diagram": "Today:     session (muddled) --write--> findings file\n                                            | git\n Tomorrow:  clean session  <--seed-------------+",
     "mapTitle": "Handing over long work: what carries over, and how?",
     "map": {
@@ -2106,19 +2086,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Claude's recent answers have started citing 'typical' patterns that contradict specific earlier findings",
+      "quote": "Claude's recent answers cite 'typical' patterns that contradict specific earlier findings.",
       "means": "Context degradation. The session's own memory cannot be trusted."
      },
      {
-      "quote": "the context is close to full",
-      "means": "Adding subagent summaries (<b>[[2]]</b>) piles onto a full session and still leaves nothing for the teammate."
+      "quote": "The context is nearly full.",
+      "means": "Adding subagent summaries (<b>[[2]]</b>) piles onto a full session and leaves nothing for the teammate."
      },
      {
-      "quote": "A teammate takes over tomorrow on her own laptop",
-      "means": "The quiet clue. Resuming (<b>[[0]]</b>, the runner-up) needs the session itself, on the same machine."
+      "quote": "Tomorrow a teammate will finish the audit on her own laptop.",
+      "means": "The key fact. Resuming (<b>[[0]]</b>, the runner-up) needs the session itself, on the same machine."
      },
      {
-      "quote": "a merge this morning changed 35 of the reviewed modules",
+      "quote": "A merge this morning changed many of the modules already reviewed.",
       "means": "Much of the old tool output is stale, which also favours a clean start."
      },
      {
@@ -2141,7 +2121,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "While converting <code>api/</code> endpoints to tenant-scoped queries, the engineer has Claude run the 2,400-test integration suite after each endpoint. Each run prints about 5,000 lines, of which a few dozen matter. After six endpoints Claude has started asking which endpoints are already converted, and once proposed converting one a second time. Thirty endpoints remain, all to be done in this session. Which change <b>best sustains</b> the session for the remaining work?",
+   "question": "While converting <code>api/</code> endpoints to tenant-scoped queries, the engineer has Claude run the integration suite after each endpoint. Each run prints about 5,000 lines, and only the few failures matter. Thirty endpoints remain in this session. Claude is already losing track of which endpoints it has converted. Which change <b>best sustains</b> the session?",
    "options": [
     {
      "t": "Run <code>/compact</code> after every suite run, instructing it to retain the converted list and any tests currently failing.",
@@ -2152,7 +2132,7 @@ window.EXAM = {
      "why": "Runner-up. A scratchpad file is the right fix when progress needs to persist across a boundary, and the forgetting invites it. But the cause, 5,000 lines per run with thirty runs to go, would keep filling the context."
     },
     {
-     "t": "Have a subagent run the suite each time and return a short list of failures and their causes to the session.",
+     "t": "Have a subagent run the suite each time and return a short list of failures and their causes.",
      "why": "Correct. Test output that is almost all irrelevant is filling the context. A subagent absorbs each 5,000-line run in its own context and returns only what matters, for all thirty runs."
     },
     {
@@ -2167,7 +2147,7 @@ window.EXAM = {
    "decider": "Each run adds about 5,000 lines and thirty runs remain; if the only problem were tracking progress across a session boundary, a progress file would be the fix.",
    "explanation": "Delegating verbose work to a subagent keeps the main context for decisions. Scratchpads, /compact and restarts help, but none of them stops repeated verbose output from filling the context.",
    "eli5": {
-    "question": "Every test run dumps about 5,000 lines into the chat, and Claude starts forgetting progress. The clue is: thirty more runs are still to come. Claude forgetting which endpoints are done is the symptom, not the cause.",
+    "question": "Every test run dumps thousands of lines into the chat, and Claude starts losing track. The clue is: \"Each run prints about 5,000 lines, and only the few failures matter.\" Losing track is the symptom; the flood is the cause.",
     "answer": "If every delivery dumps a full truckload of packing paper in your kitchen, a sticky note on the fridge will not save the kitchen. Have someone else unpack the truck and hand you only what you ordered. That is a <b>subagent</b>: it runs the tests in its own space and returns only the failures and their causes. The main session stays clear for all thirty runs. <b>Rule: send noisy, repeated work to a subagent and keep only the summary.</b>",
     "options": [
      "Squashing the chat each time (<code>/compact</code>) helps after a single pile-up. Done thirty times, it loses detail on every pass.",
@@ -2216,19 +2196,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Each run prints about 5,000 lines, of which a few dozen matter.",
-      "means": "The quiet clue: the context is filling with output that is almost all irrelevant."
+      "quote": "Each run prints about 5,000 lines, and only the few failures matter.",
+      "means": "The key fact: the context is filling with output that is almost all irrelevant."
      },
      {
-      "quote": "Claude has started asking which endpoints are already converted",
-      "means": "The vivid symptom. It invites a progress file (<b>[[1]]</b>, the runner-up), which treats the forgetting and not the flood."
-     },
-     {
-      "quote": "Thirty endpoints remain, all to be done in this session.",
+      "quote": "Thirty endpoints remain in this session.",
       "means": "Thirty more floods. <code>/compact</code> each time (<b>[[0]]</b>) loses detail repeatedly. Restarts (<b>[[3]]</b>) refill within ten runs."
      },
      {
-      "quote": "Which change best sustains the session for the remaining work?",
+      "quote": "Claude is already losing track of which endpoints it has converted.",
+      "means": "The symptom. A progress file (<b>[[1]]</b>, the runner-up) treats the forgetting, not the flood."
+     },
+     {
+      "quote": "Which change best sustains the session?",
       "means": "Keep the logs out of the main session entirely. So <b>[[2]]</b>."
      }
     ],
@@ -2247,10 +2227,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A briefing on the state's 2026 water-rights reform went out after the coordinator divided the request into legislative history, agricultural impact and municipal supply. Each subagent covered its share well. A committee aide replied that the briefing 'skips the court case everyone at the hearing will raise': a 2025 federal ruling that, together with an interstate compact amendment, changes how the reform applies. Both items appear only in the footnotes of PDFs the analysis subagent had already read, and the reform's public summaries mention neither. In March a housing briefing missed a zoning settlement the same way. What is the <b>most effective change</b>?",
+   "question": "The coordinator split a briefing on a state water-rights reform into three strands: legislative history, farm impact and municipal supply. Each subagent did its strand well. But the briefing missed a federal court ruling that changes how the reform applies. The ruling was mentioned only in footnotes of PDFs the analysis subagent had already read. Nothing in the request or in public coverage pointed to it. An earlier housing briefing missed a key settlement the same way. What is the <b>most effective change</b>?",
    "options": [
     {
-     "t": "Revise the coordinator's planning instructions so reform requests are split into court-ruling and interstate-agreement strands as well as legislative and economic ones.",
+     "t": "Revise the coordinator's planning instructions so reform requests also get a court-rulings strand alongside the legislative and economic ones.",
      "why": "Runner-up. Broadening the decomposition is right when the missing areas are foreseeable from the request. These items surfaced only inside documents already retrieved, so no up-front split would have named them, and the next miss will be something else."
     },
     {
@@ -2270,10 +2250,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "The missing items surfaced only inside sources already read, and the same failure hit a housing briefing on a different subject, so no fixed set of planning strands can anticipate them; if the gaps were predictable from the request type, fixing the decomposition would win.",
+   "decider": "The ruling surfaced only inside documents already read, and the same kind of miss happened on another topic, so no up-front plan could have named it; if such gaps were predictable from the request, broadening the decomposition would win.",
    "explanation": "Decomposition covers only what is knowable at the start. When gaps emerge from what subagents find, the coordinator should evaluate the synthesis for gaps, re-delegate targeted work and re-synthesize.",
    "eli5": {
-    "question": "A report went out with a hole in it. The question asks how to stop holes like this. The clue is: the missing items appear only in the footnotes of documents already read, and a housing briefing missed something the same way. The angry aide's quote is a distraction, not the decider.",
+    "question": "A report went out with a hole in it. The question asks how to stop holes like this. The clue is: the ruling appeared only in footnotes of documents already read, and nothing in the request pointed to it.",
     "answer": "Think of a school project where the team splits the topic before anyone has read anything. Some important things only show up once you start reading. So someone has to read the draft, spot what it leans on but never checked, and send people back to research it (an <b>iterative refinement loop</b>: check the synthesis for gaps, re-delegate, re-synthesize). Adding more topics to the plan up front can't catch things nobody could know about at the start. <b>Rule: if a gap can only be seen after reading, fix it with a check-and-redo loop, not a bigger plan.</b>",
     "options": [
      "Runner-up. Adding court and treaty topics to the plan (fixing the <b>task decomposition</b>) would win if gaps were predictable from the type of request. Here they hide in footnotes and differ from topic to topic.",
@@ -2322,24 +2302,28 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Each subagent covered its share well.",
+      "quote": "Each subagent did its strand well.",
       "means": "The helpers did their jobs. The fault is in what nobody was assigned, not in how the work was done."
      },
      {
-      "quote": "A committee aide replied that the briefing 'skips the court case everyone at the hearing will raise'",
-      "means": "The vivid symptom. It tempts you to add a court-rulings strand to the plan, which is <b>[[0]]</b>, the runner-up."
+      "quote": "But the briefing missed a federal court ruling that changes how the reform applies.",
+      "means": "This invites adding a court-rulings strand to the plan, which is <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "Both items appear only in the footnotes of PDFs the analysis subagent had already read, and the reform's public summaries mention neither",
-      "means": "The decider. The items could not be known before reading, so no up-front plan would have named them. That rules out <b>[[0]]</b>."
+      "quote": "The ruling was mentioned only in footnotes of PDFs the analysis subagent had already read.",
+      "means": "The decider. The ruling only became visible after reading, so the fix must come after reading too."
      },
      {
-      "quote": "In March a housing briefing missed a zoning settlement the same way.",
-      "means": "The same failure on a different subject. A fixed list of extra strands for reform requests would not have caught it; a check-the-draft loop would."
+      "quote": "Nothing in the request or in public coverage pointed to it.",
+      "means": "No up-front plan could have named it. That rules out <b>[[0]]</b>."
+     },
+     {
+      "quote": "An earlier housing briefing missed a key settlement the same way.",
+      "means": "Same failure, different subject. A fixed extra strand would not have caught it; a check-the-draft loop would: <b>[[2]]</b>."
      },
      {
       "quote": "What is the most effective change?",
-      "means": "Passing findings along (<b>[[1]]</b>) and a fact-check tool (<b>[[3]]</b>) are good practices for other problems. Only <b>[[2]]</b> adds the step that finds and fills gaps."
+      "means": "Passing findings along (<b>[[1]]</b>) and a fact-check tool (<b>[[3]]</b>) are good practices for other problems."
      }
     ],
     "rule": "If a gap could only be seen after reading, fix it with a check-the-draft loop, not a bigger plan.",
@@ -2357,7 +2341,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The document-analysis subagent often reaches PDFs whose key tables come from datasets it cannot open, and it reports each case to the coordinator; the round trip adds about 90 seconds, and analysts have noticed. An engineer proposes a shared board where any subagent can post such requests for the web-search subagent to pick up. A review of last month's runs found the coordinator's follow-ups split roughly evenly between commissioning a search for a public copy, narrowing the claim to what the PDF supports, and checking with the analyst, and the right choice depended on what other subagents had already gathered. Which design <b>best fits</b>?",
+   "question": "The document-analysis subagent often finds PDFs whose key tables come from datasets it cannot open. It reports each case to the coordinator, and each round trip adds delay. An engineer proposes a shared board where subagents post such requests for the web-search subagent. The right follow-up varies by case: a search for a public copy, a narrower claim, or a question to the analyst. The choice depends on what other subagents have already found. Which design <b>best fits</b>?",
    "options": [
     {
      "t": "Keep each unopened-dataset case flowing to the coordinator as a typed field in the analysis return, and leave the choice of follow-ups with it.",
@@ -2369,7 +2353,7 @@ window.EXAM = {
     },
     {
      "t": "Give the analysis subagent a scoped tool that searches for a public copy of a cited dataset, with other follow-ups still sent to the coordinator.",
-     "why": "Runner-up. A limited cross-role tool is right for a high-frequency, uniform need. Here a search is the right response only about a third of the time, and whether it is right depends on other subagents' findings that the analysis subagent cannot see."
+     "why": "Runner-up. A limited cross-role tool is right for a frequent, uniform need. Here a search is only one of several follow-ups, and whether it is right depends on other subagents' findings that the analysis subagent cannot see."
     },
     {
      "t": "Start the web-search subagent alongside the analysis subagent by emitting both Task calls in one coordinator response at the outset.",
@@ -2380,10 +2364,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 2,
-   "decider": "Follow-ups split evenly across three actions and depend on what other subagents gathered; if most follow-ups were a uniform public-copy search, the scoped cross-role tool would win.",
+   "decider": "The right follow-up varies and depends on what other subagents found, which only the coordinator sees; if the follow-up were nearly always the same simple search, the scoped cross-role tool would win.",
    "explanation": "In a coordinator-subagent design, inter-subagent requests flow through the coordinator, which sees all results and decides routing. Scoped cross-role tools are the exception for high-frequency, simple needs.",
    "eli5": {
-    "question": "One helper keeps hitting data it can't open. Who should decide what happens next? The clue is: the follow-ups split three ways, and the right one depends on what other helpers already found. The 90-second wait is the distraction.",
+    "question": "One helper keeps hitting data it can't open. Who should decide what happens next? The clue is: the right follow-up varies, and it depends on what other helpers have already found.",
     "answer": "Picture a restaurant kitchen. A cook runs out of an ingredient and tells the head chef. Only the head chef knows what every station is making, so only they can choose to buy more, change the dish, or ask the customer. In an agent system that head chef is the <b>coordinator</b> (the hub in <b>hub-and-spoke</b>), and helpers keep separate memories (<b>isolated context</b>). So the helper reports the problem in a clear, labelled form, and the coordinator decides. <b>Rule: when the next step depends on everyone's work, route it through the coordinator.</b>",
     "options": [
      "Correct. The helper reports the problem in a labelled field, and the coordinator, who sees everything, picks the follow-up.",
@@ -2393,7 +2377,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the 90-second round trip is the problem to solve</b>. It is a cost, but not the deciding fact. What matters is <b>who can make the follow-up decision</b>. If the right next step depends on what several helpers found, only the coordinator, the one agent that sees every result, can choose it. Subagents have isolated context: they don't see each other's work.",
+    "premise": "It is tempting to think <b>the round-trip delay is the problem to solve</b>. It is a cost, but not the deciding fact. What matters is <b>who can make the follow-up decision</b>. If the right next step depends on what several helpers found, only the coordinator, the one agent that sees every result, can choose it. Subagents have isolated context: they don't see each other's work.",
     "diagram": "analysis --report--> COORDINATOR --> search?\n                      (sees all)  --> narrow claim?\n                                  --> ask analyst?",
     "mapTitle": "Helper needs something from another helper: who decides?",
     "map": {
@@ -2432,24 +2416,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "the round trip adds about 90 seconds, and analysts have noticed",
-      "means": "The vivid symptom. It tempts you to cut the coordinator out with a tool (<b>[[2]]</b>) or a board (<b>[[1]]</b>)."
+      "quote": "It reports each case to the coordinator, and each round trip adds delay.",
+      "means": "The cost of the current design. Delay alone might justify a shortcut, so keep reading."
      },
      {
-      "quote": "An engineer proposes a shared board where any subagent can post such requests for the web-search subagent to pick up.",
-      "means": "A shared board is shared memory between subagents. It routes around the hub, which is what <b>[[1]]</b> does."
+      "quote": "An engineer proposes a shared board where subagents post such requests for the web-search subagent.",
+      "means": "A shared board is shared memory between subagents. It routes around the hub, which is <b>[[1]]</b>."
      },
      {
-      "quote": "the coordinator's follow-ups split roughly evenly between commissioning a search for a public copy, narrowing the claim to what the PDF supports, and checking with the analyst",
-      "means": "A search is right only about a third of the time. A search-only tool (<b>[[2]]</b>) would act wrongly in the other two-thirds."
+      "quote": "The right follow-up varies by case: a search for a public copy, a narrower claim, or a question to the analyst.",
+      "means": "A search is only one of three outcomes. A search-only tool (<b>[[2]]</b>, the runner-up) would act wrongly in the others."
      },
      {
-      "quote": "the right choice depended on what other subagents had already gathered",
-      "means": "The decider. Only the coordinator sees all subagents' results, so the choice must stay there. That is <b>[[0]]</b>."
+      "quote": "The choice depends on what other subagents have already found.",
+      "means": "The decider. Only the coordinator sees every subagent's results, so the choice stays there: <b>[[0]]</b>."
      },
      {
       "quote": "Which design best fits?",
-      "means": "Spawning both at once (<b>[[3]]</b>) can't work: the search can't be specified until the gap is found."
+      "means": "Spawning both helpers at once (<b>[[3]]</b>) can't work: the search can't be specified until the gap is found."
      }
     ],
     "rule": "When the next step depends on everyone's work, route it through the coordinator. Give a helper its own cross-role tool only for frequent, simple, uniform needs.",
@@ -2467,7 +2451,7 @@ window.EXAM = {
    "trap": "More context or reasoning instead of structure",
    "fam": 5,
    "select": 1,
-   "question": "For energy-subsidy briefings the coordinator emits four Task calls in one response: legislative search, regulatory review, cost-data search and stakeholder search. The regulatory reviewer's prompt names the topic and asks it to 'review the implementing rules for the statutes in scope'. Its output is consistently generic, and about half of it concerns statutes that never appear in the final briefing. Which statutes are in scope is settled by what the legislative search returns, and that varies widely between states. The cost-data and stakeholder searches perform well and finish in about the same time as the legislative search. Which change should the team make?",
+   "question": "For energy-subsidy briefings, the coordinator emits four Task calls in one response: legislative search, regulatory review, cost-data search and stakeholder search. The regulatory reviewer must examine the rules issued under the statutes in scope. Which statutes are in scope is known only after the legislative search returns. Today the reviewer's output is generic and often covers the wrong statutes. The other three subagents work well. Which change should the team make?",
    "options": [
     {
      "t": "Keep the four parallel Task calls and expand the regulatory prompt with the topic's jurisdiction, date range, expected output format and quality criteria.",
@@ -2482,7 +2466,7 @@ window.EXAM = {
      "why": "Incorrect. Scoping tools to role is good practice, but the reviewer drifts because it does not know which statutes matter, not because of the tools it holds."
     },
     {
-     "t": "Delay the regulatory Task until the legislative results come back, put the full statute list into its prompt, and run the other two searches concurrently.",
+     "t": "Hold the regulatory Task until the statute list is back, include that list in its prompt, and run the other two searches in parallel.",
      "why": "Correct. A dependent subtask waits for its input, which is passed explicitly in its prompt; independent subtasks still run in parallel via multiple Task calls."
     }
    ],
@@ -2490,10 +2474,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The statutes in scope are set by the legislative search's output; if the regulatory work did not depend on another subagent's results, keeping it parallel with a richer prompt would be right.",
+   "decider": "The reviewer needs the legislative search's output before it can start; if its work did not depend on another subagent's results, keeping it parallel with a richer prompt would be right.",
    "explanation": "Subagents receive only what is in their prompt. Spawn independent work in parallel, but sequence a subtask after the one whose findings it needs and include those findings in full.",
    "eli5": {
-    "question": "One of four helpers produces vague, off-target work. The question asks what to change. The clue is: which laws are in scope is settled by what the legislative search returns. 'Generic output' tempts you to just write a better prompt.",
+    "question": "One of four helpers produces vague, off-target work. The question asks what to change. The clue is: which statutes are in scope is known only after the legislative search returns.",
     "answer": "Think of baking: you can't ice a cake that hasn't been baked yet. The rules reviewer needs the list of laws, and that list only exists after the legislative search finishes. So run the search first, hand its full results to the reviewer in its instructions, and let the two unrelated searches run at the same time. Helpers only know what you put in their prompt (no shared memory). <b>Rule: run independent jobs in parallel, but make a job wait for the results it depends on, and pass them in full.</b>",
     "options": [
      "Runner-up. A richer prompt (more <b>explicit context</b>) would win if the reviewer's job didn't depend on another helper's results. Here the key input doesn't exist yet when it starts.",
@@ -2543,23 +2527,23 @@ window.EXAM = {
     "evidence": [
      {
       "quote": "the coordinator emits four Task calls in one response",
-      "means": "All four start together. Good for independent work, but it means the reviewer starts with no statute list."
+      "means": "All four start together. Good for independent work, but the reviewer starts with no statute list."
      },
      {
-      "quote": "The regulatory reviewer's prompt names the topic and asks it to 'review the implementing rules for the statutes in scope'",
-      "means": "The prompt is thin. This invites <b>[[0]]</b>, the runner-up: add more context."
+      "quote": "The regulatory reviewer must examine the rules issued under the statutes in scope.",
+      "means": "The reviewer's job needs a specific input: the statute list."
      },
      {
-      "quote": "Which statutes are in scope is settled by what the legislative search returns",
-      "means": "The decider. The reviewer depends on another helper's output, so it must wait for it. That is <b>[[3]]</b>, and it rules out <b>[[0]]</b>."
+      "quote": "Which statutes are in scope is known only after the legislative search returns.",
+      "means": "The decider. The reviewer depends on another helper's output, so it must wait for it: <b>[[3]]</b>. More prompt detail (<b>[[0]]</b>, the runner-up) can't supply a list that doesn't exist yet."
      },
      {
-      "quote": "The cost-data and stakeholder searches perform well and finish in about the same time as the legislative search",
-      "means": "Those two are independent, so they should stay parallel. Waiting for the statute list costs them nothing."
+      "quote": "Today the reviewer's output is generic and often covers the wrong statutes.",
+      "means": "The symptom of starting without its input. Restricting its tools (<b>[[2]]</b>) doesn't tell it which statutes matter."
      },
      {
-      "quote": "Which change should the team make?",
-      "means": "Re-checking afterwards (<b>[[1]]</b>) redoes avoidable work. Restricting tools (<b>[[2]]</b>) doesn't tell the reviewer which statutes matter."
+      "quote": "The other three subagents work well.",
+      "means": "The other two searches are independent and should stay parallel. Re-checking afterwards (<b>[[1]]</b>) redoes avoidable work."
      }
     ],
     "rule": "Run independent tasks in parallel. Make a task wait for the results it depends on, and put those results in its prompt.",
@@ -2577,7 +2561,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "Analysts complain that every request takes 6–9 minutes. Profiling shows that in about 30% of runs the search and analysis subagents fetch the same PDFs, adding roughly 40 seconds. Most requests are narrow factual questions, such as the effective date of one regulation or the vote count on one bill, and on those the synthesis and report stages run for over four minutes while changing the answer little. Briefings for complex requests are rated well. Which change <b>best addresses the complaint</b>?",
+   "question": "Analysts complain that every request takes several minutes. Most requests are narrow factual questions, such as the effective date of one regulation. For those, the coordinator still runs search, document analysis, synthesis and report in sequence. The synthesis and report stages take most of the time and change the answer little. Subagents rarely fetch the same documents. Briefings for complex requests are rated well. Which change <b>best addresses the complaint</b>?",
    "options": [
     {
      "t": "Send the synthesis and report stages through the Message Batches API and notify each analyst by email when their answer is ready.",
@@ -2585,11 +2569,11 @@ window.EXAM = {
     },
     {
      "t": "Let the coordinator judge how much of the pipeline each request warrants and skip the drafting stages for narrow questions.",
-     "why": "Correct. The coordinator should select subagents by query complexity rather than always running the full pipeline; that removes the four-minute stages from most requests."
+     "why": "Correct. The coordinator should select subagents by query complexity rather than always running the full pipeline; that removes the slow stages from most requests."
     },
     {
      "t": "Partition sources between the search and analysis subagents, assigning each PDF to one subagent and passing its content to the other on request.",
-     "why": "Runner-up. Partitioning scope is right when duplicated work drives the delay. Duplication here costs about 40 seconds in 30% of runs; the unnecessary stages cost minutes on most runs."
+     "why": "Runner-up. Partitioning scope is right when duplicated work drives the delay. Here subagents rarely fetch the same documents; the time goes on stages that narrow questions do not need."
     },
     {
      "t": "Emit the search and analysis Task calls in one coordinator response, running both subagents in parallel instead of one after the other.",
@@ -2600,20 +2584,20 @@ window.EXAM = {
     1
    ],
    "runnerUp": 2,
-   "decider": "Most requests are narrow lookups spending four minutes in stages they do not need, while duplication costs 40 seconds in 30% of runs; if duplication were the dominant cost, scope partitioning would win.",
+   "decider": "Most requests are narrow and spend most of their time in stages they do not need, while subagents rarely duplicate work; if duplicated fetching were the main cost, scope partitioning would win.",
    "explanation": "A coordinator should choose which subagents to invoke based on the request, not route everything through the full pipeline.",
    "eli5": {
-    "question": "Every request takes minutes, and people are annoyed. The question asks what fixes the wait. The clue is: most requests are narrow questions, and on those the writing stages take over four minutes. The duplicate-fetch numbers look important but only cost about 40 seconds.",
-    "answer": "Imagine a library where asking 'what time do you close?' gets you a full written report. Most questions need a quick answer, not the whole process. The coordinator should look at each request and call only the helpers it needs (<b>dynamic subagent selection</b>). That removes the four slow minutes from most requests. <b>Rule: match the size of the pipeline to the size of the question.</b>",
+    "question": "Every request takes minutes, and people are annoyed. The question asks what fixes the wait. The clue is: most requests are narrow questions, and the slow stages barely change their answers.",
+    "answer": "Imagine a library where asking 'what time do you close?' gets you a full written report. Most questions need a quick answer, not the whole process. The coordinator should look at each request and call only the helpers it needs (<b>dynamic subagent selection</b>). That removes the slow stages from most requests. <b>Rule: match the size of the pipeline to the size of the question.</b>",
     "options": [
      "The batch service (<b>Message Batches API</b>) is cheaper but can take up to 24 hours. That makes waiting worse, not better.",
      "Correct. Small questions skip the slow writing stages.",
-     "Runner-up. Splitting who fetches what (<b>scope partitioning</b>) would win if duplicate work were the main cost. Here it's 40 seconds in some runs versus minutes in most.",
+     "Runner-up. Splitting who fetches what (<b>scope partitioning</b>) would win if duplicate work were the main cost. Here helpers rarely overlap, so there is little to save.",
      "Running both helpers at once (<b>parallel Task calls</b>) only helps independent work. Analysis needs search's results, and the slow part comes later anyway."
     ]
    },
    "deep": {
-    "premise": "It is tempting to fix <b>the waste you can measure most precisely</b>: duplicate fetches, 40 seconds, 30% of runs. But a precise number is not a big number. The four-minute stages that most requests don't need dwarf it. The real issue is that <b>every request runs the full pipeline</b>, whatever its size.",
+    "premise": "It is tempting to think <b>a slow multi-agent system needs better division of work between its helpers</b>, such as splitting sources so nobody fetches twice. That helps when helpers overlap. But here the time goes on whole stages that most requests don't need. The real issue is that <b>every request runs the full pipeline</b>, whatever its size.",
     "mapTitle": "Everything is slow: which waste is biggest?",
     "map": {
      "head": [
@@ -2651,20 +2635,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Profiling shows that in about 30% of runs the search and analysis subagents fetch the same PDFs, adding roughly 40 seconds.",
-      "means": "The vivid, measured number. It invites <b>[[2]]</b>, the runner-up. But 40 seconds in some runs is small next to minutes in most."
+      "quote": "Most requests are narrow factual questions, such as the effective date of one regulation.",
+      "means": "The typical request needs very little work."
      },
      {
-      "quote": "Most requests are narrow factual questions",
-      "means": "The decider, part one: the typical request needs very little work."
+      "quote": "For those, the coordinator still runs search, document analysis, synthesis and report in sequence.",
+      "means": "Every request gets the full pipeline, whatever its size."
      },
      {
-      "quote": "on those the synthesis and report stages run for over four minutes while changing the answer little",
-      "means": "The decider, part two: the big cost is stages these requests don't need. Skipping them is <b>[[1]]</b>."
+      "quote": "The synthesis and report stages take most of the time and change the answer little.",
+      "means": "The decider. The big cost is stages these requests don't need. Skipping them is <b>[[1]]</b>."
      },
      {
-      "quote": "Briefings for complex requests are rated well.",
-      "means": "Don't change how complex requests work. Only small requests should skip stages."
+      "quote": "Subagents rarely fetch the same documents.",
+      "means": "Duplication is not the problem, so partitioning scope (<b>[[2]]</b>, the runner-up) saves little."
      },
      {
       "quote": "Which change best addresses the complaint?",
@@ -2686,10 +2670,10 @@ window.EXAM = {
    "trap": "Losing or fabricating information",
    "fam": 7,
    "select": 1,
-   "question": "A research session on rail-freight policy paused on Friday after the analysis subagent had worked through 34 journal articles. On Monday the analyst writes: 'Pick up where we left off, and add two questions on port congestion.' Over the weekend the publisher issued corrected editions for most of those articles, revising several tables the coordinator had already quoted. The session history still holds the original tool results, and the coordinator's notes map findings to articles. What is the <b>most reliable</b> way to continue?",
+   "question": "A research session on rail-freight policy was paused on Friday. By then the analysis subagent had read dozens of journal articles. Over the weekend, the publisher replaced most of those articles with corrected editions. Several tables the coordinator had quoted have changed. The session history still holds the original tool results. On Monday the analyst wants to continue and add two new questions. What is the <b>most reliable</b> way to continue?",
    "options": [
     {
-     "t": "Resume with <code>--resume rail-freight</code>, tell the agent which articles now have corrected editions, and add the analyst's two questions on port congestion.",
+     "t": "Resume with <code>--resume rail-freight</code>, tell the agent which articles now have corrected editions, and add the two new questions.",
      "why": "Runner-up. Resuming and informing the agent of changes is right when a few sources changed. With most results superseded, the history is dominated by stale tables the model may keep reasoning from."
     },
     {
@@ -2709,10 +2693,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "Most of the articles were replaced, so most tool results in history are stale; if only one or two had changed, resuming and telling the agent about them would win.",
+   "decider": "Most of the articles were replaced, so most tool results in the history are stale; if only one or two had changed, resuming and telling the agent about them would win.",
    "explanation": "Resume when prior context is still mostly valid and tell the agent what changed; start fresh with a structured summary when much of the history is stale.",
    "eli5": {
-    "question": "A paused research session needs to continue after the weekend. The question asks the most reliable way. The clue is: the publisher replaced most of the articles with corrected editions. The analyst's 'pick up where we left off' tempts you to just resume.",
+    "question": "A paused research session needs to continue after the weekend. The question asks the most reliable way. The clue is: the publisher replaced most of the articles the session had already read.",
     "answer": "Picture a notebook full of figures copied from textbooks, and then most of the textbooks get reprinted with corrections. Writing 'some pages changed' on the cover doesn't stop you reading the old numbers. It is safer to start a fresh notebook with a clean summary of what is still true, and re-read the new editions (a <b>new session seeded with a structured summary</b>). Resuming (<b>--resume</b>) keeps all the old tool results in memory. <b>Rule: resume when little changed; start fresh with a summary when much of the history is stale.</b>",
     "options": [
      "Runner-up. Resuming and listing what changed is right when only a few sources changed. With most articles replaced, the old tables still dominate what the model reads.",
@@ -2760,20 +2744,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "On Monday the analyst writes: 'Pick up where we left off, and add two questions on port congestion.'",
-      "means": "The vivid request. It sounds like 'resume', which is <b>[[0]]</b>, the runner-up."
+      "quote": "By then the analysis subagent had read dozens of journal articles.",
+      "means": "The session's history is full of tool results from those articles."
      },
      {
-      "quote": "Over the weekend the publisher issued corrected editions for most of those articles",
-      "means": "The decider. Most of the source material changed, so most of the history is stale."
+      "quote": "Over the weekend, the publisher replaced most of those articles with corrected editions.",
+      "means": "The decider. Most of the source material changed, so most of the history is stale. That rules out resuming (<b>[[0]]</b>, the runner-up)."
      },
      {
-      "quote": "revising several tables the coordinator had already quoted",
+      "quote": "Several tables the coordinator had quoted have changed.",
       "means": "The stale figures are already inside the conversation. Telling the agent about them doesn't remove them."
      },
      {
-      "quote": "The session history still holds the original tool results",
-      "means": "Resuming (<b>[[0]]</b>) or compacting (<b>[[1]]</b>) keeps those results, or a summary of them. Forking (<b>[[3]]</b>) copies them into both branches."
+      "quote": "The session history still holds the original tool results.",
+      "means": "Compacting (<b>[[1]]</b>) summarizes those results rather than removing them. Forking (<b>[[3]]</b>) copies them into both branches."
      },
      {
       "quote": "What is the most reliable way to continue?",
@@ -2795,10 +2779,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Three MCP servers feed the document-analysis subagent: a journal database, a government gazette archive and a court-records service. They report publication dates as Unix timestamps, 'Q3 2024' strings and DD/MM/YYYY respectively, and the court service switches to MM/DD/YYYY on one endpoint. The synthesis subagent sometimes orders events wrongly or treats a 2024 figure as newer than a 2025 one. All three are the vendors' own hosted MCP endpoints, used under the vendors' standard terms. What is the <b>best fix</b>?",
+   "question": "Three vendor-hosted MCP servers feed the document-analysis subagent. Each reports publication dates in a different format: Unix timestamps, quarter strings like 'Q3 2024', and day-first dates. The synthesis subagent sometimes puts events in the wrong order. The servers are run by the vendors, and the team cannot change their responses. What is the <b>best fix</b>?",
    "options": [
     {
-     "t": "Register a <code>PostToolUse</code> hook on the team's agent that rewrites every date in those results to one standard form before the model reads them.",
+     "t": "Register a <code>PostToolUse</code> hook on the team's agent that rewrites every publication date in those results to one format before the model reads them.",
      "why": "Correct. A PostToolUse hook normalizes heterogeneous formats deterministically before the model reasons over them, on the side of the boundary the team controls."
     },
     {
@@ -2806,8 +2790,8 @@ window.EXAM = {
      "why": "Runner-up. Fixing formats at the source is cleanest when the team runs the servers. These are vendor-hosted endpoints, so their responses are not the team's to change."
     },
     {
-     "t": "Add few-shot examples to the analysis subagent's prompt showing each date format converted to ISO 8601, including the court service's two formats.",
-     "why": "Incorrect. Few-shot examples improve consistency but remain probabilistic, and the DD/MM vs MM/DD ambiguity cannot be resolved reliably by the model."
+     "t": "Add few-shot examples to the analysis subagent's prompt showing each vendor's date format converted to ISO 8601, one example per server.",
+     "why": "Incorrect. Few-shot examples improve consistency but remain probabilistic, and day-first and month-first dates cannot be told apart reliably by reading."
     },
     {
      "t": "Require the synthesis output to show each source's publication date beside every claim drawn from it, in the reader-facing briefing.",
@@ -2818,10 +2802,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "The servers are vendor-hosted endpoints the team cannot change; if the team operated them, normalizing in the servers' own output would be the better fix.",
+   "decider": "The team cannot change the vendors' server responses; if the team ran the servers, fixing the dates in the servers' own output would be the better fix.",
    "explanation": "PostToolUse hooks intercept tool results and normalize them before the model sees them, giving deterministic behaviour where prompts give only probabilistic compliance.",
    "eli5": {
-    "question": "Three outside services write dates in different ways, and the system gets the order of events wrong. The question asks for the best fix. The clue is: all three are the vendors' own hosted services. The odd extra date format on one endpoint tempts you to fix it at the source.",
+    "question": "Three outside services write dates in different ways, and the system gets the order of events wrong. The question asks for the best fix. The clue is: the team cannot change the servers' responses.",
     "answer": "Think of parcels arriving from three countries with labels in different formats. You can't change how other countries label parcels. But you can put a sorting desk at your own door that relabels every parcel in one standard way before anyone handles it (a <b>PostToolUse hook</b>, which rewrites tool results before the model sees them). It's code, so it works every time, unlike instructions in a prompt. <b>Rule: if you can't fix the source, normalize at your own door with a hook.</b>",
     "options": [
      "Correct. A hook on your side rewrites every date into one format before the model reads it.",
@@ -2870,20 +2854,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "They report publication dates as Unix timestamps, 'Q3 2024' strings and DD/MM/YYYY respectively",
-      "means": "Three formats. This needs one consistent conversion, not a judgment call."
+      "quote": "Three vendor-hosted MCP servers feed the document-analysis subagent.",
+      "means": "The data comes from services the team does not run."
      },
      {
-      "quote": "the court service switches to MM/DD/YYYY on one endpoint",
-      "means": "Vivid and points at the server. It also shows why examples (<b>[[2]]</b>) can't work: 03/04 can't be told apart by reading."
+      "quote": "Each reports publication dates in a different format",
+      "means": "The model has to reconcile three formats. That is a mechanical conversion, not a judgment call, so examples (<b>[[2]]</b>) are the wrong tool."
      },
      {
-      "quote": "The synthesis subagent sometimes orders events wrongly or treats a 2024 figure as newer than a 2025 one.",
-      "means": "The dates are wrong before synthesis ever sees them. Showing them to readers (<b>[[3]]</b>) would show wrong dates."
+      "quote": "The synthesis subagent sometimes puts events in the wrong order.",
+      "means": "The dates are already wrong before synthesis. Showing them to readers (<b>[[3]]</b>) would show wrong dates."
      },
      {
-      "quote": "All three are the vendors' own hosted MCP endpoints, used under the vendors' standard terms.",
-      "means": "The decider. You can't change the servers, so <b>[[1]]</b>, the runner-up, is out. The fix goes on your side: <b>[[0]]</b>."
+      "quote": "The servers are run by the vendors, and the team cannot change their responses.",
+      "means": "The decider. Fixing the servers (<b>[[1]]</b>, the runner-up) is out. The fix goes on the team's side: <b>[[0]]</b>."
      }
     ],
     "rule": "Fix data where you control it. For tool results you don't own, normalize them in a PostToolUse hook before the model sees them.",
@@ -2901,7 +2885,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "The document-analysis subagent queries four corpora through one MCP tool, <code>query_corpus(source, text)</code>. About one call in five goes to the wrong corpus, and when a court query lands on the archive it returns zero hits and the briefing says no precedent exists. The tool's documentation already runs to forty lines, with a worked query for each corpus. Each corpus has its own query grammar (the court service takes docket syntax, the gazette takes date-bounded keywords), and each returns a different set of fields. What should the team <b>do next</b>?",
+   "question": "The document-analysis subagent searches four corpora through one MCP tool, <code>query_corpus(source, text)</code>. About one call in five goes to the wrong corpus. The tool's documentation is already long, with a worked query for each corpus. Each corpus uses its own query syntax. Each also returns a different set of fields. What should the team <b>do next</b>?",
    "options": [
     {
      "t": "Add four or five few-shot examples to the subagent's system prompt that show the right corpus choice for typical court, gazette and archive questions.",
@@ -2924,10 +2908,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 1,
-   "decider": "The description is already long and specific, and the corpora differ in query grammar and returned fields; if the description were still minimal, improving it would be the first step.",
+   "decider": "The corpora differ in query syntax and returned fields, and the documentation is already detailed; if the documentation were still thin, improving the description would be the first step.",
    "explanation": "Descriptions are the primary selection mechanism, but when one tool covers operations with different inputs and outputs, split it into purpose-specific tools.",
    "eli5": {
-    "question": "One search tool covers four very different collections, and about one call in five picks the wrong one. The question asks what to do next. The clue is: each collection speaks a different query language and returns different fields, and the tool's documentation is already long.",
+    "question": "One search tool covers four very different collections, and the subagent often picks the wrong one. The question asks what to do next. The clue is: each collection has its own query syntax and its own result fields.",
     "answer": "Picture one front desk for four very different libraries, where each library uses its own catalogue system. A longer sign at the desk won't fix that. Give each library its own desk with its own form (split into <b>purpose-specific tools</b> with their own inputs and outputs). The model picks tools by reading their names and descriptions, so clear separate tools are easy to choose between. <b>Rule: when one tool hides several different jobs, split it.</b>",
     "options": [
      "Worked examples in the prompt (<b>few-shot</b>) add text but leave four different contracts hidden behind one switch.",
@@ -2975,24 +2959,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "when a court query lands on the archive it returns zero hits and the briefing says no precedent exists",
-      "means": "The vivid harm. It invites better error handling (<b>[[2]]</b>), which helps after a misroute but doesn't stop it."
+      "quote": "About one call in five goes to the wrong corpus.",
+      "means": "A selection problem. The question is whether better wording can fix it."
      },
      {
-      "quote": "The tool's documentation already runs to forty lines, with a worked query for each corpus.",
+      "quote": "The tool's documentation is already long, with a worked query for each corpus.",
       "means": "The description lever is mostly used up. This weakens <b>[[1]]</b>, the runner-up, and examples (<b>[[0]]</b>) add the same kind of text."
      },
      {
-      "quote": "Each corpus has its own query grammar",
+      "quote": "Each corpus uses its own query syntax.",
       "means": "The decider, part one. Different inputs per corpus cannot be expressed by one <code>source</code> parameter."
      },
      {
-      "quote": "each returns a different set of fields",
-      "means": "The decider, part two. Different outputs too. Four contracts belong in four tools: <b>[[3]]</b>."
+      "quote": "Each also returns a different set of fields.",
+      "means": "The decider, part two. Four contracts belong in four tools: <b>[[3]]</b>."
      },
      {
       "quote": "What should the team do next?",
-      "means": "'Next' tells you the first step has been taken. Move on to the structural fix."
+      "means": "A structured error (<b>[[2]]</b>) helps after a misroute but doesn't stop it."
      }
     ],
     "rule": "Descriptions first. But when one tool hides several jobs with different inputs and outputs, split it into purpose-specific tools.",
@@ -3010,7 +2994,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "A briefing stated that no committee testimony existed on a pesticide bill; testimony was found later. The archive search tool had returned an empty list. Logs show the archive's index was down for its nightly rebuild, which runs up to two hours, and that the tool's wrapper catches connection errors and returns an empty list in their place. Analysts submit requests at all hours, and the coordinator reads an empty list as a search that ran and found nothing. How should the tool's behaviour change?",
+   "question": "The archive search tool's wrapper catches connection errors and returns an empty list instead. The archive's index goes offline for a rebuild every night, for up to two hours. Analysts submit requests at any hour. The coordinator treats an empty list as a search that ran and found nothing. As a result, one briefing wrongly stated that no committee testimony existed. How should the tool's behaviour change?",
    "options": [
     {
      "t": "Retry connection errors inside the wrapper with exponential backoff for up to a minute, returning the empty list only once the retries are used up.",
@@ -3033,10 +3017,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "The outage lasts up to two hours and requests arrive at any time; if failures were brief blips, local retry with backoff would be the first fix.",
+   "decider": "The outage lasts up to two hours, and the coordinator cannot tell it from a real no-match; if failures were brief blips, local retry with backoff would be the first fix.",
    "explanation": "Tools must distinguish access failures from valid empty results and return structured error metadata (isError, category, retryability) so the agent can recover appropriately.",
    "eli5": {
-    "question": "A search said 'nothing found' when the archive was actually down. The question asks how the tool should behave. The clue is: the outage can last up to two hours, and requests come in at any hour. The swallowed connection errors tempt you towards 'just retry'.",
+    "question": "A search said 'nothing found' when the archive was actually down. The question asks how the tool should behave. The clue is: the outage can last up to two hours, and the coordinator reads an empty list as 'searched, found nothing'.",
     "answer": "Imagine phoning a shop and getting no answer, then telling your boss 'they don't sell it'. 'Closed' and 'doesn't have it' are different answers. The tool must say 'I couldn't search, try later' as a real error (<b>isError</b> with a category and a retryable flag). A genuine empty result stays a normal answer (a <b>valid empty result</b>). Then the coordinator can wait, reroute, or flag the gap. <b>Rule: never let 'couldn't look' look the same as 'looked and found nothing'.</b>",
     "options": [
      "Runner-up. Retrying a few times (<b>local retry with backoff</b>) is right for brief blips. A two-hour rebuild outlasts it, and the failure still ends up looking like 'nothing found'.",
@@ -3085,24 +3069,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "The archive search tool had returned an empty list.",
-      "means": "On its own, an empty list means 'searched, found nothing'. That is what the coordinator believed."
-     },
-     {
-      "quote": "Logs show the archive's index was down for its nightly rebuild, which runs up to two hours",
-      "means": "The decider, part one. A two-hour outage outlasts any sensible retry, so <b>[[0]]</b>, the runner-up, still ends in an empty list."
-     },
-     {
-      "quote": "the tool's wrapper catches connection errors and returns an empty list in their place",
+      "quote": "The archive search tool's wrapper catches connection errors and returns an empty list instead.",
       "means": "The root cause: an access failure is disguised as a valid empty result."
      },
      {
-      "quote": "the coordinator reads an empty list as a search that ran and found nothing",
-      "means": "The decider, part two. The coordinator needs a different signal for 'couldn't search'. That is <b>[[1]]</b>."
+      "quote": "The archive's index goes offline for a rebuild every night, for up to two hours.",
+      "means": "The decider, part one. A two-hour outage outlasts any sensible retry, so <b>[[0]]</b>, the runner-up, still ends in an empty list."
      },
      {
-      "quote": "How should the tool's behaviour change?",
-      "means": "Falling back to the web (<b>[[2]]</b>) and logging hit counts (<b>[[3]]</b>) still leave 'down' and 'none' looking the same."
+      "quote": "The coordinator treats an empty list as a search that ran and found nothing.",
+      "means": "The decider, part two. The coordinator needs a different signal for 'couldn't search': <b>[[1]]</b>."
+     },
+     {
+      "quote": "As a result, one briefing wrongly stated that no committee testimony existed.",
+      "means": "The harm. Falling back to the web (<b>[[2]]</b>) or logging hit counts (<b>[[3]]</b>) still leaves 'down' and 'none' looking the same."
      }
     ],
     "rule": "Never let 'could not look' look like 'looked and found nothing'. Return a structured, retryable error for outages.",
@@ -3120,10 +3100,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Two sources published this year disagree on a plant closure: an agency estimates 14,000 jobs affected, a university study 9,500. The synthesis subagent kept the agency figure, and at the hearing a witness pointed out that the agency's model had been disputed, which embarrassed the member's aide. Staff use these briefings to draft questions for witnesses from both organizations, and briefings go straight from the report subagent to staff. Which change to the synthesis output is <b>most appropriate</b>?",
+   "question": "Two recent sources disagree on the number of jobs affected by a plant closure. A government agency gives one figure, a university study another. The synthesis subagent kept only the agency figure. Staff use the briefings to prepare questions for witnesses from both organizations. Briefings go straight from the report subagent to staff, with no review step. Which change to the synthesis output is <b>most appropriate</b>?",
    "options": [
     {
-     "t": "Calibrate a per-claim confidence score on a labeled set of past briefings and hold claims below threshold, such as disputed models, for analyst review.",
+     "t": "Calibrate a per-claim confidence score on a labeled set of past briefings and hold claims that score below threshold for an analyst's review.",
      "why": "Runner-up. Calibrated confidence routing is right for directing reviewer effort. There is no review step in this flow, and staff need the disagreement itself to question both witnesses, not a score."
     },
     {
@@ -3143,10 +3123,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "Readers must question both organizations and briefings reach them without review; if the goal were routing analyst review effort, calibrated confidence would win.",
+   "decider": "Staff must question both organizations and there is no review step; if the goal were to direct analyst review effort, calibrated confidence routing would win.",
    "explanation": "When credible sources conflict, preserve both values with attribution and dates in a structured section rather than picking one.",
    "eli5": {
-    "question": "Two respected sources give different job-loss numbers, and the report picked one. The question asks how the output should change. The clue is: staff use the briefing to question witnesses from both sides, and it reaches them with no review step. The embarrassing hearing moment is the distraction.",
+    "question": "Two respected sources give different job-loss numbers, and the report kept only one. The question asks how the output should change. The clue is: staff question witnesses from both organizations, and briefings reach them with no review step.",
     "answer": "Think of a referee's report when two line judges disagree. You don't quietly pick one; you write down both calls, who made them and why. The briefing should have its own section for disputes, listing each number with who produced it, when, and how (keeping <b>claim-source attribution</b> for <b>conflicting sources</b>). Staff can then ask each witness about their own figure. <b>Rule: when good sources disagree, show both with their sources; don't pick a winner.</b>",
     "options": [
      "Runner-up. A tested confidence score that sends weak claims to a reviewer (<b>calibrated confidence routing</b>) wins when you need to direct reviewers' time. Here there is no review step, and staff need both numbers.",
@@ -3156,7 +3136,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the embarrassment means the system needs better judgment about which figure to trust</b>, so you add confidence scores and review. But the readers don't need the system to pick a winner. They need <b>both figures, with who produced them and how</b>, because their job is to question both sides.",
+    "premise": "It is tempting to think <b>a conflict between sources means the system needs better judgment about which figure to trust</b>, so you add confidence scores and review. But the readers don't need the system to pick a winner. They need <b>both figures, with who produced them and how</b>, because their job is to question both sides.",
     "mapTitle": "Sources disagree: what does the reader need?",
     "map": {
      "head": [
@@ -3194,24 +3174,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Two sources published this year disagree on a plant closure",
-      "means": "Same year, so dates don't explain the conflict. That rules out <b>[[1]]</b> as the fix."
+      "quote": "Two recent sources disagree on the number of jobs affected by a plant closure.",
+      "means": "Both are recent, so dates don't explain the conflict. That rules out <b>[[1]]</b> as the fix."
      },
      {
-      "quote": "The synthesis subagent kept the agency figure",
+      "quote": "The synthesis subagent kept only the agency figure.",
       "means": "The real fault: it picked one figure and dropped the other."
      },
      {
-      "quote": "at the hearing a witness pointed out that the agency's model had been disputed, which embarrassed the member's aide",
-      "means": "The vivid symptom. It invites 'catch weak claims before release', which is <b>[[0]]</b>, the runner-up."
+      "quote": "Staff use the briefings to prepare questions for witnesses from both organizations.",
+      "means": "The decider, part one. Staff need both figures with their sources and methods: <b>[[2]]</b>."
      },
      {
-      "quote": "Staff use these briefings to draft questions for witnesses from both organizations",
-      "means": "The decider, part one. Staff need both figures and their methods, which is <b>[[2]]</b>."
-     },
-     {
-      "quote": "briefings go straight from the report subagent to staff",
-      "means": "The decider, part two. There is no review step for <b>[[0]]</b> to route claims to. Tables (<b>[[3]]</b>) could still show only one figure."
+      "quote": "Briefings go straight from the report subagent to staff, with no review step.",
+      "means": "The decider, part two. There is no reviewer for <b>[[0]]</b>, the runner-up, to route claims to. Tables (<b>[[3]]</b>) could still show only one figure."
      }
     ],
     "rule": "When good sources disagree, show both with their sources and methods. Don't pick a winner for the reader.",
@@ -3229,7 +3205,7 @@ window.EXAM = {
    "trap": "More context or reasoning instead of structure",
    "fam": 5,
    "select": 2,
-   "question": "Large briefings involve 25–40 subagent returns of about 300 tokens each. The coordinator keeps a rolling summary, rewritten every ten returns, and hands synthesis that summary plus the analyst's request; the synthesis subagent's input is capped at 6,000 tokens to keep drafting fast. Audits find that 30% of numeric findings from returns 10–30 are missing from the final briefing or reworded as 'declined' or 'rose sharply', against 4% for the first and last five returns. <b>Which TWO changes</b> should the team make?",
+   "question": "A large briefing produces about 12,000 tokens of subagent returns. The coordinator keeps a rolling summary of them and rewrites it as returns arrive. The synthesis subagent receives that summary, and its input is capped at 6,000 tokens. Audits show exact figures being reworded into vague words such as 'declined'. Figures from returns in the middle of a run are lost most often. <b>Which TWO changes</b> should the team make?",
    "options": [
     {
      "t": "Maintain a facts ledger outside the rolling summary that holds each exact number with its date and source as returned, and hand it to synthesis verbatim.",
@@ -3237,11 +3213,11 @@ window.EXAM = {
     },
     {
      "t": "Pass synthesis the complete set of subagent returns in place of the rolling summary, ordered by subtopic, with each return's source metadata attached.",
-     "why": "Runner-up. Passing complete prior findings is right when they fit; 40 returns at 300 tokens is about 12,000 tokens, double the synthesis cap, and a long flat input keeps the middle-position loss."
+     "why": "Runner-up. Passing complete prior findings is right when they fit; about 12,000 tokens of returns is double the 6,000-token cap, and a long flat input keeps the middle-position loss."
     },
     {
      "t": "Trim each subagent return to the fields the briefing needs and drop retrieval metadata before the coordinator adds the return to its context.",
-     "why": "Incorrect. Trimming verbose tool output helps when returns bloat context; these are already compact 300-token records."
+     "why": "Incorrect. Trimming verbose output reduces size, but trimmed returns are still rewritten into vague words and still lost in the middle."
     },
     {
      "t": "Lead the synthesis input with a digest of key findings grouped under explicit headings by subtopic rather than in arrival sequence.",
@@ -3253,15 +3229,15 @@ window.EXAM = {
     3
    ],
    "runnerUp": 1,
-   "decider": "The synthesis input cap of 6,000 tokens rules out passing all 25–40 returns (about 12,000 tokens); without the cap, passing complete findings would compete with the facts ledger.",
+   "decider": "The returns total about twice the synthesis input cap, so passing them all is ruled out; without the cap, passing complete findings would compete with the facts ledger.",
    "explanation": "Progressive summarization loses exact figures, and models attend less to the middle of long inputs. Keep a persistent facts block and put key summaries up front under clear headers.",
    "eli5": {
-    "question": "Exact numbers from the middle of long runs get lost or blurred into 'declined'. Pick the two changes that fix this. The clue is: the writer's input is capped at 6,000 tokens, while 25–40 returns of about 300 tokens each add up to far more.",
+    "question": "Exact numbers get blurred, and numbers from the middle of long runs get lost. Pick the two changes that fix this. The clue is: the returns add up to about twice what the writer's input can hold.",
     "answer": "Picture taking notes in a long meeting. If you keep rewriting your summary, '41.2 to 37.9' becomes 'went down'. So keep a separate list of exact figures that never gets rewritten (a <b>persistent facts block</b>). People also remember the start and end of a long talk better than the middle (<b>lost in the middle</b>). So put a short summary with clear headings at the top of the writer's input. Pasting in everything won't fit under the cap. <b>Rule: protect exact numbers from summarizing, and put key facts at the top under headings.</b>",
     "options": [
      "Correct. A ledger of exact figures, dates and sources sits outside the rewritten summary.",
      "Runner-up. Handing over everything (complete findings) would win if it fit. About 12,000 tokens is double the 6,000 cap, and a long flat input still loses the middle.",
-     "Cutting unneeded fields (trimming tool output) helps when returns are bloated. These are already small 300-token records.",
+     "Cutting unneeded fields (trimming tool output) helps when returns are bloated. Smaller returns are still rewritten and still lost in the middle.",
      "Correct. Key findings go first, under clear headings by subtopic, which beats the lost-in-the-middle effect."
     ]
    },
@@ -3305,24 +3281,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Large briefings involve 25–40 subagent returns of about 300 tokens each.",
-      "means": "Each return is already small, so trimming (<b>[[2]]</b>) has little to cut. Together they total about 7,500–12,000 tokens."
+      "quote": "A large briefing produces about 12,000 tokens of subagent returns.",
+      "means": "Compare this with the cap below."
      },
      {
-      "quote": "The coordinator keeps a rolling summary, rewritten every ten returns",
+      "quote": "The coordinator keeps a rolling summary of them and rewrites it as returns arrive.",
       "means": "Repeated rewriting is where exact figures get blurred. A ledger kept outside it fixes that: <b>[[0]]</b>."
      },
      {
-      "quote": "the synthesis subagent's input is capped at 6,000 tokens",
-      "means": "The decider. Passing every return (<b>[[1]]</b>, the runner-up) would need up to twice the cap."
+      "quote": "its input is capped at 6,000 tokens",
+      "means": "The decider. Passing every return (<b>[[1]]</b>, the runner-up) would need twice the cap."
      },
      {
-      "quote": "reworded as 'declined' or 'rose sharply'",
-      "means": "Proof of summarization loss: exact values became vague words."
+      "quote": "Audits show exact figures being reworded into vague words such as 'declined'.",
+      "means": "Proof of summarization loss. Trimming returns (<b>[[2]]</b>) doesn't stop the rewriting."
      },
      {
-      "quote": "against 4% for the first and last five returns",
-      "means": "Proof of position loss: the middle suffers most. A headed digest at the top fixes that: <b>[[3]]</b>."
+      "quote": "Figures from returns in the middle of a run are lost most often.",
+      "means": "Proof of position loss. A headed digest at the top fixes that: <b>[[3]]</b>."
      }
     ],
     "rule": "Keep exact numbers out of anything that gets rewritten, and put key findings at the top under clear headings.",
@@ -3340,7 +3316,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 2,
-   "question": "An engineer new to the backend needs to understand where the X-Courier-Region header is parsed and how its value reaches the dispatch scheduler. Teams named their request-handling classes differently over the years, and a few services read the header through a constant declared in a shared module. The engineer is pairing with Claude in this session to learn the code and wants the trail of files in front of them as it is followed. <b>Which TWO steps</b> should Claude take?",
+   "question": "An engineer new to the backend wants to learn where the X-Courier-Region header is parsed. They also want to see how its value reaches the dispatch scheduler. Teams named their request-handling classes inconsistently over the years. Some services read the header through a shared constant. The engineer is pairing with Claude to learn the code. They want to see each file as the trail is followed. <b>Which TWO steps</b> should Claude take?",
    "options": [
     {
      "t": "Use Glob with <code>**/*Interceptor*.kt</code> and <code>**/*Filter*.kt</code> to list candidate classes, then Read each match looking for the header.",
@@ -3364,10 +3340,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 3,
-   "decider": "The engineer wants to follow the trail of files in this session; if they only needed the resulting map, delegating to an Explore subagent would be one of the two.",
+   "decider": "The engineer wants to see each file in this session as the trail is followed; if they only needed the resulting map, delegating to an Explore subagent would be one of the two.",
    "explanation": "Grep searches contents, Glob matches paths. Locate entry points by content, then Read incrementally along the call path; delegate to Explore only when the trail itself is not wanted.",
    "eli5": {
-    "question": "A new engineer wants to learn how one header travels through the code. Pick the two steps Claude should take. The clue is: the engineer is pairing with Claude in this session and wants to see each file as it is followed. Also, teams named their classes inconsistently.",
+    "question": "A new engineer wants to learn how one header travels through the code. Pick the two steps Claude should take. The clue is: the engineer wants to see each file as it is followed, and class names are inconsistent.",
     "answer": "Think of tracing a rumour through a school. You don't guess by people's names; you ask who actually said the words, then follow who they told. Search inside files for the exact text (<b>Grep</b>, content search), then open those files and follow the trail one step at a time (<b>Read</b>, incrementally). The engineer sees every file along the way. <b>Rule: search by content when names are unreliable, then follow the trail step by step.</b>",
     "options": [
      "Searching by file name (<b>Glob</b>) works only when names are reliable. Here teams named classes differently, so you'd miss places.",
@@ -3415,20 +3391,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Teams named their request-handling classes differently over the years",
+      "quote": "Teams named their request-handling classes inconsistently over the years.",
       "means": "File names are unreliable, so name patterns (<b>[[0]]</b>) will miss places."
      },
      {
-      "quote": "a few services read the header through a constant declared in a shared module",
-      "means": "You need to search contents twice: the header text, then the constant's name. That is <b>[[1]]</b>."
+      "quote": "Some services read the header through a shared constant.",
+      "means": "Search contents twice: the header text, then the constant's name. That is <b>[[1]]</b>."
      },
      {
-      "quote": "The engineer is pairing with Claude in this session to learn the code and wants the trail of files in front of them as it is followed.",
+      "quote": "The engineer is pairing with Claude to learn the code.",
+      "means": "The work happens in this session, with the engineer watching."
+     },
+     {
+      "quote": "They want to see each file as the trail is followed.",
       "means": "The decider. A subagent would hide the trail, which rules out <b>[[3]]</b>, the runner-up. Reading step by step in-session is <b>[[2]]</b>."
-     },
-     {
-      "quote": "Which TWO steps should Claude take?",
-      "means": "Search by content, then follow the trail: <b>[[1]]</b> and <b>[[2]]</b>."
      }
     ],
     "rule": "Search by content when names are unreliable, then read along the trail one file at a time. Delegate to Explore only when the trail itself isn't wanted.",
@@ -3446,10 +3422,10 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The feature-flag MCP server is configured in the repository's <code>.mcp.json</code>, and every engineer uses it. Priya is trialling a beta build of the same server that adds tools for changing rollout percentages. The platform lead wants its token kept out of git. The beta's write tools are under a security review that ends in three weeks, and until then the server set that teammates get when they pull must stay as it is. Priya works across this repository and two sibling services. Where should she configure the beta server?",
+   "question": "The feature-flag MCP server is configured in the repository's <code>.mcp.json</code>, and the whole team uses it. Priya is trialling a beta build of the server that adds write tools. Until a security review finishes, teammates must not get the beta when they pull. Priya needs the beta in this repository and in two sibling repositories. Its token must stay out of git. Where should she configure the beta server?",
    "options": [
     {
-     "t": "In the repository's <code>.mcp.json</code> as a second server entry, with its token supplied through <code>${FLAGS_BETA_TOKEN}</code> expansion from the environment.",
+     "t": "In the repository's <code>.mcp.json</code> as a second server entry, with its token read from <code>${FLAGS_BETA_TOKEN}</code> in each user's environment.",
      "why": "Runner-up. Project .mcp.json with env-var expansion is the right home once a server is meant for the team. Committing it now changes what every teammate gets on pull, and it covers only this repository."
     },
     {
@@ -3469,10 +3445,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "Teammates' server set must not change on pull and Priya needs it in three repositories; if the beta were cleared for the team, project .mcp.json with env-var expansion would be right.",
+   "decider": "Teammates must not get the beta on pull, and Priya needs it in several repositories; if the beta were cleared for the whole team, project .mcp.json with env-var expansion would be right.",
    "explanation": "Project .mcp.json is shared via version control; ~/.claude.json is personal. Experimental or individually-scoped servers belong at user level.",
    "eli5": {
-    "question": "One engineer wants to try a risky beta tool server. Where should she set it up? The clue is: what teammates get when they pull must not change, and she needs it in three repositories. 'Keep the token out of git' is true, but it isn't the deciding fact.",
+    "question": "One engineer wants to try a beta tool server. Where should she set it up? The clue is: teammates must not get it when they pull, and she needs it in three repositories.",
     "answer": "Think of a shared office fridge and your own lunchbox. Anything in the fridge is for everyone; your lunchbox goes wherever you go. The project file (<b>.mcp.json</b>) is the shared fridge, because it travels with the repository. Her personal config (<b>~/.claude.json</b>) is the lunchbox: private, not in git, and used in every project she opens. <b>Rule: shared tools go in the project's .mcp.json; personal or experimental ones go in your user-level config.</b>",
     "options": [
      "Runner-up. Project config with the token read from an environment variable (<b>env-var expansion</b>) is right once the team should have it. Committing it now changes what everyone gets, and it covers only one repository.",
@@ -3521,24 +3497,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Priya is trialling a beta build of the same server",
+      "quote": "Priya is trialling a beta build of the server that adds write tools.",
       "means": "Trialling means experimental. That points to personal configuration."
      },
      {
-      "quote": "The platform lead wants its token kept out of git.",
-      "means": "True but not deciding. Both the runner-up <b>[[0]]</b> and the answer <b>[[3]]</b> keep the token out of git."
+      "quote": "Until a security review finishes, teammates must not get the beta when they pull.",
+      "means": "The decider, part one. Adding it to <code>.mcp.json</code> (<b>[[0]]</b>, the runner-up) changes what teammates get."
      },
      {
-      "quote": "until then the server set that teammates get when they pull must stay as it is",
-      "means": "The decider, part one. Adding to <code>.mcp.json</code> (<b>[[0]]</b>) changes what teammates get on pull."
-     },
-     {
-      "quote": "Priya works across this repository and two sibling services.",
+      "quote": "Priya needs the beta in this repository and in two sibling repositories.",
       "means": "The decider, part two. A per-repo file can't follow her. User-level config does: <b>[[3]]</b>."
      },
      {
-      "quote": "Where should she configure the beta server?",
-      "means": "Project settings (<b>[[1]]</b>) are shared and have no per-person carve-outs. <code>CLAUDE.local.md</code> (<b>[[2]]</b>) holds instructions, not server config."
+      "quote": "Its token must stay out of git.",
+      "means": "Both <b>[[0]]</b> and <b>[[3]]</b> keep the token out of git, so this doesn't decide it. Project settings (<b>[[1]]</b>) are shared; <code>CLAUDE.local.md</code> (<b>[[2]]</b>) holds instructions, not server config."
      }
     ],
     "rule": "Shared servers go in the project's .mcp.json; personal or experimental ones go in ~/.claude.json.",
@@ -3556,10 +3528,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The design-docs wiki MCP server exposes <code>search_docs</code> and <code>get_doc</code>. Before answering most architecture questions, Claude makes 8–15 search calls with guessed keywords, often trying service names that do not exist in the wiki, before it reaches the right page. The 1,400 docs sit in a hierarchy by domain and service that changes a few times a month. Which change would <b>most reduce</b> these exploratory calls?",
+   "question": "The design-docs wiki MCP server exposes <code>search_docs</code> and <code>get_doc</code>. Before most architecture answers, Claude runs many searches with guessed keywords just to find out which pages exist. The wiki holds about 1,400 docs in a stable hierarchy by domain and service. The hierarchy changes only a few times a month. Which change would <b>most reduce</b> these exploratory calls?",
    "options": [
     {
-     "t": "Publish the wiki's page tree, with titles, owning teams and one-line summaries, as an MCP resource.",
+     "t": "Publish the wiki's doc hierarchy, with titles, owning teams and one-line summaries, as an MCP resource Claude reads first.",
      "why": "Correct. MCP resources expose content catalogs such as doc hierarchies, so the agent knows what exists without exploratory tool calls."
     },
     {
@@ -3579,10 +3551,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "The searches are spent discovering which of 1,400 stable pages exist; if Claude were misusing the tool's inputs, improving the description would come first.",
+   "decider": "The searches are spent discovering which pages exist in a large, stable hierarchy; if Claude were misusing the search tool's inputs, improving its description would come first.",
    "explanation": "Use MCP resources to expose catalogs and hierarchies so the agent knows what exists, reserving tools for actions and targeted retrieval.",
    "eli5": {
-    "question": "Claude wastes many searches guessing which wiki pages exist. The question asks what cuts those searches most. The clue is: there are 1,400 pages in a stable tree of domains and services. The invented service names tempt you to improve the search tool's description.",
+    "question": "Claude wastes many searches guessing which wiki pages exist. The question asks what cuts those searches most. The clue is: the searches are just to find out what exists, and the pages sit in a large, stable hierarchy.",
     "answer": "Picture a library with no catalogue, where you keep asking the librarian 'do you have anything on X?' A printed map of the shelves fixes that. Publish the wiki's page tree as something Claude can read up front (an <b>MCP resource</b>: content to read, not an action to call). Then Claude knows what exists and searches only for the right page. <b>Rule: use a resource to show what exists; use tools to act or fetch.</b>",
     "options": [
      "Correct. A readable catalogue of the page tree, loaded before searching.",
@@ -3592,7 +3564,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>many searches mean the search tool is poorly described</b>. But these searches aren't confused about <i>how</i> to search. They are trying to learn <b>what exists</b>. A description can explain a tool; it can't list 1,400 pages. What's missing is a catalogue the agent can read before it starts searching.",
+    "premise": "It is tempting to think <b>many searches mean the search tool is poorly described</b>, so you add valid names and examples to its description. But these searches aren't confused about <i>how</i> to search. They are trying to learn <b>what exists</b>. A description can explain a tool; it can't list 1,400 pages. What's missing is a catalogue the agent can read before it starts searching.",
     "mapTitle": "Agent makes many exploratory calls: what is it missing?",
     "map": {
      "head": [
@@ -3630,16 +3602,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Claude makes 8–15 search calls with guessed keywords",
-      "means": "Guessing means it doesn't know what's there. This is discovery, not tool misuse."
+      "quote": "Claude runs many searches with guessed keywords just to find out which pages exist.",
+      "means": "This is discovery, not tool misuse. A better description (<b>[[1]]</b>, the runner-up) explains a tool; it can't list the pages."
      },
      {
-      "quote": "often trying service names that do not exist in the wiki",
-      "means": "The vivid symptom. It invites listing valid names in the description: <b>[[1]]</b>, the runner-up."
+      "quote": "The wiki holds about 1,400 docs in a stable hierarchy by domain and service.",
+      "means": "The decider. A large, stable hierarchy is exactly the content catalogue a resource exposes: <b>[[0]]</b>."
      },
      {
-      "quote": "The 1,400 docs sit in a hierarchy by domain and service that changes a few times a month.",
-      "means": "The decider. A large, stable hierarchy is exactly the content catalogue a resource exposes: <b>[[0]]</b>. A description can't hold 1,400 pages."
+      "quote": "The hierarchy changes only a few times a month.",
+      "means": "A published catalogue stays accurate with little upkeep."
      },
      {
       "quote": "Which change would most reduce these exploratory calls?",
@@ -3661,7 +3633,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The platform team built the feature-flag MCP server and deploys it from its own repository. Its three tools have these complete descriptions: <code>get_flag</code> 'Gets flag info', <code>get_flag_rules</code> 'Gets rules', <code>evaluate_flag</code> 'Evaluates a flag'. Yesterday Claude told a product manager that courier 4471 would see the new routing flow; a targeting rule excludes that courier's city. Session logs show Claude called <code>get_flag</code> and reasoned from the default value. What is the <b>most effective first step</b>?",
+   "question": "The platform team built the feature-flag MCP server and deploys it from its own repository. Its three tools have one-line descriptions: <code>get_flag</code> 'Gets flag info', <code>get_flag_rules</code> 'Gets rules' and <code>evaluate_flag</code> 'Evaluates a flag'. Asked whether a given courier will see a new flow, Claude calls <code>get_flag</code>. It then answers from the default value and misses targeting rules. What is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Add a section to the project CLAUDE.md telling Claude to answer any question about a specific courier or user with <code>evaluate_flag</code>.",
@@ -3684,10 +3656,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "The platform team owns the server; if it were a third-party server whose descriptions they could not edit, CLAUDE.md guidance would be the practical first step.",
+   "decider": "The platform team owns the server and can edit its descriptions; if it were a third-party server whose descriptions they could not change, CLAUDE.md guidance would be the practical first step.",
    "explanation": "Minimal descriptions cause unreliable selection among similar tools. Expanding descriptions with inputs, outputs, examples and boundaries is the high-leverage first fix.",
    "eli5": {
-    "question": "Claude picked the wrong feature-flag tool and gave a wrong answer. The question asks for the best first step. The clue is: the team built and deploys this server themselves, and each tool's description is only a few words.",
+    "question": "Claude picked the wrong feature-flag tool and gave a wrong answer. The question asks for the best first step. The clue is: the team built and deploys this server itself, and each description is only a few words.",
     "answer": "Imagine three drawers labelled 'stuff', 'things' and 'items'. People will open the wrong one. Claude chooses tools mainly by reading their descriptions (the <b>tool description</b> is the main selection signal). Since the team owns the server, rewrite each description: what it needs, what it returns, an example question, and when to use a sibling instead. <b>Rule: if you own the tool and Claude picks wrong, fix the description first.</b>",
     "options": [
      "Runner-up. A note in the project memory (<b>CLAUDE.md</b>) is the fallback when the server belongs to someone else. This team owns it, so fix the descriptions every client sees.",
@@ -3739,12 +3711,12 @@ window.EXAM = {
       "means": "The decider. They can change the descriptions directly, so <b>[[0]]</b>, the runner-up, is a workaround, not the fix."
      },
      {
-      "quote": "Its three tools have these complete descriptions: get_flag 'Gets flag info', get_flag_rules 'Gets rules', evaluate_flag 'Evaluates a flag'",
-      "means": "Three near-identical one-liners. Nothing tells Claude which tool answers a per-courier question. That is the root cause."
+      "quote": "Its three tools have one-line descriptions",
+      "means": "Three near-identical one-liners. Nothing tells Claude which tool answers a per-courier question."
      },
      {
-      "quote": "Session logs show Claude called get_flag and reasoned from the default value.",
-      "means": "A selection mistake between similar tools, which is exactly what descriptions govern: <b>[[2]]</b>."
+      "quote": "Asked whether a given courier will see a new flow, Claude calls get_flag.",
+      "means": "A selection mistake between similar tools, which is what descriptions govern: <b>[[2]]</b>."
      },
      {
       "quote": "What is the most effective first step?",
@@ -3766,14 +3738,14 @@ window.EXAM = {
    "trap": "Losing or fabricating information",
    "fam": 7,
    "select": 1,
-   "question": "An engineer spent 50 minutes with Claude mapping how order-assignment code uses a blocking Redis client: dozens of file reads covering call sites, threading assumptions and three timing-sensitive tests. They now want to compare a migration to Kotlin coroutines with one to a reactive client, each taken far enough to see test fallout, and keep the better one. The working tree is still clean at the commit they started from, and the status line shows the session at 38% of its context window. How should they proceed?",
+   "question": "An engineer spent most of an hour with Claude mapping how order-assignment code uses a blocking Redis client. They now want to try two migrations: one to Kotlin coroutines, one to a reactive client. Each should go far enough to show test failures, and the better one will be kept. No files have changed since the mapping, and the session's context window is well under half full. How should they proceed?",
    "options": [
     {
      "t": "Ask Claude for a structured summary of the mapping, then open two new sessions seeded with that summary, one for each migration approach.",
      "why": "Runner-up. A fresh session with a summary is right when the baseline's tool results are stale or context is near its limit. Neither holds, and a summary drops detail the full session retains."
     },
     {
-     "t": "Branch the session twice from its current point with <code>fork_session</code> and carry one migration forward in each branch.",
+     "t": "Branch the session twice from the end of the mapping with <code>fork_session</code>, carrying one migration forward in each branch.",
      "why": "Correct. Forking creates independent branches from a shared, still-valid baseline, which is what comparing divergent approaches needs."
     },
     {
@@ -3781,7 +3753,7 @@ window.EXAM = {
      "why": "Incorrect. Passing findings explicitly is right for delegation, but both subagents would edit the same working tree, and a prompt carries less than the session's full context."
     },
     {
-     "t": "Enter plan mode and have Claude design both migrations side by side, comparing their effect on the three timing-sensitive tests before choosing.",
+     "t": "Enter plan mode and have Claude design both migrations side by side, comparing their effect on the timing-sensitive tests before choosing one.",
      "why": "Incorrect. Plan mode is for designing before changing code; the engineer needs both migrations implemented far enough to see real test fallout."
     }
    ],
@@ -3789,10 +3761,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "The tree is unchanged and context is at 38%, so the full baseline is valid; if files had changed or context were near its limit, a fresh session with a summary would win.",
+   "decider": "Nothing has changed and context has plenty of room, so the full baseline is valid; if files had changed or context were near its limit, a fresh session with a summary would win.",
    "explanation": "fork_session creates independent branches from a shared baseline for divergent approaches. Start fresh with a summary only when the baseline is stale or overloaded.",
    "eli5": {
-    "question": "After a long mapping session, an engineer wants to try two different migrations and compare them. The question asks how to proceed. The clue is: the code hasn't changed and the session is only at 38% of its memory. '50 minutes, dozens of reads' tempts you to start fresh.",
+    "question": "After a long mapping session, an engineer wants to try two different migrations and compare them. The question asks how to proceed. The clue is: no files have changed and the session's context is well under half full.",
     "answer": "Think of a choose-your-own-adventure book. You've read to a key page, and now you want to try both paths. You keep a finger on that page and explore each path from it. Branching the session (<b>fork_session</b>) does that: two independent copies of everything learned so far. A summary would throw away detail you can still use. <b>Rule: fork when the starting point is still good; start fresh only when it's stale or full.</b>",
     "options": [
      "Runner-up. A fresh session with a summary wins when the old results are stale or memory is nearly full. Neither is true here, and summaries lose detail.",
@@ -3841,24 +3813,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "An engineer spent 50 minutes with Claude mapping how order-assignment code uses a blocking Redis client",
-      "means": "The vivid detail. Long sessions feel heavy, which invites a summary and fresh start: <b>[[0]]</b>, the runner-up."
+      "quote": "An engineer spent most of an hour with Claude mapping how order-assignment code uses a blocking Redis client.",
+      "means": "A long session. That alone might suggest summarizing and starting fresh (<b>[[0]]</b>, the runner-up)."
      },
      {
-      "quote": "They now want to compare a migration to Kotlin coroutines with one to a reactive client, each taken far enough to see test fallout",
-      "means": "Two divergent approaches from one baseline, and real code changes. Plan mode (<b>[[3]]</b>) won't produce test fallout."
+      "quote": "They now want to try two migrations: one to Kotlin coroutines, one to a reactive client.",
+      "means": "Two divergent approaches from one baseline."
      },
      {
-      "quote": "The working tree is still clean at the commit they started from",
-      "means": "The decider, part one: nothing is stale."
+      "quote": "Each should go far enough to show test failures, and the better one will be kept.",
+      "means": "Real code changes are needed. Plan mode (<b>[[3]]</b>) won't produce test failures. Two subagents (<b>[[2]]</b>) would edit the same working tree."
      },
      {
-      "quote": "the status line shows the session at 38% of its context window",
-      "means": "The decider, part two: plenty of room. So branch from the full context: <b>[[1]]</b>."
-     },
-     {
-      "quote": "How should they proceed?",
-      "means": "Two subagents (<b>[[2]]</b>) would edit the same working tree and get only what fits in a prompt."
+      "quote": "No files have changed since the mapping, and the session's context window is well under half full.",
+      "means": "The decider. The baseline is valid and has room, so branch from it: <b>[[1]]</b>."
      }
     ],
     "rule": "Fork when the starting point is still valid. Start fresh with a summary only when it is stale or full.",
@@ -3876,11 +3844,11 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Before a resilience review, a staff engineer asks Claude how each of 28 backend services retries calls to the payments gateway. The reviewers supplied a spreadsheet template with one row per service and columns for retry count, backoff, idempotency key and timeout. In one long session, Claude found halfway through that three services use a different HTTP client, gave detailed rows for early services and thin ones for later services, and made two contradictory statements about a shared retry library. What is the <b>best way</b> to restructure the work?",
+   "question": "Before a resilience review, a staff engineer asks Claude how each of 28 backend services retries calls to the payments gateway. The reviewers fixed the questions in advance: retry count, backoff, idempotency key and timeout. Claude did it all in one long session. Rows for early services were detailed, and later ones were thin. It also contradicted itself about a shared retry library. What is the <b>best way</b> to restructure the work?",
    "options": [
     {
-     "t": "Have Claude draft an investigation plan from what the first services reveal and add subtasks as new HTTP clients and retry patterns turn up.",
-     "why": "Runner-up. Adaptive decomposition is right when the shape of the work is unknown and subtasks depend on discoveries. The reviewers' template fixes both the items and the questions in advance."
+     "t": "Have Claude draft an investigation plan from what the first services reveal and add subtasks as new retry patterns and clients turn up.",
+     "why": "Runner-up. Adaptive decomposition is right when the shape of the work is unknown and subtasks depend on discoveries. Here the reviewers fixed the services and questions in advance."
     },
     {
      "t": "Delegate the work to an Explore subagent that reads the services in its own context and returns a single summary table to the main session.",
@@ -3891,7 +3859,7 @@ window.EXAM = {
      "why": "Incorrect. A scratchpad preserves findings across context boundaries, but the analysis is still one long pass with uneven attention."
     },
     {
-     "t": "Give every service its own focused pass, then run one comparison pass over all the outputs that settles disagreements about common code.",
+     "t": "Give every service its own focused pass, then run one comparison pass over all outputs that reconciles statements about the shared library.",
      "why": "Correct. Prompt chaining with per-item analysis and a cross-item integration pass gives consistent depth and resolves contradictions."
     }
    ],
@@ -3899,10 +3867,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The reviewers' template fixes the 28 rows and four columns in advance; if the scope had to be discovered as the work progressed, adaptive decomposition would win.",
+   "decider": "The services and questions are fixed in advance; if the scope had to be discovered as the work progressed, adaptive decomposition would win.",
    "explanation": "For a known, fixed set of items, chain focused per-item passes and add an integration pass; use adaptive decomposition when subtasks depend on what is found.",
    "eli5": {
-    "question": "A long single pass over 28 services gave uneven answers and contradictions. The question asks how to restructure. The clue is: the reviewers' template fixes both the list of services and the four questions in advance. The surprise HTTP client tempts you towards an adaptive plan.",
+    "question": "A long single pass over 28 services gave uneven answers and contradictions. The question asks how to restructure. The clue is: the reviewers fixed both the services and the questions in advance.",
     "answer": "Imagine marking 28 exam papers in one sitting. The first few get careful attention, the last ones get skimmed, and you contradict yourself. Better: mark each paper on its own, then do one final pass comparing them. That's <b>prompt chaining</b>: a focused pass per item, then an <b>integration pass</b> across all results. <b>Rule: for a fixed list of items, do one pass each, then one pass to compare.</b>",
     "options": [
      "Runner-up. A plan that grows as you discover things (<b>adaptive decomposition</b>) wins when you don't know the shape of the work. Here the template fixes it.",
@@ -3912,7 +3880,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>a surprise discovery means the work needs an adaptive plan</b>. Adaptive plans are for work whose shape you don't know yet. Here the shape is fixed: 28 rows, four columns. The thin rows and contradictions are classic <b>attention dilution</b>: too many items in one long pass. The fix is to give each item its own pass, then compare.",
+    "premise": "It is tempting to think <b>a big, messy analysis needs an adaptive plan</b>. Adaptive plans are for work whose shape you don't know yet. Here the shape is fixed: 28 services, four questions. The thin rows and contradictions are classic <b>attention dilution</b>: too many items in one long pass. The fix is to give each item its own pass, then compare.",
     "diagram": "svc1 -> pass   \\\nsvc2 -> pass    > integration pass -> table\n...  -> pass   /\nsvc28-> pass  /",
     "mapTitle": "Big analysis came back uneven: how should the work be split?",
     "map": {
@@ -3951,19 +3919,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "The reviewers supplied a spreadsheet template with one row per service and columns for retry count, backoff, idempotency key and timeout.",
-      "means": "The decider. The items and questions are fixed up front, so adaptive planning (<b>[[0]]</b>, the runner-up) isn't needed."
+      "quote": "The reviewers fixed the questions in advance: retry count, backoff, idempotency key and timeout.",
+      "means": "The decider. The shape of the work is known up front, so an adaptive plan (<b>[[0]]</b>, the runner-up) isn't needed."
      },
      {
-      "quote": "Claude found halfway through that three services use a different HTTP client",
-      "means": "The vivid surprise. It invites an adaptive plan, but it changes an answer, not the shape of the table."
+      "quote": "Claude did it all in one long session.",
+      "means": "One pass over many items is where attention dilutes."
      },
      {
-      "quote": "gave detailed rows for early services and thin ones for later services",
-      "means": "Attention fading across one long pass. Saving notes (<b>[[2]]</b>) or moving the pass into a subagent (<b>[[1]]</b>) keeps it one long pass."
+      "quote": "Rows for early services were detailed, and later ones were thin.",
+      "means": "Attention fading. Saving notes (<b>[[2]]</b>) or moving the pass into a subagent (<b>[[1]]</b>) keeps it one long pass."
      },
      {
-      "quote": "made two contradictory statements about a shared retry library",
+      "quote": "It also contradicted itself about a shared retry library.",
       "means": "A cross-item problem. It needs a separate pass that compares all results: <b>[[3]]</b>."
      }
     ],
@@ -3982,7 +3950,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "At 02:00 an engineer uses Claude to investigate why courier ETAs jumped 40%. After an hour, Claude has traced it to a config change in the routing service, confirmed it on two dashboards and drafted a rollback. The status line shows the session at 85% of its context window, and the engineer worries the detail will be lost. Their shift ends in ten minutes; the rollback will be carried out by an engineer from the network team, who works from the incident ticket and does not use Claude Code. What should the engineer have Claude produce?",
+   "question": "Late at night, an engineer uses Claude to investigate a jump in courier ETAs. Claude traces it to a config change in the routing service and drafts a rollback. The engineer's shift is ending. The rollback will be done by an engineer from the network team. That engineer works only from the incident ticket and does not use Claude Code. What should the engineer have Claude produce?",
    "options": [
     {
      "t": "A concise incident note: affected service, cause, evidence with file references, revert steps and unresolved questions.",
@@ -4005,10 +3973,10 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "The next actor is a human working only from the ticket without Claude Code; if a later Claude session were continuing the work, a scratchpad of findings would fit.",
+   "decider": "The next actor is a human who works only from the ticket and does not use Claude Code; if a later Claude session were continuing the work, a scratchpad of findings would fit.",
    "explanation": "When work passes to a human who will not read the transcript, compile a structured summary: what, why, evidence, recommended action, open questions.",
    "eli5": {
-    "question": "An engineer's shift is ending mid-incident. What should Claude produce? The clue is: the next person is from the network team, works from the ticket and doesn't use Claude Code. The '85% full' warning tempts you to save the session instead.",
+    "question": "An engineer's shift is ending mid-incident. What should Claude produce? The clue is: the next person works only from the ticket and doesn't use Claude Code.",
     "answer": "Think of a nurse handing over at shift change. The next nurse needs a short, clear handover sheet, not a recording of the whole shift. Write a <b>structured handoff summary</b> in the ticket: what's affected, the cause, the evidence, the steps to undo it, and what's still unknown. That person can act without ever opening Claude. <b>Rule: when a human takes over, hand them a short structured summary, not the session.</b>",
     "options": [
      "Correct. A short note covering service, cause, evidence, undo steps and open questions.",
@@ -4018,7 +3986,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the risk is losing the session's detail</b>, so you save the session. But saving it only helps whoever opens it next. Here the next person <b>won't open it</b>. The real question is: who acts next, and what do they read? A human working from a ticket needs a short, structured handoff.",
+    "premise": "It is tempting to think <b>the main job at a handover is saving the session's detail</b>, so you save the session. But saving it only helps whoever opens it next. Here the next person <b>won't open it</b>. The real question is: who acts next, and what do they read? A human working from a ticket needs a short, structured handoff.",
     "mapTitle": "Handing over work: who picks it up, and what do they read?",
     "map": {
      "head": [
@@ -4056,20 +4024,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Claude has traced it to a config change in the routing service, confirmed it on two dashboards and drafted a rollback",
+      "quote": "Claude traces it to a config change in the routing service and drafts a rollback.",
       "means": "The content of the handoff: cause, evidence, action."
      },
      {
-      "quote": "The status line shows the session at 85% of its context window, and the engineer worries the detail will be lost.",
-      "means": "The vivid worry. It invites saving findings for later: the scratchpad <b>[[1]]</b> (the runner-up) or <code>/compact</code> <b>[[3]]</b>."
+      "quote": "The rollback will be done by an engineer from the network team.",
+      "means": "The next actor is a person, not a later Claude session. That weakens the scratchpad (<b>[[1]]</b>, the runner-up)."
      },
      {
-      "quote": "the rollback will be carried out by an engineer from the network team, who works from the incident ticket and does not use Claude Code",
-      "means": "The decider. The reader is a human with only the ticket. A resumable session (<b>[[2]]</b>) and a scratchpad are useless to them."
-     },
-     {
-      "quote": "What should the engineer have Claude produce?",
-      "means": "A short, structured note in the ticket: <b>[[0]]</b>."
+      "quote": "That engineer works only from the incident ticket and does not use Claude Code.",
+      "means": "The decider. A resumable session (<b>[[2]]</b>) or a compacted one (<b>[[3]]</b>) is useless to them. A short structured note in the ticket is <b>[[0]]</b>."
      }
     ],
     "rule": "When a human takes over, hand them a short structured summary, not the session.",
@@ -4087,11 +4051,11 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Once a month an engineer upgrades the backend's third-party dependencies with Claude: it reads release notes for 30–60 libraries, often 150,000 tokens of changelog text, flags breaking changes and produces a short list of required code edits, which the engineer then makes in that same conversation. The procedure lives on an old wiki page, and last month a junior engineer following it skipped the step that checks transitive dependencies. Several engineers rotate through this task. What is the <b>best way</b> to package it?",
+   "question": "Once a month, an engineer upgrades the backend's dependencies with Claude. Claude reads the release notes for dozens of libraries, about 150,000 tokens of text. It then returns a short list of required code edits. The engineer makes those edits in the same conversation afterwards. Several engineers take turns doing this task. What is the <b>best way</b> to package it?",
    "options": [
     {
-     "t": "A project slash command in <code>.claude/commands/upgrade-deps.md</code> holding the procedure, the transitive-dependency check and the output format.",
-     "why": "Runner-up. A shared project command is right for a repeatable team procedure whose working output can live in the main conversation. Reading 30–60 changelogs would crowd the conversation the engineer keeps working in."
+     "t": "A project slash command in <code>.claude/commands/upgrade-deps.md</code> holding the procedure, its checks and the output format for the edit list.",
+     "why": "Runner-up. A shared project command is right for a repeatable team procedure whose working output can live in the main conversation. About 150,000 tokens of release notes would crowd the conversation the engineer keeps working in."
     },
     {
      "t": "A user-level skill in <code>~/.claude/skills/upgrade-deps/</code> with <code>context: fork</code> set and <code>allowed-tools</code> limited to Read and Grep.",
@@ -4110,10 +4074,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "Roughly 150,000 tokens of release notes are read before the engineer keeps working in the same conversation, so the reading must run in a forked context that returns only the edit list; if the reading were short, a shared project command would be enough.",
+   "decider": "About 150,000 tokens of release notes are read before the engineer keeps working in the same conversation, so the reading must run in a forked context; if the reading were short, a shared project command would be enough.",
    "explanation": "Skills package on-demand workflows; context: fork isolates verbose work from the main conversation. Project scope shares them with the team.",
    "eli5": {
-    "question": "A monthly upgrade routine needs packaging for the whole team. The question asks the best way. The clue is: Claude reads about 150,000 tokens of release notes, and then the engineer keeps working in that same conversation. The junior engineer's skipped step tempts you towards a plain shared command.",
+    "question": "A monthly upgrade routine needs packaging for the whole team. The question asks the best way. The clue is: Claude reads about 150,000 tokens of release notes, and the engineer then keeps working in that same conversation.",
     "answer": "Think of sending an assistant to a library to read 60 manuals. You don't want all 60 manuals piled on your desk. You want one page back: 'here's what you must change.' A skill set to run in its own side room (<b>context: fork</b> in a <b>SKILL.md</b>) does the reading separately and returns just the edit list. Keeping it in the repository's <code>.claude/skills/</code> folder shares it with everyone who pulls. <b>Rule: shared routines live in the repo; heavy reading runs in a forked context.</b>",
     "options": [
      "Runner-up. A shared project command (<code>.claude/commands/</code>) wins when the work is small enough to stay in your chat. 150,000 tokens of release notes would flood the conversation you keep using.",
@@ -4123,7 +4087,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the problem is that people skip steps</b>, so any shared, written-down command fixes it. A shared command does fix that. But it runs in your conversation, so all the reading lands in your context. When the reading is huge and you keep working afterwards, you need it to happen <b>somewhere else</b> and send back only the result.",
+    "premise": "It is tempting to think <b>a team routine just needs to be written down and shared</b>, so any project command will do. A shared command does that. But it runs in your conversation, so all the reading lands in your context. When the reading is huge and you keep working afterwards, you need it to happen <b>somewhere else</b> and send back only the result.",
     "diagram": "main chat --/upgrade-deps--> [forked context: reads 150k]\n   ^                                   |\n   +---------- edit list only ---------+",
     "mapTitle": "Packaging a team workflow: command, skill, or CLAUDE.md?",
     "map": {
@@ -4162,19 +4126,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "it reads release notes for 30–60 libraries, often 150,000 tokens of changelog text",
+      "quote": "Claude reads the release notes for dozens of libraries, about 150,000 tokens of text.",
       "means": "The decider, part one. That much reading would swamp a conversation."
      },
      {
-      "quote": "which the engineer then makes in that same conversation",
-      "means": "The decider, part two. The conversation must stay usable, so the reading must run in a forked context. That rules out <b>[[0]]</b>, the runner-up."
+      "quote": "It then returns a short list of required code edits.",
+      "means": "Only the short list is needed afterwards, so the reading can happen elsewhere."
      },
      {
-      "quote": "last month a junior engineer following it skipped the step that checks transitive dependencies",
-      "means": "The vivid symptom. It argues for a shared, versioned routine, which <b>[[0]]</b> and <b>[[2]]</b> both give."
+      "quote": "The engineer makes those edits in the same conversation afterwards.",
+      "means": "The decider, part two. The conversation must stay usable, so the reading runs in a forked context. That rules out <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "Several engineers rotate through this task.",
+      "quote": "Several engineers take turns doing this task.",
       "means": "It must be shared through the repo. A user-level skill (<b>[[1]]</b>) isn't."
      },
      {
@@ -4197,7 +4161,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "An engineer reports that Claude ignores <code>services/routing/CLAUDE.md</code> when editing routing code, repeatedly adding the LogWrapper call that the file forbids. Their personal <code>~/.claude/CLAUDE.md</code> includes the line 'Wrap outbound calls in LogWrapper'. Teammates editing the same directory see no problem. The engineer also recently moved to working from a second git worktree created from an older branch. What is the <b>most effective first step</b>?",
+   "question": "An engineer says Claude ignores <code>services/routing/CLAUDE.md</code> and keeps adding a LogWrapper call that the file forbids. Teammates working in the same directory do not see this. The engineer's personal <code>~/.claude/CLAUDE.md</code> says to wrap outbound calls in LogWrapper. They also recently started working from a worktree created from an older branch. Either could explain the problem. What is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Remove the LogWrapper line from the engineer's <code>~/.claude/CLAUDE.md</code> and restate the prohibition at the top of the routing CLAUDE.md file.",
@@ -4220,10 +4184,10 @@ window.EXAM = {
     1
    ],
    "runnerUp": 0,
-   "decider": "Two causes are plausible (an older-branch worktree and a conflicting personal file) and only this engineer is affected; if /memory had already shown both files loaded, removing the personal instruction would win.",
+   "decider": "Two causes are plausible and only this engineer is affected, so the first step is diagnosis; if /memory had already shown both files loaded, removing the personal instruction would win.",
    "explanation": "When memory behaves differently for one person, /memory verifies which CLAUDE.md files are loaded before changing configuration.",
    "eli5": {
-    "question": "Claude ignores one folder's rules, but only for one engineer. The question asks for the first step. The clue is: there are two possible causes, a personal file that says the opposite and a worktree made from an older branch. The quoted LogWrapper line tempts you to jump straight to deleting it.",
+    "question": "Claude ignores one folder's rules, but only for one engineer. The question asks for the first step. The clue is: there are two possible causes, a conflicting personal file and a worktree from an older branch.",
     "answer": "Imagine a recipe going wrong for one cook only. Before changing anything, check which recipe cards are actually on that cook's counter. <b>/memory</b> shows exactly which instruction files (the <b>CLAUDE.md</b> memory files) Claude has loaded for that person. Then you know whether the folder's file is missing or a personal file is overriding it. <b>Rule: when instructions misbehave for one person, check what's loaded before changing files.</b>",
     "options": [
      "Runner-up. Deleting the clashing personal line is the fix once you know it's the cause. The older-branch worktree might simply be missing the folder file, so check first.",
@@ -4233,7 +4197,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "It is tempting to think <b>the quoted personal line is obviously the cause</b>, so you delete it. It might be. But there is a second suspect: a worktree from an older branch may not contain the folder's CLAUDE.md at all. With two plausible causes, the <b>first step is to look</b>, not to change files.",
+    "premise": "It is tempting to think <b>the conflicting personal line is obviously the cause</b>, so you delete it. It might be. But there is a second suspect: a worktree from an older branch may not contain the folder's CLAUDE.md at all. With two plausible causes, the <b>first step is to look</b>, not to change files.",
     "mapTitle": "Instructions ignored for one person: diagnose before you fix",
     "map": {
      "head": [
@@ -4271,20 +4235,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Claude ignores services/routing/CLAUDE.md when editing routing code",
-      "means": "Either the file isn't loaded, or something overrides it."
-     },
-     {
-      "quote": "Their personal ~/.claude/CLAUDE.md includes the line 'Wrap outbound calls in LogWrapper'.",
-      "means": "Suspect one, and the vivid one. It invites deleting the line: <b>[[0]]</b>, the runner-up."
-     },
-     {
-      "quote": "Teammates editing the same directory see no problem.",
+      "quote": "Teammates working in the same directory do not see this.",
       "means": "The cause is specific to this engineer, so check this engineer's setup."
      },
      {
-      "quote": "The engineer also recently moved to working from a second git worktree created from an older branch.",
-      "means": "Suspect two, and quiet. An older branch may lack the routing file. Two suspects means you look first: <b>[[1]]</b>."
+      "quote": "The engineer's personal ~/.claude/CLAUDE.md says to wrap outbound calls in LogWrapper.",
+      "means": "Suspect one. Deleting that line is <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "They also recently started working from a worktree created from an older branch.",
+      "means": "Suspect two. An older branch may not contain the routing file at all."
+     },
+     {
+      "quote": "Either could explain the problem.",
+      "means": "The decider. With two suspects, look first: <b>[[1]]</b>."
      },
      {
       "quote": "What is the most effective first step?",
@@ -4306,10 +4270,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A product manager asks for a daily CSV export of courier payouts for finance, replacing a spreadsheet an analyst used to build by hand, and pastes three of its rows. The engineer has the schema but little knowledge of payout accounting. The finance lead says the old spreadsheet 'got several cases wrong' without saying which, and nobody has written down how refunds after payout, shifts crossing midnight or mid-week city changes should be treated. What is the <b>best way</b> to start?",
+   "question": "A product manager asks for a daily CSV export of courier payouts for finance. It replaces a spreadsheet an analyst built by hand, and the manager pastes a few of its rows. The engineer knows the schema but not payout accounting. Finance says the old spreadsheet got some cases wrong, but not which ones. Nobody has decided how refunds after payout or shifts crossing midnight should be handled. What is the <b>best way</b> to start?",
    "options": [
     {
-     "t": "Give Claude the three pasted spreadsheet rows with their source records and ask it to build an export that reproduces those lines exactly.",
+     "t": "Give Claude the pasted spreadsheet rows with their source records and ask it to build an export that reproduces those lines exactly.",
      "why": "Runner-up. Concrete input/output examples are the best way to communicate a transformation once the expected outputs are trustworthy. The source spreadsheet is known to be wrong in unnamed cases."
     },
     {
@@ -4317,11 +4281,11 @@ window.EXAM = {
      "why": "Incorrect. Test-first iteration works when expected behaviour is known; these tests would cover layout, not the unsettled business rules."
     },
     {
-     "t": "Enter plan mode and have Claude design the full export, covering refunds, cross-midnight shifts and city changes, before any code is written.",
+     "t": "Enter plan mode and have Claude design the full export, covering refunds and cross-midnight shifts, before any code is written.",
      "why": "Incorrect. Plan mode designs an approach, but Claude would have to invent rules that no one has set."
     },
     {
-     "t": "Have Claude open by questioning the engineer about unusual situations the report must handle, and take the unanswered ones to the accounting team.",
+     "t": "Have Claude begin by asking the engineer about unusual cases the report must handle, and take the open questions to finance.",
      "why": "Correct. The interview pattern has Claude ask questions first, surfacing requirements the engineer has not considered when the domain is unfamiliar."
     }
    ],
@@ -4329,10 +4293,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The pasted rows come from a spreadsheet known to be wrong in unnamed cases and the edge-case rules are unwritten; if trustworthy expected outputs existed, concrete examples would be the best start.",
+   "decider": "The pasted rows come from a spreadsheet known to be wrong in unnamed cases, and the edge-case rules are undecided; if trustworthy expected outputs existed, concrete examples would be the best start.",
    "explanation": "Use the interview pattern when requirements are unclear; use concrete examples or tests once the expected behaviour is known.",
    "eli5": {
-    "question": "An engineer must build a payout export in an area they don't know well. How should they start with Claude? The clue is: the old spreadsheet 'got several cases wrong' (nobody says which) and the tricky rules are unwritten. The pasted rows tempt you to copy them.",
+    "question": "An engineer must build a payout export in an area they don't know well. How should they start with Claude? The clue is: the old spreadsheet got some cases wrong, and nobody has decided the tricky rules.",
     "answer": "Think of a new tailor making a suit when the customer hasn't chosen the cloth or the cut. You don't copy an old suit that's known to fit badly. You ask questions first. Have Claude interview you about unusual cases (the <b>interview pattern</b>), then take the questions you can't answer to finance. Examples and tests come later, once the right answers are known. <b>Rule: when the rules are unclear, have Claude ask questions before building.</b>",
     "options": [
      "Runner-up. Real examples of input and expected output (<b>concrete examples</b>) are the best guide once you trust them. These rows come from a spreadsheet known to be wrong.",
@@ -4380,19 +4344,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "and pastes three of its rows",
-      "means": "The vivid hint. Real rows invite worked examples: <b>[[0]]</b>, the runner-up."
+      "quote": "the manager pastes a few of its rows",
+      "means": "Real rows suggest worked examples: <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "The engineer has the schema but little knowledge of payout accounting.",
+      "quote": "The engineer knows the schema but not payout accounting.",
       "means": "The engineer doesn't know which questions to ask. Claude asking first helps here."
      },
      {
-      "quote": "The finance lead says the old spreadsheet 'got several cases wrong' without saying which",
+      "quote": "Finance says the old spreadsheet got some cases wrong, but not which ones.",
       "means": "The decider, part one. The example rows can't be trusted, which rules out <b>[[0]]</b>."
      },
      {
-      "quote": "nobody has written down how refunds after payout, shifts crossing midnight or mid-week city changes should be treated",
+      "quote": "Nobody has decided how refunds after payout or shifts crossing midnight should be handled.",
       "means": "The decider, part two. The rules don't exist yet. Tests (<b>[[1]]</b>) and a plan (<b>[[2]]</b>) would both have to invent them."
      },
      {
@@ -4415,7 +4379,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "The review job links findings to tickets through the tracker vendor's community MCP server. A staff engineer set it up by adding the server to the user-level Claude Code config in the runner image, credential included, and last week the registry's image scanner flagged that credential as exposed. When a review run behaves oddly, the on-call engineer reproduces it by checking out the branch on a laptop and running the same command; the tracker tools are missing there, so reproductions rarely match CI. What is the <b>best change</b>?",
+   "question": "The review job uses the tracker vendor's community MCP server to link findings to tickets. An engineer added the server to the user-level Claude Code config in the runner image, with the API token written into it. Security has flagged the stored token. The on-call engineer must also be able to reproduce a review run from a plain checkout of the repository on a laptop. Today the tracker tools are missing there. What is the <b>best change</b>?",
    "options": [
     {
      "t": "Keep the server in the runner's <code>~/.claude.json</code>, delete the stored secret from the image, and inject it from the CI secret store at job start.",
@@ -4430,7 +4394,7 @@ window.EXAM = {
      "why": "Incorrect. settings.local.json is the personal, uncommitted settings file and is not where shared MCP servers are declared; the shared home is <code>.mcp.json</code>."
     },
     {
-     "t": "Move the definition into a <code>.mcp.json</code> at the repository root, with the credential written as <code>${TRACKER_TOKEN}</code> and supplied by CI or the laptop.",
+     "t": "Move the definition into a <code>.mcp.json</code> at the repository root, with the credential written as <code>${TRACKER_TOKEN}</code> and set by CI or the laptop.",
      "why": "Correct. Project-scope <code>.mcp.json</code> is version-controlled, so any checkout gets the server, and env var expansion keeps the secret out of both the repository and the image."
     }
    ],
@@ -4438,10 +4402,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The on-call engineer reproduces from a plain checkout, so the server must travel with the repository; if only the runner used it, user-level config with an injected secret would be enough.",
+   "decider": "The server must be available from a plain checkout on a laptop, so it has to be declared in the repository; if only the runner used it, user-level config with an injected secret would be enough.",
    "explanation": "Shared MCP servers belong in project-level <code>.mcp.json</code>; personal or experimental ones in <code>~/.claude.json</code>. Environment variable expansion lets a committed config carry no secret.",
    "eli5": {
-    "question": "Where should a shared tool connection be written down so that everyone who copies the project gets it? The leaked token is loud, but it is not the deciding fact. The clue is: the on-call engineer checks out the branch on a laptop, and the tracker tools are missing there.",
+    "question": "Where should a shared tool connection be declared so it reaches every checkout without storing a secret? The clue is: the on-call engineer must reproduce a run from a plain checkout on a laptop.",
     "answer": "Think of a shared office recipe book versus a note in one cook's pocket. The recipe book travels with the kitchen; the pocket note stays with one person. A committed <code>.mcp.json</code> is the recipe book (the <b>project-scope MCP config</b>), so every checkout gets the tool. Writing the token as <code>${TRACKER_TOKEN}</code> (<b>environment variable expansion</b>) means the book names the key but never contains it. <b>Rule: shared tool, shared file; secrets go in as ${VARS}, never as values.</b>",
     "options": [
      "Runner-up. This takes the key out of the cook's pocket note, which fixes the leak. It would win if only the CI runner needed the tool. A laptop checkout still has no note.",
@@ -4490,24 +4454,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "A staff engineer set it up by adding the server to the user-level Claude Code config in the runner image, credential included",
-      "means": "Two problems in one sentence: the scope is personal and the secret is stored. Any fix must address <b>both</b>."
+      "quote": "An engineer added the server to the user-level Claude Code config in the runner image, with the API token written into it",
+      "means": "Two problems in one sentence: the scope is personal and the secret is stored. The fix must address <b>both</b>."
      },
      {
-      "quote": "last week the registry's image scanner flagged that credential as exposed",
-      "means": "The vivid symptom. It invites <b>[[0]]</b>, which removes the stored secret but keeps the user-level scope."
+      "quote": "Security has flagged the stored token",
+      "means": "Removing the stored secret is necessary. <b>[[0]]</b> does that, but keeps the user-level scope."
      },
      {
-      "quote": "the on-call engineer reproduces it by checking out the branch on a laptop and running the same command",
-      "means": "The quiet clue. A checkout carries only what is committed, so the server must be declared in the repository. This rules out <b>[[0]]</b> and the per-run user-scope registration <b>[[1]]</b>."
+      "quote": "The on-call engineer must also be able to reproduce a review run from a plain checkout of the repository on a laptop",
+      "means": "The decider. A checkout carries only what is committed, so the server must be declared in the repository. This rules out <b>[[0]]</b> and the per-run user-scope registration <b>[[1]]</b>."
      },
      {
-      "quote": "the tracker tools are missing there, so reproductions rarely match CI",
+      "quote": "Today the tracker tools are missing there",
       "means": "Confirms the scope problem. <b>[[2]]</b> names a committed file, but <code>settings.local.json</code> is personal and not where MCP servers are declared."
      },
      {
       "quote": "What is the best change?",
-      "means": "One change that fixes both: committed <code>.mcp.json</code> with <code>${TRACKER_TOKEN}</code>. So <b>[[3]]</b>."
+      "means": "One change that fixes both: a committed <code>.mcp.json</code> with <code>${TRACKER_TOKEN}</code>. So <b>[[3]]</b>."
      }
     ],
     "rule": "If a tool must reach everyone who clones the repo, declare it in .mcp.json; put secrets in as ${VARS}, never as values.",
@@ -4525,7 +4489,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The autofix job must raise a timeout constant in <code>client_factory.py</code>, for the payments client only. The agent's Edit call returns an error saying the target text matches three locations, and the log shows it reissuing that Edit. The file is codegen output: a template emits one 60-line retry helper per client class, identical apart from the class declaration that precedes each copy, and the constant sits near the middle of the helper. The payments client is the second of three. What should the agent do <b>next</b>?",
+   "question": "The autofix job must change a timeout constant in <code>client_factory.py</code>, for the payments client only. The file is generated from a template. It holds one retry helper per client class, and the helper bodies are identical, line for line. Only the class declaration above each copy differs. The agent's Edit call fails because the target text matches several locations. What should the agent do <b>next</b>?",
    "options": [
     {
      "t": "Lengthen <code>old_string</code> with neighbouring lines above and below the constant until it identifies exactly one place, then reissue the Edit.",
@@ -4548,10 +4512,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "The three helpers are identical for their whole 60-line body; if the text around the constant differed per copy, widening old_string would be the better move.",
+   "decider": "The helper bodies are identical line for line, so no nearby context is unique; if the text around the constant differed per copy, widening old_string would be the better move.",
    "explanation": "Edit makes targeted changes through a unique text match. When no unique anchor exists, Read the file and Write it back with the change.",
    "eli5": {
-    "question": "The edit tool keeps failing because the text it is told to change appears three times. What should the agent do instead? The clue is: the three copies are identical for their whole 60-line body, apart from the class line above each.",
+    "question": "The edit tool keeps failing because the text appears in several places. What should the agent do instead? The clue is: the helper bodies are identical, line for line.",
     "answer": "Picture find-and-replace in a document where the same paragraph is printed three times. If you can't describe which copy you mean, find-and-replace can't help. So you open the whole document, change the one copy by hand, and save it (<b>Read, then Write</b>). Edit works only when the text you point at is unique; that is the fallback the exam guide names. <b>Rule: if Edit can't find a unique match, Read the whole file and Write it back.</b>",
     "options": [
      "Runner-up. Adding nearby lines is the normal way to make a match unique. It would win if the copies differed near the constant. Here they are identical for 60 lines.",
@@ -4600,20 +4564,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "The agent's Edit call returns an error saying the target text matches three locations",
-      "means": "A non-unique match. The textbook first move is to widen the anchor, which is <b>[[0]]</b>."
-     },
-     {
-      "quote": "a template emits one 60-line retry helper per client class, identical apart from the class declaration that precedes each copy",
-      "means": "The quiet clue. The copies are identical for 60 lines, so no small widening is unique. This defeats <b>[[0]]</b>, the runner-up."
-     },
-     {
       "quote": "for the payments client only",
-      "means": "Only one copy may change. Editing the template <b>[[3]]</b> changes all three clients."
+      "means": "Only one copy may change. Editing the template <b>[[3]]</b> changes every client."
+     },
+     {
+      "quote": "the helper bodies are identical, line for line",
+      "means": "The decider. No small widening of the anchor can be unique, which defeats <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "The agent's Edit call fails because the target text matches several locations",
+      "means": "A non-unique match. Edit matches text, not line numbers, so finding the line with Grep <b>[[1]]</b> doesn't help."
      },
      {
       "quote": "What should the agent do next?",
-      "means": "Edit matches text, not line numbers, so <b>[[1]]</b> doesn't work. The fallback is Read the whole file and Write it back: <b>[[2]]</b>."
+      "means": "The fallback is Read the whole file and Write it back with the one change: <b>[[2]]</b>."
      }
     ],
     "rule": "Edit needs a unique text anchor. When none exists, Read the whole file and Write it back with the change.",
@@ -4631,7 +4595,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Migration conventions (no column drop without a two-release deprecation; indexes built concurrently) are a section of the root <code>CLAUDE.md</code>, now 600 lines and loaded on every review. Roughly four in five merge requests touch no migration. Each service owns its schema history next to its code, as in <code>services/billing/db/migrations/</code> and <code>services/claims/db/migrations/</code>, fourteen in all. Reviewers say the concurrency rule is missed most often on long diffs. Where should these conventions <b>live</b>?",
+   "question": "Migration conventions sit in the root <code>CLAUDE.md</code>, which loads on every review. Most merge requests touch no migrations, so the section wastes context. Each service keeps its migrations in its own folder, such as <code>services/billing/db/migrations/</code>. There are fourteen services, and the layout will not change. The team wants the conventions loaded only when a migration file is under review. Where should the conventions <b>live</b>?",
    "options": [
     {
      "t": "In a <code>CLAUDE.md</code> placed in each service's schema-history folder, with a CI job that fails if the fourteen copies drift apart.",
@@ -4647,17 +4611,17 @@ window.EXAM = {
     },
     {
      "t": "In a separate <code>docs/migrations.md</code> pulled into the root file with <code>@import</code> and placed at the top under its own heading.",
-     "why": "Incorrect. Better placement may help on long diffs, but imported content still loads on every review, including the four in five with no migration."
+     "why": "Incorrect. Imported content still loads on every review, including the four in five with no migration."
     }
    ],
    "answer": [
     1
    ],
    "runnerUp": 0,
-   "decider": "The schema folders are spread across fourteen services; if they all sat in one folder, a directory CLAUDE.md there would serve as well.",
+   "decider": "Migration files are spread across fourteen service folders; if they all sat in one folder, a directory CLAUDE.md there would serve as well.",
    "explanation": "<code>.claude/rules/</code> files with <code>paths:</code> globs load conventions only for matching files and beat directory CLAUDE.md when those files span many directories. <code>@import</code> organises content but does not make it conditional.",
    "eli5": {
-    "question": "Where should rules about database migrations live so they appear only when a migration is being reviewed? The \"missed on long diffs\" remark is a distraction. The clue is: migrations sit in fourteen separate service folders, and four in five reviews touch none.",
+    "question": "Where should rules about migrations live so they load only when a migration is being reviewed? The clue is: each of the fourteen services keeps its migrations in its own folder.",
     "answer": "Think of a library sticker that says \"handle with gloves\" put on every rare book, wherever it is shelved. A <b>path-scoped rule</b> in <code>.claude/rules/</code> with a <code>paths:</code> glob is that sticker: it loads only when matching files are involved. One file covers all fourteen folders, and reviews without migrations never load it. <b>Rule: conventions for files spread across many folders go in a .claude/rules/ file with paths:.</b>",
     "options": [
      "Runner-up. A folder-level CLAUDE.md loads only in its own folder. It would win if all migrations were in one folder; here you would keep fourteen copies in sync.",
@@ -4667,7 +4631,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "The remark about long diffs makes you think this is a <b>placement</b> problem: move the rules to the top. But the real waste is that 600 lines load on <b>every</b> review, mostly ones with no migrations. The question is about <i>when</i> conventions load, and that depends on where the matching files live.",
+    "premise": "You'd think the fix is to <b>tidy the root file</b>: move the section into its own document and <code>@import</code> it. That organises the text but changes nothing about <b>when</b> it loads. The question is about loading conventions only when they apply, and that depends on where the matching files live.",
     "diagram": "services/billing/db/migrations/\nservices/claims/db/migrations/\n... 14 folders\n one rule: paths: services/*/db/migrations/**",
     "mapTitle": "Conventions for some files: where should they live?",
     "map": {
@@ -4706,24 +4670,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "are a section of the root CLAUDE.md, now 600 lines and loaded on every review",
+      "quote": "Migration conventions sit in the root CLAUDE.md, which loads on every review",
       "means": "Everything in the root file loads every time. An <code>@import</code> <b>[[3]]</b> keeps that problem."
      },
      {
-      "quote": "Roughly four in five merge requests touch no migration",
-      "means": "Most reviews pay for rules they don't need. The fix must load conditionally."
+      "quote": "Each service keeps its migrations in its own folder",
+      "means": "The decider: the files are spread across folders. A directory <code>CLAUDE.md</code> <b>[[0]]</b> would need one copy per folder."
      },
      {
-      "quote": "Each service owns its schema history next to its code",
-      "means": "The quiet clue: migrations are spread across folders. A directory <code>CLAUDE.md</code> <b>[[0]]</b> would need fourteen copies; it would win only if they sat in one folder."
+      "quote": "There are fourteen services, and the layout will not change",
+      "means": "Fourteen copies to keep in sync, and no chance of gathering the files into one folder."
      },
      {
-      "quote": "Reviewers say the concurrency rule is missed most often on long diffs",
-      "means": "The distraction. It tempts you toward moving text to the top <b>[[3]]</b>."
+      "quote": "The team wants the conventions loaded only when a migration file is under review",
+      "means": "Loading should follow the files automatically. A skill <b>[[2]]</b> relies on the prompt deciding when to load it."
      },
      {
-      "quote": "Where should these conventions live?",
-      "means": "Conventions attach to files, not to a workflow you invoke, so not a skill <b>[[2]]</b>. One glob-scoped rule: <b>[[1]]</b>."
+      "quote": "Where should the conventions live?",
+      "means": "One rule file with a <code>paths:</code> glob that matches every service's migration folder: <b>[[1]]</b>."
      }
     ],
     "rule": "Conventions for files scattered across many folders go in a .claude/rules/ file with a paths: glob.",
@@ -4741,7 +4705,7 @@ window.EXAM = {
    "trap": "Wrong scope or wrong home",
    "fam": 8,
    "select": 1,
-   "question": "Developers and the release job both draft the changelog with a 60-line procedure: walk the git log since the last tag, group commits by service, and fetch each linked ticket's title. It lives in the root <code>CLAUDE.md</code>, which every review run also loads. Run interactively, it prints around 4,000 lines of log into the session, and developers say Claude's later answers in that session start missing details from earlier work. The release manager wants changes to the procedure reviewed in merge requests like code. Which home <b>fits best</b>?",
+   "question": "Developers and the release job both draft the changelog with a long procedure. It walks the git log since the last tag and groups commits by service. The procedure lives in the root <code>CLAUDE.md</code>, which every review run also loads. When run interactively, it prints thousands of lines of log into the session, and later answers degrade. The procedure must be versioned with the repository. Which home <b>fits best</b>?",
    "options": [
     {
      "t": "A project command file at <code>.claude/commands/changelog.md</code>, invoked as a slash command from CI and from interactive sessions.",
@@ -4764,13 +4728,13 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "The procedure's output degrades the developer's session and the root file loads on every review; with little output, a project command would serve equally well.",
+   "decider": "The procedure floods the session with output; with little output, a project command in .claude/commands/ would serve equally well.",
    "explanation": "CLAUDE.md holds always-loaded standards; skills are on-demand workflows, and <code>context: fork</code> runs one in an isolated sub-agent context.",
    "eli5": {
-    "question": "Where should a long, noisy changelog procedure live? The clue is: running it dumps about 4,000 lines into the session, and the root file it sits in loads on every review.",
+    "question": "Where should a long, noisy changelog procedure live? The clue is: it prints thousands of lines into the session, and later answers degrade.",
     "answer": "Imagine sending a helper to the archive room to sort old letters. They come back with one neat summary, not a cartful of paper on your desk. A project <b>skill</b> with <code>context: fork</code> works like that: it runs in its own side room (an <b>isolated sub-agent context</b>) and keeps the log out of your conversation. It sits in <code>.claude/skills/</code>, so it is versioned and loads only when called. <b>Rule: an on-demand workflow with noisy output belongs in a skill with context: fork.</b>",
     "options": [
-     "Runner-up. A project command is shared and on demand. It would win if the procedure printed little. It runs in your conversation, so the 4,000 lines still land there.",
+     "Runner-up. A project command is shared and on demand. It would win if the procedure printed little. It runs in your conversation, so the thousands of lines still land there.",
      "Path rules carry conventions for matching files. They do not run a procedure in a separate room, so the log still lands in the session.",
      "Handing the work to the Explore subagent would keep the log out, but the procedure stays in a file every review loads.",
      "Correct. A versioned skill that runs in its own isolated context, called only when needed."
@@ -4778,7 +4742,7 @@ window.EXAM = {
    },
    "deep": {
     "premise": "You'd think any on-demand, versioned home is fine, so a <b>project command</b> and a <b>skill</b> are equal. They differ in <i>where the work happens</i>. A command runs inside your current conversation, so its output lands there. A skill with <code>context: fork</code> runs in a separate sub-agent context and hands back only the result.",
-    "diagram": "command  → runs in your session → 4,000 lines in\nskill + context: fork\n         → runs in a side context → summary back",
+    "diagram": "command  → runs in your session → thousands of lines in\nskill + context: fork\n         → runs in a side context → summary back",
     "mapTitle": "Reusable procedure: where should it live?",
     "map": {
      "head": [
@@ -4816,24 +4780,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "It lives in the root CLAUDE.md, which every review run also loads",
+      "quote": "The procedure lives in the root CLAUDE.md, which every review run also loads",
       "means": "Keeping it in the root file costs every review. Delegating from there <b>[[2]]</b> still leaves it in that file."
      },
      {
-      "quote": "it prints around 4,000 lines of log into the session",
-      "means": "The quiet clue. Output volume is the problem. A command <b>[[0]]</b> runs in the session and would win only if output were small."
+      "quote": "it prints thousands of lines of log into the session, and later answers degrade",
+      "means": "The decider. Output volume is the problem. A command <b>[[0]]</b> runs in the session, so it would win only if the output were small."
      },
      {
-      "quote": "developers say Claude's later answers in that session start missing details from earlier work",
-      "means": "Context pollution. The fix must run the procedure somewhere else."
-     },
-     {
-      "quote": "The release manager wants changes to the procedure reviewed in merge requests like code",
-      "means": "It must be committed, so a project-level home. Path rules <b>[[1]]</b> are for conventions, not procedures."
+      "quote": "The procedure must be versioned with the repository",
+      "means": "It needs a project-level home. Path rules <b>[[1]]</b> carry conventions, not procedures."
      },
      {
       "quote": "Which home fits best?",
-      "means": "Versioned, on demand, isolated output: a project skill with <code>context: fork</code>, <b>[[3]]</b>."
+      "means": "Versioned, on demand, output isolated: a project skill with <code>context: fork</code>, <b>[[3]]</b>."
      }
     ],
     "rule": "On-demand workflow with noisy output: a project skill with context: fork. CLAUDE.md is for always-on standards.",
@@ -4851,15 +4811,15 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A nightly job asks Claude Code to fix a currency-rounding helper that is a cent off for some locales, after a customer reported a wrong invoice total in Swiss francs. The helper's module ships with a parametrized pytest file of 140 cases; 23 are red on main, and the job's container has the project's dev dependencies installed. The job runs with <code>-p</code> overnight, unattended, and the fix touches one function. How should the prompt be structured to reach a correct fix <b>most reliably</b>?",
+   "question": "A nightly job asks Claude Code to fix a currency-rounding helper that is wrong for some locales. The helper has a parametrized test file, and several of its cases currently fail. The job's container can run the test suite. The job runs with <code>-p</code>, unattended, and the fix touches one function. How should the prompt be structured to reach a correct fix <b>most reliably</b>?",
    "options": [
     {
      "t": "Have Claude run the module's suite, change the code against the reported failures, and loop until no case is failing.",
      "why": "Correct. Test-driven iteration uses the existing failing cases as specification and feedback, and the full suite catches regressions in other locales."
     },
     {
-     "t": "Give Claude several worked amounts with locale and expected rounded output, including the Swiss franc invoice, inside the prompt.",
-     "why": "Runner-up. Concrete input/output pairs beat prose and would be the best choice if no runnable suite existed. Here 140 executable cases already exist, and a handful of pairs cannot catch a regression."
+     "t": "Give Claude several worked amounts with locale and expected rounded output, for each failing locale, inside the prompt.",
+     "why": "Runner-up. Concrete input/output pairs beat prose and would be the best choice if no runnable suite existed. Here a runnable suite already exists, and a handful of pairs cannot catch a regression."
     },
     {
      "t": "Open by having Claude ask its clarifying questions about the rounding rules before it proposes any change to the code.",
@@ -4874,11 +4834,11 @@ window.EXAM = {
     0
    ],
    "runnerUp": 1,
-   "decider": "A runnable 140-case suite is available in the job's container; without it, concrete input/output pairs in the prompt would be the strongest option.",
+   "decider": "A test file with failing cases exists and the container can run it; without runnable tests, concrete input/output pairs in the prompt would be the strongest option.",
    "explanation": "Concrete examples and test-driven iteration both beat prose. When executable tests exist, iterating against them gives a verifiable stop condition.",
    "eli5": {
-    "question": "How should an unattended overnight job be told to fix a rounding bug? The Swiss-franc invoice is the vivid detail. The clue is: a 140-case test file already exists, and the job's container can run it.",
-    "answer": "Think of a recipe with a tasting panel standing by. Instead of describing the perfect cake in words, you bake, let the panel taste, adjust, and repeat until every taster is happy. The 140 tests are the panel (<b>test-driven iteration</b>). They also catch it when fixing one locale breaks another. <b>Rule: if runnable tests exist, let Claude iterate against them.</b>",
+    "question": "How should an unattended overnight job be told to fix a rounding bug? The clue is: a test file with failing cases exists, and the job's container can run it.",
+    "answer": "Think of a recipe with a tasting panel standing by. Instead of describing the perfect cake in words, you bake, let the panel taste, adjust, and repeat until every taster is happy. The test file is the panel (<b>test-driven iteration</b>). They also catch it when fixing one locale breaks another. <b>Rule: if runnable tests exist, let Claude iterate against them.</b>",
     "options": [
      "Correct. Run the tests, fix against the failures, and repeat until nothing fails.",
      "Runner-up. Concrete input-and-output pairs beat prose and would be best if no tests existed. A handful of pairs can't catch a regression the full suite would.",
@@ -4887,7 +4847,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "The Swiss-franc invoice makes you think the answer is <b>concrete input/output pairs</b>, because examples beat prose. They do. But a <b>runnable test suite</b> is better still: it is a large set of examples that the job can check automatically and repeatedly. Whether the tests exist and can run is what decides this.",
+    "premise": "You'd think the answer is <b>concrete input/output pairs</b>, because examples beat prose. They do. But a <b>runnable test suite</b> is better still: it is a large set of examples that the job can check automatically and repeatedly. Whether the tests exist and can run is what decides this.",
     "mapTitle": "How do I tell Claude what \"correct\" means?",
     "map": {
      "head": [
@@ -4925,24 +4885,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "after a customer reported a wrong invoice total in Swiss francs",
-      "means": "The vivid detail. It tempts you toward pasting that case as a pair, <b>[[1]]</b>."
+      "quote": "The helper has a parametrized test file, and several of its cases currently fail",
+      "means": "The behaviour is already captured as executable cases, with failures to work from."
      },
      {
-      "quote": "The helper's module ships with a parametrized pytest file of 140 cases; 23 are red on main",
-      "means": "The quiet clue: a full set of executable cases already exists, with failures to work from."
+      "quote": "The job's container can run the test suite",
+      "means": "The decider. The suite can run inside the job, so Claude can loop against it. Pasted pairs <b>[[1]]</b> would win only without this."
      },
      {
-      "quote": "the job's container has the project's dev dependencies installed",
-      "means": "The suite can actually run in the job. That makes the loop possible."
-     },
-     {
-      "quote": "The job runs with -p overnight, unattended, and the fix touches one function",
-      "means": "Nobody to answer questions, so no interview <b>[[2]]</b>. One function, so plan mode <b>[[3]]</b> adds little."
+      "quote": "The job runs with -p, unattended, and the fix touches one function",
+      "means": "Nobody can answer questions, so no interview <b>[[2]]</b>. One function, so plan mode <b>[[3]]</b> adds little."
      },
      {
       "quote": "How should the prompt be structured to reach a correct fix most reliably?",
-      "means": "Run the tests, fix, rerun until green: <b>[[0]]</b>. Pairs <b>[[1]]</b> would win only with no runnable tests."
+      "means": "Run the tests, fix, rerun until nothing fails: <b>[[0]]</b>."
      }
     ],
     "rule": "If runnable tests exist, have Claude iterate against them. Use pasted examples only when there are no tests.",
@@ -4960,7 +4916,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "The reviewer's unhandled-error category produces about 40% of comments, and developers dismiss three in four. A manager's sample of 100 dismissed ones found two kinds: calls already wrapped by the service framework's error middleware, and errors re-raised on purpose to a caller that handles them. The category appears in the company's SOC 2 control matrix as an automated check run on every merge request. The prompt asks Claude to \"flag missing or inadequate error handling\". What is the <b>most effective change</b>?",
+   "question": "The reviewer's unhandled-error category produces most of the comments that developers dismiss. A sample of dismissed comments shows two kinds: calls already wrapped by the framework's error middleware, and errors re-raised on purpose. The prompt says \"flag missing or inadequate error handling\". The category is a compliance control and must keep running on every merge request. What is the <b>most effective change</b>?",
    "options": [
     {
      "t": "Switch the category off in the review prompt while a rewritten version is tested against past merge requests, then restore it.",
@@ -4971,7 +4927,7 @@ window.EXAM = {
      "why": "Incorrect. Pattern tracking finds unknown false-positive sources; the sample has already named both, so it delays the fix."
     },
     {
-     "t": "Redefine the check as an exception caught and dropped or a returned value left unused, with snippets on both sides.",
+     "t": "Redefine the category as an exception caught and dropped or a returned error left unused, with snippets on both sides.",
      "why": "Correct. Categorical criteria with concrete code cut false positives while the check keeps running."
     },
     {
@@ -4983,10 +4939,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "The category is a compliance control that must run on every merge request; if it could be paused, switching it off while it is rewritten would come first.",
+   "decider": "The category must keep running on every merge request; if it could be paused, switching it off while it is rewritten would come first.",
    "explanation": "Vague instructions produce false positives that erode trust. Replace them with categorical criteria and concrete code, not with more review layers.",
    "eli5": {
-    "question": "A noisy review category annoys developers. How do you make it accurate? The angry dismissal numbers invite you to switch it off. The clue is: the category is a compliance control that must run on every merge request.",
+    "question": "A noisy review category annoys developers. How do you make it accurate? The clue is: the category is a compliance control and must keep running on every merge request.",
     "answer": "Picture a smoke alarm that goes off whenever someone makes toast. You can't unplug it, because the fire code requires it. So you make it smarter about what counts as smoke. Here that means stating exactly what to flag, an error caught and thrown away or a result ignored, with short code samples on both sides (<b>explicit categorical criteria</b>). <b>Rule: to cut false positives, define the category precisely; vague words breed noise.</b>",
     "options": [
      "Runner-up. Pausing a noisy check is a good way to win back trust. It would win if the check were optional. Compliance says it must keep running.",
@@ -4996,7 +4952,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "The numbers (40% of comments, 75% dismissed) make <b>pausing the category</b> look obvious, and it is a recommended trust-restoring move. But you can only pause something that is optional. The real fix for a noisy category is to <b>define it precisely</b>; pausing just buys time.",
+    "premise": "When most dismissed comments come from one category, <b>pausing the category</b> looks obvious, and it is a recommended trust-restoring move. But you can only pause something that is optional. The real fix for a noisy category is to <b>define it precisely</b>; pausing just buys time.",
     "mapTitle": "A review category is noisy: what fixes precision?",
     "map": {
      "head": [
@@ -5034,24 +4990,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "The reviewer's unhandled-error category produces about 40% of comments, and developers dismiss three in four",
-      "means": "The vivid symptom. It invites switching the category off, <b>[[0]]</b>."
-     },
-     {
-      "quote": "A manager's sample of 100 dismissed ones found two kinds",
+      "quote": "A sample of dismissed comments shows two kinds",
       "means": "The causes are already known, so more tracking <b>[[1]]</b> delays the fix."
      },
      {
-      "quote": "The category appears in the company's SOC 2 control matrix as an automated check run on every merge request",
-      "means": "The quiet clue. A listed control can't be paused, which rules out <b>[[0]]</b>, the runner-up."
-     },
-     {
-      "quote": "The prompt asks Claude to \"flag missing or inadequate error handling\"",
+      "quote": "The prompt says \"flag missing or inadequate error handling\"",
       "means": "The root cause: a vague definition. A second reviewer <b>[[3]]</b> applies the same vague words."
      },
      {
+      "quote": "The category is a compliance control and must keep running on every merge request",
+      "means": "The decider. It can't be paused, which rules out <b>[[0]]</b>, the runner-up."
+     },
+     {
       "quote": "What is the most effective change?",
-      "means": "State exactly what counts, with snippets on both sides: <b>[[2]]</b>."
+      "means": "State exactly what counts, with code on both sides: <b>[[2]]</b>."
      }
     ],
     "rule": "To cut false positives, define the category as specific, testable conditions with code samples. Pausing is only for optional checks.",
@@ -5069,7 +5021,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Findings come back through <code>--json-schema</code> with file, line, severity, issue and <code>suggested_fix</code> on every one, and parsing has not failed in a month. Developers act on about 20% of findings. Interviews show they act when the fix shows replacement code and ignore the rest; today a third of fixes read like \"consider refactoring\" and a few restate the issue. The prompt already describes the expected fix format in a paragraph. What is the <b>most effective first step</b>?",
+   "question": "Review findings come back through <code>--json-schema</code>. Every finding has file, line, severity, issue and <code>suggested_fix</code>, and parsing has not failed in a month. The problem is the content of <code>suggested_fix</code>. Some entries show replacement code, but many say things like \"consider refactoring\". The prompt already describes the expected fix format in a paragraph. What is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Turn <code>suggested_fix</code> in the schema into an object with required <code>replacement_code</code> and <code>explanation</code> strings.",
@@ -5095,7 +5047,7 @@ window.EXAM = {
    "decider": "Structure already validates and a written description of the format is in place; if fields were missing or mis-shaped, tightening the schema would come first.",
    "explanation": "Schemas govern shape, not whether a field's content is useful. Few-shot samples are the strongest first lever for consistent, actionable content once instructions exist.",
    "eli5": {
-    "question": "Every finding has the right fields, but many suggested fixes are vague. What should you try first? The clue is: parsing has not failed in a month, and a paragraph already describes the fix format.",
+    "question": "Every finding has the right fields, but many suggested fixes are vague. What should you try first? The clue is: parsing never fails, and a paragraph already describes the fix format.",
     "answer": "Think of training a new waiter. Telling them \"describe the dish well\" gets mixed results. Showing three good descriptions gets consistent ones. A form (the <b>schema</b>) makes sure each box exists; it can't make what's written in the box useful. A few complete samples in the prompt (<b>few-shot examples</b>) teach the content. <b>Rule: a schema fixes shape; samples fix content.</b>",
     "options": [
      "Runner-up. A stricter schema helps when fields are missing or malformed. Here every field already parses, and a required string can still say \"consider refactoring\".",
@@ -5144,20 +5096,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "parsing has not failed in a month",
-      "means": "Syntax and shape are fine. A schema change <b>[[0]]</b> would win only if fields were missing or mis-shaped."
+      "quote": "Every finding has file, line, severity, issue and suggested_fix, and parsing has not failed in a month",
+      "means": "The decider. Syntax and shape are fine, so a schema change <b>[[0]]</b> would win only if fields were missing or mis-shaped."
      },
      {
-      "quote": "Developers act on about 20% of findings",
-      "means": "The goal is useful content, not valid JSON."
-     },
-     {
-      "quote": "today a third of fixes read like \"consider refactoring\" and a few restate the issue",
-      "means": "A required string can still say \"consider refactoring\". The content varies, not the structure."
+      "quote": "The problem is the content of suggested_fix",
+      "means": "Content, not structure. A required string can still say \"consider refactoring\"."
      },
      {
       "quote": "The prompt already describes the expected fix format in a paragraph",
-      "means": "Instructions alone are already in place and still inconsistent. That is exactly when few-shot is the strongest lever."
+      "means": "Instructions alone are in place and still inconsistent. That is exactly when few-shot is the strongest lever."
      },
      {
       "quote": "What is the most effective first step?",
@@ -5179,11 +5127,11 @@ window.EXAM = {
    "trap": "Unreliable proxy",
    "fam": 6,
    "select": 1,
-   "question": "The post-merge migration scan posts to the on-call channel and gates nothing. Finance wants it on the Message Batches API for the 50% discount, pointing out that three trial batches returned in under 20 minutes. On-call engineers read each scan before the next production deploy train, which leaves every 90 minutes, and pull a risky change from the train if needed. About 60 merges a day are scanned. How should the team <b>evaluate the proposal</b>?",
+   "question": "The post-merge migration scan posts its results to the on-call channel. It does not block any merge. Finance wants to move it to the Message Batches API for the discount. On-call engineers must read each scan within 90 minutes of the merge, before the next deploy leaves. A late scan means a risky change can ship. How should the team <b>evaluate the proposal</b>?",
    "options": [
     {
      "t": "Adopt the batch endpoint for the scan, one request per merged change, using its merge commit SHA as the <code>custom_id</code> for matching.",
-     "why": "Runner-up. Non-blocking work correlated by <code>custom_id</code> is a textbook batch fit and would win if results were read the next day. Batches can take up to 24 hours with no latency SLA, and trial timings promise nothing."
+     "why": "Runner-up. Non-blocking work correlated by <code>custom_id</code> is a textbook batch fit and would win if results were read the next day. Batches can take up to 24 hours with no latency SLA, so typical timings promise nothing."
     },
     {
      "t": "Adopt the batch endpoint, and resend a change as a synchronous request when its batch result has not arrived within 45 minutes.",
@@ -5202,10 +5150,10 @@ window.EXAM = {
     3
    ],
    "runnerUp": 0,
-   "decider": "Each scan must be read before a train that leaves every 90 minutes; if the output were read the next day, batching with custom_id would be right.",
+   "decider": "Each scan must be read within 90 minutes of the merge; if the output were read the next day, batching with custom_id would be right.",
    "explanation": "The Batches API saves 50% but has up to a 24-hour window and no latency SLA. Fit depends on whether someone waits on the result within a deadline, not on whether the job blocks a merge.",
    "eli5": {
-    "question": "Should a scan that blocks nothing move to the cheaper, slower batch service? The 20-minute trial results are the bait. The clue is: on-call reads each scan before a deploy train that leaves every 90 minutes.",
+    "question": "Should a scan that blocks nothing move to the cheaper, slower batch service? The clue is: on-call must read each scan within 90 minutes of the merge.",
     "answer": "Think of a parcel service that is half price but promises delivery only \"within 24 hours\". Most parcels may arrive in 20 minutes, but nothing is promised. If you need it before the 90-minute train, you pay for the courier. The <b>Message Batches API</b> is the cheap service: 50% off, up to 24 hours, no delivery-time guarantee (<b>no latency SLA</b>). Keep this scan on normal requests, and batch work nobody reads until tomorrow. <b>Rule: if someone waits on the result by a deadline, don't batch it.</b>",
     "options": [
      "Runner-up. One request per change, matched back by <code>custom_id</code>, is a textbook batch setup. It would win if the scan were read the next day. A 90-minute deadline needs a guarantee batches don't give.",
@@ -5215,7 +5163,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "The usual test for batch is <b>\"does it block a merge?\"</b>. This scan blocks nothing, so batch looks right. But the real test is <b>\"is someone waiting on the result by a deadline?\"</b>. The Batches API offers no latency promise, so a fast trial run tells you nothing about tomorrow.",
+    "premise": "The usual test for batch is <b>\"does it block a merge?\"</b>. This scan blocks nothing, so batch looks right. But the real test is <b>\"is someone waiting on the result by a deadline?\"</b>. The Batches API offers no latency promise, so a fast run today tells you nothing about tomorrow.",
     "diagram": "Batches API: 50% cheaper\n  window up to 24 h, no latency SLA\n deadline?  none / next day → batch\n            90 minutes      → real-time",
     "mapTitle": "Batch or real-time? Ask who waits, and for how long",
     "map": {
@@ -5254,24 +5202,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "The post-merge migration scan posts to the on-call channel and gates nothing",
-      "means": "Non-blocking. This is what makes batch look right."
+      "quote": "It does not block any merge",
+      "means": "Non-blocking. This is what makes batch look right, and what <b>[[0]]</b> relies on."
      },
      {
-      "quote": "pointing out that three trial batches returned in under 20 minutes",
-      "means": "The bait. Observed speed is not a promise; batches can take up to 24 hours."
+      "quote": "Finance wants to move it to the Message Batches API for the discount",
+      "means": "Batches are 50% cheaper but can take up to 24 hours, with no latency promise."
      },
      {
-      "quote": "On-call engineers read each scan before the next production deploy train, which leaves every 90 minutes",
-      "means": "The quiet clue: a 90-minute deadline. This rules out <b>[[0]]</b>, the runner-up, which wins only if results are read the next day."
-     },
-     {
-      "quote": "About 60 merges a day are scanned",
-      "means": "Low volume, so the saving is small. Packing merges into one request <b>[[2]]</b> trades accuracy for little gain."
+      "quote": "On-call engineers must read each scan within 90 minutes of the merge, before the next deploy leaves",
+      "means": "The decider: a hard deadline. This rules out <b>[[0]]</b>, the runner-up, which wins only if results are read the next day."
      },
      {
       "quote": "How should the team evaluate the proposal?",
-      "means": "A 45-minute fallback <b>[[1]]</b> adds machinery and can still miss the train. Keep real-time: <b>[[3]]</b>."
+      "means": "A fallback timer <b>[[1]]</b> adds machinery and can still miss; packing merges together <b>[[2]]</b> dilutes attention. Keep real-time: <b>[[3]]</b>."
      }
     ],
     "rule": "Batch only work that nobody waits on by a deadline. Non-blocking is not the same as latency-tolerant.",
@@ -5289,7 +5233,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "In a nine-file merge request, the settings loader renamed <code>retry_limit</code> to <code>max_retries</code> while two consumers kept reading the old key, and review passed it. A month of post-mortems found 11 escapes of the same shape, such as a function's return tuple gaining a field while callers in sibling modules still unpacked two values. The review container starts fresh per merge request, apart from the autofix job. Each file gets its own review pass, and defects inside a single file are caught well. What change <b>addresses the root cause</b>?",
+   "question": "Each file in a merge request gets its own review pass, and bugs inside a single file are caught well. The review runs in a fresh session, separate from the job that wrote any code. Yet bugs that span files keep slipping through. In one case, the settings loader renamed a config key while two other files still read the old key. What change <b>addresses the root cause</b>?",
    "options": [
     {
      "t": "After the file-level passes, run a pass given the changed signatures and keys, checking each against its call sites in the diff.",
@@ -5315,13 +5259,13 @@ window.EXAM = {
    "decider": "Every escape spans files and the reviewer is already independent of the author; if misses sat inside single files reviewed by the authoring session, an independent instance would be the fix.",
    "explanation": "Split large reviews into per-file local passes plus a cross-file integration pass. Independent instances address self-review bias, a different failure.",
    "eli5": {
-    "question": "Each file is reviewed well on its own, yet bugs slip through. What is the real cause? The clue is: every escape is a mismatch between two files, and the reviewer already starts fresh, separate from the code's author.",
+    "question": "Each file is reviewed well on its own, yet bugs slip through. What is the real cause? The clue is: the misses span files, and the reviewer already runs in a fresh session.",
     "answer": "Think of checking each page of a contract on its own. Every page can be fine while page 2 and page 9 disagree. You need one more read that compares the pages against each other. That is a <b>cross-file integration pass</b>: it takes what changed (signatures, keys) and checks every place that uses them. <b>Rule: per-file passes catch local bugs; a separate integration pass catches mismatches between files.</b>",
     "options": [
      "Correct. One more pass, after the per-file ones, that checks changed names and signatures against their callers.",
      "Runner-up. A fresh second reviewer helps when the reviewer shares context with the author. This one already starts fresh, and still looks at one file at a time.",
      "A hand-written map in CLAUDE.md goes stale, and the per-file passes still never compare two changed files.",
-     "One big pass over all nine files spreads attention thin. A bigger context window is not sharper attention."
+     "One big pass over all the files spreads attention thin. A bigger context window is not sharper attention."
     ]
    },
    "deep": {
@@ -5364,24 +5308,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "the settings loader renamed retry_limit to max_retries while two consumers kept reading the old key",
-      "means": "The bug lives <b>between</b> files: the producer and its consumers disagree."
-     },
-     {
-      "quote": "A month of post-mortems found 11 escapes of the same shape",
-      "means": "It is a pattern, not a one-off. Every escape is a cross-file mismatch."
-     },
-     {
-      "quote": "The review container starts fresh per merge request, apart from the autofix job",
-      "means": "The quiet clue. The reviewer is already independent of the code's author, so <b>[[1]]</b>, the runner-up, fixes a problem that doesn't exist here."
-     },
-     {
-      "quote": "Each file gets its own review pass, and defects inside a single file are caught well",
+      "quote": "Each file in a merge request gets its own review pass, and bugs inside a single file are caught well",
       "means": "Per-file review works. Replacing it with one big pass <b>[[3]]</b> brings attention dilution back."
      },
      {
+      "quote": "The review runs in a fresh session, separate from the job that wrote any code",
+      "means": "The reviewer is already independent, so <b>[[1]]</b>, the runner-up, fixes a problem that doesn't exist here."
+     },
+     {
+      "quote": "Yet bugs that span files keep slipping through",
+      "means": "The decider. No per-file pass can see a mismatch between files."
+     },
+     {
+      "quote": "the settings loader renamed a config key while two other files still read the old key",
+      "means": "A producer and its consumers disagree. A hand-kept map in CLAUDE.md <b>[[2]]</b> goes stale."
+     },
+     {
       "quote": "What change addresses the root cause?",
-      "means": "A hand-kept map in CLAUDE.md <b>[[2]]</b> goes stale. Add an integration pass: <b>[[0]]</b>."
+      "means": "Add an integration pass that checks changed names against their callers: <b>[[0]]</b>."
      }
     ],
     "rule": "Per-file passes catch local bugs; a separate integration pass catches mismatches between files. Independent reviewers fix self-review bias, a different problem.",
@@ -5399,7 +5343,7 @@ window.EXAM = {
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 2,
-   "question": "About 6% of review findings cite a line the inline-comment API rejects because it lies outside every hunk. Sampling shows most are off by exactly the hunk's starting offset: the reviewer reads the raw unified diff and counts lines from each header itself. The pre-merge budget allows one extra model call on runs that need it, but not on every run. A post step already parses hunk headers. Which TWO changes together <b>bring rejected findings close to zero within that budget</b>?",
+   "question": "Some review findings cite a line outside every diff hunk, and the inline-comment API rejects them. Most are off by exactly the hunk's starting offset. The reviewer reads the raw unified diff and counts lines from each hunk header itself. A post step already parses the hunk headers. The budget allows an extra model call only on runs that need one. Which TWO changes together <b>bring rejected findings close to zero within that budget</b>?",
    "options": [
     {
      "t": "Route all findings through a second, independent Claude instance that confirms each cited location against the diff before posting.",
@@ -5426,7 +5370,7 @@ window.EXAM = {
    "decider": "The errors are mechanical miscounts and the budget allows an extra call only when needed; if they were judgement errors and every run could afford a second call, an independent verifier would earn a place.",
    "explanation": "Give the model the facts it is miscomputing, validate what it emits against them, and retry with the specific error. Spend extra calls only where validation shows they are needed.",
    "eli5": {
-    "question": "Comments land on lines the code-review tool rejects. Which two changes fix it within the budget? The clue is: the errors are simple counting mistakes, and only runs that need it may spend an extra call.",
+    "question": "Comments land on lines the code-review tool rejects. Which two changes fix it within the budget? The clue is: the errors are counting mistakes, and an extra call is allowed only on runs that need one.",
     "answer": "Think of a delivery driver who counts house numbers by hand from the corner and keeps getting it wrong. First, paint the numbers on the doors: give the model the line numbers instead of making it count. Then check each address before delivery and send the driver back once with the exact mistake (<b>validate, then retry with specific feedback</b>). The second step spends a call only when something fails. <b>Rule: give the model the facts it keeps miscomputing, then check its output and retry with the exact error.</b>",
     "options": [
      "Runner-up. A second checker is useful for judgement calls. It costs a call on every run, which the budget forbids, and reading the same raw diff it can miscount too.",
@@ -5475,20 +5419,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Sampling shows most are off by exactly the hunk's starting offset",
+      "quote": "Most are off by exactly the hunk's starting offset",
       "means": "A mechanical counting error, not a judgement error. That weakens <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "the reviewer reads the raw unified diff and counts lines from each header itself",
+      "quote": "The reviewer reads the raw unified diff and counts lines from each hunk header itself",
       "means": "The root cause: the model computes something code could compute. Give it the numbers: <b>[[1]]</b>. Samples <b>[[3]]</b> still leave it counting."
      },
      {
-      "quote": "The pre-merge budget allows one extra model call on runs that need it, but not on every run",
-      "means": "A second checker on every run <b>[[0]]</b> breaks the budget. A retry only on a miss fits."
+      "quote": "A post step already parses the hunk headers",
+      "means": "The valid ranges are known in code, so a deterministic check with specific feedback is cheap: <b>[[2]]</b>."
      },
      {
-      "quote": "A post step already parses hunk headers",
-      "means": "The valid ranges are known in code, so a deterministic check plus specific feedback is cheap: <b>[[2]]</b>."
+      "quote": "The budget allows an extra model call only on runs that need one",
+      "means": "A second checker on every run <b>[[0]]</b> breaks the budget. A retry only on a miss fits."
      },
      {
       "quote": "Which TWO changes together bring rejected findings close to zero within that budget?",
@@ -5510,7 +5454,7 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "The coordinator runs the same chain on every packet: base lease, then amendments in filename order, then a reconcile step. Filename order differs from execution order in over half of packets, and that is the most common cause of wrong rent schedules. Packets hold anywhere from no amendments to eleven. In about a quarter, an amendment cites an exhibit or side letter missing from the upload, which must be requested with <code>fetch_exhibit</code> and may itself amend further terms. Which decomposition <b>fits these packets best</b>?",
+   "question": "The coordinator runs a fixed chain on every packet: base lease, then each amendment, then a reconcile step. Amendments are not always uploaded in date order. Some amendments also cite an exhibit or side letter that is missing from the upload. The agent must fetch it with <code>fetch_exhibit</code>, and the fetched document may change further terms. Which decomposition <b>fits these packets best</b>?",
    "options": [
     {
      "t": "Sort the documents by execution date before the chain runs, and add a final integration pass that reconciles every field across all extractions.",
@@ -5533,10 +5477,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "A quarter of packets cite documents that must be fetched and can change further terms; if every packet arrived complete, a date-sorted chain with a reconciliation pass would serve.",
+   "decider": "Some packets cite documents that must be fetched and can change further terms; if every packet arrived complete, a date-sorted chain with a reconciliation pass would serve.",
    "explanation": "Use fixed prompt chains for predictable inputs and adaptive decomposition when the subtasks depend on what is found along the way.",
    "eli5": {
-    "question": "How should the system split up the work on lease packets that vary a lot? Filename order is the vivid cause. The clue is: a quarter of packets refer to documents that aren't there yet and must be fetched, and those can change more terms.",
+    "question": "How should the work on lease packets be split up? The clue is: some amendments cite documents that are missing and must be fetched, and those can change more terms.",
     "answer": "Think of a detective case file. A fixed checklist (\"read file 1, then 2, then 3\") breaks when file 2 says \"see the letter in the bank vault\". A good detective reads first, notes what points where, then plans the next steps, including fetching the vault letter. That is <b>adaptive decomposition</b>: subtasks are created from what is discovered. <b>Rule: fixed steps for predictable inputs; plan as you go when the inputs reveal new work.</b>",
     "options": [
      "Runner-up. Sorting by date and adding a final check fixes the most common error. It would win if every packet arrived complete. It has no step for fetching missing documents.",
@@ -5585,19 +5529,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Filename order differs from execution order in over half of packets, and that is the most common cause of wrong rent schedules",
-      "means": "The vivid symptom. It points at sorting plus reconciliation, <b>[[0]]</b>."
+      "quote": "The coordinator runs a fixed chain on every packet",
+      "means": "Every packet gets the same steps, decided before anything is read."
      },
      {
-      "quote": "Packets hold anywhere from no amendments to eleven",
-      "means": "The shape varies a lot from packet to packet."
+      "quote": "Amendments are not always uploaded in date order",
+      "means": "Sorting by date <b>[[0]]</b> would fix this part on its own."
      },
      {
-      "quote": "an amendment cites an exhibit or side letter missing from the upload, which must be requested with fetch_exhibit",
-      "means": "The quiet clue. Some work only appears while reading. A fixed chain <b>[[0]]</b> and parallel per-upload subagents <b>[[1]]</b> have no step for it."
+      "quote": "Some amendments also cite an exhibit or side letter that is missing from the upload",
+      "means": "The decider. Some work only appears while reading. A fixed chain <b>[[0]]</b> and per-upload subagents <b>[[1]]</b> have no step for it."
      },
      {
-      "quote": "may itself amend further terms",
+      "quote": "the fetched document may change further terms",
       "means": "Fetched documents can create still more work, so the plan must grow as you go."
      },
      {
@@ -5620,23 +5564,23 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "Five extraction subagents launch together from one coordinator response. The rent-schedule subagent converts terms like \"Lease Year 3\" into calendar dates, which depends on the commencement date; that date is usually set in a separate commencement memorandum, and in 14% of packets the rent subagent misses the memorandum and guesses. The term subagent, which reads the memorandum anyway, gets the date right in 99% of packets. The rent work needs that one value once per packet. Which change <b>fits best</b>?",
+   "question": "Five extraction subagents run in parallel. The rent-schedule subagent turns phrases like \"Lease Year 3\" into calendar dates, so it needs the lease's commencement date. That date is often in a separate memorandum, and the rent subagent sometimes misses it and guesses. The term subagent already extracts the commencement date reliably. The rent subagent needs only that one value, once per packet. Which change <b>fits best</b>?",
    "options": [
     {
      "t": "Give the rent subagent a narrowly scoped <code>find_commencement_date</code> tool for the memorandum, keeping all five subagents in one concurrent round.",
      "why": "Runner-up. A scoped cross-role tool suits a frequent need during a task. Here one value is needed once, and another subagent already finds it reliably; a second lookup duplicates work and can disagree."
     },
     {
-     "t": "Sequence term before rent, with the coordinator writing the established start date into the rent task's brief.",
+     "t": "Sequence term before rent, with the coordinator writing the commencement date into the rent task's brief.",
      "why": "Correct. Subagents do not inherit context; the coordinator passes the prior finding explicitly and serialises only the dependent pair."
     },
     {
      "t": "Add the memorandum layouts seen so far to the rent subagent's system prompt, with annotated samples marking where the date appears.",
-     "why": "Incorrect. Few-shot samples would improve the rent subagent's own search but still duplicate a value the term subagent already finds 99% of the time."
+     "why": "Incorrect. Few-shot samples would improve the rent subagent's own search but still duplicate a value the term subagent already finds reliably."
     },
     {
      "t": "After both finish, check each rent schedule against the term subagent's date and rerun the rent subagent with the mismatch described.",
-     "why": "Incorrect. Retry-with-feedback recovers, but it reruns 14% of rent tasks to deliver a value that could have been passed in up front."
+     "why": "Incorrect. Retry-with-feedback recovers, but it reruns every missed rent task to deliver a value that could have been passed in up front."
     }
    ],
    "answer": [
@@ -5646,18 +5590,18 @@ window.EXAM = {
    "decider": "The rent work needs one reliably found value once per packet; if it needed many lookups during its work, a scoped tool would win.",
    "explanation": "Subagents have isolated context, so the coordinator must pass prior findings in the prompt. Serialise only true dependencies and keep independent work parallel.",
    "eli5": {
-    "question": "One worker needs a date that another worker reliably finds. How should it get it? The clue is: the rent work needs that one value once per packet, and the term worker gets it right 99% of the time.",
+    "question": "One subagent needs a date that another subagent reliably finds. How should it get it? The clue is: it needs only that one value, once per packet.",
     "answer": "Think of a kitchen. The pastry chef needs the oven temperature that the head chef already set. The manager just tells the pastry chef, rather than sending them to measure it again. Helpers (<b>subagents</b>) don't share memory, so the coordinator must hand over the fact in the task brief (<b>explicit context passing</b>). Only the two linked jobs run in order; the rest stay parallel. <b>Rule: subagents know only what you put in their prompt.</b>",
     "options": [
      "Runner-up. A small dedicated lookup tool is good when a helper needs a fact often during its work. Here it needs one value once, and finding it twice can give two answers.",
      "Correct. Run the term work first, then pass its date into the rent task. Everything else stays parallel.",
      "Better layout samples help the rent worker search, but it still repeats work another worker already does well.",
-     "Checking afterwards and rerunning works, but it repeats 14% of rent jobs to deliver a date you could hand over at the start."
+     "Checking afterwards and rerunning works, but it repeats every missed rent job to deliver a date you could hand over at the start."
     ]
    },
    "deep": {
     "premise": "It is tempting to think a subagent that needs a fact should get <b>a tool to look it up</b>. That is right when it needs facts often during its work. But subagents don't share memory, and here another subagent already finds this exact fact reliably. Looking it up twice wastes work and risks two different answers.",
-    "diagram": "coordinator\n ├ term ──date──┐  (99% right)\n │              ▼ passed in the prompt\n ├ rent ← needs date once\n └ 3 others     (parallel)",
+    "diagram": "coordinator\n ├ term ──date──┐  (reliable)\n │              ▼ passed in the prompt\n ├ rent ← needs date once\n └ 3 others     (parallel)",
     "mapTitle": "A subagent needs a fact: how should it get it?",
     "map": {
      "head": [
@@ -5695,24 +5639,24 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Five extraction subagents launch together from one coordinator response",
-      "means": "All run at once, so the rent subagent starts before the term subagent finishes."
+      "quote": "Five extraction subagents run in parallel",
+      "means": "All start at once, so the rent subagent starts before the term subagent finishes."
      },
      {
-      "quote": "in 14% of packets the rent subagent misses the memorandum and guesses",
-      "means": "The vivid symptom. It invites a lookup tool <b>[[0]]</b> or layout samples <b>[[2]]</b>."
+      "quote": "the rent subagent sometimes misses it and guesses",
+      "means": "The rent subagent's own search is unreliable."
      },
      {
-      "quote": "The term subagent, which reads the memorandum anyway, gets the date right in 99% of packets",
-      "means": "The fact already exists, reliably. Re-deriving it duplicates work."
+      "quote": "The term subagent already extracts the commencement date reliably",
+      "means": "The fact already exists. Re-deriving it with a tool <b>[[0]]</b> or better samples <b>[[2]]</b> duplicates work."
      },
      {
-      "quote": "The rent work needs that one value once per packet",
-      "means": "The quiet clue. One value, once: no need for a tool. That rules out <b>[[0]]</b>, the runner-up."
+      "quote": "The rent subagent needs only that one value, once per packet",
+      "means": "The decider. One value, once: no need for a lookup tool. That rules out <b>[[0]]</b>, the runner-up."
      },
      {
       "quote": "Which change fits best?",
-      "means": "Checking afterwards and rerunning <b>[[3]]</b> repeats 14% of tasks. Pass the date in up front: <b>[[1]]</b>."
+      "means": "Checking afterwards and rerunning <b>[[3]]</b> repeats work. Pass the date in up front: <b>[[1]]</b>."
      }
     ],
     "rule": "Subagents know only what is in their prompt. Pass a single dependent fact through the coordinator; use a scoped tool only for frequent lookups.",
@@ -5730,10 +5674,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "About 90 packets a week land in the paralegal queue, chosen by calibrated field-level thresholds. Paralegals work only in the lease-administration system and never see the agent's session. Each receives the packet PDF and a \"needs review\" note, and a median review takes 35 minutes, most of it spent finding which field is in doubt and where the competing figures sit across 40–140 pages. What should the agent <b>attach to each escalation</b>?",
+   "question": "Packets the agent cannot resolve go to a paralegal queue. Calibrated field-level thresholds already decide which packets go there. Paralegals work in the lease-administration system and cannot see the agent's session. Today each one gets the packet PDF and a \"needs review\" note. Most of their review time goes on finding which field is in doubt and where the competing values are. What should the agent <b>attach to each escalation</b>?",
    "options": [
     {
-     "t": "The confidence score for every extracted value, sorted lowest first, with the PDF pages behind the lowest-scoring values highlighted.",
+     "t": "The confidence score for every extracted field, sorted lowest first, with the PDF pages behind the lowest-scoring values highlighted.",
      "why": "Incorrect. Calibrated confidence is the right tool for routing, which is already done; scores point at pages but show neither the candidates nor what was checked."
     },
     {
@@ -5741,7 +5685,7 @@ window.EXAM = {
      "why": "Runner-up. Claim-to-source mapping is valuable provenance and would win if reviewers re-verified whole abstracts. They need the disputed items, the rival values and a proposal, which a full map buries."
     },
     {
-     "t": "The case-facts block the agent maintained during the run, holding amounts, dates and parties exactly as extracted, pasted into the note.",
+     "t": "The case-facts block the agent kept during its session, holding amounts, dates and parties exactly as extracted, pasted into the note.",
      "why": "Incorrect. A case-facts block protects the agent's own context; it records what was extracted, not what is disputed or why."
     },
     {
@@ -5756,7 +5700,7 @@ window.EXAM = {
    "decider": "Reviewers lack the session and spend their time locating the disputed item; if they had to re-verify every value, a full source map would be the better attachment.",
    "explanation": "When escalating to humans without the transcript, compile a structured handoff: identifiers, the specific issue, evidence with locations, what was tried, and the recommended action.",
    "eli5": {
-    "question": "What should a human reviewer receive when the agent gives up on a packet? The clue is: reviewers never see the agent's session, and most of their 35 minutes goes on finding what is in doubt.",
+    "question": "What should a human reviewer receive when the agent gives up on a packet? The clue is: reviewers can't see the agent's session, and their time goes on finding what is in doubt.",
     "answer": "Think of a hospital shift change. The next nurse doesn't get the whole night's recording; they get a short card: patient, problem, what was tried, what to do next. That card is a <b>structured handoff</b>: packet ID, the disputed items, each candidate value with document and page, checks run, and a suggested answer. The reviewer can act at once. <b>Rule: hand humans a short structured brief, not raw data.</b>",
     "options": [
      "Confidence scores are for deciding who goes to review, and that is already done. They point at pages but don't show the rival values or what was checked.",
@@ -5804,20 +5748,20 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "chosen by calibrated field-level thresholds",
+      "quote": "Calibrated field-level thresholds already decide which packets go there",
       "means": "Routing is already solved. Confidence scores <b>[[0]]</b> answer a question nobody is asking."
      },
      {
-      "quote": "Paralegals work only in the lease-administration system and never see the agent's session",
+      "quote": "Paralegals work in the lease-administration system and cannot see the agent's session",
       "means": "The reader has no transcript. Whatever they get must stand alone."
      },
      {
-      "quote": "most of it spent finding which field is in doubt and where the competing figures sit across 40–140 pages",
-      "means": "The quiet clue. They need the disputed items and the rival values located. A full source map <b>[[1]]</b> buries those; it wins only if they must recheck everything."
+      "quote": "Most of their review time goes on finding which field is in doubt and where the competing values are",
+      "means": "The decider. They need the disputed items and rival values located. A full source map <b>[[1]]</b> buries those; it wins only if they must recheck everything."
      },
      {
       "quote": "What should the agent attach to each escalation?",
-      "means": "A case-facts block <b>[[2]]</b> lists what was extracted, not what's in doubt. A structured brief: <b>[[3]]</b>."
+      "means": "A case-facts block <b>[[2]]</b> lists what was extracted, not what is in doubt. A structured brief: <b>[[3]]</b>."
      }
     ],
     "rule": "When handing work to a human without the transcript, send a short structured brief: what, where, what was tried, what you recommend.",
@@ -5835,7 +5779,7 @@ window.EXAM = {
    "trap": "Losing or fabricating information",
    "fam": 7,
    "select": 1,
-   "question": "The schema's <code>renewal_option</code> field is an enum: fixed_rent, fair_market, cpi_linked, none. Auditors found that 7% of abstracts claim fair_market where the lease says something else, which the team is calling fabrication. In those leases the clause reads, for example, \"the greater of prevailing market rent or 105% of the expiring rent\" or \"rent fixed by an appointed surveyor\". Renewal terms are negotiated lease by lease. What schema change <b>represents these leases best</b>?",
+   "question": "The schema's <code>renewal_option</code> field is an enum: fixed_rent, fair_market, cpi_linked, none. Some leases state a renewal rent mechanism that fits none of these. Examples are \"the greater of market rent or 105% of the expiring rent\" and \"rent fixed by an appointed surveyor\". The model forces these into fair_market. New wordings keep appearing, since renewal terms are negotiated lease by lease. What schema change <b>represents these leases best</b>?",
    "options": [
     {
      "t": "Add an <code>other</code> member alongside a free-text <code>renewal_basis_detail</code> holding the mechanism in the lease's own words.",
@@ -5861,7 +5805,7 @@ window.EXAM = {
    "decider": "The clauses state a definite mechanism that none of the four values covers; if the lease said nothing about renewal rent, a nullable field would be right.",
    "explanation": "Use nullable fields when the source lacks the information, <code>unclear</code> when the text is ambiguous, and <code>other</code> plus a detail field when a clear value falls outside the categories.",
    "eli5": {
-    "question": "A category list is missing some real answers, so the model forces a wrong one. What schema change fits? \"Fabrication\" tempts you toward allowing null. The clue is: these clauses clearly state how rent is set, just in terms the list doesn't include.",
+    "question": "A category list is missing some real answers, so the model forces a wrong one. What schema change fits? The clue is: these leases clearly state how renewal rent is set, in terms the list doesn't include.",
     "answer": "Think of a form with tick boxes for \"tea, coffee, juice\" when the guest clearly asked for hot chocolate. Leaving it blank loses the order; ticking coffee is wrong. Add an \"other\" box with a line to write it in (<b>an <code>other</code> enum value plus a detail field</b>). Null is for when the guest said nothing at all. <b>Rule: null for missing information, other plus detail for a clear answer outside the list.</b>",
     "options": [
      "Correct. An \"other\" choice with the lease's own wording records the real mechanism instead of forcing it into a wrong box.",
@@ -5871,7 +5815,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "The word <b>\"fabrication\"</b> sends you to the textbook fix: make the field nullable. Nullable is the fix when the document <b>doesn't contain</b> the information. Here the lease contains it plainly; the schema just has no box for it. Null would throw away a real, clear answer.",
+    "premise": "When a model puts a wrong value in a field, the textbook fix is <b>make the field nullable</b>. Nullable is the fix when the document <b>doesn't contain</b> the information. Here the lease contains it plainly; the schema just has no box for it. Null would throw away a real, clear answer.",
     "diagram": "Is the info in the document?\n ├ no                 → null / optional\n ├ yes, but ambiguous → \"unclear\" + detail\n └ yes, clear, not in list → \"other\" + detail",
     "mapTitle": "The schema can't hold what the document says: which escape hatch?",
     "map": {
@@ -5910,16 +5854,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Auditors found that 7% of abstracts claim fair_market where the lease says something else, which the team is calling fabrication",
-      "means": "The vivid word. It points to nullable, <b>[[1]]</b>."
+      "quote": "Some leases state a renewal rent mechanism that fits none of these",
+      "means": "The decider. The information is present and clear. Null <b>[[1]]</b> would discard it, and <code>unclear</code> <b>[[2]]</b> mislabels clear text."
      },
      {
-      "quote": "the clause reads, for example, \"the greater of prevailing market rent or 105% of the expiring rent\" or \"rent fixed by an appointed surveyor\"",
-      "means": "The quiet clue. The information is present and clear. Null <b>[[1]]</b> would discard it, and <code>unclear</code> <b>[[2]]</b> mislabels clear text."
+      "quote": "The model forces these into fair_market",
+      "means": "Coercion into the nearest box: the schema has no place for a real answer."
      },
      {
-      "quote": "Renewal terms are negotiated lease by lease",
-      "means": "New variants will keep appearing, so the list can't be closed. Samples mapping onto the four values <b>[[3]]</b> would standardise a wrong answer."
+      "quote": "New wordings keep appearing, since renewal terms are negotiated lease by lease",
+      "means": "The list can't be closed. Samples mapping onto the four values <b>[[3]]</b> would standardise a wrong answer."
      },
      {
       "quote": "What schema change represents these leases best?",
@@ -5941,10 +5885,10 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 1,
-   "question": "A Pydantic validator recomputes each year of the rent schedule from the clause's base rent and escalation. On a mismatch the pipeline resends the original request with \"Output failed validation. Try again.\" and allows five attempts. Only 31% pass on the second attempt, and one packet used all five. The lease's rent table puts base rent and CAM reimbursement in adjacent columns, and the escalation steps on each anniversary of commencement rather than each January. Which change <b>most improves the second-attempt pass rate</b>?",
+   "question": "A Pydantic validator recomputes each year of the rent schedule from the base rent and escalation clause. On a mismatch, the pipeline resends the request with \"Output failed validation. Try again.\" Second attempts rarely pass. The correct figures are in the lease. The model misreads them, for example taking the CAM column next to base rent, or stepping rent each January instead of each anniversary. Which change <b>most improves the second-attempt pass rate</b>?",
    "options": [
     {
-     "t": "Send packets that fail the rent check to the paralegal queue with the schedule attached, and stop automatic resubmission for that check.",
+     "t": "Send packets that fail validation to the paralegal queue with the schedule attached, and stop automatic resubmission for that check.",
      "why": "Runner-up. Resubmission cannot recover information absent from the source, and this would win if the figures were missing. They are in the table, so an informed retry can fix them."
     },
     {
@@ -5964,10 +5908,10 @@ window.EXAM = {
     2
    ],
    "runnerUp": 0,
-   "decider": "The correct figures are in the lease's table, so a retry can succeed if told what failed; if they were absent, routing to a human would be right.",
+   "decider": "The correct figures are in the lease, so a retry can succeed if told what failed; if they were absent, routing to a human would be right.",
    "explanation": "Retry-with-error-feedback appends the specific validation failure. It works for misreads and format errors, not for information missing from the document.",
    "eli5": {
-    "question": "Retries after a failed rent check rarely work. What makes the second try succeed? The clue is: the right numbers are in the lease, in a column next to a similar one, and the steps follow anniversaries, not January.",
+    "question": "Retries after a failed rent check rarely work. What makes the second try succeed? The clue is: the correct figures are in the lease; the model misreads them.",
     "answer": "Think of a teacher handing back homework marked only \"wrong, try again\". The student guesses. If the teacher writes \"year 3 should be 41,200, you wrote 46,900\", the student finds the mistake fast. That is <b>retry with specific error feedback</b>. It works because the answer is in the lease. If it were missing, no retry would help. <b>Rule: when retrying, say exactly what failed.</b>",
     "options": [
      "Runner-up. Sending to a human is right when the information isn't in the document. Here it is, so an informed retry can fix it.",
@@ -5977,7 +5921,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "A 31% retry success rate makes you think <b>retries don't work here, so send it to a human</b>. That is right when the information is missing from the document. But a retry can also fail because it is <b>blind</b>: \"try again\" tells the model nothing. Whether the answer is in the source decides which.",
+    "premise": "When retries rarely succeed, you'd think <b>retries don't work here, so send it to a human</b>. That is right when the information is missing from the document. But a retry can also fail because it is <b>blind</b>: \"try again\" tells the model nothing. Whether the answer is in the source decides which.",
     "diagram": "Retry fails. Is the answer in the document?\n ├ no  → stop retrying, route to a human\n └ yes → retry WITH the specific error",
     "mapTitle": "Validation failed: retry, or hand off?",
     "map": {
@@ -6016,20 +5960,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "On a mismatch the pipeline resends the original request with \"Output failed validation. Try again.\"",
+      "quote": "On a mismatch, the pipeline resends the request with \"Output failed validation. Try again.\"",
       "means": "The retry carries no information about what failed. That is the root cause."
      },
      {
-      "quote": "Only 31% pass on the second attempt, and one packet used all five",
-      "means": "The vivid symptom. It invites giving up and routing to a human, <b>[[0]]</b>."
+      "quote": "The correct figures are in the lease",
+      "means": "The decider. The data is present, so routing to a human <b>[[0]]</b>, the runner-up, isn't needed."
      },
      {
-      "quote": "The lease's rent table puts base rent and CAM reimbursement in adjacent columns",
-      "means": "The quiet clue: the right figure is printed, next to a similar one. The data is present, so <b>[[0]]</b>, the runner-up, isn't needed."
-     },
-     {
-      "quote": "the escalation steps on each anniversary of commencement rather than each January",
-      "means": "Another misreadable but present fact. A specific error message points straight at it."
+      "quote": "taking the CAM column next to base rent, or stepping rent each January instead of each anniversary",
+      "means": "Specific, findable misreads. A precise error message points straight at them."
      },
      {
       "quote": "Which change most improves the second-attempt pass rate?",
@@ -6051,7 +5991,7 @@ window.EXAM = {
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "Each document in a packet is sent alone to an extraction request offering <code>extract_lease</code>, <code>extract_amendment</code> and <code>extract_guaranty</code>. Uploads carry no type label. With <code>tool_choice</code> on auto, about 4% of responses are prose, such as \"This appears to be a personal guaranty of the tenant's obligations…\", and the parser drops them. In an audit of 1,000 responses that did call a tool, the tool matched the document type every time. What is the <b>best fix</b>?",
+   "question": "Each document is sent alone to an extraction request with three tools: <code>extract_lease</code>, <code>extract_amendment</code> and <code>extract_guaranty</code>. Uploads carry no type label. With <code>tool_choice</code> on auto, some responses are prose with no tool call, and the parser drops them. When the model does call a tool, it always picks the right one. What is the <b>best fix</b>?",
    "options": [
     {
      "t": "Expand each extractor's description with distinguishing features and sample headings for its document type.",
@@ -6087,7 +6027,7 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "Seeing \"This appears to be a guaranty…\" makes you think the model is <b>unsure which tool</b> to use, so classify first and force the tool. But the audit shows it picks correctly every time it calls one. The only failure is <b>not calling a tool at all</b>, and a single setting fixes that.",
+    "premise": "Prose replies make you think the model is <b>unsure which tool</b> to use, so classify first and force the tool. But when it calls a tool, it always picks correctly. The only failure is <b>not calling a tool at all</b>, and a single setting fixes that.",
     "diagram": "tool_choice:\n auto  → may answer in text\n any   → must call a tool, model picks which\n {name}→ must call THAT tool",
     "mapTitle": "Tool-calling failure: wrong tool, or no tool?",
     "map": {
@@ -6130,12 +6070,12 @@ window.EXAM = {
       "means": "The right tool isn't known before reading, so forcing one named tool needs an extra step first."
      },
      {
-      "quote": "With tool_choice on auto, about 4% of responses are prose",
+      "quote": "With tool_choice on auto, some responses are prose with no tool call, and the parser drops them",
       "means": "<code>auto</code> allows text. That is the setting causing the failure."
      },
      {
-      "quote": "In an audit of 1,000 responses that did call a tool, the tool matched the document type every time",
-      "means": "The quiet clue. Selection is perfect, so better descriptions <b>[[0]]</b> and classify-then-force <b>[[1]]</b> fix nothing that is broken."
+      "quote": "When the model does call a tool, it always picks the right one",
+      "means": "The decider. Selection is fine, so better descriptions <b>[[0]]</b> and classify-then-force <b>[[1]]</b> fix nothing that is broken."
      },
      {
       "quote": "What is the best fix?",
@@ -6157,7 +6097,7 @@ window.EXAM = {
    "trap": "More context or reasoning instead of structure",
    "fam": 5,
    "select": 1,
-   "question": "Each abstract carries a <code>non_standard_clauses</code> list for the legal team, produced from the instruction \"list any unusual or non-standard clauses\". In one abstract a co-tenancy right sat 27th in a list of 31 items, most of them routine assignment and repair language. Across a month, 65% of listed items were routine. Legal's playbook defines non-standard as five clause families, each with trigger language. The list format is consistent. What change <b>most improves precision</b>?",
+   "question": "Each abstract includes a <code>non_standard_clauses</code> list for the legal team. The instruction says \"list any unusual or non-standard clauses\". Most listed items turn out to be routine assignment and repair language, and the important ones get lost. Legal's playbook already defines non-standard as five clause families, each with trigger language. The list format is consistent. What change <b>most improves precision</b>?",
    "options": [
     {
      "t": "Add three annotated leases to the prompt marking which provisions belonged on the list and which routine ones were left off.",
@@ -6183,7 +6123,7 @@ window.EXAM = {
    "decider": "Legal's playbook already defines the categories in words; if the boundary could not be stated, few-shot samples would be the strongest lever.",
    "explanation": "Precision comes from explicit categorical criteria. Few-shot samples complement criteria for consistency and hard cases; review layers do not fix a vague definition.",
    "eli5": {
-    "question": "A \"list unusual clauses\" output is full of routine items. How do you make it precise? The buried co-tenancy right is the vivid detail. The clue is: legal's playbook already defines the five kinds that count.",
+    "question": "A \"list unusual clauses\" output is full of routine items. How do you make it precise? The clue is: legal's playbook already defines the five kinds that count.",
     "answer": "Think of telling a library volunteer to pull \"interesting books\". You get a cartful. Give them the five shelf codes you actually want and you get exactly those. Replacing a vague word with a closed list of categories and their trigger wording is <b>explicit categorical criteria</b>, the main lever for precision. <b>Rule: if you can write the categories down, write them down.</b>",
     "options": [
      "Runner-up. Worked samples help when the boundary is hard to put into words. Here legal has already put it into words.",
@@ -6231,16 +6171,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "produced from the instruction \"list any unusual or non-standard clauses\"",
+      "quote": "The instruction says \"list any unusual or non-standard clauses\"",
       "means": "The root cause: \"unusual\" is undefined."
      },
      {
-      "quote": "In one abstract a co-tenancy right sat 27th in a list of 31 items",
-      "means": "The vivid detail. It makes it look like ordering or filtering, not definition."
+      "quote": "Most listed items turn out to be routine assignment and repair language",
+      "means": "A precision problem: too much is included."
      },
      {
-      "quote": "Legal's playbook defines non-standard as five clause families, each with trigger language",
-      "means": "The quiet clue. The criteria exist in words. Few-shot <b>[[0]]</b> wins only when they don't; tracking <b>[[2]]</b> discovers what is already known."
+      "quote": "Legal's playbook already defines non-standard as five clause families, each with trigger language",
+      "means": "The decider. The criteria exist in words. Few-shot <b>[[0]]</b> wins only when they don't; tracking <b>[[2]]</b> discovers what is already known."
      },
      {
       "quote": "The list format is consistent",
@@ -6266,7 +6206,7 @@ window.EXAM = {
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "The escalation object has <code>type</code> (fixed_pct, fixed_amount, cpi, stepped) plus <code>floor_pct</code>, <code>cap_pct</code> and <code>steps</code>; legal has confirmed every clause seen so far fits it. The prompt defines each type and where floors and caps go. Hybrid clauses such as \"CPI, not below 2% or above 5%\" or \"the greater of 3% or CPI\" are encoded differently across runs, sometimes as cpi with bounds, sometimes as fixed_pct with a bound dropped. Reviewers reject 18% of escalations. What is the <b>most effective next step</b>?",
+   "question": "The escalation object has a <code>type</code> (fixed_pct, fixed_amount, cpi, stepped) plus <code>floor_pct</code>, <code>cap_pct</code> and <code>steps</code>. Legal has confirmed that every clause seen so far fits this shape. The prompt defines each type and where floors and caps go. Yet hybrid clauses, such as CPI with a floor and a cap, come out differently from run to run. What is the <b>most effective next step</b>?",
    "options": [
     {
      "t": "Work three mixed-mechanism clauses through in the prompt, each with its expected JSON and a line on why that category applies.",
@@ -6292,7 +6232,7 @@ window.EXAM = {
    "decider": "The schema already represents every clause and only the mapping varies; if clauses fell outside the schema, an other-plus-detail value would be right.",
    "explanation": "Few-shot cases, including ambiguous ones with the reasoning shown, are the most effective way to get consistent output when instructions alone are inconsistent.",
    "eli5": {
-    "question": "Mixed escalation clauses come out differently on different runs. What is the best next step? The clue is: legal confirms every clause fits the existing format, and the prompt already defines each type.",
+    "question": "Mixed escalation clauses come out differently on different runs. What is the best next step? The clue is: legal confirms every clause fits the format, and the prompt already defines each type.",
     "answer": "Think of teaching someone to file mixed receipts. The rules are written down, yet they file tricky ones differently each time. Walk them through three tricky receipts, showing where each goes and why. Worked cases that show the reasoning (<b>few-shot examples</b>) are the strongest fix when written rules alone give inconsistent results. <b>Rule: when definitions exist but tricky cases vary, show worked cases.</b>",
     "options": [
      "Correct. Three tricky clauses with the expected output and a one-line reason teach the mapping.",
@@ -6340,20 +6280,16 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "legal has confirmed every clause seen so far fits it",
-      "means": "The schema is adequate, which rules out <b>[[1]]</b>, the runner-up."
+      "quote": "Legal has confirmed that every clause seen so far fits this shape",
+      "means": "The decider. The schema is adequate, which rules out <b>[[1]]</b>, the runner-up."
      },
      {
       "quote": "The prompt defines each type and where floors and caps go",
       "means": "Written instructions already exist, so more prose isn't the lever."
      },
      {
-      "quote": "are encoded differently across runs",
+      "quote": "hybrid clauses, such as CPI with a floor and a cap, come out differently from run to run",
       "means": "Inconsistency on ambiguous cases: the textbook trigger for few-shot."
-     },
-     {
-      "quote": "Reviewers reject 18% of escalations",
-      "means": "The cost of the inconsistency, not a different problem."
      },
      {
       "quote": "What is the most effective next step?",
@@ -6375,7 +6311,7 @@ window.EXAM = {
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "The same premises often show several rents across a packet: $38.50 per square foot in the base lease, $41.00 in a 2021 amendment, $39.75 in a side letter. Reviewers log these as conflicts, and reconciliation keeps whichever figure its prompt finds most authoritative, discarding the others. Each amendment and side letter states the date it takes effect; the side letter was signed after the amendment but takes effect before it. What should reconciliation do <b>with these figures</b>?",
+   "question": "A packet can state different rents for the same premises: one in the base lease, another in an amendment, another in a side letter. Reconciliation keeps whichever figure its prompt finds most authoritative and drops the rest. Each amendment and side letter states the date it takes effect. A document signed later can take effect earlier. What should reconciliation do <b>with these figures</b>?",
    "options": [
     {
      "t": "Mark the field as disputed, store each rent with its source and page, and send the packet to a paralegal to choose the current figure.",
@@ -6390,7 +6326,7 @@ window.EXAM = {
      "why": "Incorrect. Agreement between passes still discards the other values and never uses the dates."
     },
     {
-     "t": "Store each rent with source, page and effective date, take the current figure from the latest one, and keep the rest as history.",
+     "t": "Store each rent with its document, page and effective date, take the current figure from the latest, and keep the rest as history.",
      "why": "Correct. Capturing dates with attribution shows a sequence over time, not contradictions, and keeps provenance for every value."
     }
    ],
@@ -6401,7 +6337,7 @@ window.EXAM = {
    "decider": "Each document states when it takes effect, so the values form a sequence; if they lacked dates or applied at the same time, flagging the conflict for a person would be correct.",
    "explanation": "Keep claim-to-source mappings through synthesis and capture dates so temporal differences are not misread as contradictions. Real conflicts get annotated with sources, not resolved arbitrarily.",
    "eli5": {
-    "question": "Three documents show three different rents. Is that a conflict? Reviewers call it one, which is the bait. The clue is: each document states when it takes effect, and the side letter was signed last but took effect earlier.",
+    "question": "Three documents show three different rents. Is that a conflict? The clue is: each document states when it takes effect, and signing order is not effect order.",
     "answer": "Think of a price board in a shop over the years: £38.50, then £39.75, then £41.00. Those aren't three competing prices; they're a history. Record each value with its source, page and effective date, take today's price from the latest effective date, and keep the rest as history (<b>source attribution with dates</b>). A real conflict would be two prices in force at once. <b>Rule: check the dates before calling it a contradiction.</b>",
     "options": [
      "Runner-up. Flagging with sources is right for a true conflict, two values in force at the same time. These follow each other, and their dates order them.",
@@ -6411,8 +6347,8 @@ window.EXAM = {
     ]
    },
    "deep": {
-    "premise": "Reviewers call three different rents a <b>conflict</b>, so you'd annotate it and send it to a person. That is the right move for a real contradiction. But values that change <b>over time</b> are not contradictions; they are a history. The dates tell you which is which.",
-    "diagram": "base lease   $38.50\nside letter  $39.75  takes effect 2nd\n2021 amend.  $41.00  takes effect last\n → current = latest effective date",
+    "premise": "Three different rents look like a <b>conflict</b>, so you'd annotate it and send it to a person. That is the right move for a real contradiction. But values that change <b>over time</b> are not contradictions; they are a history. The dates tell you which is which.",
+    "diagram": "base lease   rent A\nside letter  rent B  takes effect 2nd\namendment    rent C  takes effect last\n → current = latest effective date",
     "mapTitle": "Sources disagree: conflict, or change over time?",
     "map": {
      "head": [
@@ -6450,19 +6386,19 @@ window.EXAM = {
     },
     "evidence": [
      {
-      "quote": "Reviewers log these as conflicts",
-      "means": "The bait. It points at flagging the conflict, <b>[[0]]</b>."
+      "quote": "A packet can state different rents for the same premises",
+      "means": "Different values look like a conflict, which is what <b>[[0]]</b> assumes."
      },
      {
-      "quote": "reconciliation keeps whichever figure its prompt finds most authoritative, discarding the others",
-      "means": "Provenance is being thrown away. A second pass agreeing <b>[[2]]</b> still discards values."
+      "quote": "Reconciliation keeps whichever figure its prompt finds most authoritative and drops the rest",
+      "means": "Provenance is being thrown away. A second pass agreeing <b>[[2]]</b> still drops values."
      },
      {
       "quote": "Each amendment and side letter states the date it takes effect",
-      "means": "The quiet clue. The values can be ordered in time, so they're not a true conflict. That rules out <b>[[0]]</b>, the runner-up."
+      "means": "The decider. The values can be ordered in time, so they are not a true conflict. That rules out <b>[[0]]</b>, the runner-up."
      },
      {
-      "quote": "the side letter was signed after the amendment but takes effect before it",
+      "quote": "A document signed later can take effect earlier",
       "means": "Signing order isn't effect order. This defeats <b>[[1]]</b>, which keeps the most recently signed value."
      },
      {
@@ -6485,11 +6421,11 @@ window.EXAM = {
    "trap": "Right idea, wrong layer",
    "fam": 4,
    "select": 2,
-   "question": "On a labelled set of 2,000 packets, field-level accuracy is 97%, and the business plans to let some abstracts post without paralegal review from launch next month. US office leases make up 82% of the set; UK retail and ground leases make up the rest. Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted. The model returns a per-field confidence value. Which TWO together <b>meet that requirement at launch</b>?",
+   "question": "The business wants some abstracts to post without paralegal review from launch day. Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted. A labelled set of past packets is available. It mixes US office leases with a smaller share of UK retail and ground leases. The model returns a confidence value per field. Which TWO together <b>meet that requirement at launch</b>?",
    "options": [
     {
      "t": "Break the results out by document type and by field, and let only type-field pairs under the error bar bypass review.",
-     "why": "Correct. A 97% aggregate can hide weak lease types or fields; measuring each pair is what shows which can skip review."
+     "why": "Correct. A high aggregate can hide weak lease types or fields; measuring each pair is what shows which can skip review."
     },
     {
      "t": "Sample auto-posted abstracts weekly with stratification by lease type, and track the measured error rate for each stratum.",
@@ -6512,10 +6448,10 @@ window.EXAM = {
    "decider": "The error rate must be measured before the first post, which only the labelled set allows; after launch, stratified sampling of posted abstracts would be the ongoing check.",
    "explanation": "Aggregate accuracy masks weak segments. Before automating, validate by document type and field and calibrate field-level confidence on labelled data; after launch, monitor with stratified sampling.",
    "eli5": {
-    "question": "Which two steps prove, before launch, which fields can skip human review? The clue is: the error rate must be measured from the very first posted abstract, and only the labelled set exists before launch.",
+    "question": "Which two steps prove, before launch, which fields can skip human review? The clue is: the error rate must be measured from the very first abstract posted.",
     "answer": "Think of a restaurant inspection before opening day. You test each dish on its own, not just an average score. You also check how well the chef's \"I'm sure\" matches reality. Break accuracy down by lease type and field, and tune each field's confidence cut-off on the labelled set (<b>calibration</b>). Spot-checking real orders comes after opening. <b>Rule: before automating, validate by segment and calibrate on labelled data; after launch, sample.</b>",
     "options": [
-     "Correct. A 97% average can hide weak lease types or fields. Measuring each pair shows which can skip review.",
+     "Correct. A high average can hide weak lease types or fields. Measuring each pair shows which can skip review.",
      "Runner-up. Stratified spot-checks of live output are the right ongoing monitor. They need posted abstracts, so they can't qualify anything on day one.",
      "Correct. Confidence tuned on labelled data sends just the doubtful values to a person.",
      "A totals check catches some errors but measures no error rate, and most fields have no total to check."
@@ -6555,25 +6491,25 @@ window.EXAM = {
       [
        "Headline accuracy looks high",
        "Break it down",
-       "97% can mask a weak type"
+       "A high average can mask a weak type"
       ]
      ]
     },
     "evidence": [
      {
-      "quote": "On a labelled set of 2,000 packets, field-level accuracy is 97%",
-      "means": "An aggregate. It can hide weak lease types or fields, which <b>[[0]]</b> uncovers."
-     },
-     {
-      "quote": "US office leases make up 82% of the set; UK retail and ground leases make up the rest",
-      "means": "Minority types are swamped in the average. Break results out by type."
-     },
-     {
       "quote": "Compliance requires a measured error rate under 1% for any field that skips review, from the first abstract posted",
-      "means": "The quiet clue: measured before anything posts. Sampling production output <b>[[1]]</b> can't help on day one; a totals check <b>[[3]]</b> measures no rate."
+      "means": "The decider: measured before anything posts. Sampling production output <b>[[1]]</b> can't help on day one; a totals check <b>[[3]]</b> measures no rate."
      },
      {
-      "quote": "The model returns a per-field confidence value",
+      "quote": "A labelled set of past packets is available",
+      "means": "The only data available before launch. Both answers must come from it."
+     },
+     {
+      "quote": "It mixes US office leases with a smaller share of UK retail and ground leases",
+      "means": "Minority types get swamped in an average. Break results out by type and field: <b>[[0]]</b>."
+     },
+     {
+      "quote": "The model returns a confidence value per field",
       "means": "Usable only once calibrated on labelled data: <b>[[2]]</b>."
      },
      {
