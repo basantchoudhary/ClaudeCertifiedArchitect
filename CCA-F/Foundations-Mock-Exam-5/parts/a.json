@@ -1,0 +1,2167 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A home-goods retailer runs its support agent on the <b>Claude Agent SDK</b>, handling about 18,000 tickets a week. The agent calls custom MCP tools <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>issue_store_credit</code>. It may refund up to $500 per order; larger refunds need a human's approval. Returns are accepted within 30 days. First-contact resolution is 68% against an 80% target."
+  },
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 Claude Code Configuration &amp; Workflows · D5 Context &amp; Reliability · D4 Prompt Engineering",
+   "brief": "A 40-engineer platform team uses Claude Code in a monorepo with <code>services/</code> (Go), <code>web/</code> (React + TypeScript) and <code>infra/</code> (Terraform). Team configuration is committed under <code>.claude/</code>, including path-scoped rules and skills, and several engineers keep personal <code>~/.claude/</code> setups. Eight contractors have just joined. The current large task is an API migration codemod touching about 70 files across two trees."
+  }
+ ],
+ "questions": [
+  {
+   "id": "s5q-s1-01",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Loop termination",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The agent's control loop stops when the latest reply contains a closing line such as \"Is there anything else I can help with?\" or when fifteen iterations have passed. The incident log shows two patterns. Some tickets end with a refund half-done: in each, the final response opened with a courteous wrap-up sentence and then carried a request to run <code>process_refund</code>. Other tickets, mostly multi-order returns, reach fifteen and are cut off. Their transcripts show each step calling a different tool and building on the result before it. What is the <b>root cause</b>?",
+   "options": [
+    {
+     "t": "The fifteen-step ceiling is too low for multi-order returns and should be raised, with a limit per ticket type set from observed step counts.",
+     "why": "Incorrect. A higher cap would let the long tickets finish, but the cap would still be the main way the loop stops, and the half-done refunds would continue. Iteration caps are a runaway guard, not the stop signal."
+    },
+    {
+     "t": "The loop judges that a turn is finished from the reply's wording and a counter, instead of from the stop reason returned with each response.",
+     "why": "Correct. A response that requests a tool comes back with stop_reason \"tool_use\" whatever its text says; the loop should continue on that and stop on \"end_turn\". Both failure patterns come from ignoring that field."
+    },
+    {
+     "t": "Tool results are not being added back into the message history, so the model loses track of finished steps and keeps requesting them.",
+     "why": "Runner-up. Missing tool results in history do make an agent repeat itself until it hits a cap. It would win if the capped transcripts showed the same lookup repeated; here each step calls a different tool and builds on the last result."
+    },
+    {
+     "t": "The wrap-up detector needs a broader phrase list and should skip any response that also contains a request to run a tool.",
+     "why": "Incorrect. Skipping responses with tool requests patches one symptom, but completion is still inferred from text, which the exam guide lists as an anti-pattern, and the cap problem remains."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The capped transcripts show each step calling a different tool and building on the previous result; if they showed the same lookup repeated, missing tool results in history would be the cause.",
+   "explanation": "The agentic loop continues while stop_reason is \"tool_use\" and ends on \"end_turn\". Parsing the reply's text for a closing phrase and using an iteration cap as the primary stop are both listed anti-patterns; a cap belongs only as a safety guard.",
+   "eli5": {
+    "question": "The agent's loop decides when a ticket is finished, and it gets that wrong in two ways. The clue is: the half-done refunds all ended on a reply that still asked to run a tool, and the long tickets were making real progress at every step. So the question is about how the loop knows a turn is over, not about the size of the limit.",
+    "answer": "Think of a waiter who leaves the table as soon as someone says \"thanks\", even while they are still ordering. The API already tells you, with every reply, whether Claude wants a tool run or is done (the <b>stop_reason</b>: <code>tool_use</code> or <code>end_turn</code>). The loop should read that label, not the polite words and not a step counter. A step limit can stay, but only as a safety stop for runaways. <b>Rule: keep going on tool_use, stop on end_turn; never judge \"done\" from the text.</b>",
+    "options": [
+     "A bigger step limit lets long tickets finish, but the limit is still deciding when to stop, and the half-done refunds keep happening.",
+     "Correct. Read the stop reason on each reply instead of guessing from words or counting steps.",
+     "Runner-up. If tool results were missing from the history (the agent's record of what came back), it would repeat itself until the limit. It would win if the long transcripts showed the same lookup again and again.",
+     "A longer list of goodbye phrases still guesses \"done\" from text, and it does nothing for the long tickets."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat this as <b>two bugs with two fixes</b>: a phrase detector that misfires and a limit that is too low. Both come from one design mistake. The loop is <i>guessing</i> whether Claude has finished, from wording and from a counter, when every API response already says so in its <code>stop_reason</code> field. A reply can say goodbye and still ask for a tool in the same turn.",
+    "diagram": "response ─► stop_reason?\n  ├ tool_use ─► run tool, append result, loop\n  └ end_turn ─► finish the ticket\n cap = runaway guard only, not the stop signal",
+    "mapTitle": "The loop stops at the wrong time: what is it reading?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Stops while a tool request is still pending",
+       "Completion guessed from reply text",
+       "Continue on <code>stop_reason: \"tool_use\"</code>"
+      ],
+      [
+       "Long, progressing tickets cut off at N steps",
+       "Iteration cap used as the main stop",
+       "Stop on <code>end_turn</code>; keep the cap as a runaway guard"
+      ],
+      [
+       "Agent repeats the <b>same</b> lookup until the cap",
+       "Tool results not appended to history",
+       "Append each tool result before the next request"
+      ],
+      [
+       "Agent spins on a broken tool",
+       "No runaway protection",
+       "Generous cap plus structured error handling"
+      ],
+      [
+       "Steps fixed before any result is seen",
+       "Pre-set tool sequence",
+       "Let the model choose the next step from results"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent's control loop stops when the latest reply contains a closing line",
+      "means": "The loop judges completion from text. The exam guide lists this as an anti-pattern."
+     },
+     {
+      "quote": "in each, the final response opened with a courteous wrap-up sentence and then carried a request to run process_refund",
+      "means": "That response came back with <code>stop_reason: \"tool_use\"</code>. The loop ignored the field and stopped. Patching the phrase list (<b>[[3]]</b>) only hides this one case."
+     },
+     {
+      "quote": "Other tickets, mostly multi-order returns, reach fifteen and are cut off",
+      "means": "The vivid part. It invites raising the cap (<b>[[0]]</b>), but the cap should never have been the stop signal."
+     },
+     {
+      "quote": "Their transcripts show each step calling a different tool and building on the result before it",
+      "means": "The quiet clue. The agent is making progress, so tool results are reaching it. This rules out the runner-up <b>[[2]]</b>, which needs repeated lookups."
+     },
+     {
+      "quote": "What is the root cause?",
+      "means": "One cause explains both patterns: the stop reason is ignored. So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Continue while stop_reason is tool_use and finish on end_turn. Reply text and step counts are not completion signals.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops",
+     "quote": "Anti-patterns: parsing natural-language signals to determine termination; arbitrary iteration caps as the primary stop; checking assistant text content as a completion indicator."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-02",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Overlapping tool descriptions",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "<code>issue_store_credit</code> went live six weeks ago. Since then, 31% of customers who asked for their money back on a damaged item have received a voucher instead, and finance has flagged the voucher spend. Most of these chats open with a long account of a bad experience, such as a ruined birthday gift or a wasted afternoon. The new tool's description reads \"Compensate a customer for a poor experience.\" and <code>process_refund</code>'s reads \"Refund a customer's order.\" Which change is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add four or five sample conversations to the system prompt in which an upset customer asks for their money and the agent calls process_refund.",
+     "why": "Runner-up. Examples can steer selection, and they would be the next lever if the two descriptions already drew a clear boundary. Here the descriptions are one-liners that both fit an upset customer, so examples treat the symptom and add tokens."
+    },
+    {
+     "t": "Merge the two into a single remedy tool with a remedy-type parameter, chosen after the agent confirms what the customer asked for.",
+     "why": "Incorrect. Consolidation is a redesign that changes the agent's tool contract; it is more effort than a first step and moves the same ambiguity into a parameter."
+    },
+    {
+     "t": "Rewrite both descriptions to state what each remedy is for, the input it takes, and which requests belong to the other tool.",
+     "why": "Correct. Descriptions are the main signal for tool choice. \"Poor experience\" matches almost every damaged-item chat, and neither description says when not to use it. Stating purpose and boundaries is the cheap, high-leverage first fix."
+    },
+    {
+     "t": "Add a routing step that classifies each request as refund or credit from its wording and exposes only the matching tool.",
+     "why": "Incorrect. A wording-based router is extra machinery and is itself a keyword heuristic; it is over-engineered before the descriptions have been fixed."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The two descriptions are single sentences and 'poor experience' covers nearly every damaged-item chat; if the descriptions already stated clear boundaries, adding examples of upset customers would be the next step.",
+   "explanation": "Tool descriptions are the primary mechanism for tool selection, and they are read against each other. When two tools overlap in purpose, each description must say what it is for and which requests belong to the other tool before reaching for examples, routers or consolidation.",
+   "eli5": {
+    "question": "Customers who want their money back are getting vouchers. The clue is: the two tool descriptions are one short sentence each, and \"poor experience\" fits almost every damaged-item chat. The upset stories are the distraction.",
+    "answer": "Picture two drawers labelled only \"Make it up to them\" and \"Give money back\". A helper facing an upset customer will often open the first one. Labels that say what each drawer is for, and when to use the other one, fix that at the source (<b>tool descriptions</b>). They are the main thing Claude reads when choosing a tool, and rewriting them is cheap. <b>Rule: when two tools get mixed up, fix their descriptions first.</b>",
+    "options": [
+     "Runner-up. Showing worked chats (<b>few-shot examples</b>) can steer the choice. It would be the next step if the labels were already clear; here they are not.",
+     "Merging the tools into one is a redesign. It is too big for a first step and moves the confusion into a setting.",
+     "Correct. Clear descriptions with boundaries fix the overlap where it starts.",
+     "A word-matching router is extra machinery and is itself a keyword guess."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the emotional stories are the cause</b>, so the agent needs examples of upset customers who still want a refund. The stories only expose the real weakness: the two descriptions overlap. \"Compensate a customer for a poor experience\" describes nearly every damaged-item chat, and neither description says when <i>not</i> to use it. Descriptions are the main signal Claude uses to choose a tool, so they come first.",
+    "mapTitle": "Two tools getting confused: which lever first?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Similar tools, one-line descriptions, mix-ups across many phrasings",
+       "Overlapping descriptions",
+       "Rewrite descriptions: purpose, inputs, when to use the other tool"
+      ],
+      [
+       "Descriptions already clear, mix-ups follow certain words",
+       "System-prompt wording",
+       "Rewrite the wording that ties those words to a tool"
+      ],
+      [
+       "Descriptions clear, a few hard cases still wrong",
+       "Ambiguous edge cases",
+       "Add 2–4 targeted examples"
+      ],
+      [
+       "One tool does several jobs through a catch-all input",
+       "Tool design",
+       "Split into purpose-specific tools"
+      ],
+      [
+       "Tools must be called in a fixed order",
+       "Instructions cannot guarantee order",
+       "Gate, or a forced <code>tool_choice</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "31% of customers who asked for their money back on a damaged item have received a voucher instead",
+      "means": "The symptom: the wrong tool is chosen for a clear request. It does not yet say why."
+     },
+     {
+      "quote": "Most of these chats open with a long account of a bad experience",
+      "means": "The vivid part. It tempts you towards examples of upset customers (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The new tool's description reads \"Compensate a customer for a poor experience.",
+      "means": "The quiet clue. Two one-sentence descriptions, and \"poor experience\" fits almost every damaged-item chat. Neither says when to use the other tool."
+     },
+     {
+      "quote": "Which change is the most effective first step?",
+      "means": "Cheap and aimed at the cause: rewrite both descriptions. Merging (<b>[[1]]</b>) or a router (<b>[[3]]</b>) is heavier. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Descriptions are the main way Claude picks a tool. When two tools overlap, give each a clear purpose and a when-to-use-the-other line before adding examples or machinery.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces",
+     "quote": "Tool descriptions are the primary mechanism LLMs use for selection; minimal descriptions → unreliable selection among similar tools."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-03",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks for policy enforcement",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "The $500 ceiling lives in one sentence of the system prompt. Last quarter seven refunds between $520 and $1,340 went out without approval; in each transcript the agent mentioned the ceiling, then judged the case exceptional, such as a damaged wedding gift or a customer threatening to cancel a membership. Finance now classes any unapproved refund above the ceiling as a reportable control failure, and those cases must still reach a person with context rather than stall. Which change <b>best fits the requirement</b>?",
+   "options": [
+    {
+     "t": "Rewrite the escalation section with explicit criteria for over-limit cases and add two or three examples of declining and escalating.",
+     "why": "Runner-up. Explicit criteria plus examples is the recommended way to calibrate escalation judgement. It would win if the goal were to reduce exceptions; finance's control-failure rule needs a deterministic block, and prompts have a non-zero failure rate."
+    },
+    {
+     "t": "Add a PostToolUse hook on process_refund that checks each issued amount and opens an escalation when it is above $500.",
+     "why": "Incorrect. A PostToolUse hook sees the result after the refund has gone out, so it reports the violation instead of preventing it."
+    },
+    {
+     "t": "Set tool_choice to force escalate_to_human on any turn where the order total from lookup_order is above $500.",
+     "why": "Incorrect. The order total is not the refund amount, so this escalates small refunds on large orders and misses nothing it should catch more reliably; tool_choice controls which tool is called, not what amount is allowed."
+    },
+    {
+     "t": "Add a PreToolUse hook on process_refund that denies amounts above $500 and tells the agent to escalate.",
+     "why": "Correct. A hook inspects every outgoing refund call and blocks the policy violation in code, then redirects the agent to escalate_to_human, so the customer still reaches a person."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Finance treats any unapproved refund above $500 as a reportable control failure, which needs a deterministic block; if the aim were only to reduce exceptions, explicit criteria with examples would be the proportionate fix.",
+   "explanation": "When compliance must be deterministic, prompt instructions are not enough because they have a non-zero failure rate. A hook that intercepts the outgoing tool call can block the violation and redirect the agent to escalation.",
+   "eli5": {
+    "question": "Refunds above the $500 limit keep going out. The clue is: finance now treats every single one as a reportable failure. That means the limit must hold every time, not most of the time.",
+    "answer": "A sign on the till saying \"no refunds over $500\" works most days, but staff with a sad story in front of them sometimes break it. A till that refuses the amount works every day. In the agent, that till is a check that runs before every refund call (a <b>PreToolUse hook</b>). It blocks the call and tells the agent to escalate, so the customer still reaches a person. <b>Rule: if it must hold every time, enforce it in code, not in the prompt.</b>",
+    "options": [
+     "Runner-up. Clearer rules plus examples is the right way to improve judgement. It would win if the goal were fewer exceptions, not zero.",
+     "A check that runs after the call (<b>PostToolUse hook</b>) sees the refund once the money has already gone.",
+     "Forcing a tool (<b>tool_choice</b>) picks which tool runs, not what amount is allowed, and an order total is not a refund amount.",
+     "Correct. A check before every refund call blocks over-limit amounts and sends the case to a person."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read the transcripts and think <b>the agent needs better judgement</b>: it saw the limit and talked itself past it. Better criteria and examples would reduce that. But finance's rule changes the question from \"reduce\" to \"must not happen\". A prompt, however good, has a non-zero failure rate. Only code that runs on every refund call can hold a hard limit, and it can still hand the case to a person.",
+    "diagram": "agent ─► process_refund(amount)\n     PreToolUse hook: amount > 500?\n       ├ no  ─► refund runs\n       └ yes ─► deny + \"use escalate_to_human\"",
+    "mapTitle": "A policy keeps being broken: does it need judgement or a hard stop?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Rule must hold <b>every time</b> (control failure, legal)",
+       "Prompt compliance is probabilistic",
+       "PreToolUse hook or prerequisite gate"
+      ],
+      [
+       "Goal is <b>fewer</b> wrong calls, judgement involved",
+       "Unclear decision boundary",
+       "Explicit criteria plus a few examples"
+      ],
+      [
+       "Need to know afterwards what happened",
+       "Monitoring, not prevention",
+       "PostToolUse hook or audit log"
+      ],
+      [
+       "One tool must run before the others",
+       "Ordering",
+       "Gate, or forced <code>tool_choice</code> on that request"
+      ],
+      [
+       "Tool results arrive in mixed formats",
+       "Data shape",
+       "PostToolUse hook to normalise"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The $500 ceiling lives in one sentence of the system prompt",
+      "means": "Today the limit is only a request to the model."
+     },
+     {
+      "quote": "in each transcript the agent mentioned the ceiling, then judged the case exceptional",
+      "means": "The vivid part. It looks like a judgement problem, which invites better criteria and examples (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Finance now classes any unapproved refund above the ceiling as a reportable control failure",
+      "means": "The quiet clue. One miss is a failure, so the fix must be deterministic. This rules out the runner-up."
+     },
+     {
+      "quote": "those cases must still reach a person with context rather than stall",
+      "means": "The block must redirect to escalation. A hook can deny and tell the agent to escalate; a check after the call (<b>[[1]]</b>) is too late."
+     },
+     {
+      "quote": "Which change best fits the requirement?",
+      "means": "Deterministic, before the call, with a redirect: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "When a rule must hold every time, put it in code that runs before the action. Prompts improve behaviour; hooks guarantee it.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks",
+     "quote": "Hooks give deterministic guarantees vs prompt-based probabilistic compliance."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-04",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Explicit escalation triggers",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Escalation fires when a sentiment score over the customer's messages crosses a frustration threshold. A labelled review of 400 tickets found two kinds of error. Customers who typed in capitals about a late parcel, which a tracking lookup would have settled, were passed to a person at once; one supervisor calls these 'the shouting queue'. Customers who wrote politely that they would like to speak to someone stayed with the agent for several more turns. Which change <b>most improves</b> escalation decisions?",
+   "options": [
+    {
+     "t": "Escalate on stated triggers, namely the customer asks for a person, policy does not cover the case, or the agent cannot progress, and drop the score.",
+     "why": "Correct. Escalation should rest on categorical triggers, with an explicit request for a person honoured at once. Sentiment is an unreliable proxy for whether a case needs a human."
+    },
+    {
+     "t": "Resolve straightforward issues whatever the customer's tone, and hand over only if the customer repeats a request for a person after a fix is offered.",
+     "why": "Runner-up. Offering a resolution first is right for a frustrated customer with a simple problem, which fixes the shouting queue. It fails the polite customers: an explicit request for a person should be honoured immediately, not after a second ask."
+    },
+    {
+     "t": "Re-fit the frustration threshold on the 400 labelled tickets and refresh it monthly as more reviewed tickets come in.",
+     "why": "Incorrect. A better-tuned threshold is still a sentiment threshold; calm requests for a person and angry simple questions sit on the wrong sides of any cut-off."
+    },
+    {
+     "t": "Train a classifier on past tickets labelled escalate or resolve and use its prediction in place of the sentiment score.",
+     "why": "Incorrect. A trained classifier is heavy machinery for a problem that clear criteria solve, and it inherits whatever inconsistency is in the historic labels."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Polite customers who said they would like to speak to someone were kept with the agent; if the only error were angry customers with simple problems, offering a fix first and escalating on a repeat request would be enough.",
+   "explanation": "Escalation triggers are categorical: an explicit request for a human (honoured immediately), a policy exception or gap, or inability to progress. Sentiment and self-reported confidence are unreliable proxies for case complexity.",
+   "eli5": {
+    "question": "Escalation is driven by how angry the customer sounds, and it is wrong both ways. The clue is: polite customers who asked to speak to someone were kept waiting. The \"shouting queue\" is the vivid part, but fixing only that leaves the polite requests unanswered.",
+    "answer": "A shop that calls the manager only when a customer raises their voice gets two things wrong. Loud customers with easy problems get the manager, and quiet customers who ask for the manager do not. Instead, use clear reasons to hand over (<b>escalation triggers</b>): the customer asks for a person, the policy does not cover the case, or the agent is stuck. An explicit request is honoured at once. <b>Rule: escalate on what the case needs, not on how the customer sounds.</b>",
+    "options": [
+     "Correct. Clear triggers, with a request for a person honoured straight away.",
+     "Runner-up. Offering a fix first is right for an angry customer with an easy problem. It would win if no one had asked for a person; asking should be honoured at once.",
+     "A better-tuned anger score (<b>sentiment threshold</b>) still measures tone, not need.",
+     "A trained classifier is heavy machinery for a problem that clear rules solve."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the shouting queue is the main problem</b>, so the fix is to ignore tone and offer a resolution first. That fixes half of it. The polite customers show the other half: they asked for a person, and an explicit request should be honoured immediately, not after a second ask. Both errors come from using sentiment, which is an unreliable stand-in for what a case needs.",
+    "mapTitle": "When should the agent hand over to a person?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Customer explicitly asks for a person",
+       "Explicit request",
+       "Escalate immediately"
+      ],
+      [
+       "Customer angry, issue simple and in scope",
+       "Frustration, not complexity",
+       "Acknowledge, offer the fix; escalate if they then ask again"
+      ],
+      [
+       "Policy is silent or needs an exception",
+       "Policy gap",
+       "Escalate"
+      ],
+      [
+       "Agent cannot make progress",
+       "Stuck",
+       "Escalate with a structured handoff"
+      ],
+      [
+       "Escalation driven by sentiment or self-rated confidence",
+       "Unreliable proxy",
+       "Replace with categorical triggers"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Escalation fires when a sentiment score over the customer's messages crosses a frustration threshold",
+      "means": "The current trigger measures tone. The exam guide calls sentiment an unreliable proxy."
+     },
+     {
+      "quote": "one supervisor calls these 'the shouting queue'",
+      "means": "The vivid part. It invites the runner-up <b>[[1]]</b>: resolve simple issues whatever the tone."
+     },
+     {
+      "quote": "Customers who wrote politely that they would like to speak to someone stayed with the agent for several more turns",
+      "means": "The quiet clue. These are explicit requests for a person. The runner-up would still make them ask twice."
+     },
+     {
+      "quote": "Which change most improves escalation decisions?",
+      "means": "Retuning the score (<b>[[2]]</b>) or training a classifier (<b>[[3]]</b>) keeps a proxy. Categorical triggers fix both errors: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Escalate on categories: an explicit request (at once), a policy gap, or no progress. Tone and self-rated confidence are not triggers.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Sentiment-based escalation and self-reported confidence are unreliable proxies for complexity."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-05",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Ambiguity resolution",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "<code>get_customer</code> is called with the name the customer gives. For common names it often finds several records; it then returns the one with the most recent order, with a <code>match_confidence</code> that averages 0.61 in those cases. About one such lookup in four lands on the wrong account, which is noticed only when a refund reaches a stranger's card. Roughly 80% of chats start in the guest widget on the order-tracking page, before any sign-in. What should happen when a lookup <b>returns several records</b>?",
+   "options": [
+    {
+     "t": "Use the account linked to the email or phone number the chat session came from, and fall back to the name lookup only when none exists.",
+     "why": "Runner-up. A verified contact on the session is better than any name match, and it would win if chats arrived tied to an account. Most chats here start as guests, so the fallback still guesses on most of them."
+    },
+    {
+     "t": "Pass on the top match only when its score clears 0.85, and send lower-scoring lookups to escalate_to_human with the candidate list.",
+     "why": "Incorrect. A higher threshold still selects heuristically above it, and routing the rest to humans hurts first-contact resolution when one question to the customer would settle it."
+    },
+    {
+     "t": "Return every matching record and have the agent ask the customer for an order number or postcode before acting.",
+     "why": "Correct. With several matches, the deciding fact is something only the customer knows. Asking for an identifier replaces a guess with a lookup and costs one turn."
+    },
+    {
+     "t": "Rank candidates by recent orders and city, then have the agent read the chosen name and city back to the customer to confirm.",
+     "why": "Incorrect. This is still heuristic selection; a customer with the same common name in the same city will confirm the wrong record."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "About 80% of chats start in the guest widget before any sign-in, so most have no linked account; if chats arrived tied to a verified account, using that account would beat asking.",
+   "explanation": "When several customer records match, ask the customer for an identifier rather than choosing heuristically. A confidence score attached to a guess does not make it a reliable identification.",
+   "eli5": {
+    "question": "A name search finds several customers, and the system picks one by guessing. The clue is: most chats start as guests, before anyone signs in, so there is usually no account linked to the chat. The confidence number is a distraction.",
+    "answer": "If a parcel arrives for \"J. Smith\" in a building with three J. Smiths, you do not hand it to the one who ordered most recently. You ask for the flat number. Here, the agent should say it found several matches and ask the customer for something that tells them apart, such as an order number or postcode (<b>ask for identifiers</b>). One question replaces a one-in-four guess. <b>Rule: several matches means ask the customer, not pick for them.</b>",
+    "options": [
+     "Runner-up. Using the account the chat is signed in to (<b>session identity</b>) beats any name match. It would win if chats came with a signed-in account; most here are guests.",
+     "A stricter cut-off (<b>confidence threshold</b>) still guesses above it and sends the rest to people unnecessarily.",
+     "Correct. Return all matches and ask for an order number or postcode.",
+     "Reading the guess back is still a guess; another J. Smith in the same city will say yes."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the lookup needs a better way to choose</b>: a higher threshold, a better ranking, or another signal such as the chat's account. But when several records match a name, the deciding fact is not in the system at all. It is in the customer's head. The reliable move is to ask for an identifier. A verified account on the chat would also settle it, but most of these chats do not have one.",
+    "mapTitle": "Who is this customer? Pick the source of truth",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Chat arrives with a signed-in, verified account",
+       "Identity already known",
+       "Use that account"
+      ],
+      [
+       "Name matches <b>several</b> records, guest chat",
+       "Ambiguous lookup",
+       "Return all matches; ask for order number or postcode"
+      ],
+      [
+       "Name matches exactly one record",
+       "No ambiguity",
+       "Proceed, verifying as policy requires"
+      ],
+      [
+       "Refund attempted before identity is verified",
+       "Ordering",
+       "Prerequisite gate on <code>get_customer</code>"
+      ],
+      [
+       "Ranking or confidence used to pick a match",
+       "Heuristic selection",
+       "Replace with a question to the customer"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "it then returns the one with the most recent order",
+      "means": "Heuristic selection: the system guesses."
+     },
+     {
+      "quote": "About one such lookup in four lands on the wrong account",
+      "means": "The vivid part. It tempts you to tune the guess with a threshold (<b>[[1]]</b>) or a ranking (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "Roughly 80% of chats start in the guest widget on the order-tracking page, before any sign-in",
+      "means": "The quiet clue. Most chats have no linked account, so using the chat's account (<b>[[0]]</b>) would fall back to the name guess most of the time."
+     },
+     {
+      "quote": "What should happen when a lookup returns several records?",
+      "means": "Ask the customer for an identifier: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Several matching records means ask the customer for an identifier. Do not choose by recency, score or ranking.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Multiple customer matches → ask for identifiers (not heuristic selection)."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-06",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Case facts across sessions",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 2,
+   "question": "About 14% of tickets are follow-ups on a case the agent already handled. The agent gets the earlier contact as a prose paragraph from a summarisation pass, inserted after the 5,000-token returns policy and before the new message; a typical one reads \"Customer was offered a partial refund and seemed satisfied.\" On follow-ups the agent quotes refund figures that differ from what was paid and repeats offers already made. A promised Friday callback and a replacement held for restock appear in no system of record, only in the earlier chat. <b>Which TWO changes</b> together make follow-ups reliable?",
+   "options": [
+    {
+     "t": "Replace the prose with a structured case record holding customer ID, order ID, amount paid, dates, offers made and open commitments.",
+     "why": "Correct. Summarisation turned exact amounts and commitments into \"partial refund\" and \"seemed satisfied\". A record of transactional facts carries the values the agent must act on."
+    },
+    {
+     "t": "Have the agent call lookup_order at the start of each follow-up and rebuild the case history from the order's records.",
+     "why": "Runner-up. Re-reading the system of record is good when the facts live there. The callback and the held replacement exist only in the earlier chat, so the order record cannot rebuild them."
+    },
+    {
+     "t": "Raise the summariser's output limit and let each summary describe the earlier contact in more detail.",
+     "why": "Incorrect. Longer prose is still prose: it still paraphrases amounts and commitments, and it still lands in the middle of a long context."
+    },
+    {
+     "t": "Load the case record first in the context under its own heading, ahead of the policy text and the new message.",
+     "why": "Correct. The summary currently sits between a 5,000-token policy block and the new message, where models read least reliably. Key facts belong at the start with a clear heading."
+    },
+    {
+     "t": "Resume the earlier conversation's session when the customer returns and continue with its full transcript and tool results.",
+     "why": "Incorrect. Resuming brings back stale tool results from a week ago; a fresh start seeded with a structured summary is more reliable."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The callback and the held replacement exist only in the earlier chat, and the summary sits in the middle of a long context; if every commitment lived in the order system, re-reading the order would replace the structured record.",
+   "explanation": "Progressive summarisation turns exact numbers and commitments into vague prose. Extract transactional facts into a persistent case-facts block and place it at the start of the context under an explicit heading, where it is read reliably.",
+   "eli5": {
+    "question": "On follow-up tickets the agent gets the facts wrong. The clue is in two places: the summary is vague prose, and it sits in the middle of a long block of policy text. Also, some promises exist only in the earlier chat, so no system can rebuild them.",
+    "answer": "Picture a nurse handing over a patient with \"seemed fine, had some medicine\" scribbled in the middle of a thick binder. The next nurse needs exact doses and times, on the front page. So keep the facts as a filled-in form, not a story (<b>structured case-facts block</b>), and put it first under a clear heading, where it gets read (<b>start of the context</b>). <b>Rule: exact facts in a structured block, placed first.</b>",
+    "options": [
+     "Correct. A record with exact IDs, amounts, dates and promises keeps what prose summaries blur.",
+     "Runner-up. Re-reading the order system is good when the facts live there. The callback and the held replacement exist only in the old chat.",
+     "A longer summary is still a story; it still blurs numbers and still sits in the middle.",
+     "Correct. Put the record first, under its own heading, not buried after 5,000 tokens of policy.",
+     "Resuming the old session brings back week-old tool results; a fresh start with a structured summary is more reliable."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent just needs more of the history</b>: a longer summary, the old session, or a fresh lookup. The problem is not quantity. Summarisation turned exact facts (amount paid, promised callback) into \"partial refund\" and \"seemed satisfied\", and what survived sits in the middle of a long context, the spot models read least reliably. Two things must change together: the <b>form</b> of the facts and their <b>position</b>.",
+    "diagram": "now:   [policy 5,000 tokens][vague summary][new msg]\n fixed: [CASE FACTS][policy][new msg]",
+    "mapTitle": "Facts get lost between contacts: is it the form or the place?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Numbers and promises blurred into prose",
+       "Lossy summarisation",
+       "Structured case-facts block with exact values"
+      ],
+      [
+       "Facts present but ignored, buried mid-context",
+       "Lost in the middle",
+       "Put key facts first, under a heading"
+      ],
+      [
+       "All the facts live in a system of record",
+       "Data already stored",
+       "Re-read the system of record"
+      ],
+      [
+       "Resuming a days-old session",
+       "Stale tool results",
+       "Fresh session seeded with a structured summary"
+      ],
+      [
+       "Tool outputs crowd the context",
+       "Verbose results",
+       "Trim outputs to the relevant fields"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent gets the earlier contact as a prose paragraph from a summarisation pass",
+      "means": "Prose is where exact values get lost. Points to a structured record (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "inserted after the 5,000-token returns policy and before the new message",
+      "means": "The quiet clue for the second answer: the summary sits in the middle. Points to putting the facts first (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "the agent quotes refund figures that differ from what was paid and repeats offers already made",
+      "means": "Typical of summarised facts: amounts and offers have been blurred. A longer summary (<b>[[2]]</b>) is still prose."
+     },
+     {
+      "quote": "A promised Friday callback and a replacement held for restock appear in no system of record, only in the earlier chat",
+      "means": "Rules out the runner-up <b>[[1]]</b>: the order system cannot rebuild what it never stored."
+     },
+     {
+      "quote": "Which TWO changes together make follow-ups reliable?",
+      "means": "Form and position: <b>[[0]]</b> and <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Keep transactional facts as a structured block, not prose, and put that block at the start under a clear heading.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Extract transactional facts into a persistent \"case facts\" block; trim verbose tool outputs to relevant fields; place key summaries at the beginning + explicit section headers."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-07",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 tool_choice",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A new <code>get_loyalty_tier</code> tool returns the customer's tier, and the tier decides which remedies they may be offered. Product wants the agent's opening reply to greet each signed-in customer with their tier perks, and every chat request already carries the signed-in customer ID. An engineer proposes setting <code>tool_choice</code> to <code>{\"type\": \"any\"}</code> on the first request of each conversation and leaving later requests unchanged. Which configuration <b>best meets the requirement</b>?",
+   "options": [
+    {
+     "t": "Keep any on the first request; on a fresh conversation the model picks the tool most relevant to the start, which is the tier lookup.",
+     "why": "Incorrect. \"any\" only forces some tool call. The model still chooses which one, and get_customer or lookup_order are just as plausible first moves."
+    },
+    {
+     "t": "Force get_loyalty_tier by name in tool_choice on the first request, then switch back to auto for every later request.",
+     "why": "Correct. A forced tool choice makes that specific tool run on that request, before any text is produced, so the opening reply can use the tier. Switching back to auto lets the agent work normally afterwards."
+    },
+    {
+     "t": "Leave tool_choice on auto and add a gate that rejects remedy tool calls until get_loyalty_tier has returned in this chat.",
+     "why": "Runner-up. A prerequisite gate is the right way to order remedy calls behind the tier. It would win if the tier were needed only before remedies; it does not stop the agent replying before it has the tier."
+    },
+    {
+     "t": "Leave tool_choice on auto and open the system prompt with an instruction to look up the tier before doing anything else.",
+     "why": "Incorrect. An instruction makes the tier lookup likely, not certain, and the requirement applies to every conversation."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The opening reply itself must quote tier perks, so the tier is needed before any text; if it were needed only before remedy tools, a gate on those tools would be the better fit.",
+   "explanation": "tool_choice \"auto\" may return text, \"any\" forces some tool call of the model's choosing, and a forced {\"type\": \"tool\", \"name\": ...} forces that tool. To make one tool run first, force it on that request; ordering later calls is a job for a gate.",
+   "eli5": {
+    "question": "The agent must know the customer's tier before it says anything. The clue is: the opening reply itself has to mention the tier perks. So the tier lookup must happen first, before any text.",
+    "answer": "Telling a waiter \"bring something first\" (<code>tool_choice: any</code>) does not mean they bring the menu; they might bring water. Naming the item (<b>forced tool_choice</b>) does. Force <code>get_loyalty_tier</code> by name on the first request, then let the agent choose freely again (<code>auto</code>). <b>Rule: <code>any</code> forces some tool; naming the tool forces that one.</b>",
+    "options": [
+     "<code>any</code> only means \"call some tool\". The model may pick a different one first.",
+     "Correct. Name the tier tool on the first request, then go back to <code>auto</code>.",
+     "Runner-up. A gate (code that blocks remedy tools until the tier is known) orders the remedies correctly. It would win if the tier were needed only before remedies, not in the greeting.",
+     "An instruction makes the lookup likely, not certain."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read <code>{\"type\": \"any\"}</code> as <b>\"call the right tool first\"</b>. It only means \"call a tool rather than write text\"; the model still chooses which. A gate on remedy tools is a good instinct for ordering, but it does not stop the agent writing its greeting before it has the tier. The greeting needs the tier, so the tier call must be forced on the very first request.",
+    "diagram": "tool_choice:\n  auto ─► text or any tool\n  any  ─► some tool, the model's pick\n  {type: tool, name: X} ─► exactly X",
+    "mapTitle": "What exactly must be guaranteed about tool calls?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "A specific tool must run before any text",
+       "Needed on the first request",
+       "Force that tool by name, then back to <code>auto</code>"
+      ],
+      [
+       "Some tool call instead of plain text",
+       "Model might answer in prose",
+       "<code>tool_choice: \"any\"</code>"
+      ],
+      [
+       "Certain tools only after a prerequisite has returned",
+       "Ordering across turns",
+       "Prerequisite gate in code"
+      ],
+      [
+       "Model should decide freely",
+       "Normal operation",
+       "<code>auto</code>"
+      ],
+      [
+       "Instruction to call a tool first",
+       "Probabilistic",
+       "Fine as guidance, not as a guarantee"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the tier decides which remedies they may be offered",
+      "means": "This alone would support a gate before remedy tools (<b>[[2]]</b>), the runner-up."
+     },
+     {
+      "quote": "Product wants the agent's opening reply to greet each signed-in customer with their tier perks",
+      "means": "The quiet clue. The tier is needed before any text at all, which a gate on remedy tools does not secure."
+     },
+     {
+      "quote": "every chat request already carries the signed-in customer ID",
+      "means": "The tier tool can run on the very first request; nothing else has to come first."
+     },
+     {
+      "quote": "An engineer proposes setting tool_choice to {\"type\": \"any\"} on the first request",
+      "means": "<code>any</code> forces some tool, not this one, so <b>[[0]]</b> rests on a misunderstanding."
+     },
+     {
+      "quote": "Which configuration best meets the requirement?",
+      "means": "Force the named tool first: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "\"any\" guarantees a tool call, not which one. To make one tool run first, force it by name on that request.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment); \"any\" guarantees a tool call rather than text."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-08",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Multi-step handoff",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Escalations reach a human with a structured block: customer ID, root cause, amount recommended and suggested action, and the support team rates it highly. The humans then settle the case in the helpdesk and close it with a free-text note; each team writes its own shorthand, such as \"RFD 50 pd, TL ok, no RTN\". About 7% of escalated customers write in again within a fortnight, and on those tickets the agent offers remedies that contradict what the human agreed. Which change fixes the return path with the <b>least added complexity</b>?",
+   "options": [
+    {
+     "t": "Give the agent a read-only helpdesk tool and have it fetch the closing note whenever a returning customer has a prior escalation.",
+     "why": "Runner-up. Reading the human's record is the right direction, and it would win if closing notes were written in a consistent structure. Team-specific shorthand leaves the agent to guess what was agreed."
+    },
+    {
+     "t": "Send returning customers who had a prior escalation straight to the human who handled them, bypassing the agent.",
+     "why": "Incorrect. This removes the agent from a whole class of tickets, lowering first-contact resolution, when the gap is only missing information."
+    },
+    {
+     "t": "Resume the original escalated session by name when the same customer writes in again, and continue from its history.",
+     "why": "Incorrect. The agent's old session ends at the handoff; the human's decision was made in the helpdesk and is not in it."
+    },
+    {
+     "t": "Add a resolution section to the handoff record that the human fills in on closing, and load it into the agent's case facts.",
+     "why": "Correct. The same structured record that carries the case to the human carries the decision back, in fields the agent can read without interpreting shorthand."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Closing notes are free text in team-specific shorthand; if they followed a consistent structure, giving the agent a tool to read them would be enough.",
+   "explanation": "A handoff has two directions. The structured summary that lets a human act without the transcript should also carry the human's decision back in fields the agent loads with its case facts.",
+   "eli5": {
+    "question": "After a person settles an escalated case, the agent does not know what they decided. The clue is: people close cases with free-text notes in their own team shorthand. So even if the agent could read the notes, it would have to guess what they mean.",
+    "answer": "A relay works because the baton is handed over cleanly. Here the agent passes a neat form to the person (<b>structured handoff</b>), but the decision comes back as scribbles. Add a short resolution section to the same form, filled in on closing, and load it into the agent's facts when the customer returns. <b>Rule: a handoff carries information both ways, in structure.</b>",
+    "options": [
+     "Runner-up. Letting the agent read the helpdesk is the right direction. It would win if the notes followed a clear structure; shorthand like \"RFD 50 pd\" leaves it guessing.",
+     "Sending these customers to a person removes the agent from a whole group of tickets just to cover a missing record.",
+     "The agent's old session ends at the handoff; the person's decision was never in it.",
+     "Correct. The person fills in a resolution section that the agent loads next time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent just needs access to the helpdesk</b>. Access helps only if what it reads is reliable. Here every team writes closing notes in its own shorthand, so the agent would be decoding \"TL ok, no RTN\" by guesswork. The structured handoff that works on the way out is the model for the way back: give the human's decision fields, not prose.",
+    "diagram": "agent ── handoff form ──► human     (works)\n agent ◄── free-text note ── human  (lost)\n fix: resolution fields in the same form",
+    "mapTitle": "Information crosses between agent and human: in what form?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Agent → human, human lacks the transcript",
+       "Outbound handoff",
+       "Structured summary: ID, root cause, amount, action"
+      ],
+      [
+       "Human → agent, decisions in free-text shorthand",
+       "Unstructured return path",
+       "Resolution fields in the same record, loaded as case facts"
+      ],
+      [
+       "Human → agent, decisions already structured in a system",
+       "Data is readable",
+       "Give the agent a read tool for it"
+      ],
+      [
+       "Returning customer, facts lost between contacts",
+       "Lossy summary",
+       "Persistent case-facts block"
+      ],
+      [
+       "Resuming an old agent session",
+       "Stale context",
+       "Fresh session with a structured summary"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Escalations reach a human with a structured block",
+      "means": "The outbound handoff already works, and its structure can be reused."
+     },
+     {
+      "quote": "close it with a free-text note; each team writes its own shorthand",
+      "means": "The quiet clue. The decision exists, but not in a form the agent can read reliably. This weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "on those tickets the agent offers remedies that contradict what the human agreed",
+      "means": "The human's decision never reaches the agent. Resuming the agent's own session (<b>[[2]]</b>) cannot help: the decision was made elsewhere."
+     },
+     {
+      "quote": "Which change fixes the return path with the least added complexity?",
+      "means": "Extending the existing form is small. Routing everyone to people (<b>[[1]]</b>) is not. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Handoffs go both ways. Bring the human's decision back in structured fields the agent loads with its case facts.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "compile structured handoff summaries (customer ID, root cause, refund amount, recommended action) for humans without the transcript."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-09",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Model-driven vs decision tree",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "To make behaviour predictable, an architect proposes replacing the agentic loop with a fixed decision tree: classify each ticket into one of fourteen categories, then run a hard-coded tool sequence for that category. On last month's tickets the tree slightly beats the agent on the top six categories, which are 62% of volume and each follow one known path. It does noticeably worse on the other eight, where most tickets raise more than one concern or need a step that depends on what the order lookup shows. What does this pilot <b>best support</b>?",
+   "options": [
+    {
+     "t": "Run fixed sequences for the six single-path categories and send every other ticket, multi-concern ones included, to the loop.",
+     "why": "Correct. Fixed sequences suit work whose path is known in advance; the model-driven loop suits work whose next step depends on what was just found. The pilot shows both kinds in one workload."
+    },
+    {
+     "t": "Keep the loop for every ticket and have it split multi-concern messages into separate concerns, investigated in parallel.",
+     "why": "Runner-up. Decomposing multi-concern requests is recommended and helps the long tail. It would win if the tree showed no gain anywhere; here it is better on 62% of volume that follows one known path."
+    },
+    {
+     "t": "Grow the tree to about forty categories, give long-tail tickets their own hard-coded sequences, and rerun the pilot on last month's tickets.",
+     "why": "Incorrect. More categories cannot hard-code a step that depends on what a lookup returns, and multi-concern tickets do not fit a single category."
+    },
+    {
+     "t": "Move the classifier after the order lookup and let it choose the sequence using the order data as well as the ticket text.",
+     "why": "Incorrect. Better classification inputs do not help tickets whose path branches part-way through or that carry several concerns."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The tree beats the agent on the top six categories, 62% of volume with one known path each; if it showed no gain on any category, keeping the loop everywhere and decomposing multi-concern tickets would be the better design.",
+   "explanation": "Model-driven loops and pre-configured sequences suit different work. A fixed sequence wins where the path is knowable in advance; the loop wins where the next step depends on what was just found, including multi-concern requests that need decomposition.",
+   "eli5": {
+    "question": "A fixed script beats the agent on some tickets and loses on others. The clue is: the six categories where it wins each follow one known path, and they are most of the volume. Where the next step depends on what a lookup shows, the script loses.",
+    "answer": "A recipe card is perfect for a dish you make the same way every time. For a dinner where you decide what to cook after opening the fridge, you need a cook who thinks (<b>model-driven agentic loop</b>). This workload has both kinds. Use the fixed sequence where the path is known and the loop where the next step depends on what is found. <b>Rule: fixed steps for known paths, the agent loop for paths that depend on results.</b>",
+    "options": [
+     "Correct. Scripts for the six one-path categories, the loop for everything else.",
+     "Runner-up. Splitting multi-concern tickets (<b>decomposition</b>) is good practice. It would win if the script were no better anywhere; it is better on 62% of tickets.",
+     "More categories cannot script a step that depends on what a lookup returns.",
+     "Better inputs to the classifier do not help tickets that branch part-way through."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat this as <b>a contest with one winner</b>: either the decision tree or the agentic loop for every ticket. The pilot says something more useful. Where the path is known in advance, a fixed sequence is as good or better, and more predictable. Where the next step depends on what a tool returns, or a ticket raises several concerns, the model has to decide as it goes. A mixed workload gets a mixed design.",
+    "mapTitle": "Fixed sequence or model-driven loop?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Path known in advance, same steps every time",
+       "Predictable work",
+       "Fixed sequence (prompt chaining)"
+      ],
+      [
+       "Next step depends on what a tool returned",
+       "Adaptive work",
+       "Model-driven loop"
+      ],
+      [
+       "Several concerns in one message",
+       "Multi-concern request",
+       "Decompose, investigate each, answer all"
+      ],
+      [
+       "Workload mixes both kinds",
+       "Mixed",
+       "Route known paths to sequences, the rest to the loop"
+      ],
+      [
+       "Fixed tree shows no gain on any category",
+       "No benefit from scripting",
+       "Keep the loop everywhere"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "To make behaviour predictable, an architect proposes replacing the agentic loop with a fixed decision tree",
+      "means": "The proposal is all-or-nothing. The question is whether the pilot supports that."
+     },
+     {
+      "quote": "the tree slightly beats the agent on the top six categories, which are 62% of volume and each follow one known path",
+      "means": "The quiet clue. Scripting helps where the path is known. This rules out keeping the loop everywhere (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "where most tickets raise more than one concern or need a step that depends on what the order lookup shows",
+      "means": "These need decisions made from results. More categories (<b>[[2]]</b>) or better classifier inputs (<b>[[3]]</b>) cannot script that."
+     },
+     {
+      "quote": "What does this pilot best support?",
+      "means": "Both kinds of work exist, so route by kind: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Use fixed sequences where the path is known in advance and the model-driven loop where the next step depends on what was found.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings."
+    }
+   }
+  },
+  {
+   "id": "s5q-s1-10",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool granularity & contracts",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "<code>lookup_order</code> takes one free-text <code>query</code> string and works out internally whether it holds an order ID, an email, a tracking number or a name. Its description names those four kinds with an example of each. In about 9% of calls the agent passes a whole customer sentence, such as \"the blender I ordered last Tuesday\", which the tool cannot parse; the agent then tells the customer that no order exists. Which change <b>most reliably</b> fixes the bad calls?",
+   "options": [
+    {
+     "t": "Extend the description with a line stating that whole customer sentences are not accepted, plus two examples of rejected inputs.",
+     "why": "Runner-up. Better descriptions are the usual first fix for misuse. This one already lists the accepted kinds with examples, so another line of text leaves the catch-all string parameter that invites sentences."
+    },
+    {
+     "t": "Return a structured validation error naming the accepted identifier kinds when the query matches none of them.",
+     "why": "Incorrect. A validation error stops the false \"no order exists\" answer and lets the agent retry, but the bad call still happens first; it treats the symptom."
+    },
+    {
+     "t": "Replace it with separate lookups by order ID, by email and by tracking number, each with one typed, pattern-checked field.",
+     "why": "Correct. A generic tool with a free-text parameter is the source of misuse. Purpose-specific tools with defined input contracts make the caller supply a real identifier."
+    },
+    {
+     "t": "Add a PostToolUse hook that turns an empty lookup result into a note telling the agent to ask the customer for an order ID.",
+     "why": "Incorrect. A PostToolUse hook can reshape results before the model sees them, but this one acts after the bad call has been made and only changes what happens next."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The description already lists the four accepted kinds with examples; if it were still a one-line 'look up an order by any identifier', expanding it would be the first fix.",
+   "explanation": "Generic tools with catch-all parameters invite misuse. Splitting them into purpose-specific tools with defined input and output contracts fixes both selection and input validity.",
+   "eli5": {
+    "question": "The agent keeps sending whole sentences to a lookup tool that expects an ID. The clue is: the tool's description already explains the four accepted kinds with examples. So the wording is not the weak point; the single free-text box is.",
+    "answer": "A form with one box labelled \"anything\" will get anything written in it. A form with separate boxes for order number, email and tracking number, each checking its format, gets the right thing. Splitting one catch-all tool into tools with clear inputs (<b>purpose-specific tools with input contracts</b>) makes the agent bring a real identifier. <b>Rule: if a catch-all input keeps being misused, split the tool.</b>",
+    "options": [
+     "Runner-up. Better descriptions are the usual first fix. This one already lists the kinds with examples, so one more line leaves the free-text box in place.",
+     "A clear error (<b>structured validation error</b>) helps the agent recover, but only after the bad call.",
+     "Correct. Separate tools with typed, checked inputs.",
+     "A result-rewriting hook (<b>PostToolUse</b>) acts after the bad call, not before."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to reach for <b>the description again</b>, because descriptions are the main way Claude learns how to use a tool. But this one already names the four accepted kinds and gives examples. The deeper problem is the design: one free-text <code>query</code> parameter that accepts anything invites anything. Purpose-specific tools with typed inputs stop the bad call before it is made.",
+    "mapTitle": "A tool keeps being called wrongly: which layer fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Thin description, wrong inputs",
+       "Description",
+       "Expand: formats, examples, boundaries"
+      ],
+      [
+       "Good description, catch-all parameter still misused",
+       "Tool design",
+       "Split into purpose-specific tools with typed inputs"
+      ],
+      [
+       "Bad input reaches the tool and fails vaguely",
+       "Error reporting",
+       "Structured error: category, retryable, message"
+      ],
+      [
+       "Valid empty result confused with a failure",
+       "Error meaning",
+       "Distinguish access failure from \"no results\""
+      ],
+      [
+       "Results arrive in mixed formats",
+       "Result shape",
+       "PostToolUse hook to normalise"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "lookup_order takes one free-text query string and works out internally whether it holds an order ID",
+      "means": "A generic tool with a catch-all parameter: the classic source of misuse."
+     },
+     {
+      "quote": "Its description names those four kinds with an example of each",
+      "means": "The quiet clue. The description is already good, which weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "the agent then tells the customer that no order exists",
+      "means": "The vivid part. It tempts you toward better errors (<b>[[1]]</b>) or result rewriting (<b>[[3]]</b>), which act only after the bad call."
+     },
+     {
+      "quote": "Which change most reliably fixes the bad calls?",
+      "means": "Preventing the bad call beats recovering from it: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "When good descriptions do not stop misuse of a catch-all input, split the tool into purpose-specific tools with defined inputs.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces",
+     "quote": "Rename/split generic tools into purpose-specific tools with defined I/O contracts."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-01",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Diagnosing a rule that never loads",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Last quarter the team moved its React test conventions out of the root <code>CLAUDE.md</code> to cut always-loaded context. They now sit in <code>.claude/rules/react-testing.md</code> with frontmatter <code>paths: [\"web/**/*.test.tsx\"]</code>. Engineers say Claude ignores those conventions when editing files such as <code>web/checkout/Cart.spec.tsx</code>, and the shared helpers in <code>shared/testing/</code> must follow them too. The Go rule file, set up the same way, works. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Move the conventions into web/CLAUDE.md and put a copy in shared/testing/CLAUDE.md for the helper files kept there.",
+     "why": "Runner-up. A directory CLAUDE.md is a fine home when a convention belongs to one directory tree. These tests and helpers span two trees, so this needs two copies to keep in step, where one glob covers both."
+    },
+    {
+     "t": "Import the rule file from the root CLAUDE.md with an @ line and keep the text in .claude/rules/ as the single source.",
+     "why": "Incorrect. An import from the root file loads the conventions in every session, which undoes the reason they were moved out of the root file."
+    },
+    {
+     "t": "Package the conventions as a skill whose description mentions React tests, for Claude to load when writing them.",
+     "why": "Incorrect. Skills are on-demand workflows; conventions that must apply whenever a test file is edited should load automatically by path."
+    },
+    {
+     "t": "Change the paths globs to match **/*.spec.tsx and shared/testing/**, then open a matching file and check the rule loads.",
+     "why": "Correct. The glob looks for *.test.tsx but the files are *.spec.tsx, and it never reaches shared/testing/. A rule whose glob matches nothing fails silently; fixing the pattern keeps one file that loads only when relevant."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The test files are named *.spec.tsx and the helpers sit outside web/; if the conventions applied to one directory only, a directory CLAUDE.md would be an equally good home.",
+   "explanation": "Path-scoped rules load only for files their globs match, and a glob that matches nothing produces no error. Glob rules suit conventions that span directories, which directory CLAUDE.md files cannot cover without duplication.",
+   "eli5": {
+    "question": "A rule file for React tests never seems to load. The clue is in the file names: the rule looks for <code>.test.tsx</code> but the tests are called <code>.spec.tsx</code>, and the helpers sit outside <code>web/</code>. The rule system works (the Go rule loads); the pattern is wrong.",
+    "answer": "A mail-sorting rule for envelopes marked \"TEST\" will never catch envelopes marked \"SPEC\". Nothing is broken; it just never matches. Fix the pattern (the <b><code>paths:</code> glob</b>) so it covers <code>**/*.spec.tsx</code> and <code>shared/testing/</code>, then open a matching file to check it loads. One file still covers both places and loads only when needed. <b>Rule: if a path rule never fires, check its glob against real file names first.</b>",
+    "options": [
+     "Runner-up. A folder-level CLAUDE.md works when a convention belongs to one folder. These files span two folders, so you would keep two copies in step.",
+     "Importing it from the root file loads it in every session, which undoes last quarter's change.",
+     "Skills are tasks you call when needed; conventions for test files should load by path automatically.",
+     "Correct. Fix the glob to match the real names and places."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>path-scoped rules are unreliable</b> and move the text somewhere that always loads. But the Go rule, set up the same way, works. A glob that matches nothing gives no error; it just never fires. The pattern says <code>*.test.tsx</code>, the files are <code>*.spec.tsx</code>, and the helpers live outside <code>web/</code>.",
+    "diagram": "paths: web/**/*.test.tsx\n  web/checkout/Cart.spec.tsx  ✗ no match\n  shared/testing/*.tsx        ✗ no match\n fix: **/*.spec.tsx + shared/testing/**",
+    "mapTitle": "Where should a convention live?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Applies to a file type spread across folders",
+       "Cross-directory convention",
+       "<code>.claude/rules/</code> file with <code>paths:</code> globs"
+      ],
+      [
+       "Applies to everything in one folder",
+       "Directory-bound convention",
+       "That folder's CLAUDE.md"
+      ],
+      [
+       "Applies to every session in the project",
+       "Universal standard",
+       "Root CLAUDE.md"
+      ],
+      [
+       "A task someone runs on demand",
+       "Workflow",
+       "Skill or slash command"
+      ],
+      [
+       "Path rule never applies",
+       "Glob matches no real files",
+       "Fix the glob; check with a matching file and <code>/memory</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Last quarter the team moved its React test conventions out of the root CLAUDE.md to cut always-loaded context",
+      "means": "Rules out anything that loads in every session, such as an import from the root (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "with frontmatter paths: [\"web/**/*.test.tsx\"]",
+      "means": "The pattern looks for <code>.test.tsx</code> inside <code>web/</code> only."
+     },
+     {
+      "quote": "Claude ignores those conventions when editing files such as web/checkout/Cart.spec.tsx",
+      "means": "The quiet clue: the files are <code>.spec.tsx</code>. The glob never matched them."
+     },
+     {
+      "quote": "the shared helpers in shared/testing/ must follow them too",
+      "means": "The convention spans two folders. Folder CLAUDE.md files (<b>[[0]]</b>) would need two copies; one glob covers both."
+     },
+     {
+      "quote": "The Go rule file, set up the same way, works",
+      "means": "The mechanism is fine; only the pattern is wrong. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "A path rule that never loads usually has a glob that matches nothing. Check it against real file names; globs beat folder files for conventions that span folders.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-02",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 User vs project scope",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Eight contractors start on Monday. They must get the team's conventions, commands and MCP setup on clone with no per-person steps, and none of the permanent engineers' personal preferences. Separately, reviewers keep finding <code>// TODO(me):</code> markers in merged code. Every marker traces to sessions run by one engineer, whose <code>~/.claude/CLAUDE.md</code> contains a line asking for them, left over from a previous job; the project's own memory files say nothing about TODO style. Which action <b>meets both needs</b>?",
+   "options": [
+    {
+     "t": "Add a rule to the project CLAUDE.md that forbids personal TODO markers, and leave the contractor setup as it is.",
+     "why": "Runner-up. A project-wide rule is the right home for a convention everyone must follow, and it would win if the markers came from many people's sessions. Here they come from one personal line, so the rule fights that line instead of removing it."
+    },
+    {
+     "t": "Have that engineer remove the marker line from their own user-level memory file and change nothing else.",
+     "why": "Correct. User-level memory is per machine and never shared, so contractors already get only the committed project configuration. The markers come from one personal file, and removing the line removes the cause."
+    },
+    {
+     "t": "Commit a separate contractors' CLAUDE.md under .claude/ holding the team conventions without anyone's personal settings.",
+     "why": "Incorrect. Personal user-level files are not shared by clone, so the existing project files already meet the contractor need; a second file duplicates them."
+    },
+    {
+     "t": "Have each contractor copy the team conventions into their own ~/.claude/CLAUDE.md during their first-day setup.",
+     "why": "Incorrect. This is the per-person step the requirement rules out, and user-level copies drift from the committed conventions."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Every marker traces to one engineer's user-level file; if the markers came from many engineers' sessions with no single source, a project-wide rule would be the better fix.",
+   "explanation": "User-level ~/.claude/CLAUDE.md applies only on that person's machine and is never shared through version control; project-level memory travels with the repository. A personal instruction is applied in that person's sessions on any repo.",
+   "eli5": {
+    "question": "Two needs: contractors must get only the team's setup, and stray TODO markers must stop. The clue is: every marker comes from one engineer's personal file, from a line left over from an old job. And personal files never travel with the repo anyway.",
+    "answer": "Your own notebook at home does not get photocopied when a new colleague joins; only the team binder does. Personal Claude settings (<b>user-level <code>~/.claude/CLAUDE.md</code></b>) work the same way: they stay on one machine. So the contractors already get just the team binder. The markers come from one person's notebook, so that person deletes the old line. <b>Rule: fix a problem where it comes from; personal files are not shared by clone.</b>",
+    "options": [
+     "Runner-up. A team-wide rule is right when many people cause the problem. Here one personal line causes it, so a team rule would fight that line instead of removing it.",
+     "Correct. Delete the old line from that engineer's personal file; contractors are already fine.",
+     "Personal files are not shared, so the team's existing files already meet the contractor need.",
+     "This is the per-person setup the requirement rules out."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>personal settings leak to everyone</b>, so the team needs a contractor-only setup or a project rule to override them. They don't leak. User-level memory lives on one machine and is not shared through the repository, so contractors get only the committed project files. The markers reach shared code only because one engineer's own sessions follow a line in their personal file.",
+    "diagram": "~/.claude/CLAUDE.md   → this machine only\n .claude/ + CLAUDE.md  → everyone, on clone\n subdir/CLAUDE.md      → when working there",
+    "mapTitle": "Who gets this configuration?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Everyone on the team, on clone",
+       "Project scope",
+       "Root CLAUDE.md, <code>.claude/</code> commands and rules, <code>.mcp.json</code>"
+      ],
+      [
+       "Only me, on my machine",
+       "User scope",
+       "<code>~/.claude/CLAUDE.md</code>, <code>~/.claude/commands/</code>"
+      ],
+      [
+       "Unwanted habit traced to one person's file",
+       "User-level source",
+       "Remove it from that file"
+      ],
+      [
+       "Unwanted habit from many people, no single source",
+       "Missing team standard",
+       "Add a project rule"
+      ],
+      [
+       "Not sure which files are loaded",
+       "Unknown hierarchy",
+       "Run <code>/memory</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "They must get the team's conventions, commands and MCP setup on clone with no per-person steps",
+      "means": "Project-level files already do this. Copying into personal files (<b>[[3]]</b>) breaks the rule."
+     },
+     {
+      "quote": "and none of the permanent engineers' personal preferences",
+      "means": "Already true: user-level files are not shared. A separate contractor file (<b>[[2]]</b>) solves nothing."
+     },
+     {
+      "quote": "Every marker traces to sessions run by one engineer, whose ~/.claude/CLAUDE.md contains a line asking for them, left over from a previous job",
+      "means": "The quiet clue. One source, and an unwanted one: remove it there. This weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "Which action meets both needs?",
+      "means": "One small change at the source and nothing else: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "User-level CLAUDE.md does not travel with the repo. Fix a habit at the file it comes from.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-03",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 context: fork",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A <code>/codemod-audit</code> skill finds call sites that still need migrating. It reads around 200 files and ends with a 30-line report that engineers like. After it runs, the session goes downhill: Claude brings up files it passed during the scan and loses track of the task the engineer was on. This happens even when the audit is the first thing run in a new session, and engineers run it several times a day. Which change <b>most directly</b> fixes this?",
+   "options": [
+    {
+     "t": "Run /compact straight after each audit finishes, condensing the scanned file contents before work on the engineer's task continues.",
+     "why": "Runner-up. /compact reduces context when a long session has built up. It would win if the problem came from the session's general length; here one step floods the context every time, and compaction is a manual, lossy clean-up after each run."
+    },
+    {
+     "t": "Restrict the skill's allowed-tools to Read and Grep, limiting how much material the scan brings in while it searches.",
+     "why": "Incorrect. allowed-tools controls which tools the skill may use, not how much they read; the scan still pulls 200 files into the conversation."
+    },
+    {
+     "t": "Add an argument-hint that asks engineers for a target directory, and keep each audit's file count small.",
+     "why": "Incorrect. Narrower scans reduce the flood but change what the audit covers; the report engineers like needs the whole tree."
+    },
+    {
+     "t": "Add context: fork to the skill's frontmatter, running the scan in a separate sub-agent that hands back only its report.",
+     "why": "Correct. context: fork runs the skill in an isolated sub-agent context, so the 200 files never enter the main conversation and only the 30-line report comes back."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The degradation follows the audit even in a fresh session and recurs several times a day; if it came from a long session's general build-up, running /compact would be the fitting fix.",
+   "explanation": "context: fork runs a skill in an isolated sub-agent context so verbose intermediate work does not pollute the main conversation. Anything that reads a lot and reports a little is a candidate.",
+   "eli5": {
+    "question": "Running one skill floods the session with what it read. The clue is: it happens even in a brand-new session, and engineers run it several times a day. So the problem is the skill's own reading, every time, not a long session.",
+    "answer": "If you send someone to search a whole library, you want them back with a one-page note, not wheeling every book into your office. Running the skill in its own side room (<b>context: fork</b>) does that: it reads the 200 files there and hands back only the 30-line report. <b>Rule: if something reads a lot and reports a little, run it in a fork.</b>",
+    "options": [
+     "Runner-up. Squashing the conversation (<b>/compact</b>) helps a session that has grown long. Here one step floods it every time, and squashing after each run is manual and loses detail.",
+     "Limiting which tools it may use (<b>allowed-tools</b>) does not limit how much it reads.",
+     "A smaller scan changes what the audit covers; engineers want the whole tree.",
+     "Correct. Run the skill in an isolated sub-agent and bring back only the report."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>this is a long-session problem</b> that compaction cures. But it happens even when the audit runs first in a fresh session. The cause is one step: 200 files of scan output land in the main conversation every time. The structural fix keeps that output out in the first place, rather than cleaning up after it.",
+    "diagram": "main ──/codemod-audit──► forked sub-agent\n  ▲                       reads ~200 files\n  └──── 30-line report ◄──┘",
+    "mapTitle": "Context is getting polluted: where does the bulk come from?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "One skill reads a lot, reports a little",
+       "Verbose step in the main context",
+       "<code>context: fork</code> in the skill"
+      ],
+      [
+       "Ad-hoc exploration in the middle of a task",
+       "Verbose discovery",
+       "Explore subagent that returns a summary"
+      ],
+      [
+       "Session has grown long over hours",
+       "Accumulated history",
+       "<code>/compact</code>, or scratchpad plus a fresh session"
+      ],
+      [
+       "Skill must not be able to write",
+       "Capability",
+       "<code>allowed-tools</code>"
+      ],
+      [
+       "Skill needs an input from the user",
+       "Invocation",
+       "<code>argument-hint</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It reads around 200 files and ends with a 30-line report that engineers like",
+      "means": "Reads a lot, reports a little: the textbook case for isolation."
+     },
+     {
+      "quote": "Claude brings up files it passed during the scan and loses track of the task the engineer was on",
+      "means": "The scan's output is sitting in the main conversation."
+     },
+     {
+      "quote": "This happens even when the audit is the first thing run in a new session",
+      "means": "The quiet clue. It is not the session's length. That weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "engineers run it several times a day",
+      "means": "A manual clean-up after every run is a poor fit; the fix should travel with the skill."
+     },
+     {
+      "quote": "Which change most directly fixes this?",
+      "means": "Tool limits (<b>[[1]]</b>) and narrower scans (<b>[[2]]</b>) do not keep the reading out. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "If a skill reads a lot and reports a little, give it context: fork so only the result returns.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-04",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skill frontmatter & tools",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The <code>/codemod-audit</code> skill is meant to be read-only, and its <code>SKILL.md</code> body opens with a sentence saying it must report and not change files. Twice this month it edited a file it was auditing, both times where the fix looked trivial. The skill's folder is also copied as-is into two other repositories, each with its own <code>.claude/settings.json</code>. Which change makes the <b>read-only property hold</b>?",
+   "options": [
+    {
+     "t": "Register a PreToolUse hook in the project settings that denies Edit and Write calls while the audit is in progress.",
+     "why": "Runner-up. A hook is a deterministic block and would win if the skill lived in one repository. Settings stay behind when the skill's folder is copied, so the other two repositories get no protection."
+    },
+    {
+     "t": "List only Read, Grep and Glob in the allowed-tools field of the skill's SKILL.md frontmatter.",
+     "why": "Correct. allowed-tools in the frontmatter limits what the skill can call, and it travels with the skill folder into every repository that copies it."
+    },
+    {
+     "t": "Set context: fork in the frontmatter and let any edits made during the audit stay inside that sub-agent.",
+     "why": "Incorrect. context: fork isolates conversation context, not the file system; an edit made in a forked skill still changes the file."
+    },
+    {
+     "t": "Move the read-only sentence into a heading at the top of SKILL.md, name the barred tools and repeat it at the end.",
+     "why": "Incorrect. A louder instruction is still an instruction; the skill already had one and broke it twice."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The skill's folder is copied into two other repositories with their own settings; if it lived only in this repository, a PreToolUse hook would be an equally sound block.",
+   "explanation": "Skill frontmatter carries enforcement: allowed-tools limits capability, context: fork isolates context, argument-hint guides invocation. When a skill must not do something, remove the tool rather than forbid its use, and keep the restriction with the skill.",
+   "eli5": {
+    "question": "A skill that should only read keeps editing files. The clue is: the skill's folder is copied into two other repositories that have their own settings. So the fix has to travel inside the skill's folder.",
+    "answer": "If a visitor must not touch anything, a polite sign is not enough; you give them a key that only opens the viewing room. In a skill, that key is the list of tools it may use (<b>allowed-tools</b> in the frontmatter). List only Read, Grep and Glob, and it cannot edit. Because the list lives in the skill's own file, it goes wherever the folder is copied. <b>Rule: to stop a skill doing something, take the tool away, in the skill itself.</b>",
+    "options": [
+     "Runner-up. A blocking hook (<b>PreToolUse</b>) also stops edits for certain. It would win if the skill lived only here; project settings do not travel with a copied folder.",
+     "Correct. Only read tools in <code>allowed-tools</code>, carried with the skill.",
+     "A fork (<b>context: fork</b>) separates conversation, not files; edits still change the disk.",
+     "A louder sentence is still a request; it already failed twice."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>any deterministic block will do</b>, so a hook is as good as a frontmatter change. Both stop edits here. But the skill is copied as a folder into two other repositories, and project settings stay behind. A restriction written in the skill's own frontmatter goes with it. Isolation (<code>context: fork</code>) is a different thing: it separates conversation, not the file system.",
+    "mapTitle": "A skill does something it shouldn't: where does the stop go?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Skill must not use certain tools, wherever it runs",
+       "Capability of the skill",
+       "<code>allowed-tools</code> in SKILL.md frontmatter"
+      ],
+      [
+       "Block applies to one project, whoever calls the tool",
+       "Project policy",
+       "PreToolUse hook in project settings"
+      ],
+      [
+       "Skill floods the main conversation",
+       "Context, not capability",
+       "<code>context: fork</code>"
+      ],
+      [
+       "Skill needs a parameter from the user",
+       "Invocation",
+       "<code>argument-hint</code>"
+      ],
+      [
+       "Instruction in the skill body is ignored",
+       "Probabilistic",
+       "Turn it into a capability limit"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "its SKILL.md body opens with a sentence saying it must report and not change files",
+      "means": "The instruction exists and failed. A stronger instruction (<b>[[3]]</b>) pulls the same lever."
+     },
+     {
+      "quote": "Twice this month it edited a file it was auditing",
+      "means": "The write tool is available, so sometimes it gets used."
+     },
+     {
+      "quote": "The skill's folder is also copied as-is into two other repositories, each with its own .claude/settings.json",
+      "means": "The quiet clue. A hook in this project's settings (<b>[[0]]</b>) does not travel. Frontmatter does."
+     },
+     {
+      "quote": "Which change makes the read-only property hold?",
+      "means": "Remove the write tools in the skill itself: <b>[[1]]</b>. A fork (<b>[[2]]</b>) does not stop file writes."
+     }
+    ],
+    "rule": "To make a skill unable to do something, restrict its allowed-tools in the frontmatter; the limit travels with the skill.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Skills in .claude/skills/ with SKILL.md frontmatter: context: fork, allowed-tools, argument-hint."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-05",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Interview pattern",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The codemod's spec is 400 words of prose. Three runs have each made different assumptions about cases the spec never mentions: commented-out call sites, call sites inside test fixtures, and existing import aliases. Each time, the engineer had not thought about the case until a run tripped over it, then added a paragraph and reran, and the next run exposed another. The engineer now wants the gaps found before the fourth run. What is the <b>most effective next step</b>?",
+   "options": [
+    {
+     "t": "Add before-and-after file pairs for the commented-out, fixture and alias cases to the spec, then rerun the codemod.",
+     "why": "Runner-up. Concrete input/output pairs communicate a transformation better than prose, and they would win if the cases were known and only misread. Here each run uncovers a case nobody had thought of; pairs cover only the three already found."
+    },
+    {
+     "t": "Have Claude question the engineer about edge cases and open decisions before it writes any code.",
+     "why": "Correct. The interview pattern has Claude surface the considerations the author has not anticipated, before implementation, which is exactly the gap that keeps appearing."
+    },
+    {
+     "t": "Run the next attempt in plan mode and review Claude's proposed per-file changes before approving any edits.",
+     "why": "Incorrect. Plan mode helps decide how to make a large change; reviewing seventy file plans is a slow way to discover unstated requirements."
+    },
+    {
+     "t": "Write a failing test for each case found so far and have Claude iterate on the codemod until the suite passes.",
+     "why": "Incorrect. Tests lock in the cases already found; they do not reveal the ones nobody has thought of yet."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Each new case was unknown to the engineer until a run hit it; if the cases were known and only described poorly, concrete before-and-after pairs would be the better step.",
+   "explanation": "When each attempt exposes a requirement the author had not considered, use the interview pattern: have Claude ask questions before implementing. Use concrete examples or tests once the cases are known.",
+   "eli5": {
+    "question": "Each run trips over a case nobody had thought of. The clue is: the engineer did not know about any of these cases until a run hit them. So the next missing case is unknown too.",
+    "answer": "Before building a kitchen, a good builder asks questions you had not thought of: where do the bins go, which way does the door open? Ask Claude to do the same (<b>the interview pattern</b>): list the unclear cases and ask about them before writing code. That finds the gaps in one go instead of one per run. <b>Rule: when you don't know what you've missed, let Claude ask first.</b>",
+    "options": [
+     "Runner-up. Before-and-after examples explain a change better than prose. They would win if the cases were known; they cover only the three found so far.",
+     "Correct. Let Claude question the engineer about edge cases before coding.",
+     "Planning first (<b>plan mode</b>) decides how to make the change; it is a slow way to find unstated requirements.",
+     "Tests lock in known cases; they do not find unknown ones."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the spec is just badly written</b>, so concrete examples or tests of the tricky cases will fix it. Examples and tests only cover cases someone already knows about. Here each run exposed a case the engineer had never considered. The missing piece is discovery, and Claude can do it by asking before it builds.",
+    "mapTitle": "Iteration keeps surprising you: what is missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "New, unforeseen cases appear each run",
+       "Requirements unknown to the author",
+       "Interview pattern: Claude asks first"
+      ],
+      [
+       "Known cases, prose keeps being misread",
+       "Ambiguous description",
+       "Concrete input/output examples"
+      ],
+      [
+       "Fixes keep breaking other cases",
+       "No automatic feedback",
+       "Tests first, run after every edit"
+      ],
+      [
+       "Large change, several valid designs",
+       "Architecture",
+       "Plan mode"
+      ],
+      [
+       "Two problems that interact",
+       "Coupled fixes",
+       "Send them in one message"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Three runs have each made different assumptions about cases the spec never mentions",
+      "means": "A different gap each time: the spec is incomplete, not misread."
+     },
+     {
+      "quote": "commented-out call sites, call sites inside test fixtures, and existing import aliases",
+      "means": "The vivid list. It tempts you to write examples for exactly these (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "the engineer had not thought about the case until a run tripped over it",
+      "means": "The quiet clue. The cases are unknown in advance. Examples (<b>[[0]]</b>) and tests (<b>[[3]]</b>) cover only known ones."
+     },
+     {
+      "quote": "The engineer now wants the gaps found before the fourth run",
+      "means": "Discovery before building: <b>[[1]]</b>. Plan mode (<b>[[2]]</b>) designs the change but does not hunt for missing requirements."
+     }
+    ],
+    "rule": "If each attempt reveals a requirement nobody had thought of, have Claude interview you before it writes code.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "the interview pattern (Claude asks questions first)"
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-06",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Message batching strategy",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Four small tasks remain: (a) rename the <code>Ledger</code> type to <code>Journal</code>, (b) update the 40 import sites that use it, (c) add a CHANGELOG line, whose wording the release template fixes, and (d) bump a version constant in an unrelated package. Whether each import changes path depends on whether the type moves to a new module during the rename or stays put. The reviewer wants all four in one pull request. How should the engineer <b>send these to Claude</b>?",
+   "options": [
+    {
+     "t": "Send the rename, the import updates and the changelog line in one message, and the version bump in a second.",
+     "why": "Runner-up. Grouping the type change with its release note looks natural, and it would win if the note's wording depended on how the rename turned out. The template fixes it, so it is independent."
+    },
+    {
+     "t": "Send all four tasks in one message, let Claude decide the order of the work, and review the combined diff once at the end.",
+     "why": "Incorrect. One pull request is a review grouping, not a reasoning one; bundling independent tasks dilutes attention on the pair that does interact."
+    },
+    {
+     "t": "Send the rename and the import updates together, then the changelog line and the version bump as separate follow-ups.",
+     "why": "Correct. The import edits depend on how the rename is done, so those two belong in one message; the other two depend on nothing and go one at a time."
+    },
+    {
+     "t": "Send each task as its own message in order, reviewing the diff after each before sending the next one.",
+     "why": "Incorrect. Sending the rename alone lets Claude decide where the type lives without considering the 40 imports that depend on that choice."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The changelog wording is fixed by the template, so only the rename and imports interact; if the note depended on how the rename turned out, it would belong in the same message.",
+   "explanation": "Send interacting problems in one message and independent ones in sequence. Group by dependency, not by theme or by which pull request they land in.",
+   "eli5": {
+    "question": "Four tasks, and the question is which to send together. The clue is: only the rename and the import updates depend on each other; the changelog wording is fixed by a template. The single pull request is a distraction.",
+    "answer": "When cooking, you make the sauce and the pasta together because each affects the other's timing. Setting the table can happen on its own. Send tasks that depend on each other in one message (<b>interacting problems together</b>) and independent ones one at a time. <b>Rule: group by dependency, not by topic or by pull request.</b>",
+    "options": [
+     "Runner-up. The changelog feels like part of the rename. It would belong in the same message if its wording depended on the rename; the template fixes it.",
+     "One pull request is a review grouping, not a reason to bundle unrelated work.",
+     "Correct. The coupled pair together, the independent tasks separately.",
+     "Sending the rename alone lets Claude decide where the type lives without seeing the 40 imports that depend on it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to group tasks <b>by topic</b> (everything about the rename) or <b>by delivery</b> (everything in this pull request). Claude works better when grouping follows dependency. The rename and the import edits interact: where the type ends up decides every import path. The changelog line looks related, but its wording is fixed, so it depends on nothing.",
+    "diagram": "(a) rename ◄──► (b) imports      one message\n (c) changelog (template-fixed)   separate\n (d) version bump (unrelated)     separate",
+    "mapTitle": "One message or several?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Problems whose fixes depend on each other",
+       "Interaction",
+       "One message"
+      ],
+      [
+       "Independent problems",
+       "No interaction",
+       "Separate messages, in sequence"
+      ],
+      [
+       "Related by topic, but nothing depends on the outcome",
+       "Looks linked, isn't",
+       "Separate"
+      ],
+      [
+       "Everything ships in one pull request",
+       "Delivery grouping",
+       "Says nothing about how to prompt"
+      ],
+      [
+       "Large multi-file change with design choices",
+       "Architecture",
+       "Plan mode first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "add a CHANGELOG line, whose wording the release template fixes",
+      "means": "The quiet clue. The changelog does not depend on the rename, which weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "bump a version constant in an unrelated package",
+      "means": "Independent too."
+     },
+     {
+      "quote": "Whether each import changes path depends on whether the type moves to a new module during the rename or stays put",
+      "means": "The rename and imports interact; sending them apart (<b>[[3]]</b>) breaks that link."
+     },
+     {
+      "quote": "The reviewer wants all four in one pull request",
+      "means": "The vivid distraction. It tempts you to send everything at once (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "How should the engineer send these to Claude?",
+      "means": "Coupled pair together, the rest one by one: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Send interacting problems in one message and independent ones separately. Group by dependency, not by topic or pull request.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "single message for interacting problems, sequential for independent ones"
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-07",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 Scratchpads & manifests",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The codemod runs for over an hour across about 70 files. It has been interrupted twice, once by a crash part-way through a file and once when the engineer needed the machine. Before restarting, the engineer hand-fixed three converted files and reverted one. Both times the run started over because Claude could not say which files were already done. Which change makes the work resumable with the <b>least added complexity</b>?",
+   "options": [
+    {
+     "t": "Have Claude keep a progress file listing each target file and its status, updated after every file, and read it on restart.",
+     "why": "Correct. A manifest on disk survives crashes and records progress outside the conversation; a restarted run reads it, and the engineer's own changes can be noted in it."
+    },
+    {
+     "t": "Resume the interrupted session by name with --resume and ask Claude to carry on from the last file it reported finished.",
+     "why": "Runner-up. Resuming a named session is right when nothing has changed since. The engineer edited and reverted files before restarting, so the resumed session's tool results describe a state that no longer exists."
+    },
+    {
+     "t": "Run /compact every fifteen files and keep the session well under its context limit for the whole migration.",
+     "why": "Incorrect. Compaction manages context size; it does nothing for a crash or a closed session."
+    },
+    {
+     "t": "Split the migration into seven runs of about ten files, each started fresh with the list of files for that run.",
+     "why": "Incorrect. Smaller batches limit the loss but still lose a partial batch, and they do not record which files inside it were done."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The engineer hand-fixed and reverted files before restarting, so the old session's view is stale; if nothing had changed on disk, resuming the named session would be the lighter option.",
+   "explanation": "Long mechanical work needs durable external state. A manifest or scratchpad file persists progress across crashes and context boundaries; a resumed conversation restores what was said, not what is now on disk.",
+   "eli5": {
+    "question": "A long migration keeps restarting from zero after interruptions. The clue is: the engineer changed files by hand before restarting. So any memory of the old conversation describes files that are no longer the same.",
+    "answer": "When painting a long fence over several days, you tick a list after each panel so anyone can carry on. Have Claude keep that list in a file (<b>a manifest</b>): every target file and its status, updated as it goes, read first on restart. The list lives on disk, so a crash cannot wipe it, and it can note the engineer's own changes. <b>Rule: long jobs keep progress in a file, not in the conversation.</b>",
+    "options": [
+     "Correct. A progress file on disk survives crashes and is read first on restart.",
+     "Runner-up. Picking up the old session (<b>--resume</b>) is fine when nothing has changed. The engineer edited and reverted files, so the old session's view is out of date.",
+     "Squashing the conversation (<b>/compact</b>) saves space; it does nothing for a crash.",
+     "Smaller batches lose less, but still do not record which files are done."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>resuming the session restores the work</b>. Resuming restores the conversation: what Claude read and said. It does not restore what is true on disk now. Here the engineer changed and reverted files between runs, so the resumed session's tool results describe files that no longer look like that. Progress belongs in a file on disk that every run reads first.",
+    "diagram": "progress.md\n  services/orders.go   done\n  services/users.go    done (hand-fixed)\n  web/cart.ts          reverted → todo\n  ...                  todo",
+    "mapTitle": "Picking long work back up: what carries the state?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Crash or interruption, files changed since",
+       "Conversation is stale",
+       "Manifest or progress file, read on restart"
+      ],
+      [
+       "Paused session, nothing changed since",
+       "Conversation still valid",
+       "<code>--resume</code> the named session"
+      ],
+      [
+       "Session long and slowing, same task",
+       "Context size",
+       "<code>/compact</code>, or scratchpad plus fresh session"
+      ],
+      [
+       "Try two approaches from one starting point",
+       "Divergence",
+       "<code>fork_session</code>"
+      ],
+      [
+       "Resuming after edits you made yourself",
+       "Agent unaware of changes",
+       "Tell it which files changed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "once by a crash part-way through a file",
+      "means": "A crash can leave a file half-converted. Only a record on disk shows where things stand."
+     },
+     {
+      "quote": "Before restarting, the engineer hand-fixed three converted files and reverted one",
+      "means": "The quiet clue. Files changed after the session, so resuming it (<b>[[1]]</b>) brings back a stale view."
+     },
+     {
+      "quote": "Claude could not say which files were already done",
+      "means": "Progress was never recorded anywhere durable. <code>/compact</code> (<b>[[2]]</b>) does not record it either."
+     },
+     {
+      "quote": "Which change makes the work resumable with the least added complexity?",
+      "means": "One file, updated as it goes: <b>[[0]]</b>. Smaller batches (<b>[[3]]</b>) still lose partial work."
+     }
+    ],
+    "rule": "Keep progress for long jobs in a file on disk. A resumed conversation remembers what was said, not what is on disk now.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "Structured state persistence (manifests) for crash recovery; /compact to reduce context usage."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-08",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 Context degradation signals",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Three hours into a session tracing the payment handlers, an engineer notices Claude now says things like \"typically a Go service would...\" instead of naming the handlers it read that morning, and it has twice contradicted decisions made earlier in the session. The afternoon's work will change those handlers and must follow those decisions line by line. What should the engineer <b>do next</b>?",
+   "options": [
+    {
+     "t": "Run /compact now, then carry on in the same session using a condensed history of the morning's handler tracing.",
+     "why": "Runner-up. /compact frees context and would suit a session that only needs the gist of earlier work. This one needs exact handler names and decisions, which a condensed history tends to blur."
+    },
+    {
+     "t": "Delegate the remaining handler reading to an Explore subagent that returns short summaries back to this session.",
+     "why": "Incorrect. An Explore subagent keeps future verbose reading out of the context, but this session has already degraded and still holds the blurred decisions."
+    },
+    {
+     "t": "Have Claude write its findings, file paths and decisions to a notes file, then open a new session reading it.",
+     "why": "Correct. Generic answers and self-contradiction are signs of context degradation. Persisting the key findings to a file and starting fresh with it keeps the specifics the afternoon depends on."
+    },
+    {
+     "t": "Switch the session to a model with a larger context window and continue where the work left off.",
+     "why": "Incorrect. A bigger window does not improve attention to material buried in a long history."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The afternoon must follow the morning's decisions line by line, so exact specifics must survive; if only the gist were needed, compacting the session would be enough.",
+   "explanation": "Answers that drift to 'typical patterns' and contradict earlier findings signal context degradation. Persist key findings in a scratchpad file and start a fresh session seeded with it.",
+   "eli5": {
+    "question": "A long session has started giving vague, generic answers and contradicting itself. The clue is: the afternoon's work must follow the morning's decisions line by line. So the exact details must survive whatever you do next.",
+    "answer": "After a very long meeting, people start saying \"usually we'd…\" and forget what was agreed. The fix is to write the decisions down and start a fresh meeting with those notes on the table. Have Claude write its findings, file paths and decisions to a notes file (<b>scratchpad</b>), then start a new session that reads it. <b>Rule: when a session goes vague, save the specifics to a file and start fresh.</b>",
+    "options": [
+     "Runner-up. Squashing the history (<b>/compact</b>) suits a session that only needs the gist. This work needs exact names and decisions, which a summary tends to blur.",
+     "A helper for further reading (<b>Explore subagent</b>) helps later, but this session is already muddled.",
+     "Correct. Save the specifics to a file, then start a fresh session that reads it.",
+     "A bigger window does not improve attention to things buried in a long history."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the session is just too full</b>, so compacting it or using a bigger window will fix it. These symptoms, generic \"typical\" answers and contradictions of earlier decisions, mean the specifics are already no longer reliably available. A summary would blur exactly the details the afternoon depends on. Write them to a file deliberately and start clean.",
+    "mapTitle": "A long session is degrading: what keeps the specifics?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Generic answers, contradictions; specifics needed next",
+       "Context degradation",
+       "Findings to a scratchpad file; fresh session reads it"
+      ],
+      [
+       "Session long, only the gist needed from here",
+       "Context size",
+       "<code>/compact</code>"
+      ],
+      [
+       "Lots of exploratory reading still to do",
+       "Verbose discovery",
+       "Explore subagent returning summaries"
+      ],
+      [
+       "Crash or interruption in mechanical work",
+       "Lost progress",
+       "Manifest file"
+      ],
+      [
+       "One long review thins out in the middle",
+       "Attention dilution",
+       "Split into focused passes"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Claude now says things like \"typically a Go service would...\" instead of naming the handlers it read that morning",
+      "means": "The first textbook sign of context degradation: general patterns replacing specific findings."
+     },
+     {
+      "quote": "it has twice contradicted decisions made earlier in the session",
+      "means": "The second sign. Earlier findings are no longer reliably in view."
+     },
+     {
+      "quote": "The afternoon's work will change those handlers and must follow those decisions line by line",
+      "means": "The quiet clue. Exact details must survive, which rules out a lossy summary (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "What should the engineer do next?",
+      "means": "A bigger window (<b>[[3]]</b>) or more delegated reading (<b>[[1]]</b>) leaves the muddled session in place. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "When a session drifts to typical patterns and contradicts itself, persist the key findings to a file and start a fresh session from it.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "Context degradation: inconsistent answers, referencing \"typical patterns\" vs specific earlier findings."
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-09",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for ambiguous cases",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The codemod handles clear-cut call sites well. Runs disagree only on the awkward middle: a call site in a deprecated module, one behind a feature flag that is off in production, and one in a fixture that asserts the old behaviour. The engineer has described the handling for each in prose and runs still vary. Each case turns on judgement about intent, and the engineer expects further variants nobody has listed yet. What communicates the intended handling <b>most reliably</b>?",
+   "options": [
+    {
+     "t": "Include three worked examples from the repo, each showing the code, the action taken and a line on why it was taken.",
+     "why": "Correct. Few-shot examples that show the reasoning behind each choice are the most effective way to get consistent handling of ambiguous cases, and the reasoning lets the model generalise to variants not yet listed."
+    },
+    {
+     "t": "Add a table to the prompt that maps each awkward condition to the action required for it, with one row for each known case.",
+     "why": "Runner-up. Explicit criteria work when the cases can be listed in full. The engineer expects variants nobody has listed, and a table gives no guidance outside its rows."
+    },
+    {
+     "t": "Have Claude interview the engineer about the awkward cases before the next run, then add the answers to the prose.",
+     "why": "Incorrect. The interview pattern surfaces requirements the author has not thought through; here the engineer knows the intended handling and has already written it down."
+    },
+    {
+     "t": "Return each decision through a JSON schema whose action enum includes \"unclear\" with a detail field.",
+     "why": "Incorrect. An \"unclear\" enum value suits cases that cannot be decided; it reports the ambiguity instead of resolving it the way the engineer intends."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The engineer expects unlisted variants; if the awkward cases were a complete, fixed list, a condition-to-action table would be as good.",
+   "explanation": "Few-shot examples are the most effective technique when instructions alone give inconsistent results. Two to four targeted examples that show the reasoning for each choice let the model handle novel variants.",
+   "eli5": {
+    "question": "The codemod is inconsistent on awkward, judgement-call cases. The clue is: the engineer expects more variants that nobody has listed yet. So whatever you give Claude must help with cases it has not seen.",
+    "answer": "You learn to referee by watching a few tricky calls explained, not by memorising a list that never covers the next odd case. Give Claude two to four worked examples from the repo (<b>few-shot examples</b>), each with the action and a line on why. The \"why\" lets it handle new variants the same way. <b>Rule: for judgement calls, show worked examples with the reasoning.</b>",
+    "options": [
+     "Correct. A few worked cases with the reasoning, so new variants are handled alike.",
+     "Runner-up. A rule table (<b>explicit criteria</b>) works when every case can be listed. It gives no help on the variants nobody has listed.",
+     "Asking questions first (<b>interview pattern</b>) finds unknown requirements; the engineer already knows what they want.",
+     "An \"unclear\" option (<b>enum value</b>) reports doubt instead of deciding the way the engineer intends."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the prose was just not precise enough</b>, so a precise table will settle it. A table settles the cases it lists. These cases turn on judgement about intent, and more variants are coming that nobody has listed. Examples that show the reasoning teach the judgement itself, so the model can apply it to new cases.",
+    "mapTitle": "Instructions give inconsistent results: rules or examples?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Judgement calls, new variants expected",
+       "Intent hard to state as rules",
+       "2–4 worked examples with reasoning"
+      ],
+      [
+       "Closed, fully known set of conditions",
+       "Clear mapping",
+       "Explicit criteria or a decision table"
+      ],
+      [
+       "Too many false positives from vague wording",
+       "Imprecise instruction",
+       "Explicit categorical criteria"
+      ],
+      [
+       "Requirements unknown to the author",
+       "Missing information",
+       "Interview pattern"
+      ],
+      [
+       "Model must flag what it cannot decide",
+       "Undecidable input",
+       "Enum with <code>\"unclear\"</code> plus a detail field"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Runs disagree only on the awkward middle",
+      "means": "Clear cases are fine; the gap is ambiguous-case handling, the main use of few-shot examples."
+     },
+     {
+      "quote": "The engineer has described the handling for each in prose and runs still vary",
+      "means": "The intent is known, so an interview (<b>[[2]]</b>) adds nothing; the prose is just not landing."
+     },
+     {
+      "quote": "Each case turns on judgement about intent",
+      "means": "Judgement is better shown than listed. An \"unclear\" value (<b>[[3]]</b>) would only report it."
+     },
+     {
+      "quote": "the engineer expects further variants nobody has listed yet",
+      "means": "The quiet clue. A table (<b>[[1]]</b>) covers only its rows; examples with reasoning generalise. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "When cases turn on judgement and new variants will appear, use 2–4 worked examples that show the reasoning.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "2-4 targeted examples showing reasoning for the chosen action"
+    }
+   }
+  },
+  {
+   "id": "s5q-s2-10",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.6 Multi-pass review architecture",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The finished codemod is reviewed by a CI job that runs <code>claude -p</code> on a clean checkout of the branch. Its report on the 70 changed files is thorough for the first few, thin in the middle, and missed a module moved to the new API whose caller still uses the old one. A lead notes that the report's summary reads almost like the codemod's own commit message and suspects the reviewer is too close to the change. Which review design <b>best fits</b> this change?",
+   "options": [
+    {
+     "t": "Have a separate Claude instance with no access to the codemod's session or its reasoning review the full diff instead.",
+     "why": "Runner-up. An independent reviewer beats self-review, and it would win if the review ran inside the session that wrote the code. The CI job already starts fresh on a clean checkout, so it is independent."
+    },
+    {
+     "t": "Run the review with --output-format json and a findings schema, and post each finding as an inline PR comment.",
+     "why": "Incorrect. Machine-readable findings improve how the review is delivered, not what a single pass notices; the thin middle and the missed caller remain."
+    },
+    {
+     "t": "Add the team's review criteria and the new API's contract to CLAUDE.md, giving the CI reviewer more project context to work from.",
+     "why": "Incorrect. CLAUDE.md is the right home for review criteria, but more context does not help a single pass that is already spread thin across 70 files."
+    },
+    {
+     "t": "Review each changed file alone for local correctness, then run one pass over the interfaces and call sites between files.",
+     "why": "Correct. Per-file passes give each file full attention, and a separate integration pass looks specifically at contracts between files, which is where the missed caller lives."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The review already runs as claude -p on a clean checkout, so it is independent of the generating session; if it ran in the session that wrote the codemod, a separate instance would be the first fix.",
+   "explanation": "Large multi-file changes need two kinds of review: per-file passes for local correctness and a cross-file integration pass for contracts between files. One pass over everything dilutes attention.",
+   "eli5": {
+    "question": "One review over 70 files goes thin in the middle and misses a mismatch between two files. The clue is: the review already runs in CI as a separate, fresh process. So it is already independent; the problem is doing everything in one pass.",
+    "answer": "One inspector checking a 70-room building in one walk gets tired by the middle and never checks whether the pipes between rooms connect. Better: check each room on its own, then do one walk just for the connections. For code, that is a pass per file plus a cross-file pass (<b>multi-pass review</b>). <b>Rule: big changes get per-file passes plus one integration pass.</b>",
+    "options": [
+     "Runner-up. A fresh reviewer (<b>independent instance</b>) beats self-review. It would win if the review ran in the session that wrote the code; the CI job is already fresh.",
+     "Machine-readable output (<b>--output-format json</b>) changes delivery, not what the pass notices.",
+     "Review criteria belong in CLAUDE.md, but more context does not fix a pass that is spread too thin.",
+     "Correct. A pass per file, then one pass over the connections between files."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read the lead's remark and think <b>the reviewer is biased</b> because it is too close to the code. But <code>claude -p</code> on a clean checkout is already a separate instance with none of the generating session's reasoning. The symptoms point elsewhere: thin in the middle means attention spread over 70 files, and a missed caller means nobody looked at the connections between files.",
+    "diagram": "pass 1..n: one file each   → local bugs\n pass n+1: interfaces only  → caller/callee mismatch",
+    "mapTitle": "A review is missing things: what kind of miss?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Thin in the middle, misses cross-file mismatches",
+       "Attention dilution, no integration view",
+       "Per-file passes plus a cross-file pass"
+      ],
+      [
+       "Reviewer shares the author's reasoning",
+       "Self-review bias",
+       "Independent instance with no prior context"
+      ],
+      [
+       "Review hangs waiting for input in CI",
+       "Interactive mode",
+       "<code>claude -p</code>"
+      ],
+      [
+       "Findings need to become PR comments",
+       "Output format",
+       "<code>--output-format json</code> plus a schema"
+      ],
+      [
+       "Too many false positives",
+       "Vague criteria",
+       "Explicit criteria with examples"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "reviewed by a CI job that runs claude -p on a clean checkout of the branch",
+      "means": "The quiet clue. This is already an independent instance, which weakens the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "thorough for the first few, thin in the middle",
+      "means": "Attention spread across too many files in one pass."
+     },
+     {
+      "quote": "missed a module moved to the new API whose caller still uses the old one",
+      "means": "A cross-file miss: only a pass that looks at connections finds it."
+     },
+     {
+      "quote": "suspects the reviewer is too close to the change",
+      "means": "The vivid distraction. It points at independence, which is already in place."
+     },
+     {
+      "quote": "Which review design best fits this change?",
+      "means": "Delivery format (<b>[[1]]</b>) and more context (<b>[[2]]</b>) keep the single pass. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Review big changes in focused passes: each file on its own, then one pass over the connections between files.",
+    "guide": {
+     "obj": "4.6 Multi-instance and multi-pass review architectures",
+     "quote": "Multi-pass: per-file local analysis + cross-file integration passes (avoid attention dilution, contradictions)."
+    }
+   }
+  }
+ ]
+}

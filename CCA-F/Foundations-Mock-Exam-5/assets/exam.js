@@ -1,4 +1,9 @@
-/* CCA-F Mock Exam #4 — exam-grade harness.
+/* CCA-F Mock Exam #6 — real-exam-style harness (forked from Mock #4/#5).
+   Mock #6 additions:
+     · practice mode (default) grades on click; exam mode keeps answers changeable until submit
+     · domain/objective tags hidden until an item is graded (the real exam shows neither)
+     · runner-up + decider shown on reveal; report counts how often the runner-up caught you
+   Original header:
    Differences from the Mock 1–3 engine:
      · scenario item-sets with a persistent scenario brief
      · multiple-response items ("Select TWO") with all-or-nothing grading
@@ -19,6 +24,8 @@
   var root = document.getElementById('exam');
   var state = [], answered = 0, correct = 0, finished = false, reported = false;
   var NUMWORD = { 2: 'TWO', 3: 'THREE', 4: 'FOUR' };
+  var EXAMMODE = false;
+  try { EXAMMODE = localStorage.getItem('mock-mode') === 'exam'; } catch (e) {}
   var DURATION = (EXAM.minutes || 120) * 60, left = DURATION, timerId = null, started = false;
 
   var FAMILIES = {
@@ -85,11 +92,12 @@
       card.innerHTML =
         '<div class="qhead">' +
           '<span class="qnum">Q' + (qi + 1) + '</span>' +
-          '<span class="qdom">' + esc(q.domain) + '</span>' +
-          '<span class="qobj">' + esc(q.obj) + '</span>' +
+          '<span class="qdom tagged">' + esc(q.domain) + '</span>' +
+          '<span class="qobj tagged">' + esc(q.obj) + '</span>' +
           (sel > 1 ? '<span class="qmulti">Select ' + (NUMWORD[sel] || sel) + '</span>' : '') +
         '</div>' +
-        '<div class="qtext">' + q.question + '</div>';
+        '<div class="qtext">' + q.question + '</div>' +
+        (q.eli5 ? '<details class="eli5q"><summary>Explain this question simply</summary><div>' + q.eli5.question + '</div></details>' : '');
 
       var ul = document.createElement('ul');
       ul.className = 'opts';
@@ -98,17 +106,23 @@
         li.className = 'opt';
         li.innerHTML =
           '<span class="tick"></span>' +
-          '<span class="lbl"><b>' + String.fromCharCode(65 + pos) + '.</b> ' + esc(q.options[orig].t) + '</span>' +
+          '<span class="lbl"><b>' + String.fromCharCode(65 + pos) + '.</b> ' + q.options[orig].t + '</span>' +
           '<span class="mark ok">&#10003;</span><span class="mark no">&#10007;</span>';
         li.addEventListener('click', function () {
           var s = state[qi];
           if (s.graded) return;
           if (!started) startTimer();
-          if (sel === 1) { s.picked = [orig]; grade(qi); return; }
+          if (sel === 1) {
+            s.picked = [orig];
+            if (!EXAMMODE) { grade(qi); return; }
+            ul.querySelectorAll('.opt').forEach(function (o) { o.classList.remove('sel'); });
+            li.classList.add('sel'); markAnswered(qi); return;
+          }
           var at = s.picked.indexOf(orig);
           if (at >= 0) { s.picked.splice(at, 1); li.classList.remove('sel'); }
           else if (s.picked.length < sel) { s.picked.push(orig); li.classList.add('sel'); }
-          if (s.picked.length === sel) grade(qi);
+          if (s.picked.length === sel && !EXAMMODE) grade(qi);
+          if (EXAMMODE) markAnswered(qi);
         });
         ul.appendChild(li);
       });
@@ -119,6 +133,35 @@
       root.appendChild(card);
     });
     updateBar();
+  }
+
+  function markAnswered(qi) {
+    var s = state[qi];
+    document.getElementById('q' + qi).classList.toggle('picked', s.picked.length === (s.q.select || 1));
+    var n = state.filter(function (x) { return x.picked.length === (x.q.select || 1); }).length;
+    var sb = document.getElementById('scorebar');
+    sb.innerHTML = '<span class="big">' + n + ' / ' + N + '</span><span class="pct">answered \u2014 exam mode, graded on submit</span>' +
+      '<span class="clock" id="clock">' + fmt(left) + '</span>';
+    sb.classList.add('show');
+  }
+
+  function deepHtml(s) {
+    var d = s.q.deep; if (!d) return '';
+    var letter = {}; s.order.forEach(function (orig, pos) { letter[orig] = String.fromCharCode(65 + pos); });
+    var L = function (t) { return String(t).replace(/\[\[(\d)\]\]/g, function (_, i) { return letter[+i] || '?'; }); };
+    var table = '<div class="dtable"><table><tr>' + d.map.head.map(function (h) { return '<th>' + L(h) + '</th>'; }).join('') + '</tr>' +
+      d.map.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + L(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '</table></div>';
+    var ev = '<ol class="dev">' + d.evidence.map(function (x) {
+      return '<li><q>' + L(x.quote) + '</q><div>' + L(x.means) + '</div></li>'; }).join('') + '</ol>';
+    return '<details class="deep" open><summary>Think it through</summary>' +
+      '<h4>1 · The premise to correct</h4><p>' + L(d.premise) + '</p>' +
+      (d.diagram ? '<pre class="ddia">' + esc(d.diagram) + '</pre>' : '') +
+      '<h4>2 · Mind map: ' + L(d.mapTitle) + '</h4>' + table +
+      '<h4>3 · Apply it to this question</h4>' + ev +
+      '<h4>4 · Rule to remember</h4><blockquote class="drule">' + L(d.rule) + '</blockquote>' +
+      '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>\u201c' + esc(d.guide.quote) + '\u201d</i></p>' +
+      '</details>';
   }
 
   function grade(qi) {
@@ -149,16 +192,29 @@
               (s.partial ? ' \u2014 ' + s.partial + ' of ' + s.q.select + ' right' : '') +
               '</span>');
 
+    var ru = s.q.runnerUp;
+    s.fellForRunnerUp = !ok && s.picked.indexOf(ru) >= 0;
+    var el5 = s.q.eli5;
     var rows = s.order.map(function (orig, pos) {
       var isAns = s.q.answer.indexOf(orig) >= 0;
-      return '<div class="why ' + (isAns ? 'w-ok' : 'w-no') + '">' +
-        '<b>' + String.fromCharCode(65 + pos) + '.</b> ' + esc(s.q.options[orig].why) + '</div>';
+      return '<div class="why ' + (isAns ? 'w-ok' : (orig === ru ? 'w-ru' : 'w-no')) + '">' +
+        '<b>' + String.fromCharCode(65 + pos) + '.</b> ' +
+        (el5 ? el5.options[orig] + '<details class="tech"><summary>Technical detail</summary>' + s.q.options[orig].why + '</details>'
+             : s.q.options[orig].why) + '</div>';
     }).join('');
 
     card.querySelector('.explain').innerHTML =
       '<div class="eh">Explanation ' + res + '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
+      (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
+             '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
+      deepHtml(s) +
+      '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
+      (s.q.faq ? '<details class="deep faq" open><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
+        return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +
+      (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary>' : '') +
+      (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
       '<div class="ebody">' + s.q.explanation + '</div>' +
-      '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>';
+      (el5 ? '</details>' : '');
 
     updateBar();
   }
@@ -236,6 +292,13 @@
       (near ? '<p class="fnote" style="margin-top:6px">' + near +
         ' of your multiple-response misses were one short of the full set \u2014 near misses, not content gaps.</p>' : '');
 
+    var wrong = state.filter(function (s) { return !eqSet(s.picked, s.q.answer) && s.picked.length; });
+    var ruHits = wrong.filter(function (s) { return s.fellForRunnerUp; }).length;
+    split += wrong.length ? '<p class="fnote" style="margin-top:10px"><b>' + ruHits + ' of your ' + wrong.length +
+      ' wrong answers were the runner-up</b> \u2014 the option that would be right if one fact in the stem were different. ' +
+      (ruHits / wrong.length >= 0.5
+        ? 'Your knowledge is fine; you are missing the deciding fact. Re-read each of those stems and find the sentence the decider points to.'
+        : 'Most misses were not the runner-up \u2014 those are content gaps; revise the objectives listed below.') + '</p>' : '';
     var el = document.getElementById('report');
     el.innerHTML =
       '<h2>Result breakdown</h2>' +
@@ -249,14 +312,24 @@
 
   function finishAll() {
     finished = true;
+    document.body.classList.add('done');
     if (timerId) clearInterval(timerId);
-    state.forEach(function (s, qi) { if (!s.graded) { s.picked = []; grade(qi); } });
+    state.forEach(function (s, qi) { if (!s.graded) { if (!EXAMMODE) s.picked = []; grade(qi); } });
     updateBar();
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     var c = document.getElementById('qcount'); if (c) c.textContent = N;
     build();
+    document.querySelectorAll('.modes button').forEach(function (b) {
+      var isExam = b.getAttribute('data-mode') === 'exam';
+      if (isExam === EXAMMODE) b.classList.add('on');
+      b.addEventListener('click', function () {
+        if (started && !confirm('Switching mode restarts the paper. Continue?')) return;
+        try { localStorage.setItem('mock-mode', b.getAttribute('data-mode')); } catch (e) {}
+        location.reload();
+      });
+    });
     var sb = document.getElementById('submitBtn');
     if (sb) sb.addEventListener('click', finishAll);
     var rb = document.getElementById('resetBtn');

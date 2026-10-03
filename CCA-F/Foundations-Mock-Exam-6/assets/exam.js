@@ -25,7 +25,7 @@
   var state = [], answered = 0, correct = 0, finished = false, reported = false;
   var NUMWORD = { 2: 'TWO', 3: 'THREE', 4: 'FOUR' };
   var EXAMMODE = false;
-  try { EXAMMODE = localStorage.getItem('m6-mode') === 'exam'; } catch (e) {}
+  try { EXAMMODE = localStorage.getItem('mock-mode') === 'exam'; } catch (e) {}
   var DURATION = (EXAM.minutes || 120) * 60, left = DURATION, timerId = null, started = false;
 
   var FAMILIES = {
@@ -326,7 +326,7 @@
       if (isExam === EXAMMODE) b.classList.add('on');
       b.addEventListener('click', function () {
         if (started && !confirm('Switching mode restarts the paper. Continue?')) return;
-        try { localStorage.setItem('m6-mode', b.getAttribute('data-mode')); } catch (e) {}
+        try { localStorage.setItem('mock-mode', b.getAttribute('data-mode')); } catch (e) {}
         location.reload();
       });
     });

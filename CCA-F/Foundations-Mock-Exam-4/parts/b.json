@@ -1,0 +1,2148 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A market-intelligence firm runs a research system on the Claude Agent SDK. A coordinator agent delegates through the Task tool to web-search, document-analysis, synthesis and report-generation subagents, each running in its own context. The document-analysis subagent reads the firm's internal research library over MCP. Analysts receive cited reports of about 4,000 words, and a full run takes 8–14 minutes."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 Tool Design &amp; MCP · D1 Agentic Architecture · D3 Claude Code Configuration",
+   "brief": "An engineer has joined the team that owns a 400,000-line Python and TypeScript service. They work in Claude Code with the built-in tools (<code>Read</code>, <code>Write</code>, <code>Edit</code>, <code>Bash</code>, <code>Grep</code>, <code>Glob</code>) and MCP servers for GitHub and Jira. The same repository holds the Terraform that manages production. Shared configuration should arrive with a clone; personal setups stay personal."
+  }
+ ],
+ "questions": [
+  {
+   "id": "s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Decomposition coverage",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An analyst asked how supply constraints are affecting electric-vehicle makers' 2027 production plans. The report covered lithium, cobalt and nickel pricing in depth and said almost nothing about cell-manufacturing capacity, which the analyst regards as the binding constraint. None of its 61 citations is to a battery-cell producer. Each search subagent was briefed on one of the three metals and returned more than 30 relevant sources. Before synthesis, the coordinator's review step checked the findings against its three subtasks and marked coverage complete. <b>What is the most likely root cause?</b>",
+   "options": [
+    {
+     "t": "The web-search subagents' queries had too little recall to reach battery-cell producers' filings and the trade press that covers them.",
+     "why": "Runner-up. Weak search recall would be the cause if a subagent had been briefed on cell capacity and still came back empty. Each one was briefed on a single metal and found plenty, so search did its assigned job."
+    },
+    {
+     "t": "The document-analysis subagent set aside cell-capacity material as outside the metals focus that its own brief had described.",
+     "why": "Incorrect. Filtering in analysis would show up as cell-capacity sources retrieved and then dropped. No search was ever asked to look for them, so there was nothing to drop."
+    },
+    {
+     "t": "The coordinator framed the request as a raw-materials question, and its review step judged completeness against that same framing.",
+     "why": "Correct. The decomposition left out a whole area of the question, and the review compared findings with the coordinator's own plan rather than with the analyst's request, so the gap certified itself."
+    },
+    {
+     "t": "The synthesis subagent left out manufacturing-capacity claims that lacked support from at least two independent sources.",
+     "why": "Incorrect. Synthesis can only drop claims it received. With no subtask covering cell capacity, there were no such claims to weigh."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Each search subagent was briefed on one metal and returned plenty, and the review checked against the coordinator's own three subtasks; if a subagent had been asked about cell capacity and come back empty, weak search recall would be the cause.",
+   "explanation": "Overly narrow decomposition leaves whole areas of a broad question uncovered, and subagents that succeed within their assigned scope are no evidence against it. A coverage check only helps if it measures against the original request, not against the coordinator's plan.",
+   "eli5": {
+    "question": "A report missed the most important part of the topic. The question asks why. The clue is: each search helper was briefed on one of the three metals, and the review checked the findings against those same three subtasks. 'No citations to cell producers' tempts you to blame search; it is a result, not the cause.",
+    "answer": "Picture a teacher who splits a class project into three chapters and then marks it complete because all three chapters were handed in. Nobody checked the project against the actual assignment. Here the coordinator split the question too narrowly (<b>task decomposition</b>), and its review compared the work with its own plan, not with the analyst's question. Each helper did its job perfectly inside a box that was too small. <b>Rule: when every helper succeeds and the answer is still incomplete, look at how the work was split.</b>",
+    "options": [
+     "Runner-up. Weak searches (<b>low recall</b>) would explain this if a helper had been asked about cell capacity and found nothing. No helper was asked.",
+     "The reading helper (<b>document analysis</b>) can only throw away what it receives. Nothing about cell capacity was ever fetched.",
+     "Correct. The split left out a whole area, and the review checked the split against itself.",
+     "The writing helper (<b>synthesis</b>) can only drop claims it was given. No cell-capacity claims ever reached it."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a <b>missing topic means a search problem</b>, because the visible symptom is missing sources. But searches only look where they are sent. When every subagent finishes well and the gap is a whole area, the fault is upstream: <b>the coordinator's split of the question</b>. And a review that checks the work against that same split cannot catch it, because it is marking the plan against itself.",
+    "diagram": "Analyst question: EV supply constraints\n  coordinator split -> lithium | cobalt | nickel\n  (cell capacity never assigned)\n  review: 3 of 3 subtasks done -> 'complete'\n  check vs QUESTION would have found the gap",
+    "mapTitle": "Report incomplete? Find where the scope was lost",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Whole area missing; every subagent succeeded on its brief",
+       "Coordinator's decomposition too narrow",
+       "Broaden the split; check coverage against the original request"
+      ],
+      [
+       "A subagent was asked about the area and came back empty",
+       "Search recall (queries)",
+       "Improve the search queries or sources"
+      ],
+      [
+       "Sources on the area were fetched, then vanished",
+       "Analysis filtering",
+       "Fix the analysis brief or filter"
+      ],
+      [
+       "Claims reached synthesis but were left out",
+       "Synthesis rules",
+       "Adjust what synthesis keeps; report weak support instead of dropping"
+      ],
+      [
+       "Gaps only visible after reading the sources",
+       "No refinement loop",
+       "Evaluate the draft for gaps, re-delegate, re-synthesise"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "said almost nothing about cell-manufacturing capacity, which the analyst regards as the binding constraint",
+      "means": "The gap is a whole area of the question, not a few missing facts."
+     },
+     {
+      "quote": "None of its 61 citations is to a battery-cell producer",
+      "means": "The vivid symptom. It points at search (<b>[[0]]</b>), but it is equally what you'd see if nobody was ever sent to look."
+     },
+     {
+      "quote": "Each search subagent was briefed on one of the three metals and returned more than 30 relevant sources",
+      "means": "The quiet decider. Search worked well inside its brief, and no brief covered cell capacity. This rules out <b>[[0]]</b>, and with nothing fetched, <b>[[1]]</b> and <b>[[3]]</b> had nothing to drop."
+     },
+     {
+      "quote": "the coordinator's review step checked the findings against its three subtasks and marked coverage complete",
+      "means": "The review measured the plan against itself, so the narrow split certified itself. That is <b>[[2]]</b>."
+     }
+    ],
+    "rule": "If every subagent succeeded and the answer is still missing a whole area, the decomposition was too narrow. Check coverage against the request, not the plan.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Risk: overly narrow decomposition → incomplete coverage of broad topics."
+    }
+   }
+  },
+  {
+   "id": "s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Subagent context passing",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Over several turns the coordinator retrieves three supplier contracts and agrees with the analyst which industry pricing benchmark to use. It then spawns the document-analysis subagent with the Task prompt: 'Compare the pricing terms in the contracts we reviewed against the agreed benchmark.' The subagent returns a careful, well-formatted comparison of two other contracts from the library against a 2023 benchmark. Analysts choose the benchmark afresh for each engagement, and the contracts differ every time. <b>Which change fixes this?</b>",
+   "options": [
+    {
+     "t": "Restate the Task prompt as the goal of the comparison and the quality bar it must meet, leaving the method for the subagent to choose.",
+     "why": "Incorrect. Goals and quality criteria beat step-by-step procedures in a delegation prompt, but this prompt is already short and goal-shaped. What it lacks is the material, not a better framing."
+    },
+    {
+     "t": "Add the benchmark and the comparison method to the document-analysis subagent's AgentDefinition as standing system-prompt instructions.",
+     "why": "Runner-up. Standing instructions in the AgentDefinition fit facts that hold on every run. The benchmark and the contracts change with each engagement, so they have to travel in the prompt for this run."
+    },
+    {
+     "t": "Have the subagent return each comparison with contract name, clause and page held in fields separate from the comparison text.",
+     "why": "Incorrect. Separating content from source metadata protects attribution. It does nothing about a subagent that never received the right contracts or benchmark."
+    },
+    {
+     "t": "Put the full text of the three contracts, the coordinator's findings so far and the chosen benchmark into the Task prompt itself.",
+     "why": "Correct. A subagent starts with an isolated context and inherits nothing from the coordinator's conversation. Everything it needs for this run must be written into its prompt."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The benchmark and the contracts change with every engagement; if they were the same on every run, standing instructions in the AgentDefinition would be a reasonable home for them.",
+   "explanation": "Subagents run in isolated context and do not see the coordinator's history. Anything specific to this run, including prior findings, must be passed explicitly and completely in the spawn prompt; standing instructions suit only what never changes.",
+   "eli5": {
+    "question": "A helper compared the wrong contracts against the wrong benchmark. The question asks how to fix that. The clue is: the benchmark and the contracts change with every engagement. The neat, well-formatted output is a distraction; the helper simply never got the material.",
+    "answer": "Imagine sending a courier to 'deliver the parcel we talked about' when the courier was never in the room. They will grab some parcel and deliver it beautifully to the wrong place. A helper agent is that courier: it starts with an empty memory (<b>isolated context</b>) and sees only its instructions. So the contracts, the earlier findings and the chosen benchmark must go into this run's instructions (the <b>Task prompt</b>). <b>Rule: a subagent knows only what you write in its prompt.</b>",
+    "options": [
+     "Writing the goal and quality bar (<b>goal-based prompts</b>) is good style. But the helper still won't have the contracts or the benchmark.",
+     "Runner-up. Standing instructions (the <b>AgentDefinition</b> system prompt) suit facts that never change. Here the benchmark and contracts change every time.",
+     "Keeping source details in separate fields (<b>structured metadata</b>) protects citations. It doesn't give the helper the right material.",
+     "Correct. Put the contracts, earlier findings and chosen benchmark into this run's prompt."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think a subagent <b>picks up the conversation</b> it was spawned from, so a prompt like 'the contracts we reviewed' makes sense. It doesn't. A subagent starts with <b>isolated context</b>: no history, no shared memory. The other trap is the right fix in the wrong home: standing instructions are for what is true on every run, and this benchmark is not.",
+    "diagram": "Coordinator context        Subagent context\n contracts A,B,C             (empty)\n benchmark agreed      ->    only the Task prompt:\n                             'contracts we reviewed'\n                             -> guesses: D,E + 2023",
+    "mapTitle": "What a subagent needs, and where it should live",
+    "map": {
+     "head": [
+      "What the subagent needs",
+      "Changes per run?",
+      "Where it goes"
+     ],
+     "rows": [
+      [
+       "Material and decisions for this run (contracts, chosen benchmark)",
+       "Yes",
+       "Written in full into the Task prompt"
+      ],
+      [
+       "Prior subagents' findings",
+       "Yes",
+       "Included completely in the next subagent's prompt"
+      ],
+      [
+       "Role, method, quality bar that never change",
+       "No",
+       "AgentDefinition system prompt"
+      ],
+      [
+       "Source details for citations",
+       "Yes",
+       "Structured fields separate from content"
+      ],
+      [
+       "Which tools it may use",
+       "No",
+       "AgentDefinition tool restrictions"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Over several turns the coordinator retrieves three supplier contracts and agrees with the analyst which industry pricing benchmark to use",
+      "means": "The key facts live only in the coordinator's conversation."
+     },
+     {
+      "quote": "Compare the pricing terms in the contracts we reviewed against the agreed benchmark",
+      "means": "The prompt points at that conversation instead of containing it. The prompt is short and goal-shaped already, so <b>[[0]]</b> adds nothing."
+     },
+     {
+      "quote": "The subagent returns a careful, well-formatted comparison of two other contracts from the library against a 2023 benchmark",
+      "means": "It did good work on the wrong inputs: it never saw the right ones. Citation fields (<b>[[2]]</b>) are not the gap."
+     },
+     {
+      "quote": "Analysts choose the benchmark afresh for each engagement, and the contracts differ every time",
+      "means": "The quiet decider. Per-run facts can't live in standing instructions, which rules out the runner-up <b>[[1]]</b>. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Subagents inherit nothing. Write everything specific to this run into the spawn prompt; keep standing instructions for what never changes.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Parallel subagent spawning",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Every report the firm sells has four mandatory evidence sections: competitor filings, academic literature, news coverage and regulatory notices, each gathered by its own search subagent. The coordinator writes all four search briefs from the analyst's question before any search starts. It then issues one delegation, waits for the result, and issues the next. Each search takes 2–3 minutes, the sources they fetch overlap by under 3%, and a 12-minute wait is the top complaint in analyst feedback. <b>Which change most reduces wall-clock time?</b>",
+   "options": [
+    {
+     "t": "Have the coordinator send narrow questions down a shorter path that skips the search sections those questions do not need.",
+     "why": "Runner-up. Choosing subagents by query complexity is the right fix when many requests do not need every stage. Here all four sections are mandatory in every report, so nothing can be skipped."
+    },
+    {
+     "t": "Have the coordinator emit all four search delegations within a single response and gather the results as each one returns.",
+     "why": "Correct. The four briefs are written before any search runs, so none depends on another. Multiple Task calls in one response run the searches concurrently, and the phase costs about the slowest search instead of the sum."
+    },
+    {
+     "t": "Partition the four search scopes more tightly and remove the topics that more than one search subagent currently covers.",
+     "why": "Incorrect. Partitioning scope to avoid duplicate work is good practice, but the overlap is already under 3%. There is little time to win there."
+    },
+    {
+     "t": "Pass each search subagent a structured brief holding the analyst's question, the coordinator's plan and the other three scopes.",
+     "why": "Incorrect. Complete, structured context in a delegation prompt is good practice, but it does not change the fact that the four searches run one after another."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "All four sections are mandatory and all four briefs exist before any search starts; if many requests needed only some sections, selecting subagents by query complexity would save more.",
+   "explanation": "Independent subtasks should run concurrently: the coordinator spawns parallel subagents by emitting several Task calls in one response. Sequential delegation is for genuine dependencies, and dynamic subagent selection is for requests that do not need every stage.",
+   "eli5": {
+    "question": "Reports take too long. The question asks what saves the most time. The clue is: the coordinator writes all four search briefs before any search starts, and all four sections are mandatory. So the searches don't need each other and none can be skipped.",
+    "answer": "Think of four errands that don't depend on each other. Sending one friend, waiting for them to come back, then sending the next, takes four times as long as sending all four friends at once. The coordinator can do that by putting all four delegations in one reply (<b>multiple Task calls in one response</b>), and they run at the same time. The wait drops to about the slowest search. <b>Rule: if jobs don't depend on each other, start them together.</b>",
+    "options": [
+     "Runner-up. Skipping unneeded helpers (<b>dynamic subagent selection</b>) saves time when some questions need fewer sections. Here every section is mandatory.",
+     "Correct. Send all four delegations in one reply so the searches run in parallel.",
+     "Cutting overlap (<b>scope partitioning</b>) helps when helpers repeat each other. Overlap is already under 3%.",
+     "Richer briefs (<b>explicit context</b>) make each helper better, but they still run one after another."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the way to make a pipeline faster is to <b>do less</b>: skip steps, trim scope. Sometimes it is. But when every step is required, the win is in <b>doing independent steps at the same time</b>. The Agent SDK runs Task calls in parallel when the coordinator emits several in one response.",
+    "diagram": "Now:    [filings][papers][news][regs]  ~10 min\nBetter: [filings]\n        [papers ]\n        [news   ]  all at once -> ~3 min\n        [regs   ]",
+    "mapTitle": "Slow multi-agent run? Match the fix to the shape of the work",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Independent subtasks run one after another",
+       "Several Task calls in one response",
+       "They run concurrently; time is the slowest, not the sum"
+      ],
+      [
+       "One subtask needs another's results",
+       "Sequence it after, pass the results in its prompt",
+       "Its input does not exist yet"
+      ],
+      [
+       "Many requests don't need every stage",
+       "Coordinator selects subagents by query complexity",
+       "Skip stages that add nothing"
+      ],
+      [
+       "Subagents fetch the same material",
+       "Partition scope",
+       "Removes duplicate work"
+      ],
+      [
+       "Subagent output is off-target",
+       "Richer explicit context in its prompt",
+       "Subagents know only their prompt"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every report the firm sells has four mandatory evidence sections",
+      "means": "Nothing can be skipped, which rules out the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "The coordinator writes all four search briefs from the analyst's question before any search starts",
+      "means": "The quiet decider: no search needs another's output, so they are independent."
+     },
+     {
+      "quote": "It then issues one delegation, waits for the result, and issues the next",
+      "means": "The waste: independent work done in series."
+     },
+     {
+      "quote": "the sources they fetch overlap by under 3%",
+      "means": "Duplication is negligible, so partitioning (<b>[[2]]</b>) has nothing to win."
+     },
+     {
+      "quote": "Which change most reduces wall-clock time?",
+      "means": "Better briefs (<b>[[3]]</b>) don't change the ordering. Running in parallel does: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Independent subtasks: emit all the Task calls in one response. Dependent subtasks: sequence them and pass the results.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "spawn parallel subagents by emitting multiple Task calls in one response"
+    }
+   }
+  },
+  {
+   "id": "s3-04",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Tool distribution & least privilege",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "While formatting a report, the report-generation subagent pauses to confirm details about the companies it mentions. Logs from 400 runs show 82% of these checks are one-field lookups, such as a legal entity name or an exchange ticker; the rest ask whether a subsidiary's revenue is already counted in its parent's figure, which means reconciling several filings. About 60% of the companies checked first appear inside quoted source passages rather than in the coordinator's outline. Each check travels through the coordinator and adds roughly 25 seconds. <b>Which change best fits?</b>",
+   "options": [
+    {
+     "t": "Give the report subagent a narrow company-lookup tool for single-field checks; consolidation questions still go to the coordinator.",
+     "why": "Correct. A limited cross-role tool removes the round trip for the frequent, simple case, while the rarer reconciliation work stays with the coordinator, which can delegate it properly."
+    },
+    {
+     "t": "Have the coordinator look up names and tickers for the companies it expects to appear and pass them as a table in the subagent's prompt.",
+     "why": "Runner-up. Passing needed facts explicitly in the prompt is good practice and would win if the companies were known in advance. Most of them first appear in quoted passages, so a table built from the outline misses them."
+    },
+    {
+     "t": "Give the report subagent the web-search subagent's full toolset and let it settle any company question while it drafts.",
+     "why": "Incorrect. Off-specialisation tools tend to be misused, and reconciling subsidiaries is research the coordinator should own. A narrow tool covers the common case without that risk."
+    },
+    {
+     "t": "Have the report subagent mark each unresolved company detail and send the coordinator one batch of checks after drafting.",
+     "why": "Incorrect. Batching cuts round trips but leaves formatting blocked on unresolved details, and the coordinator still handles 82% of checks that need no coordination."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Most companies first appear inside quoted passages, so they cannot be resolved from the outline in advance; if the companies were all known up front, a prefetched table in the prompt would do the job without a new tool.",
+   "explanation": "Scope each agent's tools to its role, then make a deliberate exception for a high-frequency, simple need: a narrow cross-role tool. Keep work that needs coordination flowing through the coordinator.",
+   "eli5": {
+    "question": "The report helper keeps asking the boss small questions, and each one costs 25 seconds. The question asks for the best fix. The clue is: most of the companies it checks first appear inside quoted passages, not in the coordinator's outline. So nobody can look them up in advance.",
+    "answer": "Picture a writer who walks to the editor's office every time they need a company's ticker symbol. Give the writer a small phone book for simple lookups, and keep sending the hard questions to the editor. In agent terms that phone book is a <b>narrow cross-role tool</b>: limited, for one frequent, simple need. Complex reconciliation still goes through the coordinator, which can delegate it properly. <b>Rule: give a helper a small tool for its frequent simple need; keep the hard cases with the coordinator.</b>",
+    "options": [
+     "Correct. A small lookup tool for one-field checks; the hard reconciliation questions still go to the coordinator.",
+     "Runner-up. Handing over a ready-made table (<b>explicit context</b>) works when you know the companies in advance. Most appear only in quoted passages.",
+     "Giving the writer every research tool (<b>over-provisioning</b>) invites misuse, and reconciliation is research the coordinator should own.",
+     "Saving questions for one batch at the end (<b>batching</b>) leaves formatting stuck, and the coordinator still handles all the simple checks."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the clean answer is either <b>'route everything through the coordinator'</b> or <b>'pre-load everything the subagent might need'</b>. Both are good habits. But pre-loading only works when you can predict the need, and routing everything wastes time on trivial lookups. The guide's middle path is a <b>scoped cross-role tool</b> for the high-frequency simple case.",
+    "mapTitle": "Subagent needs outside help mid-task: who should supply it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Frequent, simple, uniform lookups",
+       "Narrow cross-role tool for the subagent",
+       "Removes round trips without broad access"
+      ],
+      [
+       "Needed facts are known before the subagent starts",
+       "Pass them explicitly in its prompt",
+       "No tool or round trip needed"
+      ],
+      [
+       "Rare, complex questions needing several sources",
+       "Route via the coordinator",
+       "It can delegate and sees all results"
+      ],
+      [
+       "Next step depends on other subagents' findings",
+       "Coordinator decides",
+       "Only it sees everything"
+      ],
+      [
+       "Subagent holds tools outside its role",
+       "Restrict its tool list",
+       "Off-role tools get misused"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "82% of these checks are one-field lookups, such as a legal entity name or an exchange ticker",
+      "means": "Most needs are frequent and simple: the profile for a narrow tool."
+     },
+     {
+      "quote": "the rest ask whether a subsidiary's revenue is already counted in its parent's figure, which means reconciling several filings",
+      "means": "The hard minority needs real research, so it should stay with the coordinator. This rules out handing over full search tools (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "About 60% of the companies checked first appear inside quoted source passages rather than in the coordinator's outline",
+      "means": "The quiet decider. Most companies can't be predicted, so a prefetched table (<b>[[1]]</b>, the runner-up) misses them."
+     },
+     {
+      "quote": "Each check travels through the coordinator and adds roughly 25 seconds",
+      "means": "Batching (<b>[[3]]</b>) still routes the simple checks through the coordinator. <b>[[0]]</b> removes the trip for the common case."
+     }
+    ],
+    "rule": "Scope tools to the role, then add one narrow exception for the high-frequency simple need. Complex cases stay with the coordinator.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Scoped access; limited cross-role tools for high-frequency needs."
+    }
+   }
+  },
+  {
+   "id": "s3-05",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Provenance through synthesis",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A client found that a report attributed a 14% churn figure to an industry survey that never mentions churn, and a spot check then found about one claim in eleven cited to the wrong source. Document-analysis summaries hold separate fields for document name, page and URL. The synthesis subagent reads those summaries and writes continuous prose; the report generator then attaches a citation to each sentence by finding the summary it most resembles. <b>Which change addresses the root cause?</b>",
+   "options": [
+    {
+     "t": "Add an independent reviewer instance that checks each cited claim against its source before the report is released.",
+     "why": "Runner-up. An independent reviewer is the right tool when you need to catch errors before release. It would win if the question asked how to stop bad citations reaching clients this week; it leaves the pipeline still guessing citations."
+    },
+    {
+     "t": "Make document analysis return its summaries with content and source metadata held in separate structured fields.",
+     "why": "Incorrect. That separation is good practice, and the summaries already have it. The link between claim and source is lost later, when synthesis turns them into prose."
+    },
+    {
+     "t": "Raise the report generator's similarity threshold and leave a sentence uncited when no summary matches it closely.",
+     "why": "Incorrect. A stricter threshold trades wrong citations for missing ones. Matching after the fact is still inference, not the record of where a claim came from."
+    },
+    {
+     "t": "Have synthesis emit each claim with the IDs of the summaries it used, and build the citations from those links.",
+     "why": "Correct. Attribution is lost when synthesis compresses without keeping claim-to-source mappings. Carrying the mapping through synthesis removes the guesswork at its source."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Citations are rebuilt by resemblance after synthesis has already discarded the claim-to-source link, and the question asks for the root cause; if it asked for the fastest way to stop bad citations reaching clients, an independent review pass would win.",
+   "explanation": "Source attribution is lost when summarisation or synthesis compresses content without preserving claim-source mappings. Preserve the mapping structurally through every stage instead of reconstructing it downstream.",
+   "eli5": {
+    "question": "Citations point to the wrong sources. The question asks for the root cause. The clue is: citations are added after the prose is written, by finding the summary each sentence most resembles. The angry client and the churn figure are the vivid part; they tempt you toward a checker.",
+    "answer": "Imagine writing an essay from twenty sets of notes, then afterwards guessing which notes each sentence came from by how similar they look. You will guess wrong sometimes. The fix is to write the source next to each claim as you write it. In the pipeline, synthesis should output each claim with links to the summaries it used (<b>claim-source mappings</b>), and citations are built from those links. <b>Rule: carry the source with the claim; never rebuild it afterwards.</b>",
+    "options": [
+     "Runner-up. A second checker (<b>independent review</b>) catches bad citations before release. It would win if the question asked for a quick safety net, but the pipeline would still be guessing.",
+     "Keeping source details in separate fields (<b>structured metadata</b>) is good, and the summaries already do it. The link is lost later, at synthesis.",
+     "A stricter similarity score swaps wrong citations for missing ones. It is still guessing.",
+     "Correct. Synthesis records which summaries each claim came from, and citations use those links."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>wrong citations need a better checker</b>. A checker catches mistakes; it doesn't stop them being made. The mistakes come from a design that <b>throws away</b> the claim-to-source link during synthesis and then tries to <b>guess it back</b> by similarity. The root fix is to keep the link the whole way.",
+    "diagram": "analysis: summary{doc,page,url}  <- source kept\nsynthesis: flowing prose         <- link DROPPED\nreport: match sentence~summary   <- link GUESSED\nfix: synthesis emits claim -> [summary ids]",
+    "mapTitle": "Citations wrong? Find the stage where the link breaks",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Citations guessed after prose is written",
+       "Synthesis drops claim-source links",
+       "Emit claim-to-source mappings from synthesis"
+      ],
+      [
+       "Summaries have no document or page info",
+       "Analysis output format",
+       "Structured fields: content separate from metadata"
+      ],
+      [
+       "Links are carried, but a few are still wrong",
+       "Occasional model error",
+       "Independent review pass before release"
+      ],
+      [
+       "Sources disagree, one figure chosen silently",
+       "Conflict handling",
+       "Show both with attribution"
+      ],
+      [
+       "Figures look contradictory but differ by year",
+       "Dates missing",
+       "Carry publication or collection dates"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "a spot check then found about one claim in eleven cited to the wrong source",
+      "means": "This is a steady error rate, not a one-off: something systematic is wrong."
+     },
+     {
+      "quote": "Document-analysis summaries hold separate fields for document name, page and URL",
+      "means": "The analysis stage already keeps the source, which rules out <b>[[1]]</b>."
+     },
+     {
+      "quote": "The synthesis subagent reads those summaries and writes continuous prose",
+      "means": "Here the link between claim and source is dropped."
+     },
+     {
+      "quote": "the report generator then attaches a citation to each sentence by finding the summary it most resembles",
+      "means": "Here it is guessed back. A stricter threshold (<b>[[2]]</b>) still guesses."
+     },
+     {
+      "quote": "Which change addresses the root cause?",
+      "means": "A reviewer (<b>[[0]]</b>, the runner-up) catches symptoms. The root cause is the dropped link, fixed by <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Carry claim-to-source mappings through every stage. Rebuilding attribution after the fact is guessing.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Source attribution is lost when summarization compresses without claim-source mappings."
+    }
+   }
+  },
+  {
+   "id": "s3-06",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Conflicting & temporal sources",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "In a cloud-security market report, the synthesis subagent stated the market size as $7.1B. Two other reputable sources gathered in the same run gave $4.2B and $4.6B, and analysts only learned of them by reading raw subagent output. The document-analysis summaries record each figure and the source it came from, but nothing about when it was measured. The research director's rule is that analysts, not the system, settle disputed numbers, and the report must give them enough to do it. <b>Which TWO changes best meet this rule?</b>",
+   "options": [
+    {
+     "t": "When figures disagree, have the coordinator commission a targeted search for a third independent source before synthesis continues.",
+     "why": "Runner-up. Re-delegating to fill a gap is sound practice, and more evidence can help. But it does not show analysts the disagreement or tell them how the figures differ; the system would still be the one presenting a settled answer."
+    },
+    {
+     "t": "Report every disagreeing figure side by side with its source attribution and an explicit note that the sources conflict.",
+     "why": "Correct. Annotating conflicting statistics with their sources, instead of picking one, puts the dispute in front of the analyst who is meant to settle it."
+    },
+    {
+     "t": "Rank sources by publisher reputation and report the top-ranked figure, listing the others in a footnote.",
+     "why": "Incorrect. This is still the system choosing, and reputation is a weak proxy: here all three sources are reputable."
+    },
+    {
+     "t": "Have the synthesis subagent attach a numeric confidence score to each figure it reports.",
+     "why": "Incorrect. Self-reported confidence is poorly calibrated, and a score on one number does not show the analyst the competing figures."
+    },
+    {
+     "t": "Require each extracted statistic to carry its publication or collection date from analysis through to the report.",
+     "why": "Correct. Without dates, a 2022 survey and a 2025 estimate look like a contradiction. Dates let analysts tell real disagreement from figures measured at different times."
+    }
+   ],
+   "answer": [
+    1,
+    4
+   ],
+   "runnerUp": 0,
+   "decider": "The director wants analysts to settle disputes and the summaries carry no measurement dates; if the goal were for the system itself to resolve the dispute more reliably, a targeted search for more evidence would be one of the two.",
+   "explanation": "Annotate conflicting statistics with source attribution instead of picking one, and carry publication or collection dates so temporal differences are not misread as contradictions. Both preserve what a reader needs to judge for themselves.",
+   "eli5": {
+    "question": "Sources disagree about a market's size, and the system quietly picked one. The question asks which two changes let analysts settle disputes themselves. The clue is: the summaries record nothing about when each figure was measured. A disagreement might really be two different years.",
+    "answer": "Think of a referee's job versus a reporter's. The director wants the system to report, not referee. So the report should show every disagreeing figure with where it came from (<b>attribution</b>), and each figure should carry its date (<b>publication or collection date</b>). With both, an analyst can see the dispute and tell a real disagreement from 'this one is from 2022'. <b>Rule: when sources disagree, show both with sources and dates; don't pick one.</b>",
+    "options": [
+     "Runner-up. Hunting for a third source (<b>re-delegation</b>) is sound research, but the system would still be the one deciding. Analysts still wouldn't see the dispute or the dates.",
+     "Correct. Show every disagreeing figure side by side with its source, and say they conflict.",
+     "Ranking by reputation is still the system choosing, and all three sources are reputable.",
+     "A self-reported confidence number (<b>self-rated confidence</b>) is poorly calibrated and hides the competing figures.",
+     "Correct. Carry each figure's date so analysts can spot figures from different years."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the system's job is to <b>find the right number</b>, so more evidence or a smarter tie-break must help. Here the director has said the opposite: <b>analysts settle disputes</b>. Then the system's job is to <b>show the dispute and give the context</b> needed to judge it, and the most common hidden context is <b>time</b>.",
+    "mapTitle": "Two sources disagree: what should the report do?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Reputable sources give different figures",
+       "Show all of them with source attribution and note the conflict",
+       "Picking one hides information"
+      ],
+      [
+       "Figures may come from different years",
+       "Carry publication/collection dates",
+       "Time differences look like contradictions"
+      ],
+      [
+       "The system itself must resolve a gap in evidence",
+       "Re-delegate a targeted search, re-synthesise",
+       "Fills gaps when resolution is the system's job"
+      ],
+      [
+       "Claims lose their sources during synthesis",
+       "Claim-to-source mappings",
+       "Keeps attribution intact"
+      ],
+      [
+       "Mixed content types in one report",
+       "Render financial data as tables, news as prose",
+       "Each type read correctly"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the synthesis subagent stated the market size as $7.1B",
+      "means": "The system chose silently: the behaviour to stop."
+     },
+     {
+      "quote": "Two other reputable sources gathered in the same run gave $4.2B and $4.6B",
+      "means": "All are reputable, so ranking by reputation (<b>[[2]]</b>) has nothing to go on."
+     },
+     {
+      "quote": "The document-analysis summaries record each figure and the source it came from, but nothing about when it was measured",
+      "means": "The quiet decider. Sources are there, dates are not. That points to <b>[[4]]</b>."
+     },
+     {
+      "quote": "analysts, not the system, settle disputed numbers, and the report must give them enough to do it",
+      "means": "The report must show the dispute: <b>[[1]]</b>. A third-source search (<b>[[0]]</b>) and a confidence score (<b>[[3]]</b>) still leave the system deciding."
+     }
+    ],
+    "rule": "Conflicting figures: annotate them with sources and dates, and let the reader judge. Don't arbitrarily pick one.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "annotate conflicting statistics with source attribution (don't arbitrarily pick one)"
+    }
+   }
+  },
+  {
+   "id": "s3-07",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Error propagation to a coordinator",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The document-analysis subagent is assigned fifteen documents from the internal library. It analyses seven; every request for the remaining eight returns the MCP error 'access denied: collection restricted to the M&amp;A desk'. Today the subagent retries each one four times with backoff, which takes about six minutes, then returns 'analysis failed' as its entire output, and the coordinator stops the run. Other collections hold related but less specific material. <b>What should the subagent do instead?</b>",
+   "options": [
+    {
+     "t": "Keep the backoff retries for the eight documents, then pass the coordinator their identifiers along with the seven finished analyses.",
+     "why": "Runner-up. Local retry before propagating is right for transient faults such as timeouts, and passing partial results up is right too. A permission denial will not clear on retry, so the six minutes are wasted and the error's nature is not reported."
+    },
+    {
+     "t": "Replace the eight documents with the closest matches from open collections and complete the analysis without raising an error.",
+     "why": "Incorrect. Quietly substituting weaker material suppresses the failure. The coordinator and the analyst never learn that the report rests on less specific sources."
+    },
+    {
+     "t": "Stop retrying; return the seven analyses plus a structured error naming the category, the eight documents and open alternatives.",
+     "why": "Correct. Structured error context (failure type, what was attempted, partial results, alternatives) lets the coordinator choose: proceed with partial coverage, re-scope, or ask the analyst."
+    },
+    {
+     "t": "Escalate each denial to the analyst as it occurs and hold the run until access to the restricted collection is granted.",
+     "why": "Incorrect. Human escalation has its place, but pausing on each denial skips the coordinator, which owns recovery and may well proceed with partial coverage."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The error is a permission denial, which retrying cannot fix; if the failures were timeouts, retrying locally before reporting up with partial results would be the better first move.",
+   "explanation": "Subagents should recover locally where recovery is possible and propagate what they cannot resolve as structured error context with partial results. Generic failure strings, silent suppression and stopping on a single failure all deny the coordinator what it needs to recover.",
+   "eli5": {
+    "question": "A helper hit a locked door on eight documents and gave up on everything. The question asks what it should do instead. The clue is: the error says 'access denied', which is a permission problem. Retrying a locked door doesn't open it.",
+    "answer": "Picture a courier who delivers seven parcels, finds a locked gate for the other eight, knocks for six minutes, then calls the office to say 'failed'. Better: stop knocking, report the seven delivered, say which eight are stuck and why, and mention a side entrance. That report is <b>structured error context</b>: what failed, why, what was done, and options. Then the boss (the <b>coordinator</b>) decides. <b>Rule: report what failed, why, and what you already have, so the coordinator can choose.</b>",
+    "options": [
+     "Runner-up. Retrying first (<b>local recovery</b>) is right for temporary faults like timeouts. A permission denial won't clear, so the retries waste six minutes.",
+     "Quietly swapping in weaker documents (<b>silent suppression</b>) hides the failure from everyone.",
+     "Correct. Stop retrying; send back the seven results with a clear, labelled error and alternatives.",
+     "Pausing for a human on every denial skips the coordinator, which may be happy to go on with partial coverage."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>retry-then-report</b> is always the mature pattern. It is, for <b>transient</b> errors such as timeouts. A permission error is not transient: no amount of backoff opens a restricted collection. The skill is to classify the error, stop retrying when retry can't help, and pass up <b>structured context with partial results</b>.",
+    "diagram": "Error type      Retry locally?   Report up with\ntimeout         yes, then...     query + partials\naccess denied   no               category, docs,\n                                 partials, options\nvalid empty     no               'no results' (ok)",
+    "mapTitle": "A subagent's tool call failed: what goes back to the coordinator?",
+    "map": {
+     "head": [
+      "What happened",
+      "Local action",
+      "What to return"
+     ],
+     "rows": [
+      [
+       "Transient fault (timeout, 503)",
+       "Retry with backoff",
+       "If still failing: structured error + partial results"
+      ],
+      [
+       "Permission or access denied",
+       "Don't retry",
+       "Category, affected items, partial results, alternatives"
+      ],
+      [
+       "Bad input (validation)",
+       "Fix the input and retry",
+       "Only if unfixable: the validation detail"
+      ],
+      [
+       "Search succeeded, found nothing",
+       "Nothing to recover",
+       "A valid empty result, clearly not an error"
+      ],
+      [
+       "Any failure",
+       "Never hide it or substitute silently",
+       "Generic 'failed' and fake success both block recovery"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It analyses seven; every request for the remaining eight returns the MCP error 'access denied: collection restricted to the M&A desk'",
+      "means": "The quiet decider: a permission error, not a timeout. Retrying (<b>[[0]]</b>, the runner-up) can't fix it."
+     },
+     {
+      "quote": "Today the subagent retries each one four times with backoff, which takes about six minutes",
+      "means": "Wasted time on an error that retry cannot fix."
+     },
+     {
+      "quote": "then returns 'analysis failed' as its entire output, and the coordinator stops the run",
+      "means": "A generic status throws away seven good analyses and leaves the coordinator nothing to work with."
+     },
+     {
+      "quote": "Other collections hold related but less specific material",
+      "means": "An alternative the coordinator might choose; swapping it in silently (<b>[[1]]</b>) hides the downgrade."
+     },
+     {
+      "quote": "What should the subagent do instead?",
+      "means": "Recovery is the coordinator's call, not a human pause (<b>[[3]]</b>). <b>[[2]]</b> gives it everything it needs."
+     }
+    ],
+    "rule": "Retry only what can recover. Otherwise return structured error context with partial results and alternatives, and let the coordinator decide.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Structured error context (failure type, attempted query, partial results, alternatives) enables coordinator recovery."
+    }
+   }
+  },
+  {
+   "id": "s3-08",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Adaptive decomposition",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Every request runs the same chain: search, document analysis, synthesis, then a 4,000-word report. About a third of requests are single-fact questions, such as a competitor's most recent funding round, which analysts usually ask while on a call with a client. Those runs still take 9–12 minutes and cost about $3 each, and finance has flagged the monthly bill. Broad landscape questions, the other two-thirds, are well served by the full chain. <b>Which change best addresses this?</b>",
+   "options": [
+    {
+     "t": "Let the coordinator choose subagents per request, giving single-fact questions a search and a short answer.",
+     "why": "Correct. The coordinator should select subagents by query complexity. Single-fact questions get a fast, cheap path; landscape questions keep the full pipeline."
+    },
+    {
+     "t": "Send the single-fact questions through the Message Batches API and keep the full chain in real time for landscape work.",
+     "why": "Runner-up. Batch processing halves cost and suits work nobody is waiting for. These questions are asked live on client calls, and batch results can take up to 24 hours."
+    },
+    {
+     "t": "Have the coordinator emit the four stage delegations as parallel Task calls instead of waiting for each stage to finish.",
+     "why": "Incorrect. Parallel spawning suits independent work. Each stage here consumes the previous stage's output, and running them together would not make a single-fact run need fewer stages."
+    },
+    {
+     "t": "Cap each run's iterations at a fixed count and return the best answer the pipeline has produced when the cap is hit.",
+     "why": "Incorrect. An arbitrary cap is a weak stopping rule; it truncates landscape reports as well, and single-fact runs would still pass through every stage."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Single-fact questions are asked while analysts are on a client call; if they could wait until the next day, sending them through the Message Batches API would cut cost with less design change.",
+   "explanation": "A fixed pipeline suits work whose shape is known in advance. When incoming requests vary in complexity, the coordinator should choose which subagents to invoke per request rather than route everything through the full chain.",
+   "eli5": {
+    "question": "Simple questions go through the whole expensive pipeline. The question asks for the best fix. The clue is: analysts ask these questions while on a call with a client. Finance's bill is the vivid part, and it tempts you toward the cheapest option.",
+    "answer": "Picture a restaurant that cooks a five-course meal every time someone asks for a glass of water. The head waiter should decide per order what the kitchen needs to do. Here the coordinator should pick which helpers each request needs (<b>dynamic subagent selection</b>): a single fact gets a search and a short answer, a broad question gets the full chain. That cuts both the bill and the wait. <b>Rule: match the pipeline to the question; don't run every request through every stage.</b>",
+    "options": [
+     "Correct. The coordinator picks helpers per request, so single facts take a short path.",
+     "Runner-up. The overnight queue (<b>Message Batches API</b>) halves cost, but results can take up to 24 hours. These questions are asked live on calls.",
+     "Running stages together (<b>parallel Task calls</b>) needs independent work. Each stage here needs the previous one's output.",
+     "A fixed step limit (<b>iteration cap</b>) is a crude stop and would cut the big reports short too."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a cost complaint calls for a <b>cost tool</b>, and the Batches API is the textbook 50% saving. But batch has <b>no latency promise</b> (up to 24 hours), so it only fits work nobody is waiting for. The real waste is that <b>a single-fact question runs a four-stage pipeline</b>. Fixing that cuts cost and wait together.",
+    "mapTitle": "Runs too slow or too costly: what kind of fix fits?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Simple requests run the full pipeline",
+       "Coordinator selects subagents by query complexity",
+       "Short path for short questions"
+      ],
+      [
+       "Cost matters and nobody waits for results",
+       "Message Batches API",
+       "50% cheaper, up to 24 hours"
+      ],
+      [
+       "Someone is waiting for the answer",
+       "Real-time calls",
+       "Batch has no latency guarantee"
+      ],
+      [
+       "Independent subtasks run in series",
+       "Parallel Task calls",
+       "Time becomes the slowest, not the sum"
+      ],
+      [
+       "Loop needs a stopping rule",
+       "stop_reason, not an arbitrary cap",
+       "Caps truncate good work"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every request runs the same chain: search, document analysis, synthesis, then a 4,000-word report",
+      "means": "A fixed pipeline for every request; the stages depend on each other, so parallel delegation (<b>[[2]]</b>) doesn't fit."
+     },
+     {
+      "quote": "which analysts usually ask while on a call with a client",
+      "means": "The quiet decider: someone is waiting. This rules out the batch API (<b>[[1]]</b>, the runner-up)."
+     },
+     {
+      "quote": "Those runs still take 9–12 minutes and cost about $3 each, and finance has flagged the monthly bill",
+      "means": "The vivid symptom. It invites a pure cost fix, but the wait matters too."
+     },
+     {
+      "quote": "Broad landscape questions, the other two-thirds, are well served by the full chain",
+      "means": "Only the simple third needs a different path. A cap (<b>[[3]]</b>) would hurt the good two-thirds. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "When requests vary in complexity, let the coordinator choose which subagents each one needs. Use batch only when nobody is waiting.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Dynamically select subagents rather than always routing the full pipeline"
+    }
+   }
+  },
+  {
+   "id": "s3-09",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resources",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Each run, the document-analysis subagent spends its first 12–18 MCP calls on the firm's research library, listing folders and opening sample files to learn what each collection holds and how its metadata fields are named, before it analyses anything. The librarians add or reorganise collections most weeks. These exploratory results also crowd the subagent's context, and analysis quality drops on large assignments. <b>Which change best removes this overhead?</b>",
+   "options": [
+    {
+     "t": "Spawn a separate exploration subagent at the start of each run that maps the library and returns a short summary of it.",
+     "why": "Incorrect. Delegating discovery isolates its verbose output, which helps the context problem, but the same 12–18 calls still happen on every run."
+    },
+    {
+     "t": "Publish the library's collection list, folder hierarchy and field definitions on its MCP server as readable resources.",
+     "why": "Correct. MCP resources expose content catalogues such as document hierarchies and schemas, so the agent can read what exists instead of discovering it through exploratory tool calls, and the server keeps them current."
+    },
+    {
+     "t": "Write the library's collection taxonomy and metadata field names into the document-analysis subagent's system prompt.",
+     "why": "Runner-up. A static description in the system prompt would remove the exploration if the library rarely changed. Collections change most weeks, so a hand-written taxonomy goes stale."
+    },
+    {
+     "t": "Add a search_catalogue tool that takes keywords and returns the matching collections with their metadata field names.",
+     "why": "Incorrect. A keyword search still makes the agent guess what to ask for, one call at a time. The need is to see what exists, which is catalogue content, not an action."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Collections change most weeks, so a hand-written taxonomy would go stale; if the library were stable, writing its structure into the system prompt would remove the exploration just as well.",
+   "explanation": "MCP tools perform actions; MCP resources expose content the agent can read. Catalogues, document hierarchies and schemas belong in resources, which is how you cut exploratory tool calls while keeping the content current.",
+   "eli5": {
+    "question": "A helper spends its first dozen calls just finding out what is in the library. The question asks how to remove that. The clue is: librarians add or reorganise collections most weeks. The crowded context is vivid, and it tempts you to hide the exploring instead of removing it.",
+    "answer": "Picture a library with no catalogue: every visitor walks the shelves to find out what is there. Put a catalogue at the door, kept up to date by the librarians, and visitors just read it. In MCP, that catalogue is a <b>resource</b>: content the agent can read directly, as opposed to a <b>tool</b>, which is an action it must call. The server keeps it current as collections change. <b>Rule: things to read go in resources; things to do go in tools.</b>",
+    "options": [
+     "Sending a scout ahead (<b>exploration subagent</b>) keeps the mess out of the main context, but the same calls still happen every run.",
+     "Correct. Publish the catalogue (collections, folders, fields) as MCP resources the agent can read.",
+     "Runner-up. Writing the catalogue into the instructions (<b>system prompt</b>) works if the library rarely changes. It changes most weeks, so it would go stale.",
+     "A keyword search tool still makes the agent guess what to ask for. It needs to see what exists."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the problem is <b>where the exploration happens</b> (main context vs a helper) or <b>how many calls</b> it takes. The deeper point is that the agent is using <b>actions to learn facts</b> that could simply be published. MCP has a primitive for exactly this: <b>resources</b>, content catalogues the agent reads instead of discovering.",
+    "diagram": "Tool:     agent -> list_folders() -> open() -> ...\n          (12-18 calls, every run)\nResource: server publishes catalogue -> agent reads\n          (kept current by the server)",
+    "mapTitle": "Agent wastes calls learning what exists: where should that knowledge live?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Agent explores to learn a catalogue, hierarchy or schema",
+       "MCP resources",
+       "Readable content, kept current by the server"
+      ],
+      [
+       "The structure is small and rarely changes",
+       "Describe it in the system prompt",
+       "Static facts can be stated once"
+      ],
+      [
+       "Agent must find specific items by query",
+       "A search tool with a clear description",
+       "That is an action"
+      ],
+      [
+       "Discovery is unavoidable and very verbose",
+       "Delegate to a subagent that returns a summary",
+       "Keeps the main context clean"
+      ],
+      [
+       "Agent prefers a built-in over a better MCP tool",
+       "Improve the MCP tool description",
+       "Descriptions drive selection"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "listing folders and opening sample files to learn what each collection holds and how its metadata fields are named",
+      "means": "It is using actions to learn catalogue facts: the job of a resource."
+     },
+     {
+      "quote": "The librarians add or reorganise collections most weeks",
+      "means": "The quiet decider. A hand-written taxonomy in the prompt (<b>[[2]]</b>, the runner-up) would go stale."
+     },
+     {
+      "quote": "These exploratory results also crowd the subagent's context, and analysis quality drops on large assignments",
+      "means": "The vivid symptom. Moving the exploring into a helper (<b>[[0]]</b>) hides it but still pays for it every run."
+     },
+     {
+      "quote": "Which change best removes this overhead?",
+      "means": "Remove, not move. A search tool (<b>[[3]]</b>) still makes the agent guess. <b>[[1]]</b>."
+     }
+    ],
+    "rule": "If an agent spends tool calls learning what exists, publish that as an MCP resource. Tools are for actions, resources are for content.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "MCP resources expose content catalogs (issue summaries, doc hierarchies, schemas) to reduce exploratory tool calls."
+    }
+   }
+  },
+  {
+   "id": "s3-10",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Session forking",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "After an 11-minute gathering phase, a session holds the full text of 40 retrieved filings and earnings-call transcripts. A client wants two scenario analyses from it: one assuming a 2027 tariff increase, one assuming none. Each analysis must be able to quote any passage of the gathered material, and neither should be influenced by the other's reasoning. The gathering phase is billed to the client and should run once. <b>Which session strategy fits best?</b>",
+   "options": [
+    {
+     "t": "Write a structured summary of the gathered material and start two new sessions from it, one for each tariff assumption.",
+     "why": "Runner-up. A fresh session seeded with a structured summary is the safer choice when tool results are stale or context is crowded. Here the analyses must quote any passage, and a summary keeps only what it chose to keep."
+    },
+    {
+     "t": "Resume the session for the tariff-increase analysis, then resume it again afterwards for the no-increase analysis.",
+     "why": "Incorrect. Resuming continues one line of conversation, so the second analysis would sit on top of the first one's reasoning."
+    },
+    {
+     "t": "Ask for both analyses in a single request in the existing session, with a separate heading for each tariff assumption.",
+     "why": "Incorrect. One response written in one context lets each analysis shape the other, which the client ruled out."
+    },
+    {
+     "t": "Branch the session twice from its state after gathering, and continue each branch under one of the tariff assumptions.",
+     "why": "Correct. Forking (fork_session) creates independent branches from a shared baseline: both keep every gathered document, neither sees the other's reasoning, and gathering runs once."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Each analysis must be able to quote any passage of the gathered material; if they needed only the main findings, two fresh sessions from a structured summary would serve.",
+   "explanation": "--resume continues a conversation linearly; fork_session creates independent branches from a shared baseline. When you need divergent continuations of the same established state, with the full state intact, fork.",
+   "eli5": {
+    "question": "One expensive research session must feed two separate analyses. The question asks how to set up the sessions. The clue is: each analysis must be able to quote any passage of the gathered material. A summary would not keep every passage.",
+    "answer": "Think of photocopying a full research folder so two teams each get the complete original. Neither sees the other's notes, and nobody has to redo the research. In sessions that is a <b>fork</b>: two independent branches from the same saved point (<b>fork_session</b>). Each branch keeps everything gathered, and neither is shaped by the other. <b>Rule: two different directions from the same starting point means fork.</b>",
+    "options": [
+     "Runner-up. Starting fresh from a written summary (<b>fresh session with a structured summary</b>) is right when old results are stale or space is tight. A summary can't hold every passage.",
+     "Picking up the same session twice (<b>--resume</b>) continues one line, so the second analysis sits on top of the first.",
+     "Writing both in one reply lets each shape the other, which the client ruled out.",
+     "Correct. Branch twice from the point after gathering; each branch keeps everything."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>any way of reusing the gathered work</b> is fine, so a tidy summary is the safe choice. A summary is safe for <b>continuing</b> one task with fresh context. But it <b>keeps only what it chose to keep</b>. When each branch must quote anything, and the branches must not influence each other, you need full copies of the same state: a <b>fork</b>.",
+    "diagram": "gather (11 min, once)\n       |\n   [baseline: 40 docs in context]\n      /                 \\\n fork A: tariff up    fork B: no tariff\n (full docs, own reasoning) (full docs, own reasoning)",
+    "mapTitle": "Continuing from earlier work: resume, fork, or start fresh?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Two independent directions from the same full state",
+       "fork_session",
+       "Each branch has the full baseline, neither sees the other"
+      ],
+      [
+       "Continue one line of work, nothing changed",
+       "--resume",
+       "Picks up the same conversation"
+      ],
+      [
+       "Continue after files changed a little",
+       "--resume and tell the agent what changed",
+       "Refresh the stale parts only"
+      ],
+      [
+       "Old tool results are widely stale, or context is crowded",
+       "New session with a structured summary",
+       "Cleaner than resuming on stale data"
+      ],
+      [
+       "Only the main findings matter for the next step",
+       "New session with a structured summary",
+       "Compact, full detail not needed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "a session holds the full text of 40 retrieved filings and earnings-call transcripts",
+      "means": "The valuable state is the full text, not just conclusions."
+     },
+     {
+      "quote": "Each analysis must be able to quote any passage of the gathered material",
+      "means": "The quiet decider: a summary would drop passages. This rules out the runner-up <b>[[0]]</b>."
+     },
+     {
+      "quote": "neither should be influenced by the other's reasoning",
+      "means": "Rules out resuming in sequence (<b>[[1]]</b>) and one combined answer (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "The gathering phase is billed to the client and should run once",
+      "means": "Both analyses must start from one gathering run. Forking does that: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Divergent continuations from a shared baseline: fork. Linear continuation: resume. Stale or crowded: fresh session with a summary.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "fork_session creates independent branches from a shared baseline."
+    }
+   }
+  },
+  {
+   "id": "s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Built-in tool selection",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Before turning on a strict type checker, the engineer wants a list of every generated protobuf module in the repository so they can be excluded. The code generator names each output file after its proto with a <code>_pb2.py</code> suffix and writes a 'Generated by the protocol buffer compiler' comment at the top. Some generated modules are leftovers from protos deleted years ago and sit in no build target, and an old formatter pass rewrote the opening lines of many Python files. <b>Which approach produces the list most reliably?</b>",
+   "options": [
+    {
+     "t": "Use Glob with the pattern <code>**/*_pb2.py</code> to list the generated modules by their file paths.",
+     "why": "Correct. Glob matches file paths, and every generated module follows the naming rule, including the orphaned ones."
+    },
+    {
+     "t": "Use Grep for the protocol-compiler header comment and take every file that contains it as the list.",
+     "why": "Runner-up. Content search is right when the marker is reliable and file names are not. The formatter rewrote opening lines, so some generated files no longer carry the header."
+    },
+    {
+     "t": "Use Grep with a regular expression on <code>_pb2</code> to find the import lines that name generated modules.",
+     "why": "Incorrect. That finds files that import generated modules, not the modules themselves, and misses orphans nobody imports."
+    },
+    {
+     "t": "Read the build configuration that drives the generator and list each output file that it declares.",
+     "why": "Incorrect. The build configuration only knows current targets; the leftovers from deleted protos are in no build target."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The formatter rewrote opening lines, so the header is unreliable while the file-name rule holds for every generated module; if file names were inconsistent and the header intact, Grep would be the right tool.",
+   "explanation": "Glob answers 'which files have names like this'; Grep answers 'which files contain this text'. Pick the one whose signal is reliable for the question being asked.",
+   "eli5": {
+    "question": "The engineer needs a list of all generated protobuf files. The question asks which method finds them reliably. The clue is: an old formatter rewrote the opening lines of many files, so the header comment may be gone. The file names, though, always end in <code>_pb2.py</code>.",
+    "answer": "Think of finding every invoice in a filing cabinet. If every invoice folder is labelled 'INV-…' but some stamps inside were smudged, you go by the labels. <b>Glob</b> searches by file name and path (the labels); <b>Grep</b> searches inside the files (the stamps). The name rule holds for every generated file, including old leftovers. <b>Rule: when the file name is the reliable signal, use Glob; when the contents are, use Grep.</b>",
+    "options": [
+     "Correct. List the files by name pattern with Glob.",
+     "Runner-up. Searching inside files for the header (<b>Grep</b>) works if the header is reliable. The formatter rewrote it in many files.",
+     "This finds files that <i>import</i> generated modules, not the modules themselves.",
+     "The build config only knows current targets; leftovers from deleted protos aren't in it."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>Grep is the universal search tool</b> and a header comment is the surest marker. Grep searches <b>contents</b>; Glob matches <b>paths</b>. Which is right depends on <b>which signal is trustworthy</b> for this question. Here contents were damaged and names were not.",
+    "mapTitle": "Which built-in tool answers this question?",
+    "map": {
+     "head": [
+      "Question you are asking",
+      "Tool",
+      "Watch out for"
+     ],
+     "rows": [
+      [
+       "Which files have names like this?",
+       "Glob",
+       "Only paths are matched, never contents"
+      ],
+      [
+       "Which files contain this text?",
+       "Grep",
+       "Only as good as the text marker"
+      ],
+      [
+       "What does this file say?",
+       "Read",
+       "Read selectively, not everything"
+      ],
+      [
+       "Change one unique spot in a file",
+       "Edit",
+       "Needs a unique text match"
+      ],
+      [
+       "Rewrite a file, or Edit can't find a unique match",
+       "Read + Write",
+       "Write replaces the whole file"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The code generator names each output file after its proto with a _pb2.py suffix",
+      "means": "A reliable naming rule: a Glob pattern can match it."
+     },
+     {
+      "quote": "Some generated modules are leftovers from protos deleted years ago and sit in no build target",
+      "means": "Rules out reading the build config (<b>[[3]]</b>), and leftovers that nobody imports defeat the import search (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "an old formatter pass rewrote the opening lines of many Python files",
+      "means": "The quiet decider: the header marker is unreliable, which rules out the runner-up <b>[[1]]</b>."
+     },
+     {
+      "quote": "Which approach produces the list most reliably?",
+      "means": "The name rule holds for every file: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Glob for names and paths, Grep for contents. Choose the one whose signal you can trust.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools",
+     "quote": "Grep = content search; Glob = file path patterns"
+    }
+   }
+  },
+  {
+   "id": "s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit failure fallback",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A generated 900-line deployment config holds four stanzas, one per environment, rendered from the same template, so they differ only in where they sit in the file. Each contains <code>timeout = 30</code>, and only the third, staging, must become 60. Claude's <code>Edit</code> call fails with an error saying the old text matches four locations. The project's permission settings allow <code>Bash</code> for read-only commands only. <b>What should Claude do?</b>",
+   "options": [
+    {
+     "t": "Retry the Edit with a longer old_string that takes in enough neighbouring lines to match a single location.",
+     "why": "Runner-up. Widening the match is the usual first response to a non-unique Edit. It fails here because the stanzas come from one template, so any amount of surrounding text is identical in all four."
+    },
+    {
+     "t": "Run Edit with replace_all to set every timeout to 60, then edit the other three back to 30 one at a time.",
+     "why": "Incorrect. After the first step, the three stanzas to restore are again identical to each other, so the follow-up edits hit the same non-unique match."
+    },
+    {
+     "t": "Read the whole file, change the value inside the third stanza, and Write the complete file back.",
+     "why": "Correct. Edit needs a unique text match. When none exists, the documented fallback is Read plus Write, where position in the file can be used."
+    },
+    {
+     "t": "Run sed through Bash with an address range covering the third stanza's line numbers to change the value.",
+     "why": "Incorrect. Bash is restricted to read-only commands here, and editing by line number from the shell bypasses the file tools the session is set up to use."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The stanzas are rendered from one template, so no amount of neighbouring text is unique; if the surrounding lines differed between environments, widening the Edit match would be the simpler fix.",
+   "explanation": "Edit makes targeted changes identified by a unique text match. When no unique match can exist, fall back to Read plus Write rather than forcing Edit or going around the file tools.",
+   "eli5": {
+    "question": "Claude must change one value in one of four identical blocks, and Edit refuses because the text appears four times. The question asks what to do. The clue is: the blocks come from the same template, so the text around them is identical too.",
+    "answer": "Imagine a 'find and replace' that only works when the phrase appears exactly once. If four paragraphs are word-for-word identical, no amount of extra surrounding words will make one unique. So you open the whole document, change the third one by its position, and save the whole file. In Claude Code that is <b>Read</b> the file, then <b>Write</b> it back. <b>Rule: if Edit can't find a unique match, fall back to Read + Write.</b>",
+    "options": [
+     "Runner-up. Adding more surrounding text (<b>a wider match</b>) is the usual fix. It fails here because every block's surroundings are identical too.",
+     "After changing all four, the three to restore are identical again, so the same problem returns.",
+     "Correct. Read the file, change the third block by position, and write the file back.",
+     "The shell is limited to read-only commands here, so a <code>sed</code> edit isn't allowed."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a failed <code>Edit</code> just needs <b>a longer, more specific match</b>. Usually it does. But Edit locates text by <b>content</b>, and when blocks are rendered from one template, every amount of surrounding content is identical. Only <b>position</b> tells them apart, and position is what Read + Write can use.",
+    "diagram": "[dev]     timeout = 30   <- same text\n[test]    timeout = 30   <- same text\n[staging] timeout = 30   <- change this one\n[prod]    timeout = 30   <- same text\nEdit finds by text; only position differs",
+    "mapTitle": "Edit failed: what is the next move?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Match not unique, but nearby lines differ",
+       "Match too short",
+       "Widen old_string with nearby lines"
+      ],
+      [
+       "Match not unique, surroundings identical everywhere",
+       "Content can't identify the spot",
+       "Read + Write the whole file"
+      ],
+      [
+       "Every occurrence should change",
+       "Nothing wrong",
+       "Edit with replace_all"
+      ],
+      [
+       "Text not found at all",
+       "File changed since it was read",
+       "Re-read the file, then edit"
+      ],
+      [
+       "Change is a full rewrite",
+       "Edit is the wrong tool",
+       "Write the file"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "rendered from the same template, so they differ only in where they sit in the file",
+      "means": "The quiet decider: only position differs, so widening the match (<b>[[0]]</b>, the runner-up) can't work."
+     },
+     {
+      "quote": "Each contains timeout = 30, and only the third, staging, must become 60",
+      "means": "One occurrence of four must change. replace_all then restoring (<b>[[1]]</b>) recreates the same identical blocks."
+     },
+     {
+      "quote": "Claude's Edit call fails with an error saying the old text matches four locations",
+      "means": "The vivid symptom. It invites a longer match."
+     },
+     {
+      "quote": "The project's permission settings allow Bash for read-only commands only",
+      "means": "Rules out sed (<b>[[3]]</b>). That leaves <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Edit needs a unique text match. When the text can't be unique, Read the file and Write it back.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools",
+     "quote": "When Edit fails on non-unique match → Read + Write fallback."
+    }
+   }
+  },
+  {
+   "id": "s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP configuration scoping",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team wants Claude's GitHub MCP server available to anyone working in this repository, including contractors who join for two-week engagements and must be productive in their first session. Each person authenticates with their own personal access token, and a security scanner checks every commit for credentials. Dana is also trialling an early observability MCP server that she uses across three repositories; it sometimes crashes on start-up, and nobody else has asked for it. <b>Which configuration best fits?</b>",
+   "options": [
+    {
+     "t": "Commit <code>.mcp.json</code> with both servers reading tokens from environment variables, and let teammates without the second token ignore its error.",
+     "why": "Incorrect. Sharing an unstable experimental server with everyone pushes Dana's trial onto the whole team, start-up crashes included."
+    },
+    {
+     "t": "Have each engineer add the GitHub server to their own <code>~/.claude.json</code> with their token, and Dana adds the trial server there too.",
+     "why": "Runner-up. User-level configuration keeps secrets out of git and is right for personal servers. But a shared server defined per person does not reach a contractor on day one without manual setup."
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with the GitHub server reading <code>${GITHUB_TOKEN}</code>, and have Dana describe her trial server in the project CLAUDE.md.",
+     "why": "Incorrect. The first half is right, but CLAUDE.md supplies instructions, not MCP server configuration; the trial server would not be registered."
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with the GitHub server reading <code>${GITHUB_TOKEN}</code>, and have Dana register the trial server in her <code>~/.claude.json</code>.",
+     "why": "Correct. Project-level .mcp.json shares the server with everyone through version control, environment-variable expansion keeps each token out of the repository, and user-level configuration holds a personal, experimental server across all of Dana's repositories."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Contractors must be productive in their first session, so the shared server has to come with the repository; if only a few long-standing engineers used it, per-person user-level setup would be acceptable.",
+   "explanation": "Use project-level .mcp.json for servers the team shares and user-level ~/.claude.json for personal or experimental ones. Environment-variable expansion such as ${GITHUB_TOKEN} lets a committed configuration reference a per-person secret without containing it.",
+   "eli5": {
+    "question": "Where should two MCP servers be configured? The question asks for the setup that fits everyone. The clue is: contractors must be productive in their first session, so the GitHub server has to come with the repository. Dana's crashy trial server is for her only.",
+    "answer": "Think of a shared office kitchen and your own desk drawer. Things everyone needs go in the kitchen (the project's <b>.mcp.json</b>, committed to git). Personal experiments go in your drawer (your user file, <b>~/.claude.json</b>). Each person's key stays in their own pocket: the shared file names a placeholder like <code>${GITHUB_TOKEN}</code> (<b>environment-variable expansion</b>), not the real secret. <b>Rule: shared servers in .mcp.json with env-var tokens; personal ones in ~/.claude.json.</b>",
+    "options": [
+     "Putting Dana's unstable trial server in the shared file pushes its crashes onto everyone.",
+     "Runner-up. Personal setup files (<b>~/.claude.json</b>) keep secrets out of git, but contractors wouldn't get the GitHub server on day one without manual setup.",
+     "CLAUDE.md is written guidance, not server configuration. The trial server would never be registered.",
+     "Correct. Shared GitHub server in .mcp.json with a token placeholder; Dana's trial server in her own file."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>'keep secrets out of git'</b> means <b>'keep the configuration out of git'</b>. It doesn't. The committed <code>.mcp.json</code> can reference each person's token through <b>environment-variable expansion</b>, so the configuration is shared and the secret isn't. Personal and experimental servers belong at user level, which also follows Dana across repositories.",
+    "diagram": "repo/.mcp.json (committed, everyone)\n  github: token = ${GITHUB_TOKEN}\n~/.claude.json (Dana only, all her repos)\n  observability-trial",
+    "mapTitle": "Where does this MCP server belong?",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Where",
+      "Secret handling"
+     ],
+     "rows": [
+      [
+       "Everyone on the team, from first clone",
+       "Project .mcp.json (committed)",
+       "${VAR} expansion; each person sets the variable"
+      ],
+      [
+       "One person, experimental or personal",
+       "User ~/.claude.json",
+       "Stays on their machine"
+      ],
+      [
+       "One person, across many repositories",
+       "User ~/.claude.json",
+       "Configured once for all repos"
+      ],
+      [
+       "Instructions on how to use a server",
+       "CLAUDE.md",
+       "Not configuration; no servers registered"
+      ],
+      [
+       "A token written into a committed file",
+       "Nowhere",
+       "Use expansion instead"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "including contractors who join for two-week engagements and must be productive in their first session",
+      "means": "The quiet decider: the server must come with the repository. Per-person setup (<b>[[1]]</b>, the runner-up) fails this."
+     },
+     {
+      "quote": "Each person authenticates with their own personal access token, and a security scanner checks every commit for credentials",
+      "means": "Tokens can't be committed, so the shared file must use <code>${GITHUB_TOKEN}</code>."
+     },
+     {
+      "quote": "she uses across three repositories; it sometimes crashes on start-up, and nobody else has asked for it",
+      "means": "Personal and unstable: user level, not the shared file (<b>[[0]]</b>). CLAUDE.md (<b>[[2]]</b>) can't register a server."
+     },
+     {
+      "quote": "Which configuration best fits?",
+      "means": "<b>[[3]]</b> satisfies all three needs."
+     }
+    ],
+    "rule": "Team servers go in the project .mcp.json with ${VAR} tokens; personal or experimental servers go in ~/.claude.json.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Scoping: project-level .mcp.json (shared) vs user-level ~/.claude.json (personal/experimental)."
+    }
+   }
+  },
+  {
+   "id": "s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tools vs built-ins",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team runs an MCP server over the language-server index that resolves definitions and references across the monorepo, including generated API clients and vendored packages that text search attributes wrongly. Its one tool, <code>lookup</code>, has the description 'Search code.' When the engineer asks where a method is defined, Claude uses <code>Grep</code> about nine times in ten and often lands on a generated stub's same-named method. The team maintains both the server and the shared CLAUDE.md. <b>What is the most effective fix?</b>",
+   "options": [
+    {
+     "t": "Add a CLAUDE.md section telling Claude to use the lookup tool rather than Grep for any question about definitions or references.",
+     "why": "Incorrect. A standing instruction can nudge selection, but it works around the tool's description rather than fixing it, and the description is what the model weighs first when choosing."
+    },
+    {
+     "t": "Rewrite the tool's description: what it finds that text search misattributes, its input format, sample queries, when to pick it.",
+     "why": "Correct. Tool descriptions are the main signal for tool choice. Stating what the tool can do that text search cannot, with inputs and examples, lets Claude prefer it on its merits."
+    },
+    {
+     "t": "Rename lookup to resolve_symbol and split it into separate definition and reference tools with typed inputs.",
+     "why": "Runner-up. Renaming and splitting a generic tool is good design and would win if Claude were confusing several overlapping tools. The problem here is that nothing tells Claude this tool handles generated and vendored code."
+    },
+    {
+     "t": "Deny Grep in the project's permission settings and leave lookup as the only code-search tool available to Claude.",
+     "why": "Incorrect. Grep is the right tool for plain text searches; removing it to force a choice breaks those searches instead of making the better tool recognisable."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Claude loses to Grep because nothing it reads says the tool resolves generated and vendored code; if several similar tools were being confused with each other, renaming and splitting would be the fix.",
+   "explanation": "When an agent prefers a built-in over a more capable MCP tool, the usual cause is a description that does not distinguish them. State the input formats, example queries, edge cases and boundaries, especially the cases the built-in handles badly.",
+   "eli5": {
+    "question": "Claude has a smart code-lookup tool but keeps using plain text search instead. The question asks for the most effective fix. The clue is: the tool's whole description is 'Search code.', and the team can edit it. Nothing tells Claude what the tool does better.",
+    "answer": "Imagine two drawers: one labelled 'Search code' and a familiar one labelled 'Grep'. You'd reach for the familiar one. Claude picks tools mostly by their labels (<b>tool descriptions</b>). Write a label that says what this tool can do that text search can't, such as resolving symbols in generated and vendored code, with input format and example queries. <b>Rule: if Claude ignores a better tool, first fix the tool's description.</b>",
+    "options": [
+     "A note in CLAUDE.md can nudge Claude, but the label it reads first still says almost nothing.",
+     "Correct. Rewrite the description to say what it finds that text search gets wrong, with inputs and examples.",
+     "Runner-up. Renaming and splitting a vague tool (<b>purpose-specific tools</b>) helps when several similar tools get confused. Here the problem is that nothing says what this tool is good at.",
+     "Blocking Grep breaks plain text searches, which Grep is right for."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think Claude ignores the MCP tool because <b>Grep is a built-in favourite</b>, so you must forbid Grep or order Claude around. Actually the model chooses mostly from <b>tool descriptions</b>. 'Search code.' sounds exactly like Grep, so Claude has no reason to prefer it. Tell it what the tool does that Grep can't.",
+    "mapTitle": "Claude picks the wrong tool: where is the fix?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Better MCP tool ignored; its description is vague",
+       "Description doesn't distinguish it",
+       "Rewrite: capabilities, inputs, examples, when to prefer"
+      ],
+      [
+       "Several similar tools confused with each other",
+       "Generic overlapping tools",
+       "Rename and split into purpose-specific tools"
+      ],
+      [
+       "Misroutes follow specific words in requests",
+       "System-prompt wording",
+       "Rewrite that wording"
+      ],
+      [
+       "You can't edit a third-party tool's description",
+       "Description out of reach",
+       "Guidance in CLAUDE.md"
+      ],
+      [
+       "A tool must never be used here",
+       "Permissions",
+       "Deny it in settings"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "including generated API clients and vendored packages that text search attributes wrongly",
+      "means": "The tool's real advantage, which Grep lacks."
+     },
+     {
+      "quote": "Its one tool, lookup, has the description 'Search code.'",
+      "means": "The description says nothing about that advantage: it reads like Grep."
+     },
+     {
+      "quote": "often lands on a generated stub's same-named method",
+      "means": "Claude doesn't know the tool handles generated code. A new name or split (<b>[[2]]</b>, the runner-up) doesn't tell it that either."
+     },
+     {
+      "quote": "The team maintains both the server and the shared CLAUDE.md",
+      "means": "The description can be edited, so no workaround in CLAUDE.md (<b>[[0]]</b>) is needed, and denying Grep (<b>[[3]]</b>) is heavy-handed. <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Descriptions drive tool choice. If a more capable MCP tool loses to a built-in, describe what it does that the built-in can't.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  },
+  {
+   "id": "s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Incremental exploration",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The engineer's first task is to explain why some refunds in currencies without minor units post to the ledger one unit short. To get oriented, they asked Claude to read the whole <code>payments/</code> package, 120 files and about 40,000 lines, before asking anything. The session is now at 70% of its context window, and Claude's answers lean on 'typical payment patterns' rather than this code. Only a handful of modules touch rounding. <b>What should the engineer do instead?</b>",
+   "options": [
+    {
+     "t": "Run /compact to condense the loaded package, then keep asking the refund questions in the same session.",
+     "why": "Incorrect. Compacting frees space, but the session's understanding is still a broad read of 120 files, now compressed further. The rounding path was never traced."
+    },
+    {
+     "t": "Have an Explore subagent read the whole package and return a module-by-module summary for the main session to work from.",
+     "why": "Runner-up. Delegating verbose discovery to an Explore subagent is right when you need a broad map. For one specific bug, a summary of every module still is not a trace of the code that matters."
+    },
+    {
+     "t": "Search for the rounding and ledger-posting code first, then open files one at a time along the refund's call path.",
+     "why": "Correct. Build understanding incrementally: Grep for entry points, then Read to follow imports and trace the one flow that matters, spending context only on relevant code."
+    },
+    {
+     "t": "Keep a scratchpad file of key findings while reading through the package, and reread it whenever answers turn generic.",
+     "why": "Incorrect. Scratchpad files help preserve findings across long sessions, but they do not change the strategy of reading everything first."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The task is one specific bug in a few rounding modules; if the engineer needed a broad map of the whole package, delegating the full read to an Explore subagent would fit.",
+   "explanation": "Read everything up front and you spend the context budget before the question is known. Use Grep to find entry points, then Read to follow imports and trace the relevant flow.",
+   "eli5": {
+    "question": "Claude read 120 files up front and now gives vague answers. The question asks what to do instead. The clue is: the task is one specific bug, and only a handful of modules touch rounding. The full context window is vivid and tempts you toward ways of handling it.",
+    "answer": "Think of fixing a leaking tap. You don't read the plans for the whole building first; you find the tap and follow its pipe. Here: search for the rounding and ledger code (<b>Grep</b>), then open files one at a time along the refund's path (<b>Read</b>). Context is spent only on code that matters. <b>Rule: find the entry point, then follow the trail. Don't read everything first.</b>",
+    "options": [
+     "Squeezing the loaded files (<b>/compact</b>) frees space, but the rounding path was never traced.",
+     "Runner-up. A helper that reads everything and summarises (<b>Explore subagent</b>) is right when you need a map of the whole package. For one bug, a summary isn't a trace.",
+     "Correct. Search for the rounding code first, then follow the refund's path file by file.",
+     "Notes in a file (<b>scratchpad</b>) keep findings safe, but it's still read-everything-first."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>more context means better answers</b>, so the fix is to handle the big read better: compress it, delegate it, take notes. The guide says the opposite: <b>reading everything first is the anti-pattern</b>. Answers turn generic because the relevant code is a sliver of what was loaded. For a specific question, search for the entry point and follow it.",
+    "diagram": "Read-all:  120 files -> 70% context -> generic answers\nTargeted:  Grep 'round' -> 4 modules\n           Read refund.py -> follow import\n           Read ledger.py -> found the cut",
+    "mapTitle": "Understanding unfamiliar code: which strategy fits the goal?",
+    "map": {
+     "head": [
+      "Goal",
+      "Right strategy",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Answer one specific question or bug",
+       "Grep for entry points, then Read along the flow",
+       "Context goes only to relevant code"
+      ],
+      [
+       "Get a broad map of a large area",
+       "Explore subagent returns a summary",
+       "Verbose discovery stays out of the main context"
+      ],
+      [
+       "Session long, context near full",
+       "/compact or a scratchpad of key findings",
+       "Keeps what matters across boundaries"
+      ],
+      [
+       "Answers start citing 'typical patterns'",
+       "Context degradation",
+       "Narrow the scope; restart from findings"
+      ],
+      [
+       "Need to design a change across many files",
+       "Plan mode (with Explore if discovery is heavy)",
+       "Explore before committing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The engineer's first task is to explain why some refunds in currencies without minor units post to the ledger one unit short",
+      "means": "One specific bug: a targeted question."
+     },
+     {
+      "quote": "they asked Claude to read the whole payments/ package, 120 files and about 40,000 lines, before asking anything",
+      "means": "Read-everything-first: the documented anti-pattern. Notes (<b>[[3]]</b>) don't change it."
+     },
+     {
+      "quote": "Claude's answers lean on 'typical payment patterns' rather than this code",
+      "means": "Context degradation: the vivid symptom. /compact (<b>[[0]]</b>) treats the symptom."
+     },
+     {
+      "quote": "Only a handful of modules touch rounding",
+      "means": "The quiet decider: the relevant code is small and findable. A whole-package summary (<b>[[1]]</b>, the runner-up) isn't needed. <b>[[2]]</b>."
+     }
+    ],
+    "rule": "For a specific question, Grep for the entry point and Read along the flow. Reading everything first wastes the context you need.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools",
+     "quote": "Build understanding incrementally: Grep entry points → Read to follow imports/trace flows (not read-all-upfront)."
+    }
+   }
+  },
+  {
+   "id": "s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resumption with stale state",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Yesterday the engineer spent two hours with Claude designing a retry change across nine files and stopped with three of them edited. Overnight a teammate's merge renamed <code>backoff_delay()</code> to <code>compute_backoff()</code> in one of the six untouched files; nothing else in the change set moved. After <code>--resume</code>, Claude's next edit targeted the old name and failed. The session is at 35% of its context window. <b>What is the best next step?</b>",
+   "options": [
+    {
+     "t": "Keep the resumed session, tell Claude about the rename in that one file, and have it re-read the file.",
+     "why": "Correct. Resumption restores the conversation, not the files. When one known file changed, telling the agent about it and re-reading that file is the proportionate fix."
+    },
+    {
+     "t": "Start a new session seeded with a structured summary of the design, the edited files and the remaining work.",
+     "why": "Runner-up. A fresh session from a structured summary beats resuming when many cached tool results are stale. Here one file changed, and the session holds two hours of design context with room to spare."
+    },
+    {
+     "t": "Fork the session from yesterday's state and continue the change on the new branch against the merged code.",
+     "why": "Incorrect. Forking copies the same stale view of the files into a new branch; it is for divergent approaches, not for refreshing state."
+    },
+    {
+     "t": "Run /compact in the resumed session to clear out the old tool results, then carry on with the next planned edit.",
+     "why": "Incorrect. Compacting summarises the old file contents rather than refreshing them, and the session is not short of space."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Only one file changed and the session is at 35% of its window; if many files had moved, a fresh session seeded with a structured summary would be more reliable.",
+   "explanation": "Inform the agent about file changes when resuming after modifications. When a lot has moved, starting a new session with a structured summary is more reliable than resuming with stale tool results.",
+   "eli5": {
+    "question": "Claude resumed yesterday's session, but a teammate renamed a function overnight, and Claude's edit failed. The question asks for the best next step. The clue is: only one file changed, and the session has plenty of room left.",
+    "answer": "Imagine coming back to a half-built bookshelf and finding that one shelf was swapped overnight. You don't throw away your plan and start over; you note the swapped shelf and carry on. Resuming restores the conversation, not the files on disk. So tell Claude what changed and have it re-read that one file. <b>Rule: small change since you paused, tell the agent; big change, start fresh with a summary.</b>",
+    "options": [
+     "Correct. Tell Claude about the rename and have it re-read that one file.",
+     "Runner-up. Starting fresh from a written summary (<b>new session with a structured summary</b>) is better when lots changed. Here one file changed and the session is healthy.",
+     "A copy of the session (<b>fork</b>) carries the same out-of-date view of the files.",
+     "Squeezing the conversation (<b>/compact</b>) summarises the old file contents; it doesn't refresh them."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think a failed edit after <code>--resume</code> means <b>the resumed session is broken</b> and must be thrown away. The guide gives two tools: <b>tell the agent what changed</b>, or <b>start fresh with a structured summary</b>. Which one depends on <b>how much changed</b>. One renamed function in one file is a small, known change.",
+    "diagram": "--resume restores:   conversation + old tool results\n--resume does NOT:   re-read files on disk\nsmall change -> tell agent + re-read that file\nmany changes -> new session + structured summary",
+    "mapTitle": "Coming back to work: how much has changed?",
+    "map": {
+     "head": [
+      "Since the session paused",
+      "Right move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Nothing changed",
+       "--resume and continue",
+       "State is still accurate"
+      ],
+      [
+       "One or two known files changed",
+       "Resume, tell the agent, re-read those files",
+       "Cheap, keeps the design context"
+      ],
+      [
+       "Many files moved or refactored",
+       "New session with a structured summary",
+       "Too many stale tool results"
+      ],
+      [
+       "Want two different approaches from here",
+       "fork_session",
+       "Independent branches"
+      ],
+      [
+       "Context is nearly full",
+       "/compact or a fresh session from a summary",
+       "Free space; doesn't refresh files"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Yesterday the engineer spent two hours with Claude designing a retry change across nine files",
+      "means": "The session holds valuable design context."
+     },
+     {
+      "quote": "renamed backoff_delay() to compute_backoff() in one of the six untouched files; nothing else in the change set moved",
+      "means": "The quiet decider: one small, known change. Starting over (<b>[[1]]</b>, the runner-up) is more than needed."
+     },
+     {
+      "quote": "After --resume, Claude's next edit targeted the old name and failed",
+      "means": "The vivid symptom: stale tool results. Forking (<b>[[2]]</b>) copies the same staleness."
+     },
+     {
+      "quote": "The session is at 35% of its context window",
+      "means": "Plenty of room, so /compact (<b>[[3]]</b>) solves nothing. <b>[[0]]</b>."
+     }
+    ],
+    "rule": "After resuming, tell the agent about file changes. If a lot moved, start a new session from a structured summary instead.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "Inform the agent about file changes when resuming after modifications."
+    }
+   }
+  },
+  {
+   "id": "s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 When not to delegate",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Having read about context isolation, the engineer proposes that Claude spawn a subagent for each edit in a six-step change, 'so every edit gets a clean context'. Each step changes a few lines and builds on the result of the step before it, and the engineer reviews every diff in the main session before approving the next. Reading the relevant code takes about 2,000 lines in total, and the session sits at 20% of its window. <b>What is the best approach?</b>",
+   "options": [
+    {
+     "t": "Run the six edits as subagents spawned in one response, then review all six diffs together in the main session.",
+     "why": "Incorrect. Parallel spawning suits independent work. Each step builds on the one before, so running them together breaks the order the change depends on."
+    },
+    {
+     "t": "Use a subagent for each edit, passing it the earlier edits' results and the relevant CLAUDE.md content in its prompt.",
+     "why": "Runner-up. If you delegate, passing prior results explicitly is exactly right. Delegation pays off when work produces verbose output worth isolating; these steps are small and reviewed in the main session."
+    },
+    {
+     "t": "Run /compact in the main session between edits to keep the working context for each edit small.",
+     "why": "Incorrect. Compacting reduces context use, but at 20% of the window there is nothing to reclaim, and each summary risks losing detail the next step needs."
+    },
+    {
+     "t": "Make the six edits in the main session one at a time, with the engineer reviewing each diff as they go.",
+     "why": "Correct. Subagents earn their overhead by isolating verbose work or running independent tasks in parallel. Small, dependent, reviewed steps offer neither, so delegation only adds handoff cost."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The steps are small, dependent and reviewed in the main session, and the context is at 20%; if each step produced long, noisy output, delegating with explicit context would pay off.",
+   "explanation": "Know when not to delegate. Subagents help when verbose output needs isolating or independent work can run in parallel; small sequential edits reviewed in the main session have neither property.",
+   "eli5": {
+    "question": "The engineer wants a separate helper for each tiny edit. The question asks for the best approach. The clue is: each step is small, depends on the step before, and is reviewed in the main session, which is only 20% full.",
+    "answer": "Think of hiring a separate builder for each of six small screws, each needing the previous screw in place, while you inspect every one yourself. The hand-offs cost more than the work. Helpers (<b>subagents</b>) pay off when a job produces lots of noisy output to keep out of the way, or when independent jobs can run at once. Small, dependent, reviewed steps have neither. <b>Rule: delegate to isolate noise or run in parallel; otherwise do it yourself.</b>",
+    "options": [
+     "Running them at once (<b>parallel subagents</b>) needs independent steps. Each step here needs the one before.",
+     "Runner-up. If you do delegate, passing earlier results in (<b>explicit context</b>) is right. It would win if each step made lots of noisy output worth hiding.",
+     "Squeezing the session (<b>/compact</b>) has nothing to reclaim at 20%, and may drop details the next step needs.",
+     "Correct. Make the six edits in the main session, one at a time, reviewing each."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>a clean context is always better</b>, so more subagents mean better edits. But isolation has a price: every subagent starts empty and must be <b>told everything</b> in its prompt, and its results must be passed back. That price is worth paying only when it buys something: <b>isolating verbose output</b> or <b>running independent work in parallel</b>.",
+    "mapTitle": "Should this work go to a subagent?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right choice",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Verbose discovery or long tool output",
+       "Subagent that returns a summary",
+       "Keeps the main context clean"
+      ],
+      [
+       "Several independent tasks",
+       "Parallel subagents in one response",
+       "Run at the same time"
+      ],
+      [
+       "Small, dependent steps reviewed as you go",
+       "Main session, step by step",
+       "Delegation adds hand-off cost, buys nothing"
+      ],
+      [
+       "Dependent task that is large and noisy",
+       "Sequential subagent with earlier results in its prompt",
+       "Isolation pays; context passed explicitly"
+      ],
+      [
+       "Long session filling up",
+       "/compact or a scratchpad",
+       "Reclaim space without delegating"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "so every edit gets a clean context",
+      "means": "The proposal's reason. A clean context only helps if the context is dirty."
+     },
+     {
+      "quote": "Each step changes a few lines and builds on the result of the step before it",
+      "means": "Small and dependent: nothing to isolate and nothing to run in parallel (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "the engineer reviews every diff in the main session before approving the next",
+      "means": "The work and its review already live in the main session."
+     },
+     {
+      "quote": "the session sits at 20% of its window",
+      "means": "The quiet decider: no context pressure. This rules out <b>[[2]]</b> and the runner-up <b>[[1]]</b>. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Subagents earn their cost by isolating verbose output or running independent work in parallel. Without either, keep the work in the main session.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "Scratchpad files persist key findings across boundaries; subagent delegation isolates verbose output."
+    }
+   }
+  },
+  {
+   "id": "s4-08",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.x Tool permissions",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The repository holds application code and, under <code>infra/</code>, the Terraform for production. The team lead's requirements: Claude may read anything, may edit application code without prompting, must not modify any file under <code>infra/</code>, and must not be able to run <code>terraform apply</code>. The restrictions depend only on which paths and commands are involved, not on what a change contains, and they should reach every teammate on clone. <b>Which is the simplest approach that enforces this?</b>",
+   "options": [
+    {
+     "t": "Add a CLAUDE.md section at the repository root stating that infra/ is read-only and Terraform commands are off-limits.",
+     "why": "Incorrect. CLAUDE.md is context the model usually follows. A rule that must hold every time needs enforcement, not instructions."
+    },
+    {
+     "t": "Commit permission rules in <code>.claude/settings.json</code> that deny Edit and Write under infra/ and deny Bash for terraform apply.",
+     "why": "Correct. Permission allow and deny rules enforce path- and command-based limits declaratively, and a committed project settings file reaches everyone on clone."
+    },
+    {
+     "t": "Commit a PreToolUse hook script that inspects each Edit, Write and Bash call and rejects any that touch infra/ or terraform apply.",
+     "why": "Runner-up. A hook also enforces deterministically and would win if the rule depended on what a change contains. For limits that are purely about paths and commands, permission rules do the same with no code to maintain."
+    },
+    {
+     "t": "Have the team work in plan mode for any session that might touch infra/, approving each proposed change by hand.",
+     "why": "Incorrect. Plan mode controls how work proceeds, not what is allowed; it relies on a person catching every risky change."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The limits depend only on paths and commands, not on what a change contains; if the rule had to inspect the content of an edit, a PreToolUse hook would be needed.",
+   "explanation": "Separate enforcement from guidance. Permission rules and hooks enforce; CLAUDE.md informs; plan mode shapes the workflow. Choose the simplest enforcing mechanism that can express the rule.",
+   "eli5": {
+    "question": "Claude must never touch <code>infra/</code> or run <code>terraform apply</code>. The question asks for the simplest approach that actually enforces this. The clue is: the limits depend only on paths and commands, not on what a change contains.",
+    "answer": "Think of a building with locked doors. A sign saying 'staff only' (CLAUDE.md) is a request. A key-card list saying who may open which door (<b>permission rules</b>) is enforcement, and needs no guard. A guard who reads every visitor's paperwork (a <b>hook</b>) also enforces, but you only need one when the rule depends on what is in the paperwork. <b>Rule: if a rule is just about which paths and commands, use permission rules; use a hook when it depends on content.</b>",
+    "options": [
+     "A note in CLAUDE.md is guidance the model usually follows, not a lock.",
+     "Correct. Commit deny rules in <code>.claude/settings.json</code> for edits under infra/ and for terraform apply.",
+     "Runner-up. A checking script (<b>PreToolUse hook</b>) enforces too, and wins when the rule depends on what a change contains. For paths and commands, permission rules do it with no code.",
+     "Plan mode is a way of working, not a lock; it depends on a person catching every risky change."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think the only choice is <b>prompt versus hook</b>, and that hooks are the go-to answer for 'must never'. Hooks are one way to enforce. Claude Code's <b>permission rules</b> are another: they allow or deny tools by path and command, declaratively, and they live in a committed settings file. When a rule needs no inspection of content, the <b>simplest enforcing mechanism</b> is the permission rule.",
+    "mapTitle": "A rule about what Claude may do: which mechanism?",
+    "map": {
+     "head": [
+      "Kind of rule",
+      "Mechanism",
+      "Enforced?"
+     ],
+     "rows": [
+      [
+       "Allow or deny by tool, path or command",
+       "Permission rules in .claude/settings.json",
+       "Yes, declarative"
+      ],
+      [
+       "Depends on the content of the call (amount, field, diff)",
+       "PreToolUse hook",
+       "Yes, with code"
+      ],
+      [
+       "Conventions and context",
+       "CLAUDE.md",
+       "No, guidance only"
+      ],
+      [
+       "Explore and design before changing",
+       "Plan mode",
+       "No, a workflow"
+      ],
+      [
+       "A personal preference only for you",
+       ".claude/settings.local.json or user settings",
+       "Yes, for you only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "must not modify any file under infra/, and must not be able to run terraform apply",
+      "means": "Hard limits that must hold every time: CLAUDE.md (<b>[[0]]</b>) and plan mode (<b>[[3]]</b>) don't enforce."
+     },
+     {
+      "quote": "The restrictions depend only on which paths and commands are involved, not on what a change contains",
+      "means": "The quiet decider: no content inspection is needed, so a hook (<b>[[2]]</b>, the runner-up) is more than required."
+     },
+     {
+      "quote": "they should reach every teammate on clone",
+      "means": "A committed project settings file reaches everyone."
+     },
+     {
+      "quote": "Which is the simplest approach that enforces this?",
+      "means": "Enforced and simplest: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Guidance (CLAUDE.md) is not enforcement. For path and command limits, use permission rules; reach for a hook when the rule depends on content.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Programmatic enforcement (hooks, prerequisite gates) vs prompt-based guidance."
+    }
+   }
+  },
+  {
+   "id": "s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode + Explore delegation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The engineer must work out how legacy invoice generation flows from order close to PDF delivery and propose a refactor; the team lead expects at least two credible designs to choose between. The flow touches about thirty files in four packages, and the code that matters is buried among old export jobs and dead feature flags that share its function names, so locating it means wading through many search hits. <b>Which approach fits best?</b>",
+   "options": [
+    {
+     "t": "Enter plan mode and run the searches and file reads directly in the main session while forming the designs.",
+     "why": "Runner-up. Plan mode is right for an open, multi-file design question, and direct reads are fine when discovery is small. Here the search output is large and mostly irrelevant, and it would crowd the context the designs need."
+    },
+    {
+     "t": "Have an Explore subagent map the flow, then start the refactor in direct execution from its summary.",
+     "why": "Incorrect. The Explore subagent handles discovery well, but going straight to execution skips the design comparison the team lead asked for."
+    },
+    {
+     "t": "Enter plan mode and hand the code discovery to an Explore subagent, drafting the designs from its summary.",
+     "why": "Correct. Plan mode suits architectural work with several valid approaches; the Explore subagent keeps noisy discovery out of the main context and returns a summary to plan from."
+    },
+    {
+     "t": "Ask Claude to interview the engineer about the flow first, then make the refactor directly in small steps.",
+     "why": "Incorrect. The interview pattern surfaces requirements a person holds; the engineer does not know the flow either, and the design comparison is still skipped."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Finding the relevant code means wading through many irrelevant search hits; if discovery were small, plan mode with direct reads would be enough.",
+   "explanation": "Plan mode supports safe exploration and design before committing to changes; an Explore subagent isolates verbose discovery and returns summaries. Work that is both design-open and discovery-heavy uses both.",
+   "eli5": {
+    "question": "The engineer must understand a tangled flow and propose two designs. The question asks which approach fits best. The clue is: finding the right code means wading through many irrelevant search hits. 'Two designs' tempts you to stop at plan mode.",
+    "answer": "Think of planning a house renovation. You plan before you knock down walls (<b>plan mode</b>). But you also send a surveyor to crawl the attic and bring back a short report, so your planning table isn't buried in dust (<b>Explore subagent</b>). This task needs both: an open design choice and noisy discovery. <b>Rule: open design question means plan mode; noisy discovery means Explore. Both together means use both.</b>",
+    "options": [
+     "Runner-up. Planning while searching directly (<b>plan mode alone</b>) is fine when discovery is small. Here the search output is big and mostly irrelevant.",
+     "The surveyor's report is good, but jumping straight to building skips the design choice the lead asked for.",
+     "Correct. Plan mode for the design, with an Explore subagent doing the noisy searching.",
+     "Asking the engineer questions (<b>interview pattern</b>) helps when they know the answer. They don't know this flow either."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think you must <b>pick one mechanism</b>: plan mode or the Explore subagent. They solve different problems and <b>compose</b>. Plan mode protects you from committing before the design is chosen. Explore keeps <b>verbose discovery</b> out of the context you are planning in. This task has both problems.",
+    "diagram": "plan mode (main session: design, no edits)\n  └ Explore subagent: wades through hits\n      returns: 'flow = A -> B -> C, 30 files'\n  -> draft design 1, design 2 from the summary",
+    "mapTitle": "Plan mode, Explore, or both?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Clear, small change",
+       "Direct execution",
+       "Nothing to plan"
+      ],
+      [
+       "Several valid designs, discovery small",
+       "Plan mode, reading directly",
+       "Design first; little noise"
+      ],
+      [
+       "Several valid designs, discovery noisy",
+       "Plan mode plus an Explore subagent",
+       "Design first; noise kept out"
+      ],
+      [
+       "Design settled, location unknown",
+       "Explore subagent, then direct execution",
+       "Only discovery is hard"
+      ],
+      [
+       "Requirements unclear to the engineer",
+       "Interview pattern",
+       "Surface what the person knows"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the team lead expects at least two credible designs to choose between",
+      "means": "Several valid approaches: plan mode. Going straight to execution (<b>[[1]]</b>) or step-by-step edits (<b>[[3]]</b>) skips the design."
+     },
+     {
+      "quote": "The flow touches about thirty files in four packages",
+      "means": "Multi-file, architectural work: plan mode territory."
+     },
+     {
+      "quote": "the code that matters is buried among old export jobs and dead feature flags that share its function names",
+      "means": "Search will return lots of irrelevant hits."
+     },
+     {
+      "quote": "so locating it means wading through many search hits",
+      "means": "The quiet decider: discovery is noisy, so planning with direct reads (<b>[[0]]</b>, the runner-up) would flood the context. <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Plan mode for open design questions; Explore subagent for noisy discovery. When a task has both, use both.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Explore subagent isolates verbose discovery output, returns summaries."
+    }
+   }
+  },
+  {
+   "id": "s4-10",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Sourcing MCP servers",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The team wants Claude to read Jira issues, post comments and move issues through their workflow. An engineer proposes that the team write its own integration, arguing that only the team understands its own process. That process differs from Jira's defaults in two custom fields and a 'QA sign-off' transition, both reachable through Jira's standard API. Several actively maintained open-source servers for Jira already expose issue reads, comments, custom fields and transitions. <b>What is the best recommendation?</b>",
+   "options": [
+    {
+     "t": "Adopt a community-built Jira MCP server and document the two fields and the sign-off step in the project CLAUDE.md.",
+     "why": "Correct. Prefer community MCP servers for standard integrations. The team's conventions are context, and CLAUDE.md is where shared context lives."
+    },
+    {
+     "t": "Have Claude call Jira's HTTP API through Bash and curl, with the endpoints and field IDs documented in CLAUDE.md.",
+     "why": "Incorrect. Raw API calls from the shell give up typed tools, descriptions and structured errors, and put tokens and request-building into every session."
+    },
+    {
+     "t": "Build a small in-house Jira MCP server whose tools encode the team's custom fields and its QA sign-off transition.",
+     "why": "Runner-up. Custom servers are right for systems with no existing integration. Here the differences are reachable through the standard API, which community servers already cover."
+    },
+    {
+     "t": "Expose Jira issues as MCP resources on a lightweight server so Claude can read the backlog as content.",
+     "why": "Incorrect. Resources suit read-only catalogues; commenting and moving issues are actions, which need tools."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The team's differences are reachable through Jira's standard API and community servers already cover them; if the workflow lived in a system with no existing integration, building a custom server would be justified.",
+   "explanation": "Prefer community MCP servers for standard integrations such as Jira, and reserve custom servers for systems that have no equivalent. Team-specific conventions belong in shared context, not in a new server.",
+   "eli5": {
+    "question": "Should the team build its own Jira connector for Claude? The question asks for the best recommendation. The clue is: the team's differences (two custom fields and one transition) are reachable through Jira's standard API, and existing servers already support them.",
+    "answer": "Think of needing a ladder. You buy a standard one and add a sticky note saying 'our shelf is the third rung'. You don't forge your own ladder because your shelves are special. A ready-made, well-kept <b>community MCP server</b> covers Jira; the team's conventions are just notes, and shared notes go in <b>CLAUDE.md</b>. Build your own only for systems nobody else has. <b>Rule: standard system, use a community server; unique system, build one.</b>",
+    "options": [
+     "Correct. Use a maintained community Jira server and write the team's conventions in CLAUDE.md.",
+     "Raw web calls from the shell lose typed tools, clear descriptions and structured errors.",
+     "Runner-up. A custom server (<b>in-house MCP server</b>) is right when no integration exists. Here the standard one already covers the team's fields and transition.",
+     "Read-only content (<b>MCP resources</b>) can't post comments or move issues; those are actions."
+    ]
+   },
+   "deep": {
+    "premise": "You'd think <b>'our workflow is special'</b> means <b>'we need our own server'</b>. Usually the special part is <b>conventions</b>, not missing capabilities. If a standard integration can already reach every field and transition, the conventions are context for Claude. Build custom servers for systems that have no equivalent.",
+    "mapTitle": "Connecting Claude to a system: reuse or build?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right choice",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Standard system with maintained community servers",
+       "Use a community MCP server",
+       "Already built and maintained"
+      ],
+      [
+       "Team-specific fields and conventions",
+       "Describe them in CLAUDE.md",
+       "Conventions are context, not capability"
+      ],
+      [
+       "Proprietary system with no equivalent",
+       "Build a custom MCP server",
+       "Nothing to reuse"
+      ],
+      [
+       "Agent must change things (comment, transition)",
+       "MCP tools",
+       "Actions need tools"
+      ],
+      [
+       "Agent must browse a catalogue",
+       "MCP resources",
+       "Content to read"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team wants Claude to read Jira issues, post comments and move issues through their workflow",
+      "means": "Actions are needed, so resources alone (<b>[[3]]</b>) can't do it."
+     },
+     {
+      "quote": "arguing that only the team understands its own process",
+      "means": "The argument for building custom: it confuses conventions with capabilities."
+     },
+     {
+      "quote": "both reachable through Jira's standard API",
+      "means": "The quiet decider: nothing needs custom capability, which rules out the runner-up <b>[[2]]</b>."
+     },
+     {
+      "quote": "Several actively maintained open-source servers for Jira already expose issue reads, comments, custom fields and transitions",
+      "means": "Reuse beats both building and hand-rolled shell calls (<b>[[1]]</b>). <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Prefer community MCP servers for standard integrations; put team conventions in CLAUDE.md; build custom only when nothing exists.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "prefer community MCP servers for standard integrations (Jira)"
+    }
+   }
+  }
+ ]
+}

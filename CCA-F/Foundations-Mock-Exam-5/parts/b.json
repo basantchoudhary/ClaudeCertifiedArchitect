@@ -1,0 +1,2169 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 Agentic Architecture · D2 Tool Design &amp; MCP · D5 Context &amp; Reliability",
+   "brief": "A market-intelligence firm runs a research system on the Claude Agent SDK. A coordinator delegates through the Task tool to six subagents: web search, filings analysis, document analysis, synthesis, fact-check and report generation. Each subagent runs in its own context. Reports run to about 4,000 words with inline citations, cost about $4.10 per run and take 9–16 minutes."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 Tool Design &amp; MCP · D1 Agentic Architecture · D3 Claude Code Configuration",
+   "brief": "An engineer works in <b>Claude Code</b> on a 400,000-line Python and TypeScript order service, with the built-in tools plus MCP servers for GitHub, Jira and a newly added Sentry server that exposes production error groups. The repository also holds the Terraform for production. The engineer is onboarding two joiners, so shared setup must work for them on clone. Current task: find why one error group spiked after Tuesday's deploy."
+  }
+ ],
+ "questions": [
+  {
+   "id": "s5q-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Task tool & allowedTools",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "To cut cost on small requests, the team built a second coordinator, quick-brief, from the original's configuration. Its prompt was edited to describe when to hand work to the filings-analysis and fact-check subagents, and its tool list was written fresh as <code>Read</code>, <code>WebSearch</code> and <code>WebFetch</code>. In trials, quick-brief returns reasonable reports, but filings figures come from web pages and checks happen inline; traces show no output from either subagent. The original coordinator still delegates to both. <b>What is the most likely cause?</b>",
+   "options": [
+    {
+     "t": "The two subagents' descriptions are too vague for quick-brief's shorter prompt to match a request to either of them.",
+     "why": "Runner-up. Vague descriptions cause missed or wrong delegation, and they would be the first suspect if some subagents ran and these two did not. Here neither ever runs, and the original coordinator reaches them fine, so selection is not the step that fails."
+    },
+    {
+     "t": "The subagents start without the coordinator's history, and with no findings in their prompts they return nothing usable.",
+     "why": "Incorrect. Context isolation is real, but it produces a subagent that runs and returns weak output. The traces show no output at all, meaning neither subagent was started."
+    },
+    {
+     "t": "Quick-brief's <code>allowedTools</code> list lacks \"Task\", and it falls back to doing the work with the tools it holds.",
+     "why": "Correct. Subagents are spawned through the Task tool, and allowedTools must include \"Task\". A tool list rewritten as Read, WebSearch and WebFetch removes the only way to delegate, so quick-brief does the work itself."
+    },
+    {
+     "t": "The prompt presents delegation as optional, and the coordinator favours inline work unless each step names a subagent.",
+     "why": "Incorrect. Goal-style prompts are the recommended style, and a coordinator that can call Task does delegate from them, as the original shows. No wording can start a subagent the coordinator has no tool to spawn."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "explanation": "Delegation has a hard prerequisite: the coordinator must be able to call the Task tool, so <code>allowedTools</code> must include \"Task\". When no subagent runs at all, check capability before tuning descriptions or prompt wording.",
+   "runnerUp": 0,
+   "decider": "Quick-brief's tool list was written fresh as Read, WebSearch and WebFetch and neither subagent ever produces output; if Task were present and only some delegations were skipped, vague subagent descriptions would be the likelier cause.",
+   "eli5": {
+    "question": "A new coordinator never hands work to its helpers. The clue is: its tool list was written fresh as Read, WebSearch and WebFetch. The question is not how well the helpers are described. It is whether the coordinator can hand work over at all.",
+    "answer": "Picture a manager with staff but no way to send them tasks. However clear the job descriptions, nothing gets delegated, so the manager does it all alone. A coordinator hands out work through the <b>Task tool</b>, and that tool must be in its <code>allowedTools</code>. Quick-brief's list left it out. <b>Rule: if no subagent ever runs, check that the coordinator can call Task.</b>",
+    "options": [
+     "Runner-up. Unclear helper descriptions (<b>AgentDefinition descriptions</b>) cause missed hand-offs. This would win if some helpers ran and only these two were skipped.",
+     "Helpers do start with a blank memory (<b>isolated context</b>). That gives weak answers, not no answers. These helpers never started.",
+     "Correct. Without Task in its tool list, quick-brief has no way to start a subagent.",
+     "Prompt wording shapes when to delegate. It cannot give the coordinator a tool it does not have."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat <b>delegation as a prompt-and-description problem</b>: if the coordinator does not delegate, it must not recognise when to. That is only true once the coordinator <i>can</i> delegate. Starting a subagent is itself a tool call, the <b>Task tool</b>. A coordinator whose <code>allowedTools</code> lacks it has nothing to call, however good its prompt.",
+    "diagram": "Coordinator wants to delegate\n └ Task in allowedTools?\n    ├ no  → does the work inline\n    └ yes → descriptions pick the subagent",
+    "mapTitle": "Subagent not doing its job? Find which step of delegation fails",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "<b>No</b> subagent ever starts; coordinator does the work inline",
+       "Coordinator cannot spawn",
+       "Add <code>\"Task\"</code> to the coordinator's <code>allowedTools</code>"
+      ],
+      [
+       "Subagents start, but the wrong one or none for <b>certain</b> requests",
+       "Subagent descriptions",
+       "Sharpen each <code>AgentDefinition</code> description"
+      ],
+      [
+       "Subagent starts but returns generic or off-target work",
+       "Missing context in its prompt",
+       "Pass findings and goals explicitly in the Task prompt"
+      ],
+      [
+       "Independent subagents run one after another",
+       "Spawning pattern",
+       "Emit several Task calls in one response"
+      ],
+      [
+       "Subagent misuses a tool outside its role",
+       "Tool distribution",
+       "Restrict tools in its <code>AgentDefinition</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "its tool list was written fresh as Read, WebSearch and WebFetch",
+      "means": "The quiet clue. Task is not on that list, so quick-brief has no way to spawn anything. This points to <b>[[2]]</b>."
+     },
+     {
+      "quote": "traces show no output from either subagent",
+      "means": "Neither subagent ran at all. A context problem (<b>[[1]]</b>) would show a subagent running and returning weak work."
+     },
+     {
+      "quote": "The original coordinator still delegates to both",
+      "means": "The subagents and their descriptions work when a coordinator can reach them. That weakens <b>[[0]]</b>, the runner-up, and <b>[[3]]</b>."
+     },
+     {
+      "quote": "What is the most likely cause?",
+      "means": "A total absence of delegation points to a missing capability, not to tuning. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "If no subagent ever runs, check that the coordinator can call Task before you tune any descriptions or prompts.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Task tool spawns subagents; allowedTools must include \"Task\"."
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Scope partitioning",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Finance wants the per-run cost down. A trace review finds that in 22% of runs the web-search and filings-analysis subagents both fetch and summarise the same investor presentations, adding about $0.70 each time. Those runs answer broad questions, such as how five listed competitors are positioning on price, and their reports cite material from both subagents. The coordinator spawns the two in parallel with the instructions 'research the competitive landscape' and 'analyse company disclosures'. <b>Which change most directly removes the duplicated work?</b>",
+   "options": [
+    {
+     "t": "Have the coordinator judge each question's breadth and send disclosure-centred questions to the filings subagent alone.",
+     "why": "Runner-up. Choosing subagents by what a question needs is right when one subagent could answer alone. These questions are broad and their reports draw on both subagents, so dropping one loses coverage rather than duplication."
+    },
+    {
+     "t": "Give each subagent named source classes and exclusions: filings and investor decks to one, press coverage to the other.",
+     "why": "Correct. The overlap comes from two remits that both cover company presentations. Partitioning sources explicitly in each delegation makes the territories disjoint, so the duplicate fetches stop while both subagents still run."
+    },
+    {
+     "t": "Return each finding with its URL in a separate metadata field and have the coordinator drop repeated URLs before synthesis.",
+     "why": "Incorrect. Separating content from metadata is good practice, and de-duplicating would tidy the input to synthesis. But the duplicate fetching and summarising has already been paid for by then, so the cost stays."
+    },
+    {
+     "t": "Start filings analysis after web search completes and include the search subagent's complete findings in its prompt.",
+     "why": "Incorrect. Passing complete prior findings forward is right when one step depends on another. Here it serialises two independent subagents, lengthening runs, and leaves their remits overlapping."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "explanation": "When parallel subagents duplicate work, partition their scope in the delegation itself: which sources each covers and what each must leave alone. Dynamic subagent selection cuts cost on narrow questions, but it cannot help when every subagent's coverage is genuinely needed.",
+   "runnerUp": 0,
+   "decider": "The affected runs answer broad questions whose reports cite both subagents, so both are needed; if those runs were narrow disclosure questions, sending them to the filings subagent alone would be the better fix.",
+   "eli5": {
+    "question": "Two helpers keep doing the same research, and it costs money. The clue is: the reports in those runs use material from both helpers, so both are needed. The cost figure is the loud part. It tempts you to drop a helper.",
+    "answer": "Think of two people sent to the same library, one told 'look into competitors' and one 'look into company papers'. Both end up reading the same brochures. The fix is to tell each one which shelves are theirs and which are not (<b>scope partitioning</b>). Both still go, but they stop overlapping. <b>Rule: if two helpers overlap but both are needed, split their territory up front.</b>",
+    "options": [
+     "Runner-up. Sending only the helpers a question needs (<b>dynamic subagent selection</b>) wins for narrow questions. Here both helpers' work ends up in the report.",
+     "Correct. Give each helper its own shelves and say which shelves belong to the other.",
+     "Removing duplicates at the end (<b>de-duplication</b>) tidies the pile. The double work has already been done and paid for.",
+     "Making one helper wait for the other (<b>sequential hand-off</b>) slows the run and still leaves their jobs overlapping."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read <b>a cost complaint as a reason to run fewer subagents</b>. That is right when a question needs only one of them. Here both subagents feed the final report. The waste is that they cover the same ground. <b>Overlap is a boundary problem</b>, fixed by drawing the boundary in the delegation, not by removing a worker.",
+    "mapTitle": "Subagents wasting effort: overlap, overreach or over-running?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Two subagents fetch the <b>same sources</b>; both feed the report",
+       "Remits overlap",
+       "Partition scope: named source classes and exclusions"
+      ],
+      [
+       "Narrow questions run <b>every</b> subagent",
+       "Fixed pipeline",
+       "Coordinator selects subagents by query complexity"
+      ],
+      [
+       "Broad topic, but whole areas missing",
+       "Decomposition too narrow",
+       "Broaden the coordinator's decomposition"
+      ],
+      [
+       "Later subagent genuinely needs earlier results",
+       "Real dependency",
+       "Spawn in sequence; pass complete prior findings"
+      ],
+      [
+       "Claims cited to the wrong copy of a source",
+       "Attribution, not cost",
+       "Structured claim-source metadata"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "in 22% of runs the web-search and filings-analysis subagents both fetch and summarise the same investor presentations",
+      "means": "The vivid symptom: duplicated work with a price tag. It invites cutting a subagent (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "their reports cite material from both subagents",
+      "means": "The quiet clue. Both subagents are needed in these runs, so sending a question to one alone (<b>[[0]]</b>, the runner-up) would lose coverage."
+     },
+     {
+      "quote": "The coordinator spawns the two in parallel with the instructions 'research the competitive landscape' and 'analyse company disclosures'",
+      "means": "Both remits naturally include company presentations, and nothing says where either territory ends. That points to <b>[[1]]</b>."
+     },
+     {
+      "quote": "Which change most directly removes the duplicated work?",
+      "means": "<b>Directly</b> means stopping the duplicate fetches, not cleaning up after them (<b>[[2]]</b>) or serialising the agents (<b>[[3]]</b>). So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Overlap between needed subagents is fixed by partitioning scope in the delegation; dropping subagents is for questions that do not need them.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "partition scope to minimize duplication"
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Coordinator prompt design",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The coordinator's system prompt is a 60-step procedure written around six question shapes: 'Step 1: search the analyst's question. Step 2: extract the companies named…'. On those shapes reports are solid. Last quarter about a third of questions resembled none of the six, and on a question about a pending emissions rule with no named companies, the coordinator worked through the steps into an empty result. Analysts expect the mix of questions to keep widening as new desks adopt the tool. <b>How should the coordinator prompt be rewritten?</b>",
+   "options": [
+    {
+     "t": "Add a worked decomposition for each question shape, including the emissions case, showing how it was split across subagents.",
+     "why": "Runner-up. Worked decompositions help a coordinator generalise and stay consistent, and they would be the best addition if questions came from a stable, known set. With a third of questions matching none of the shapes and the mix widening, examples tied to past shapes still leave the coordinator copying someone else's steps."
+    },
+    {
+     "t": "Keep the procedure and add a branch for questions without named companies that sends them to document analysis first.",
+     "why": "Incorrect. A branch patches the one shape that failed. The next unanticipated shape fails the same way, and the procedure keeps growing."
+    },
+    {
+     "t": "Put a classification step at the top that maps each question to the nearest of the six procedures before delegating.",
+     "why": "Incorrect. Mapping a new question to the nearest old procedure still runs steps that do not fit it; the emissions question would get the wrong steps again."
+    },
+    {
+     "t": "State the research goal and what a finished report must contain, when evidence is enough and when a return falls short.",
+     "why": "Correct. Coordinator prompts work best as goals plus quality criteria. The coordinator then plans steps for any question shape, and the criteria tell it when the evidence is sufficient or a subagent must be asked again."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "explanation": "Write coordinator prompts as goals and quality criteria, not step-by-step procedures. Procedures, branches and shape-specific examples all encode the questions someone anticipated; criteria let the coordinator plan for questions nobody anticipated.",
+   "runnerUp": 0,
+   "decider": "About a third of questions match none of the prepared shapes and the mix is widening; if questions came from a small, stable set, worked decompositions for each shape would be the stronger addition.",
+   "eli5": {
+    "question": "The coordinator follows a long recipe that fits only six kinds of question. The clue is: a third of last quarter's questions fit none of the six, and the mix keeps growing. So the question is how to brief a coordinator for questions nobody planned for.",
+    "answer": "Think of a cook given one recipe card per dish. Ask for a new dish and they are stuck. Tell them instead what a good meal must have, and when a dish is not good enough, and they can plan any dish. That is writing the coordinator prompt as <b>goals plus quality criteria</b>. <b>Rule: brief a coordinator with the goal and the bar it must reach, not the steps.</b>",
+    "options": [
+     "Runner-up. Worked examples (<b>few-shot</b>) help when the menu is fixed and known. Here new dishes keep arriving.",
+     "Adding a branch fixes one new dish. The next new one breaks it again.",
+     "Picking the nearest recipe (<b>classification</b>) still cooks the wrong dish for a truly new request.",
+     "Correct. Say what a good report contains and let the coordinator plan the steps."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the procedure failed because it was incomplete</b>, so you add branches, examples or a classifier. Each of those still decides the steps in advance for shapes someone foresaw. When a large and growing share of questions are new shapes, the coordinator must <b>plan its own steps against a clear standard</b>: the goal and the quality criteria.",
+    "mapTitle": "How should a coordinator be briefed?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Questions arrive in <b>new shapes</b>; the procedure breaks",
+       "Steps fixed in advance",
+       "Goal plus quality criteria; coordinator plans"
+      ],
+      [
+       "Known, stable question types; output <b>inconsistent</b>",
+       "Instructions alone are uneven",
+       "Add 2–4 worked examples"
+      ],
+      [
+       "Steps are regular and predictable, e.g. one pass per file",
+       "Task is regular",
+       "Prompt chaining: a fixed sequence"
+      ],
+      [
+       "Coordinator accepts thin subagent returns",
+       "No sufficiency standard",
+       "State what counts as enough evidence"
+      ],
+      [
+       "Broad topic, whole areas missing",
+       "Decomposition too narrow",
+       "Broaden the decomposition"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator's system prompt is a 60-step procedure written around six question shapes",
+      "means": "The prompt encodes steps, not a standard. It works only where someone foresaw the shape."
+     },
+     {
+      "quote": "Last quarter about a third of questions resembled none of the six",
+      "means": "The quiet clue. Unforeseen shapes are common, not rare, so anything tied to past shapes (<b>[[0]]</b>, <b>[[2]]</b>) keeps failing."
+     },
+     {
+      "quote": "on a question about a pending emissions rule with no named companies, the coordinator worked through the steps into an empty result",
+      "means": "The vivid failure. It tempts a patch for this one shape: a branch (<b>[[1]]</b>) or a worked example (<b>[[0]]</b>, the runner-up)."
+     },
+     {
+      "quote": "Analysts expect the mix of questions to keep widening as new desks adopt the tool",
+      "means": "The problem grows. Only a prompt that lets the coordinator plan for any shape scales: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Brief a coordinator with the goal and the quality bar, and let it choose the steps.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "write coordinator prompts as goals + quality criteria, not step-by-step procedures"
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Iterative refinement loop",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An analyst asked about cold-chain logistics capacity in Brazil, Mexico and Chile. The report covered Brazil and Mexico in depth and gave Chile one sentence. The delegation log shows the coordinator created a subtask for each country; the Chile subagent returned two brief findings and noted that most sources it found were Spanish-language trade journals it could only skim. Roughly one report in six ends up lopsided like this. The coordinator then hands the returns to synthesis. <b>Which addition fixes this most economically?</b>",
+   "options": [
+    {
+     "t": "Have the coordinator check the synthesis draft against the request, re-delegate thin areas, and re-synthesise.",
+     "why": "Correct. The gap appears only after the subagents report back, so the fix is an evaluation step at that point: compare the draft with the request, re-delegate targeted work for what is thin, and re-synthesise. It adds work only to the runs that need it."
+    },
+    {
+     "t": "Have the coordinator split each request more finely up front, by country and by market segment, across more subagents.",
+     "why": "Runner-up. A finer decomposition is the fix when the coordinator leaves part of a topic unassigned. Chile had its own subtask, so the gap opened during research, and splitting further raises the cost of every run."
+    },
+    {
+     "t": "Have synthesis tag each section with its source count and flag sections under a threshold for the analyst to review.",
+     "why": "Incorrect. Surfacing thin coverage is honest reporting, but it hands the gap to the analyst instead of closing it."
+    },
+    {
+     "t": "Have each research subagent repeat its search with broader queries until it returns at least five findings.",
+     "why": "Incorrect. A fixed minimum is an arbitrary threshold. It makes every subagent keep searching, including those whose areas are already covered, and nothing checks whether the report answers the request."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "explanation": "Coordinators should evaluate the synthesis for gaps, re-delegate targeted subtasks and re-synthesise. Fixing the decomposition helps only when part of the request was never assigned.",
+   "runnerUp": 1,
+   "decider": "The delegation log shows a Chile subtask, so the gap arose from what came back, not from the plan; if Chile had been left out of the decomposition, splitting the request more finely would be the fix.",
+   "eli5": {
+    "question": "A three-country report came back nearly silent on one country. The clue is: the coordinator did assign Chile, and the Chile helper came back with very little. So the plan was fine; the follow-up was missing.",
+    "answer": "Think of an editor who assigned three reporters. One files a thin story. A good editor reads the draft, spots the gap, and sends that reporter back with a specific ask. That is an <b>iterative refinement loop</b>: check the synthesis for gaps, re-delegate, re-synthesise. It costs extra only on the reports that need it. <b>Rule: if the gap appears after the work comes back, check and re-delegate.</b>",
+    "options": [
+     "Correct. Read the draft against the request and send targeted follow-ups for what is thin.",
+     "Runner-up. Splitting the work more finely (<b>broader decomposition</b>) fixes a plan that left a country out. This plan did not.",
+     "Labelling thin sections tells the analyst about the gap. It does not close it.",
+     "A minimum count makes every helper search longer, even those already done."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to blame <b>the decomposition</b> whenever a report misses part of a question, because that is the textbook cause. But a decomposition is too narrow only if something was left <i>unassigned</i>. Here every country had a subtask, and one came back thin. <b>Gaps that appear after research need a check-and-re-delegate loop</b>, not a bigger plan.",
+    "diagram": "Plan:   [Brazil] [Mexico] [Chile]   all assigned\nReturn: [deep]   [deep]   [thin]    gap appears here\nFix:    check draft → re-delegate → re-synthesise",
+    "mapTitle": "Report misses part of the question: where did the gap start?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Part of the request <b>never assigned</b> to a subtask",
+       "Decomposition too narrow",
+       "Broaden the coordinator's decomposition"
+      ],
+      [
+       "Part was assigned, but <b>came back thin</b>",
+       "No check after research",
+       "Evaluate synthesis for gaps, re-delegate, re-synthesise"
+      ],
+      [
+       "Subagent hit an error and returned partial results",
+       "Error not surfaced",
+       "Structured error with partial results and attempted query"
+      ],
+      [
+       "Two subagents cover the same ground",
+       "Overlapping remits",
+       "Partition scope in the delegation"
+      ],
+      [
+       "Simple question runs the full pipeline",
+       "Fixed routing",
+       "Select subagents by complexity"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The report covered Brazil and Mexico in depth and gave Chile one sentence.",
+      "means": "The visible symptom: a lopsided report."
+     },
+     {
+      "quote": "The delegation log shows the coordinator created a subtask for each country",
+      "means": "The quiet clue. Chile was in the plan, so a finer decomposition (<b>[[1]]</b>, the runner-up) fixes nothing that went wrong."
+     },
+     {
+      "quote": "the Chile subagent returned two brief findings",
+      "means": "The gap opened during research. Something has to notice it after the returns arrive."
+     },
+     {
+      "quote": "Roughly one report in six ends up lopsided like this.",
+      "means": "Only some runs need extra work. Fixes that add cost to every run (<b>[[1]]</b>, <b>[[3]]</b>) are less economical."
+     },
+     {
+      "quote": "Which addition fixes this most economically?",
+      "means": "Fix, not flag (<b>[[2]]</b>), and only where needed: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Missing from the plan: widen the decomposition. Thin after research: evaluate the synthesis and re-delegate.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "iterative refinement loops (evaluate synthesis for gaps → re-delegate → re-synthesize)"
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-05",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Structured claim-source mapping",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 2,
+   "question": "Spot checks find that 9% of citations in finished reports point at a real, relevant source that does not contain the cited claim. Research subagents return prose paragraphs that mention sources by name in passing. Synthesis merges and rewrites those paragraphs into sections. The report subagent then attaches a URL to each sentence by matching it against every URL gathered in the run. Runs already take 9–16 minutes, and analysts have asked that they get no longer. <b>Which TWO changes together fix attribution?</b>",
+   "options": [
+    {
+     "t": "Have the report subagent open each cited page and drop or re-match any citation whose page lacks the claim.",
+     "why": "Runner-up. Checking each citation against its page would catch mismatches, and it is a fair safety net when the pipeline cannot change. It adds a fetch per citation to runs that must not get longer, and it detects bad matches instead of carrying the right source through."
+    },
+    {
+     "t": "Have research subagents return each finding as fields: claim text, URL, document title and page or section.",
+     "why": "Correct. Attribution is first lost where findings are written as prose. Returning claim and source metadata in separate fields keeps the link as data from the start."
+    },
+    {
+     "t": "Give synthesis few-shot examples of merged paragraphs that keep each source's name beside the sentence it supports.",
+     "why": "Incorrect. Few-shot examples improve consistency, but the source names would still live inside prose, and the report subagent would still guess URLs from them."
+    },
+    {
+     "t": "Have synthesis pass a claim-to-source list to the report subagent as data, one entry for each claim it keeps.",
+     "why": "Correct. Structured findings help only if synthesis keeps the mapping. Passing claim-source pairs on as data lets the report subagent cite from the mapping instead of matching by similarity."
+    },
+    {
+     "t": "Cap each run at its twenty highest-ranked sources and match report sentences against that shorter list.",
+     "why": "Incorrect. Fewer candidates make wrong matches a little less likely, but matching by similarity is still guessing, and the cap cuts research coverage."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "explanation": "Source attribution survives only if claim-source mappings are kept as structured data from the research subagents through synthesis. Fixing only one end leaves the other to rebuild the link by guesswork.",
+   "runnerUp": 0,
+   "decider": "Runs must get no longer, which rules out checking every citation against its page; with time to spare, verification at the end would be a fair alternative. Both upstream changes are needed because the link is lost twice: in prose findings and again in synthesis.",
+   "eli5": {
+    "question": "Citations point to real sources that do not actually say the claim. The clue is: URLs are attached at the very end by matching sentences to a pile of links, and runs must not get any slower. So the question is where the link between a claim and its source gets lost.",
+    "answer": "Think of a parcel passing through three depots. If the address label is never attached, or falls off at the middle depot, the last depot has to guess. The fix is a label stuck on from the start (<b>structured claim and source fields</b>) and kept on at every depot (<b>claim-source mapping through synthesis</b>). You need both. <b>Rule: keep claim and source together as data at every step.</b>",
+    "options": [
+     "Runner-up. Checking every citation at the end (<b>verification</b>) catches errors but adds time to every run. It would be fair if time were not capped.",
+     "Correct. Attach the label at the start: claim and source as separate fields.",
+     "Examples (<b>few-shot</b>) make prose tidier, but the source is still buried in prose.",
+     "Correct. Keep the label on through the middle depot: synthesis passes claim-source pairs on.",
+     "Fewer links makes the guessing slightly easier. It is still guessing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to fix bad citations <b>where they become visible</b>, at the report step, by checking them. But the link between claim and source was lost much earlier, when findings were written as prose, and lost again when synthesis rewrote them. <b>Provenance has to be carried, not recovered</b>: structured at the source and kept through every hand-off.",
+    "diagram": "research ──▶ synthesis ──▶ report\n[prose]      [rewrite]     [guess URL]  today\n[claim+src]  [keep pairs]  [cite pair]  fix",
+    "mapTitle": "Citation wrong? Find where the claim lost its source",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Findings arrive as <b>prose</b> with sources named in passing",
+       "Research output",
+       "Separate fields: claim, URL, title, page"
+      ],
+      [
+       "Synthesis <b>rewrites</b> and drops the links",
+       "Synthesis hand-off",
+       "Pass claim-source mappings through as data"
+      ],
+      [
+       "Pipeline cannot change, and time is available",
+       "Detection only",
+       "Verify each citation against its page"
+      ],
+      [
+       "Two reputable sources disagree on one figure",
+       "Conflict, not attribution",
+       "Show both, each with its source"
+      ],
+      [
+       "Figures disagree because of their dates",
+       "Missing dates",
+       "Record publication and collection dates"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "9% of citations in finished reports point at a real, relevant source that does not contain the cited claim",
+      "means": "Plausible but wrong sources: the signature of guessing by similarity, not of bad research."
+     },
+     {
+      "quote": "Research subagents return prose paragraphs that mention sources by name in passing.",
+      "means": "The link is never stored as data. Fixing this is <b>[[1]]</b>; examples (<b>[[2]]</b>) keep it in prose."
+     },
+     {
+      "quote": "Synthesis merges and rewrites those paragraphs into sections.",
+      "means": "Even good input loses its links here unless synthesis carries them: <b>[[3]]</b>."
+     },
+     {
+      "quote": "The report subagent then attaches a URL to each sentence by matching it against every URL gathered in the run.",
+      "means": "Guesswork by design. A shorter list (<b>[[4]]</b>) is still guesswork."
+     },
+     {
+      "quote": "Runs already take 9–16 minutes, and analysts have asked that they get no longer.",
+      "means": "The quiet clue. A fetch per citation at the end (<b>[[0]]</b>, the runner-up) adds time. So <b>[[1]]</b> and <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Provenance is carried, not recovered: structure it where it starts and keep it through every hand-off.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Preserve structured claim-source mappings through synthesis"
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-06",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Restricting a subagent's tools",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The synthesis subagent's AgentDefinition was copied from the research template, so it carries <code>WebSearch</code> and <code>WebFetch</code>. In 12% of runs it searches mid-draft, and the passages it pulls in arrive with no claim-source mapping; they account for a disproportionate share of bad citations. A review of 200 of those calls found nearly all were open-ended queries to fill out a sub-topic it judged thin, rather than checks of a single figure. Synthesis is meant to write only from the evidence the coordinator hands it. <b>Which change is most effective?</b>",
+   "options": [
+    {
+     "t": "Keep its tools and require synthesis to record a claim-source mapping for every passage it retrieves itself.",
+     "why": "Incorrect. Recording provenance for self-retrieved passages would improve those citations, but synthesis would still be doing research outside its role, which the design forbids."
+    },
+    {
+     "t": "Swap its search tools for a scoped <code>verify_fact</code> tool for one-figure lookups; route bigger gaps via the coordinator.",
+     "why": "Runner-up. A scoped lookup tool is the right pattern when most of a subagent's extra calls are quick fact checks. These calls are open-ended research to fill a sub-topic, which a one-figure lookup cannot serve and which belongs with the research subagents."
+    },
+    {
+     "t": "Take the search and fetch tools out of the synthesis AgentDefinition and have it list unmet gaps in its output.",
+     "why": "Correct. Agents holding tools outside their role tend to use them. Removing search makes the boundary structural, and listing gaps lets the coordinator send them to the research subagents, whose findings carry provenance."
+    },
+    {
+     "t": "Add a prompt section to synthesis forbidding new research, with two examples of drafting only from supplied evidence.",
+     "why": "Incorrect. Instructions reduce the behaviour but leave the tools in place, so some out-of-role searching remains; scoping the tool set removes it."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "explanation": "Give each subagent only the tools its role needs, because off-role tools get used. Scoped cross-role tools fit frequent, simple needs; real research gaps go back through the coordinator.",
+   "runnerUp": 1,
+   "decider": "Nearly all the mid-draft calls are open-ended research rather than single-figure checks; if most were quick checks of one figure, a scoped verify_fact tool would be the better design.",
+   "eli5": {
+    "question": "The writing helper keeps doing its own research halfway through writing, and those bits have no sources. The clue is: almost all its searches are open-ended digging, not quick checks of one number. So a small 'check one fact' tool would not cover what it is doing.",
+    "answer": "Think of a newspaper. A writer handed research notes should write from them, not run out to report new stories. Take the reporting kit away from the writer (<b>restrict the AgentDefinition's tools</b>) and have them list what is missing, so the editor (the <b>coordinator</b>) can send a reporter. <b>Rule: give each subagent only the tools its job needs; route gaps back through the coordinator.</b>",
+    "options": [
+     "Adding sources to the writer's own digging fixes those citations, but the writer is still doing a reporter's job.",
+     "Runner-up. A small 'check one fact' tool (<b>scoped cross-role tool</b>) fits when most calls are quick checks. These are open-ended research.",
+     "Correct. Remove the search tools and let the coordinator send gaps to the researchers.",
+     "A written ban (<b>prompt instruction</b>) lowers the rate, but the tools are still there to use."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see <b>any cross-role need as a case for a small scoped tool</b>, because that is the textbook answer when a subagent keeps needing one thing from another. It fits only when the need is simple and frequent, like checking one figure. Here the calls are <b>open-ended research</b>. That is the research subagents' job, so take the tools away and send gaps back to the coordinator.",
+    "mapTitle": "A subagent keeps reaching outside its role: what kind of reach?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Mostly <b>quick checks</b> of one fact",
+       "Frequent, simple cross-role need",
+       "Scoped tool such as <code>verify_fact</code>; complex cases via coordinator"
+      ],
+      [
+       "Mostly <b>open-ended research</b> mid-task",
+       "Off-role tools available",
+       "Remove them from the <code>AgentDefinition</code>; report gaps"
+      ],
+      [
+       "Too many tools, picks the wrong one",
+       "Tool overload",
+       "Cut to the 4–5 tools the role needs"
+      ],
+      [
+       "Self-retrieved material lacks sources",
+       "Provenance",
+       "Claim-source mapping, if retrieval is in role"
+      ],
+      [
+       "Agent ignores a written rule",
+       "Prompts are probabilistic",
+       "Make the boundary structural"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The synthesis subagent's AgentDefinition was copied from the research template, so it carries WebSearch and WebFetch.",
+      "means": "The root of the problem: a writing agent holding research tools."
+     },
+     {
+      "quote": "they account for a disproportionate share of bad citations",
+      "means": "The vivid symptom. It tempts you to fix provenance for these passages (<b>[[0]]</b>), which leaves the out-of-role research in place."
+     },
+     {
+      "quote": "nearly all were open-ended queries to fill out a sub-topic it judged thin, rather than checks of a single figure",
+      "means": "The quiet clue. A one-figure lookup tool (<b>[[1]]</b>, the runner-up) would not serve these calls."
+     },
+     {
+      "quote": "Synthesis is meant to write only from the evidence the coordinator hands it.",
+      "means": "The role boundary. A prompt rule (<b>[[3]]</b>) asks for it; removing the tools (<b>[[2]]</b>) enforces it."
+     }
+    ],
+    "rule": "Off-role tools get used. Remove them and route real gaps back through the coordinator; keep scoped cross-role tools for frequent, simple needs.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Agents with off-specialization tools misuse them."
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-07",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Temporal & conflicting sources",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Synthesis flagged a contradiction in a report on regional cold storage: one source puts market growth at 12%, another at minus 3%. One is a trade association's annual review; the other is a broker note published this summer that uses trailing-twelve-month figures. Both are reputable, and the analyst reading the draft could not tell which to trust. Each subagent return records a source's title and URL, and nothing else about it. <b>Which change best handles this kind of discrepancy across future reports?</b>",
+   "options": [
+    {
+     "t": "Have synthesis show both figures side by side, each attributed to its source, and mark the disagreement for the analyst.",
+     "why": "Runner-up. Showing both figures with attribution is right when two sources measure the same thing and disagree. These figures probably cover different periods, so presenting them as a disagreement misinforms the analyst; with no period recorded, synthesis cannot tell."
+    },
+    {
+     "t": "Have the fact-check subagent confirm each figure on its source page and drop any figure it cannot locate verbatim.",
+     "why": "Incorrect. Both figures are presumably on their pages; confirming them leaves the apparent contradiction in place."
+    },
+    {
+     "t": "Instruct synthesis that when two reputable figures disagree, the more recently published one takes precedence.",
+     "why": "Incorrect. Preferring the newest source picks one figure arbitrarily and discards the other, when both may be right for their own periods."
+    },
+    {
+     "t": "Add publication date and period-covered fields to each source record; have synthesis compare periods first.",
+     "why": "Correct. Recording publication and collection dates lets synthesis see that an annual figure and a trailing-twelve-month figure cover different windows, so a timing difference is not reported as a contradiction."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "explanation": "Require publication and data-collection dates on sources so temporal differences are not read as contradictions. Genuine conflicts over the same period are shown with attribution, not resolved arbitrarily.",
+   "runnerUp": 0,
+   "decider": "One figure comes from an annual review and the other from a trailing-twelve-month broker note, and returns carry no dates; if both figures covered the same period, showing both with attribution would be correct.",
+   "eli5": {
+    "question": "Two good sources give opposite growth figures. The clue is: one is a yearly review and the other uses the last twelve months up to this summer. They probably measure different stretches of time, and nothing in the pipeline records which.",
+    "answer": "Think of two thermometer readings, one from January and one from July. They disagree, but neither is wrong. You only see that if each reading carries its date. So record when each source was published and what period it covers (<b>publication and collection dates</b>), and compare periods before calling a conflict. <b>Rule: before calling two figures a conflict, check they cover the same time.</b>",
+    "options": [
+     "Runner-up. Showing both with their sources (<b>attributed conflict</b>) is right when both cover the same period. These probably do not.",
+     "Checking each figure on its page confirms both are there. The clash remains.",
+     "Picking the newest throws away a figure that may be right for its own period.",
+     "Correct. Record each source's dates and compare periods first."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat <b>two reputable figures that disagree as a genuine conflict</b>, and the textbook move for a conflict is to show both with attribution. That move assumes both measure the same thing. Here one is an annual review and one uses a trailing twelve months, so they <b>probably cover different periods</b>. Without dates in the data, synthesis cannot tell a timing difference from a real disagreement.",
+    "diagram": "2024 annual review ............ +12%\nTTM to summer 2026 ............ -3%\nDifferent windows: not a contradiction",
+    "mapTitle": "Two sources disagree: what kind of disagreement is it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Figures cover <b>different periods</b>",
+       "Missing dates",
+       "Record publication and collection dates; compare periods"
+      ],
+      [
+       "Same period, both reputable, <b>still differ</b>",
+       "Genuine conflict",
+       "Show both, each attributed; do not pick one"
+      ],
+      [
+       "A figure cannot be found in its source",
+       "Bad extraction or citation",
+       "Verify against the source"
+      ],
+      [
+       "Claims lose their sources in the report",
+       "Lost provenance",
+       "Claim-source mappings through synthesis"
+      ],
+      [
+       "Financial figures buried in prose",
+       "Presentation",
+       "Render financial data as tables"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "one source puts market growth at 12%, another at minus 3%",
+      "means": "Looks like a direct contradiction. That framing pulls toward <b>[[0]]</b>, or toward picking one (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "the other is a broker note published this summer that uses trailing-twelve-month figures",
+      "means": "The quiet clue. Annual review versus trailing twelve months: different windows, so not necessarily a conflict."
+     },
+     {
+      "quote": "the analyst reading the draft could not tell which to trust",
+      "means": "The vivid symptom. It invites the side-by-side display of <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "Each subagent return records a source's title and URL, and nothing else about it.",
+      "means": "No dates are captured, so synthesis cannot spot the timing difference. That is what <b>[[3]]</b> adds."
+     },
+     {
+      "quote": "Which change best handles this kind of discrepancy across future reports?",
+      "means": "<b>[[1]]</b> confirms both figures exist and changes nothing. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Before calling two figures a conflict, make sure the data says when each was measured.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Require publication/collection dates so temporal differences aren't misread as contradictions"
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-08",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Dynamic subagent selection",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Finance wants the average run cost of $4.10 brought down. Traces show web search and filings analysis opening the same annual report in about 15% of runs. They also show that 60% of questions ask for one figure from one filing, such as a company's reported gross margin, and those runs still pass through all six subagents and produce a full report around the single number. Analysts typically need answers within the hour, while preparing for client calls. <b>Which change will cut cost the most?</b>",
+   "options": [
+    {
+     "t": "Move research questions to the Message Batches API and deliver each answer to the analyst when its batch completes.",
+     "why": "Incorrect. Batch processing halves cost for latency-tolerant work, but it has no latency guarantee (up to 24 hours) and does not support multi-turn tool calling within a request. Analysts need answers within the hour."
+    },
+    {
+     "t": "Let the coordinator gauge what each question needs and spawn only those subagents, sending one-figure lookups to filings.",
+     "why": "Correct. Most questions are single-figure lookups that need one subagent. Selecting subagents by query complexity removes five unneeded stages from 60% of runs, far more than any other option saves."
+    },
+    {
+     "t": "Rewrite the search and filings delegations with disjoint source classes, filings to one subagent and press to the other.",
+     "why": "Runner-up. Partitioning scope removes duplicated fetching, and it would be the main lever if overlap drove the cost. It touches about 15% of runs and one subagent's work in them, while 60% of runs carry five stages they do not need."
+    },
+    {
+     "t": "Train a routing classifier on past questions that picks one of three fixed pipelines before the coordinator starts.",
+     "why": "Incorrect. A trained classifier with fixed pipelines is heavier machinery than letting the coordinator choose, and it still forces questions into preset shapes."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "explanation": "Coordinators should select which subagents to invoke by query complexity rather than always running the full pipeline. Fix the largest waste first; duplication between subagents is a smaller, separate lever.",
+   "runnerUp": 2,
+   "decider": "60% of questions are single-figure lookups that still run all six subagents, against overlap in only 15% of runs; if overlap were widespread and questions mostly broad, partitioning scope would save more.",
+   "eli5": {
+    "question": "Research runs cost too much, and two things look wasteful: some duplicate fetching, and simple questions running the whole pipeline. The clue is the numbers: duplicates in 15% of runs, simple one-number questions in 60%.",
+    "answer": "Think of a hospital sending every patient through every department, even someone who only needs a blood test. Some departments repeat a test, but the bigger waste is the full tour. The fix is triage: the coordinator sends each question only to the helpers it needs (<b>dynamic subagent selection</b>). <b>Rule: match the pipeline to the question, and fix the biggest waste first.</b>",
+    "options": [
+     "Overnight processing (<b>Batch API</b>) halves the price but can take up to a day. Analysts need answers within the hour.",
+     "Correct. Send one-number questions to the one helper that can answer them.",
+     "Runner-up. Splitting territory (<b>scope partitioning</b>) fixes the duplicates. It would win if duplicates were the main cost.",
+     "A trained sorter with fixed routes (<b>routing classifier</b>) is heavy and still rigid."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to go after <b>the waste that is easiest to see</b>: two subagents opening the same report. That is real duplication, and partitioning scope fixes it. But the question asks what cuts cost <i>most</i>, and the bigger waste is quieter: <b>most questions do not need most of the pipeline</b>. Compare the size of each problem before choosing.",
+    "mapTitle": "Pipeline too expensive: which waste is biggest?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "<b>Simple questions</b> run every subagent",
+       "Fixed full pipeline",
+       "Coordinator selects subagents by complexity"
+      ],
+      [
+       "Needed subagents <b>fetch the same sources</b>",
+       "Overlapping remits",
+       "Partition scope in the delegations"
+      ],
+      [
+       "Latency-tolerant bulk work, e.g. overnight",
+       "Paying real-time prices",
+       "Message Batches API (50% off, up to 24h)"
+      ],
+      [
+       "Subagent misuses extra tools",
+       "Over-provisioning",
+       "Restrict tools per role"
+      ],
+      [
+       "Broad topic, whole areas missing",
+       "Narrow decomposition",
+       "Broaden the decomposition"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Traces show web search and filings analysis opening the same annual report in about 15% of runs.",
+      "means": "The vivid waste. It points to partitioning scope (<b>[[2]]</b>, the runner-up), but it affects only 15% of runs."
+     },
+     {
+      "quote": "60% of questions ask for one figure from one filing",
+      "means": "The quiet clue. Most runs need one subagent and get six."
+     },
+     {
+      "quote": "those runs still pass through all six subagents and produce a full report around the single number",
+      "means": "Five unneeded stages on most runs: the biggest saving is <b>[[1]]</b>."
+     },
+     {
+      "quote": "Analysts typically need answers within the hour",
+      "means": "Rules out batch processing (<b>[[0]]</b>), which can take up to 24 hours."
+     },
+     {
+      "quote": "Which change will cut cost the most?",
+      "means": "<b>Most</b> means size matters. <b>[[3]]</b> could save too, but it is heavier and still rigid. So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Fix the biggest waste first: if most questions are simple, let the coordinator pick only the subagents each one needs.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Coordinator handles task decomposition, delegation, aggregation, and selecting which subagents to invoke by query complexity."
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-09",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Hub-and-spoke communication",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The fact-check subagent asks the coordinator for more evidence about six times per run, and each round trip adds 30–40 seconds. An engineer proposes letting fact-check invoke the web-search subagent directly. A review of last month's requests found that most were not re-reads of an already cited page but searches for an independent second source, and that in about a third of them the coordinator changed course afterwards, dropping a claim or widening another subagent's brief. <b>Which response is best?</b>",
+   "options": [
+    {
+     "t": "Keep routing these through the coordinator, as structured asks naming the claim, the sources tried and the gap.",
+     "why": "Correct. Hub-and-spoke keeps routing, error handling and scope decisions in the coordinator, and a third of these requests change its plan. Structuring the request makes each round trip more useful without removing the coordinator from decisions it needs to see."
+    },
+    {
+     "t": "Give fact-check a scoped <code>fetch_page</code> tool for re-reading cited URLs, and keep wider searches with the coordinator.",
+     "why": "Runner-up. A scoped tool for the simple, frequent case is the textbook way to cut round trips, and it would win if most requests were re-reads of cited pages. Most are searches for new sources, so it removes few round trips."
+    },
+    {
+     "t": "Allow direct subagent calls, logging each one to a shared store the coordinator reads before synthesis begins.",
+     "why": "Incorrect. A shared log tells the coordinator afterwards, but it can no longer redirect the work as it happens, and two subagents now coordinate without it."
+    },
+    {
+     "t": "Give fact-check the web-search subagent's tools, letting it gather independent corroborating sources on its own.",
+     "why": "Incorrect. Handing fact-check full search tools over-provisions it and moves research outside its role, and the coordinator still loses sight of requests that change its plan."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "explanation": "In hub-and-spoke designs the coordinator mediates communication between subagents, so routing, scope and error handling stay in one place. Scoped cross-role tools are for frequent, simple needs; requests that change the plan belong with the coordinator.",
+   "runnerUp": 1,
+   "decider": "Most requests are new searches and a third change the coordinator's plan; if most were re-reads of already cited pages, a scoped fetch tool for that common case would be best.",
+   "eli5": {
+    "question": "A checking helper keeps asking the boss for more evidence, and each request costs half a minute. The clue is: most requests are fresh searches, and a third of them make the boss change the plan. So the boss needs to see them.",
+    "answer": "Think of a kitchen where the head chef sees every order. If cooks start sending dishes to each other directly, it feels faster, but the head chef stops knowing what is happening. Here a third of the fact-checker's requests change the plan, so the coordinator must stay in the loop (<b>hub-and-spoke</b>). Make the requests clearer instead. <b>Rule: if a request can change the plan, it goes through the coordinator.</b>",
+    "options": [
+     "Correct. Keep the coordinator in the middle and make each request precise.",
+     "Runner-up. A small re-read tool (<b>scoped cross-role tool</b>) wins when most asks are simple re-reads. Most here are new searches.",
+     "A shared notice board (<b>shared memory</b>) tells the boss afterwards. It cannot steer the work as it happens.",
+     "Giving the checker full search tools turns it into a second researcher, outside its role."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see <b>coordinator round trips as pure overhead</b> and remove them. They are overhead only when the coordinator adds nothing. Here a third of the requests make it change course, so they are <b>decisions, not deliveries</b>. Keep them with the coordinator, and save scoped shortcuts for simple, frequent needs.",
+    "mapTitle": "A subagent keeps needing another's help: route it or shortcut it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Mostly <b>simple, frequent</b> needs (re-read a page, check a fact)",
+       "Round trips for routine work",
+       "Scoped cross-role tool; complex cases via coordinator"
+      ],
+      [
+       "Requests often <b>change the plan</b>",
+       "Coordinator needs visibility",
+       "Keep coordinator mediation; structure the request"
+      ],
+      [
+       "Subagents talking to each other directly",
+       "Hub-and-spoke lost",
+       "Route through the coordinator"
+      ],
+      [
+       "Subagent given another role's full toolset",
+       "Over-provisioning",
+       "Restrict tools to its role"
+      ],
+      [
+       "Failures reported as generic errors",
+       "Missing context",
+       "Structured error saying what was tried"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "each round trip adds 30–40 seconds",
+      "means": "The vivid cost. It invites removing round trips."
+     },
+     {
+      "quote": "An engineer proposes letting fact-check invoke the web-search subagent directly.",
+      "means": "This would bypass the hub, taking routing and error handling away from the coordinator."
+     },
+     {
+      "quote": "most were not re-reads of an already cited page but searches for an independent second source",
+      "means": "The quiet clue. A re-read tool (<b>[[1]]</b>, the runner-up) would cover only a minority of requests."
+     },
+     {
+      "quote": "in about a third of them the coordinator changed course afterwards",
+      "means": "These requests are decisions the coordinator must see. That rules out <b>[[2]]</b> and <b>[[3]]</b>."
+     },
+     {
+      "quote": "Which response is best?",
+      "means": "So <b>[[0]]</b>: keep the coordinator in the middle and make each request more useful."
+     }
+    ],
+    "rule": "If a subagent's request can change the plan, it goes through the coordinator; scoped shortcuts are for simple, frequent needs.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Hub-and-spoke: coordinator manages all inter-subagent communication, error handling, routing."
+    }
+   }
+  },
+  {
+   "id": "s5q-s3-10",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tool descriptions vs built-ins",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The firm's MCP server over its research library offers <code>search_library</code>, which searches fifteen years of analyst notes by meaning, ranks the hits and returns document metadata. Its description reads 'Search the research library.' The research subagents mostly run <code>Grep</code> over a nightly text export of the library instead and miss notes that use different wording. The same subagents also use <code>Grep</code> on exported price tables, where an exact ticker match is what they want. <b>Which change most reliably redirects library searches?</b>",
+   "options": [
+    {
+     "t": "Expose the library's folder hierarchy as an MCP resource that subagents browse before choosing notes to open.",
+     "why": "Incorrect. Resources are good for exposing a content catalog and cutting exploratory calls, but browsing folders does not replace finding notes by meaning."
+    },
+    {
+     "t": "Remove Grep from the research subagents' allowed tools, leaving the MCP tool as their only search mechanism.",
+     "why": "Runner-up. Removing the competing built-in would redirect every search, and it would win if Grep had no other use for these subagents. They rely on Grep for exact ticker matches in the price tables, so removing it breaks that work."
+    },
+    {
+     "t": "Rewrite the tool's text to say what it finds in notes that keyword matching misses, with sample queries.",
+     "why": "Correct. Tool descriptions are the main signal for selection. A one-line description gives the subagents no reason to prefer the MCP tool over Grep; describing what it does that literal search cannot, with sample queries, does."
+    },
+    {
+     "t": "Rename <code>search_library</code> to <code>semantic_note_search</code> and leave the one-line text as it stands.",
+     "why": "Incorrect. A clearer name helps a little, but a name alone does not tell the model when the tool beats Grep, and the thin description remains."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "explanation": "When agents prefer built-in tools over a more capable MCP tool, improve the MCP tool's description so its advantages and use cases are clear. Removing a tool is a blunt fix that also removes its legitimate uses.",
+   "runnerUp": 1,
+   "decider": "The subagents also use Grep legitimately for exact ticker matches on the price tables; if Grep had no other use, removing it would be the more certain redirect.",
+   "eli5": {
+    "question": "Helpers keep using a plain word search instead of a smarter library search tool. The clue is: they also use the plain word search on price tables, where exact matches are exactly right. So taking it away would break something.",
+    "answer": "Think of a library with a skilled librarian whose desk sign just says 'Help'. Visitors keep using the card index instead. Rewrite the sign to say what the librarian can find that the index cannot (<b>a fuller tool description</b>). Visitors still use the card index for exact titles. <b>Rule: if a better tool is ignored, first make its description say why it is better.</b>",
+    "options": [
+     "A browsable catalogue (<b>MCP resource</b>) helps find where things are. It does not search by meaning.",
+     "Runner-up. Taking the word search away forces the switch, but it breaks the exact price-table lookups.",
+     "Correct. Make the description say what the tool finds that word search misses.",
+     "A better name helps a little. It still does not say when to choose this tool."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent prefers Grep because Grep is available</b>, so remove it. The agent prefers Grep because nothing tells it the MCP tool is better: its <b>description is one line</b>. Tool descriptions are the main signal for tool choice. Removing Grep would fix the library searches but break the price-table lookups, where Grep is the right tool.",
+    "mapTitle": "Agent ignores a better tool: what is the cheapest reliable fix?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Better MCP tool ignored; <b>description is thin</b>",
+       "Tool description",
+       "Describe its strengths, sample queries, when to prefer it"
+      ],
+      [
+       "Competing tool has <b>no legitimate use</b> for this agent",
+       "Tool distribution",
+       "Remove it from the agent's tools"
+      ],
+      [
+       "Many exploratory calls just to find content",
+       "No catalogue",
+       "Expose an MCP resource"
+      ],
+      [
+       "One generic tool does several jobs",
+       "Tool design",
+       "Split into purpose-specific tools"
+      ],
+      [
+       "Misroutes follow certain words",
+       "System-prompt wording",
+       "Rewrite that wording"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "which searches fifteen years of analyst notes by meaning, ranks the hits and returns document metadata",
+      "means": "The MCP tool really is better for this job."
+     },
+     {
+      "quote": "Its description reads 'Search the research library.'",
+      "means": "One line. Nothing tells the agent why to prefer it. That points to <b>[[2]]</b>."
+     },
+     {
+      "quote": "The research subagents mostly run Grep over a nightly text export of the library instead",
+      "means": "The vivid symptom. It invites taking Grep away (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "The same subagents also use Grep on exported price tables, where an exact ticker match is what they want.",
+      "means": "The quiet clue. Grep has a legitimate job, so removing it (<b>[[1]]</b>, the runner-up) breaks that work."
+     },
+     {
+      "quote": "Which change most reliably redirects library searches?",
+      "means": "A rename (<b>[[3]]</b>) or a catalogue (<b>[[0]]</b>) does not explain the advantage. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "If an agent ignores a better MCP tool, fix its description before removing the alternatives.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Incremental tracing",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The Sentry error group points at one frame: <code>orders/pricing.py:212</code>, inside <code>apply_regional_discount</code>. The engineer needs every call path that reaches that function and which of those changed in Tuesday's deploy. The <code>orders/</code> package has 90 files and about 28,000 lines. The session is fresh. Once the paths are known, the engineer will write the fix in this same conversation and wants the callers' actual code in front of Claude while doing it. <b>What is the most effective approach?</b>",
+   "options": [
+    {
+     "t": "Use Glob for <code>orders/**/*.py</code> and choose the files to open from their names and the directory layout.",
+     "why": "Incorrect. Glob matches file paths, not contents; filenames do not reveal which files call the function."
+    },
+    {
+     "t": "Read all 90 files in order, writing a few-line summary of each to a scratchpad file along the way.",
+     "why": "Incorrect. Scratchpad notes help across long sessions, but reading every file up front spends the context on 28,000 lines when a handful matter."
+    },
+    {
+     "t": "Delegate the mapping to an Explore subagent with the frame and Tuesday's diff, and work from its summary.",
+     "why": "Runner-up. An Explore subagent isolates verbose discovery and returns a summary, which is right when the main session needs only conclusions or its context is under pressure. Here the session is fresh and the fix needs the callers' code in this conversation, which a summary does not provide."
+    },
+    {
+     "t": "Grep for references to the function, Read each hit, then follow those files' imports outward one hop at a time.",
+     "why": "Correct. Grep finds the call sites by content, and reading those files then following imports builds the picture incrementally, leaving the relevant code in the session for the fix."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "explanation": "Trace code incrementally: Grep for entry points or references, then Read to follow imports, rather than reading everything up front. Use an Explore subagent when the discovery output is verbose and the main session needs only the conclusions.",
+   "runnerUp": 2,
+   "decider": "The engineer will write the fix in this conversation, wants the callers' code at hand, and the session is fresh; if only a summary of paths were needed or context were tight, an Explore subagent would be better.",
+   "eli5": {
+    "question": "The engineer needs every route into one function, and will then write the fix right here. The clue is: they want the callers' real code in this conversation while fixing, and the session is fresh. A summary from a helper would leave that code out.",
+    "answer": "Think of following a river upstream. You do not map every stream in the country. You start where you care and walk up each branch that feeds it. Here: search for who calls the function (<b>Grep</b>), open those files (<b>Read</b>), then follow their imports. The code you read stays at hand for the fix. <b>Rule: search for the entry point, then read outward step by step.</b>",
+    "options": [
+     "Listing files by name (<b>Glob</b>) does not tell you which ones call the function.",
+     "Reading all 90 files fills the context with code that does not matter.",
+     "Runner-up. A helper that explores and reports back (<b>Explore subagent</b>) is right when you need only conclusions. Here the fix needs the code itself.",
+     "Correct. Find the callers, read them, and follow imports outward."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to reach for <b>an Explore subagent whenever exploration is involved</b>, because it keeps the main context clean. But it returns a <i>summary</i>. When the next step is writing a fix that depends on the callers' exact code, and the session has room, you want that code in <b>this</b> conversation. Grep then Read builds it up step by step.",
+    "mapTitle": "Exploring code: which way to look?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Find who calls a function, then <b>fix it here</b>",
+       "Narrow trace; code needed in session",
+       "Grep for references, Read callers, follow imports"
+      ],
+      [
+       "Broad survey; only <b>conclusions</b> needed, or context tight",
+       "Verbose discovery",
+       "Explore subagent returns a summary"
+      ],
+      [
+       "Find files by name or extension",
+       "Path matching",
+       "Glob"
+      ],
+      [
+       "Find text inside files",
+       "Content search",
+       "Grep"
+      ],
+      [
+       "Long session losing earlier findings",
+       "Context degradation",
+       "Scratchpad file of key findings"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The Sentry error group points at one frame",
+      "means": "A precise starting point exists, so there is no need to survey the package."
+     },
+     {
+      "quote": "The orders/ package has 90 files and about 28,000 lines.",
+      "means": "The vivid size. It tempts reading everything (<b>[[1]]</b>) or delegating (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "The session is fresh.",
+      "means": "Context is not under pressure, which removes the main reason for an Explore subagent."
+     },
+     {
+      "quote": "the engineer will write the fix in this same conversation and wants the callers' actual code in front of Claude while doing it",
+      "means": "The quiet clue. A summary (<b>[[2]]</b>, the runner-up) would leave the code out, and Glob (<b>[[0]]</b>) cannot see who calls what. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Start from the entry point: Grep for references and Read outward. Delegate to Explore only when you need conclusions, not code.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Build understanding incrementally: Grep entry points → Read to follow imports/trace flows (not read-all-upfront)."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP config & secrets",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The Sentry MCP server needs an auth token. Sentry's admin issues tokens per person, and the weekly audit attributes every action to the token's owner. Last year a contractor's token leaked through a committed config file, and security has since asked that no credential sits in the repository. The two joiners start Monday; their onboarding checklist is: clone, export your tokens, run Claude Code. <b>Which setup meets these requirements?</b>",
+   "options": [
+    {
+     "t": "Have each person add the Sentry server to their own <code>~/.claude.json</code> with their personal token written inline.",
+     "why": "Runner-up. User-level config keeps the token out of the repository and is right for personal or experimental servers. The onboarding checklist expects the server to arrive with the clone, and per-person setup in ~/.claude.json does not."
+    },
+    {
+     "t": "Commit the server entry to <code>.mcp.json</code>, with the token field read from <code>${SENTRY_TOKEN}</code> in each shell.",
+     "why": "Correct. Project-level .mcp.json is shared through version control, and environment-variable expansion lets each person supply their own token without committing it. That fits clone-then-export, the per-person audit and no credentials in git."
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with one read-only team token scoped to the Sentry project, rotated every quarter.",
+     "why": "Incorrect. A shared token breaks per-person attribution in the audit, and committing it puts a credential in the repository."
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with an empty token field and have each person paste their own token in after cloning.",
+     "why": "Incorrect. Typing a real token into a tracked file invites exactly the accidental commit that leaked a token last year."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "explanation": "Shared MCP servers belong in the project's .mcp.json, with secrets supplied by environment-variable expansion such as ${SENTRY_TOKEN}. User-level ~/.claude.json is for personal or experimental servers.",
+   "runnerUp": 0,
+   "decider": "The onboarding checklist is clone, export tokens, run Claude Code, so the server definition must come with the repository; if the server were a personal experiment, ~/.claude.json would be the right home.",
+   "eli5": {
+    "question": "The team needs a Sentry connection that every newcomer gets, with each person's own token and no secrets in the code. The clue is the onboarding checklist: clone, export your tokens, run. The server must arrive with the clone; the token comes from each person's environment.",
+    "answer": "Think of a shared office door with a card reader. The reader is installed for everyone (the committed <b>.mcp.json</b>), but each person taps their own card (their token in an <b>environment variable</b>, read through <code>${SENTRY_TOKEN}</code>). Nobody tapes a card to the door. <b>Rule: shared server in .mcp.json, personal secret in the environment.</b>",
+    "options": [
+     "Runner-up. Personal setup (<b>~/.claude.json</b>) keeps secrets out of git, but newcomers do not get the server on clone.",
+     "Correct. Commit the server; each person's token comes from their own environment.",
+     "One shared card for everyone breaks the per-person audit and puts a secret in git.",
+     "Typing a token into a tracked file is how last year's leak happened."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the safest place for anything near a secret is outside the repository</b>, especially after a leak. But the server definition is not the secret; the token is. <b>Split them</b>: commit the definition so it arrives on clone, and expand the token from each person's environment.",
+    "diagram": ".mcp.json (committed)     shell (per person)\ntoken: ${SENTRY_TOKEN} ◀── export SENTRY_TOKEN=…",
+    "mapTitle": "Where does an MCP server's config live?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Whole team needs it <b>on clone</b>",
+       "Shared tool",
+       "Project <code>.mcp.json</code>, committed"
+      ],
+      [
+       "One person <b>trying it out</b>",
+       "Personal or experimental",
+       "User-level <code>~/.claude.json</code>"
+      ],
+      [
+       "Server needs a credential",
+       "Secret",
+       "<code>${VAR}</code> expansion from each person's environment"
+      ],
+      [
+       "Audit needs per-person actions",
+       "Identity",
+       "Per-person tokens, not a shared one"
+      ],
+      [
+       "Standard integration such as Jira",
+       "Build or reuse",
+       "Community MCP server"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Sentry's admin issues tokens per person, and the weekly audit attributes every action to the token's owner.",
+      "means": "Rules out a shared team token (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Last year a contractor's token leaked through a committed config file",
+      "means": "The vivid incident. It pulls toward keeping everything out of git (<b>[[0]]</b>), and warns against typing tokens into tracked files (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "their onboarding checklist is: clone, export your tokens, run Claude Code",
+      "means": "The quiet clue. The server must come with the clone, and tokens come from the environment. That rules out <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "Which setup meets these requirements?",
+      "means": "Shared definition, personal token, nothing secret committed: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Commit the shared server definition; keep each person's secret in their environment through ${VAR} expansion.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Env var expansion in .mcp.json (e.g., ${GITHUB_TOKEN}) — no committed secrets."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Connection-time discovery",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Twenty minutes into a session, the engineer adds the Sentry server to the project's <code>.mcp.json</code> and asks Claude for the latest events in the spiking error group. Claude replies that none of its tools reach Sentry and offers to call Sentry's REST API with <code>curl</code> through <code>Bash</code>. The JSON parses, the identical entry works on a teammate's machine, and <code>SENTRY_TOKEN</code> has been exported in the engineer's shell profile for weeks. <b>What is the most likely explanation?</b>",
+   "options": [
+    {
+     "t": "Claude Code reads its MCP servers when it connects; the new entry adds no tools until the session is restarted.",
+     "why": "Correct. MCP servers' tools are discovered when the client connects. A server added mid-session is configured correctly but not loaded until Claude Code restarts, which is why Claude reports having no Sentry tool at all."
+    },
+    {
+     "t": "The Sentry tools are loaded, but their descriptions are thin and Claude prefers the built-in Bash tool it knows well.",
+     "why": "Runner-up. Thin MCP descriptions do make agents fall back on built-ins, and that would be the likely cause if the Sentry tools were present but unused. Claude says it has no Sentry tool at all, which points to the tools never loading."
+    },
+    {
+     "t": "The entry names the token variable without <code>${…}</code> syntax, so the literal name is sent and authentication fails.",
+     "why": "Incorrect. The identical entry works on a teammate's machine, so the variable syntax is not the problem."
+    },
+    {
+     "t": "Servers in <code>.mcp.json</code> are offered to subagents only; the main session reads its servers from <code>~/.claude.json</code>.",
+     "why": "Incorrect. Servers in a project's .mcp.json are available to the main session; that is how teammates use them."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "explanation": "Claude Code discovers MCP servers and their tools at connection time; servers added mid-session need a restart. Diagnose 'tool missing' separately from 'tool present but not chosen'.",
+   "runnerUp": 1,
+   "decider": "Claude reports having no Sentry tool at all after the server was added mid-session; if the tools were listed but Claude still chose Bash, thin descriptions would be the likely cause.",
+   "eli5": {
+    "question": "A Sentry connection was added mid-session, and Claude says it has no Sentry tool. The clue is: it was added twenty minutes into the session, and Claude says the tool does not exist, not that it chose another one.",
+    "answer": "Think of a phone that loads its contact list when it switches on. Add a contact to the file while it is running, and it will not show until you restart. Claude Code loads MCP servers when it connects (<b>connection-time discovery</b>). The setup is fine; it just has not been loaded. <b>Rule: new MCP server mid-session? Restart before you debug.</b>",
+    "options": [
+     "Correct. Servers load when Claude Code connects; restart to pick it up.",
+     "Runner-up. Thin descriptions do make Claude prefer built-in tools. That fits only if the Sentry tools were present.",
+     "The same entry works for a teammate, so the token syntax is fine.",
+     "Project servers in <code>.mcp.json</code> do reach the main session; that is how the team uses them."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read <b>'Claude used Bash instead'</b> as the familiar problem of agents preferring built-in tools. That problem needs the MCP tools to be <i>present</i>. Here Claude says it has <b>no</b> Sentry tool. The server was added mid-session, and MCP tools are discovered when Claude Code connects, so it simply has not loaded.",
+    "mapTitle": "MCP tool not used: missing or ignored?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Claude says it has <b>no such tool</b>; server added mid-session",
+       "Not yet discovered",
+       "Restart so it connects"
+      ],
+      [
+       "Tools <b>listed</b> but Claude picks a built-in",
+       "Thin MCP descriptions",
+       "Expand the descriptions"
+      ],
+      [
+       "Server fails for one person only",
+       "Their environment or token",
+       "Check the exported variable"
+      ],
+      [
+       "Secret needed in shared config",
+       "Credential handling",
+       "<code>${VAR}</code> expansion in <code>.mcp.json</code>"
+      ],
+      [
+       "Personal trial server",
+       "Scope",
+       "<code>~/.claude.json</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Twenty minutes into a session, the engineer adds the Sentry server to the project's .mcp.json",
+      "means": "The quiet clue. The server was added after the session connected."
+     },
+     {
+      "quote": "Claude replies that none of its tools reach Sentry and offers to call Sentry's REST API with curl through Bash.",
+      "means": "The vivid part. Bash looks like a preference for built-ins (<b>[[1]]</b>, the runner-up), but Claude says no Sentry tool exists."
+     },
+     {
+      "quote": "the identical entry works on a teammate's machine",
+      "means": "The config is right. That rules out <b>[[2]]</b> and <b>[[3]]</b>."
+     },
+     {
+      "quote": "has been exported in the engineer's shell profile for weeks",
+      "means": "The token was in place before the session started, so it is not an environment gap."
+     },
+     {
+      "quote": "What is the most likely explanation?",
+      "means": "Correct config, loaded too late: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Tool missing after a mid-session config change means reconnect; tool present but ignored means improve its description.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "All configured MCP servers' tools discovered at connection time, available simultaneously."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit vs Write",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The fix adds a guard as the first statement of <code>apply_regional_discount</code> in <code>pricing.py</code>, a 900-line file. Claude's first <code>Edit</code> failed: its match string was the function's docstring and two setup lines, which appear word for word in three sibling functions. The four functions differ only in their names and one constant. The engineer suggests reading the file and writing it back whole with the guard inserted, since that cannot be ambiguous. <b>What should Claude do next?</b>",
+   "options": [
+    {
+     "t": "Read the whole file and Write it back with the guard inserted, then diff the result against the original.",
+     "why": "Runner-up. Read plus Write is the documented fallback when Edit cannot find a unique match. Here a unique anchor exists, because each function's def line carries its own name, so rewriting 900 lines adds risk for no gain."
+    },
+    {
+     "t": "Split <code>pricing.py</code> into one module per discount function, then apply the change inside the new module.",
+     "why": "Incorrect. Restructuring the module is a far larger change than a live fix needs, and it does not answer how to make this edit."
+    },
+    {
+     "t": "Retry Edit with a longer match string that begins at the def line naming the function.",
+     "why": "Correct. Edit needs a unique text match. Extending the match to include the def line, which differs between the four functions, makes it unique, and Edit then changes only the intended place."
+    },
+    {
+     "t": "Run Edit with the original string and replace-all, then strip the guard from the three sibling functions.",
+     "why": "Incorrect. Changing four functions and undoing three is more error-prone than targeting the one, and it briefly changes code that should not change."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "explanation": "Edit makes targeted changes by unique text match; when a match is ambiguous, widen it to something unique. Fall back to Read plus Write only when no unique anchor exists.",
+   "runnerUp": 0,
+   "decider": "The functions differ in their names, so a unique anchor exists; if no unique anchor could be found, Read plus Write would be the right fallback.",
+   "eli5": {
+    "question": "Claude's edit failed because the text it searched for appears in four places. The clue is: the four functions differ in their names. So there is a unique spot to anchor to.",
+    "answer": "Think of finding a house on a street where four houses look identical. You do not rebuild the street; you use the house number. Here the function's name on its first line is the house number. Make the search text start there, and the edit (<b>Edit</b> with a <b>unique match</b>) hits exactly one place. <b>Rule: if Edit's match is not unique, widen it; rewrite the file only if nothing is unique.</b>",
+    "options": [
+     "Runner-up. Rewriting the whole file (<b>Read + Write</b>) is the fallback when nothing is unique. Here the name is unique.",
+     "Splitting the file is a big change for a two-line fix.",
+     "Correct. Anchor the edit on the line with the function's name.",
+     "Changing all four and undoing three is riskier than changing one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a failed Edit means Edit cannot do this job</b>, so switch to rewriting the file. Edit failed because the text it looked for was <i>not unique</i>. The fix is to look for something that is. Only when nothing unique exists is <b>Read + Write</b> the fallback.",
+    "mapTitle": "Changing part of a file: which tool?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Small change; <b>unique</b> text nearby",
+       "Targeted edit",
+       "Edit with that text"
+      ],
+      [
+       "Edit match <b>ambiguous</b>, but a unique anchor exists",
+       "Match too short",
+       "Widen the match to the unique part"
+      ],
+      [
+       "<b>No</b> unique anchor anywhere",
+       "Edit cannot target",
+       "Read, then Write the whole file"
+      ],
+      [
+       "Brand-new file",
+       "Creation",
+       "Write"
+      ],
+      [
+       "Same change wanted at every match",
+       "Repeated text",
+       "Edit with replace-all"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "its match string was the function's docstring and two setup lines, which appear word for word in three sibling functions",
+      "means": "Why Edit failed: the match was not unique."
+     },
+     {
+      "quote": "The four functions differ only in their names and one constant.",
+      "means": "The quiet clue. The def line is unique, so Edit can work. That rules out the fallback <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "The engineer suggests reading the file and writing it back whole with the guard inserted",
+      "means": "The vivid suggestion, and it sounds safe. It is the fallback for when no anchor exists."
+     },
+     {
+      "quote": "What should Claude do next?",
+      "means": "The smallest correct step: not a refactor (<b>[[1]]</b>) or a change-and-undo (<b>[[3]]</b>). So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Ambiguous Edit match: widen it to something unique. Use Read + Write only when nothing is unique.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Edit = targeted change via unique text match."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Adaptive investigation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "For the spike, the engineer gave Claude a fixed plan: read the stack trace, read the failing function, read its callers, check Tuesday's diff, propose a fix. At step three Claude found the function correct; the bad value comes from a serialiser two layers up, whose input changed shape after another team's schema migration. Claude still completed steps four and five and proposed a guard in the failing function. Reviews show about half of this service's incidents start outside it. <b>How should the engineer structure investigations like this?</b>",
+   "options": [
+    {
+     "t": "Delegate each step of the plan to its own subagent and have a coordinator assemble the five results into a report.",
+     "why": "Incorrect. Separate subagents isolate the work, but the steps are still fixed in advance, and step three's finding still cannot change steps four and five."
+    },
+    {
+     "t": "Open each investigation in plan mode and have Claude write the complete step list before it reads any code.",
+     "why": "Incorrect. Plan mode is for designing changes with several valid approaches before editing. An investigation's steps cannot be known before the evidence arrives, so writing the full list first repeats the problem."
+    },
+    {
+     "t": "Keep a fixed sequence but extend it with steps for upstream serialisers and recent schema migrations elsewhere.",
+     "why": "Runner-up. A fixed sequence (prompt chaining) works when the steps are predictable, and adding these steps would have covered this incident. With half of incidents starting outside the service, the next one will need steps nobody listed."
+    },
+    {
+     "t": "Give Claude the goal and the evidence so far, and let it pick each next step from what the last one found.",
+     "why": "Correct. Debugging is open-ended. Adaptive decomposition generates each subtask from what has been found, so a discovery like step three's redirects the investigation instead of being ignored."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "explanation": "Use fixed sequential pipelines for predictable, regular work and adaptive decomposition for open-ended investigation, where each step depends on what the last one found.",
+   "runnerUp": 2,
+   "decider": "About half of incidents start outside the service, so the needed steps cannot be predicted; if incidents followed a stable pattern, a fixed sequence extended with the missing checks would serve.",
+   "eli5": {
+    "question": "Claude followed a fixed checklist even after step three showed the problem was somewhere else. The clue is: about half of this service's incidents start outside it. So no fixed checklist can know the steps in advance.",
+    "answer": "Think of a detective. A checklist like 'interview the butler, then the cook' fails as soon as a clue points to the neighbour. A good detective lets each clue decide the next move (<b>adaptive decomposition</b>). Give Claude the goal and what is known, and let each finding choose the next step. <b>Rule: if what you find changes what you do next, do not fix the steps in advance.</b>",
+    "options": [
+     "Splitting the checklist across helpers (<b>subagents</b>) still fixes the steps in advance.",
+     "Planning first (<b>plan mode</b>) is for designing code changes. You cannot plan a hunt before the clues appear.",
+     "Runner-up. A longer fixed checklist (<b>prompt chaining</b>) works when cases are predictable. Half of these are not.",
+     "Correct. Let each finding decide the next step."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the plan failed because it was missing steps</b>: add them and it would have worked this time. But the plan's real flaw is that it was <b>fixed before any evidence existed</b>. When the cause can be anywhere, the steps must come from the findings.",
+    "diagram": "Fixed:    1 → 2 → 3 (clue: look upstream) → 4 → 5\nAdaptive: 1 → 2 → 3 → serialiser → migration",
+    "mapTitle": "Fixed steps or adaptive steps?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Open-ended debugging; cause <b>could be anywhere</b>",
+       "Steps depend on findings",
+       "Adaptive decomposition"
+      ],
+      [
+       "Regular, <b>predictable</b> work, e.g. same check per file",
+       "Steps known in advance",
+       "Fixed sequence (prompt chaining)"
+      ],
+      [
+       "Large code change, several valid designs",
+       "Choosing an approach",
+       "Plan mode before editing"
+      ],
+      [
+       "Discovery output is verbose",
+       "Context pressure",
+       "Explore subagent"
+      ],
+      [
+       "Many files to review at once",
+       "Attention dilution",
+       "Per-file passes plus an integration pass"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the engineer gave Claude a fixed plan",
+      "means": "Steps were decided before any evidence."
+     },
+     {
+      "quote": "At step three Claude found the function correct",
+      "means": "The finding that should have changed the plan."
+     },
+     {
+      "quote": "Claude still completed steps four and five and proposed a guard in the failing function",
+      "means": "The vivid failure. It tempts adding the missing steps (<b>[[2]]</b>, the runner-up)."
+     },
+     {
+      "quote": "Reviews show about half of this service's incidents start outside it.",
+      "means": "The quiet clue. Causes are unpredictable, so no fixed list fits, whether longer (<b>[[2]]</b>), planned up front (<b>[[1]]</b>) or split across helpers (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "How should the engineer structure investigations like this?",
+      "means": "Let findings drive the steps: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "If findings change what to do next, generate the steps from the findings.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Adaptive investigation plans generate subtasks from what's discovered."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit subagent context",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 2,
+   "question": "Ninety minutes into the incident, the session sits at about 80% of its context window. The engineer spawns an Explore subagent to map every route into the order serialiser, with the prompt: <i>'Investigate the issue we've been discussing and report the call paths involved.'</i> It returns a broad tour of the serialisation layer that never mentions the failing frame, the field whose shape changed or the other team's migration. <b>Which TWO changes would most improve the next attempt?</b>",
+   "options": [
+    {
+     "t": "Write the frame, the changed field, the migration ID and the suspected serialiser into the subagent's prompt.",
+     "why": "Correct. Subagents do not inherit the parent's conversation; context must be passed explicitly in the prompt. Without the frame, field and migration, the subagent can only produce a generic survey."
+    },
+    {
+     "t": "Fork the current session and run the mapping in the branch, which starts out holding the whole incident history.",
+     "why": "Runner-up. A fork does start from the shared history, and it would be reasonable early in a session. At 80% of the window the branch starts nearly full and verbose mapping output would overflow it, while an Explore subagent with an explicit brief starts clean."
+    },
+    {
+     "t": "Spell out what to return: each path from entry point to serialiser, with files and lines, and when it is complete.",
+     "why": "Correct. Stating the deliverable and what makes it complete gives the subagent a target; 'report the call paths involved' leaves scope and depth to guesswork."
+    },
+    {
+     "t": "Give the subagent the parent session's full tool list, including the Sentry and GitHub MCP tools.",
+     "why": "Incorrect. More tools would let it look things up, but it still would not know which error group, frame or field matters."
+    },
+    {
+     "t": "Run <code>/compact</code> before spawning the subagent, and it starts from a condensed copy of the conversation.",
+     "why": "Incorrect. /compact shrinks the parent's context; subagents do not receive the parent's conversation, compacted or not."
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "explanation": "Subagents start with isolated context: pass the relevant findings explicitly and state the deliverable and its quality criteria. Forking carries the history along, which helps only when there is room for it.",
+   "runnerUp": 1,
+   "decider": "The session is at about 80% of its context window, which rules out a fork that carries the full history; early in a session, forking would be a reasonable way to give the mapping the incident context.",
+   "eli5": {
+    "question": "A helper sent to map code came back with a generic tour. The clue is: its brief said only 'the issue we've been discussing', and the helper never heard that discussion. Also, the main session is already 80% full.",
+    "answer": "Think of sending a courier with a note saying 'deliver the thing we talked about'. The courier was not in the room. Tell them what the parcel is and where it goes (<b>pass findings explicitly</b>), and what counts as delivered (<b>state the deliverable and criteria</b>). Subagents start with a blank memory (<b>isolated context</b>). <b>Rule: brief a subagent as if it knows nothing, and say what done looks like.</b>",
+    "options": [
+     "Correct. Put the key findings into the brief.",
+     "Runner-up. Copying the whole conversation (<b>fork</b>) brings the history along, but the session is already 80% full.",
+     "Correct. Say exactly what to return and when it is complete.",
+     "More tools do not tell the helper what to look for.",
+     "Shrinking the main chat (<b>/compact</b>) does not send anything to the helper."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a subagent knows what 'we've been discussing' means</b>, as if it sat in on the session. It did not. Subagents start with isolated context and get only what the prompt gives them. So the brief must carry the findings <i>and</i> say what a good answer looks like. Carrying the whole history over in a fork only works if there is room for it.",
+    "mapTitle": "Subagent output generic: what was missing from the hand-off?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Output ignores what you already know",
+       "Findings not passed",
+       "Put the findings in the prompt"
+      ],
+      [
+       "Output wanders in scope or depth",
+       "No deliverable stated",
+       "Say what to return and when it is complete"
+      ],
+      [
+       "Need the full history, and the session <b>has room</b>",
+       "Shared baseline wanted",
+       "Fork the session"
+      ],
+      [
+       "Session <b>nearly full</b>, verbose discovery ahead",
+       "Context pressure",
+       "Explore subagent with an explicit brief"
+      ],
+      [
+       "Subagent misuses tools",
+       "Over-provisioning",
+       "Restrict its tools"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the session sits at about 80% of its context window",
+      "means": "The quiet clue. A fork (<b>[[1]]</b>, the runner-up) would start nearly full."
+     },
+     {
+      "quote": "Investigate the issue we've been discussing and report the call paths involved",
+      "means": "The brief assumes shared memory that subagents do not have, and it does not say what a complete answer is."
+     },
+     {
+      "quote": "It returns a broad tour of the serialisation layer that never mentions the failing frame",
+      "means": "Missing findings are fixed by <b>[[0]]</b>; a missing target is fixed by <b>[[2]]</b>."
+     },
+     {
+      "quote": "Which TWO changes would most improve the next attempt?",
+      "means": "More tools (<b>[[3]]</b>) or <code>/compact</code> (<b>[[4]]</b>) give the subagent no knowledge. So <b>[[0]]</b> and <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Brief a subagent as if it knows nothing: give it the findings and say what done looks like.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Tool results in history",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Fifteen minutes into a session that sits at about 20% of its context window, Claude reads <code>pricing.py</code>. The engineer then changes <code>apply_regional_discount</code> in their editor, in the same checkout, and saves. Later Claude explains the function's behaviour, quoting the version from before the change, with confidence and line numbers. The engineer asks why Claude is 'remembering' a file that no longer exists in that form. <b>Which explanation is accurate?</b>",
+   "options": [
+    {
+     "t": "Context quality has begun to degrade, and running <code>/compact</code> would let recent material outweigh the earlier read.",
+     "why": "Runner-up. Context degradation shows up as vague or inconsistent answers deep into long sessions, and compaction can help there. This session is short and the answer is precise; Claude is faithfully using an outdated tool result."
+    },
+    {
+     "t": "The earlier Read result sits in the message history sent each turn; Claude uses it until told or until it reads again.",
+     "why": "Correct. Tool results are appended to the conversation and sent with every later request, so the old contents are still there for Claude to reason over. Tell Claude the file changed, or have it read the file again."
+    },
+    {
+     "t": "Claude Code caches each file on its first read, and that cache is cleared only when the session restarts.",
+     "why": "Incorrect. A fresh Read returns the file's current contents; there is no per-session file cache that blocks it."
+    },
+    {
+     "t": "Claude holds files it has read in a working memory apart from the conversation, refreshed on its next edit.",
+     "why": "Incorrect. There is no separate working memory; what Claude knows of the file is the tool result in the conversation history."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "explanation": "Tool results are appended to the conversation history and the model reasons over them on every later turn. When files change outside the session, tell the agent or have it read again; old results do not refresh themselves.",
+   "runnerUp": 0,
+   "decider": "The session is short and the old version is quoted precisely; deep in a long, crowded session with vague or inconsistent answers, context degradation and /compact would be the better diagnosis.",
+   "eli5": {
+    "question": "Claude describes an old version of a file the engineer has since changed. The clue is: the session is short and mostly empty, and Claude quotes the old version exactly. So nothing is fading; Claude is reading an old copy.",
+    "answer": "Think of a photocopy you made of a page this morning. If someone edits the original, your copy does not change. When Claude reads a file, the result is pasted into the conversation (<b>tool results in the history</b>), and Claude keeps using that copy. Tell it the file changed, or ask it to read the file again. <b>Rule: a tool result is a snapshot; it stays until replaced.</b>",
+    "options": [
+     "Runner-up. Fading memory in long chats (<b>context degradation</b>) gives vague answers. This chat is short and the quote is exact.",
+     "Correct. The old read is still in the conversation; tell Claude or have it read again.",
+     "There is no hidden file cache. A fresh read shows the current file.",
+     "There is no separate memory. The conversation is the memory."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to blame <b>a confused or overloaded context</b> when Claude talks about something out of date. But degradation looks vague and inconsistent, and it happens late in long sessions. Here Claude is <b>precise</b> and the session is short. It is doing exactly what it should with what it has: an <b>old tool result</b> still in its history.",
+    "diagram": "turn 3  Read pricing.py → old copy in history\nturn 4  you edit file   → Claude not told\nturn 6  Claude explains → uses the old copy",
+    "mapTitle": "Claude talks about stale or wrong code: why?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Precise but <b>out of date</b> after an outside edit",
+       "Old tool result in the history",
+       "Tell Claude, or read the file again"
+      ],
+      [
+       "Vague, inconsistent, 'typical patterns', <b>long session</b>",
+       "Context degradation",
+       "Scratchpad notes, /compact, or a fresh session"
+      ],
+      [
+       "Resuming a session after files changed",
+       "Stale results across sessions",
+       "Say what changed, or start fresh with a summary"
+      ],
+      [
+       "Context filling with huge tool outputs",
+       "Verbose results",
+       "Trim outputs to the relevant fields"
+      ],
+      [
+       "Middle of a long input ignored",
+       "Lost in the middle",
+       "Key facts at start or end, with headers"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Fifteen minutes into a session that sits at about 20% of its context window",
+      "means": "Short and roomy: not a setting for context degradation. That weakens <b>[[0]]</b>, the runner-up."
+     },
+     {
+      "quote": "The engineer then changes apply_regional_discount in their editor, in the same checkout, and saves.",
+      "means": "The file changed outside Claude, and Claude was not told."
+     },
+     {
+      "quote": "quoting the version from before the change, with confidence and line numbers",
+      "means": "Precise, not vague. Claude is reasoning over its earlier read."
+     },
+     {
+      "quote": "Which explanation is accurate?",
+      "means": "There is no hidden cache (<b>[[2]]</b>) and no separate memory (<b>[[3]]</b>). So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "A tool result is a snapshot in the conversation. If the file changes outside the session, say so or read it again.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Tool results are appended to conversation history so the model reasons about the next action."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-08",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Scoped tool access",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The Sentry MCP server exposes read tools for error groups, events and stack traces, plus tools that resolve, assign and delete issues; all of them arrived when the server was connected. Last week an agent resolved an issue it judged fixed, and nobody was asked first. Under the on-call policy, issue state in Sentry changes only through Sentry's own interface, where every change is attributed for the weekly audit. <b>Which response best fits the policy?</b>",
+   "options": [
+    {
+     "t": "Add a PreToolUse hook that pauses for the engineer's approval before any Sentry tool that changes issue state.",
+     "why": "Runner-up. An approval hook is the right control when a human may authorise the action from the session. The policy says state changes happen only in Sentry's own interface, where they are attributed; an approved change from Claude still breaks it."
+    },
+    {
+     "t": "Add a rule to the project CLAUDE.md that Sentry issue state is changed in Sentry's interface, not from a session.",
+     "why": "Incorrect. A CLAUDE.md rule is guidance the model usually follows; the policy needs the tools to be unavailable, not discouraged."
+    },
+    {
+     "t": "Disconnect the Sentry server and have engineers paste stack traces and event payloads into the conversation.",
+     "why": "Incorrect. Removing the server also removes the read tools the investigation needs."
+    },
+    {
+     "t": "List the server's state-changing tools under deny in the committed project settings, leaving read tools allowed.",
+     "why": "Correct. Scoped access removes the mutation tools from what Claude can call while keeping the read tools, and committing the setting applies the policy to everyone."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "explanation": "Give agents only the tools their role needs; when an action must not happen from the agent at all, remove access rather than adding approval steps or instructions. Approval hooks fit actions that are allowed with a human sign-off.",
+   "runnerUp": 0,
+   "decider": "Policy allows state changes only through Sentry's own interface; if it allowed changes from Claude with a human's approval, a PreToolUse approval hook would fit.",
+   "eli5": {
+    "question": "An agent closed a Sentry issue on its own. The clue is the policy: issue changes happen only in Sentry's own interface, where each change is logged to a person. So changes from Claude are not allowed even with a yes.",
+    "answer": "Think of a shop rule that refunds are given only at the customer-service desk. Putting a 'call a manager' button on the till does not fit the rule; the till should not do refunds at all. So take the state-changing Sentry tools away (<b>deny them in project settings</b>) and keep the read tools. <b>Rule: if an action must not happen from the agent, remove the tool; if it may happen with approval, add a hook.</b>",
+    "options": [
+     "Runner-up. A pause for approval (<b>PreToolUse hook</b>) fits if changes from Claude were allowed with a human's yes. Here they are not allowed at all.",
+     "A written rule (<b>CLAUDE.md</b>) is usually followed, not always.",
+     "Unplugging Sentry also loses the read tools the investigation needs.",
+     "Correct. Deny the state-changing tools and keep the read tools."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see <b>'nobody was asked'</b> as the problem, and add a step that asks. But the policy is not 'ask first'. It says state changes happen <b>only in Sentry's own interface</b>. An approved change from Claude still breaks that. The tools must not be callable at all.",
+    "mapTitle": "Controlling a risky tool: remove, gate or guide?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Action <b>not allowed</b> from the agent at all",
+       "Access",
+       "Deny or remove the tool; keep the rest"
+      ],
+      [
+       "Action allowed <b>with human approval</b>",
+       "Gate",
+       "PreToolUse hook that asks or blocks"
+      ],
+      [
+       "Action allowed under a <b>threshold</b>, e.g. an amount",
+       "Business rule",
+       "Hook blocks above it and redirects"
+      ],
+      [
+       "Preference, not a hard rule",
+       "Guidance",
+       "CLAUDE.md or prompt instruction"
+      ],
+      [
+       "Agent misuses tools outside its role",
+       "Tool distribution",
+       "Scope tools per role"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "plus tools that resolve, assign and delete issues; all of them arrived when the server was connected",
+      "means": "Every tool on the server is available by default, including the risky ones."
+     },
+     {
+      "quote": "Last week an agent resolved an issue it judged fixed, and nobody was asked first.",
+      "means": "The vivid incident. 'Nobody was asked' invites an approval step (<b>[[0]]</b>, the runner-up)."
+     },
+     {
+      "quote": "issue state in Sentry changes only through Sentry's own interface",
+      "means": "The quiet clue. Not from Claude at all, approved or not. A CLAUDE.md rule (<b>[[1]]</b>) only discourages it."
+     },
+     {
+      "quote": "Which response best fits the policy?",
+      "means": "Keep reads, remove writes. Unplugging the server (<b>[[2]]</b>) loses the reads. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Not allowed from the agent: remove the tool. Allowed with approval: a hook. A preference: an instruction.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Scoped access; limited cross-role tools for high-frequency needs."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Direct execution",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The fix is agreed with the service owner: a two-line guard at the top of <code>apply_regional_discount</code> that returns the undiscounted price when the region field is missing, plus one unit test. The incident is still live. <code>pricing.py</code> is shared by four teams, and last month's large refactor of it went through plan mode, which caught two interface breaks before any code changed. <b>Which way of working fits this change best?</b>",
+   "options": [
+    {
+     "t": "Ask Claude for the guard and its test directly, then review the diff before committing.",
+     "why": "Correct. Direct execution fits simple, well-scoped changes whose approach is settled. The guard and test are agreed, small and local, and the incident is live, so planning adds time without adding decisions."
+    },
+    {
+     "t": "Start with the interview pattern so Claude asks about regional pricing edge cases first.",
+     "why": "Incorrect. The interview pattern surfaces requirements the engineer has not thought through; here the behaviour is already agreed with the service owner."
+    },
+    {
+     "t": "Enter plan mode so Claude explores the shared module and proposes an approach before editing.",
+     "why": "Runner-up. Plan mode is right for large or architectural changes with several valid approaches, as last month's refactor was. This change has one agreed approach and touches one function."
+    },
+    {
+     "t": "Spawn an Explore subagent to map and summarise the function's callers before the change.",
+     "why": "Incorrect. An Explore subagent isolates verbose discovery, which a two-line change with an agreed approach does not need."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "explanation": "Use plan mode for large-scale, multi-file or architectural changes with several valid approaches, and direct execution for simple, well-scoped changes whose approach is settled.",
+   "runnerUp": 2,
+   "decider": "The two-line fix and its behaviour are already agreed; if the approach were still open or the change spanned the shared module's interfaces, plan mode would be right.",
+   "eli5": {
+    "question": "A tiny, agreed fix is needed during a live incident. The clue is: the exact change is already agreed with the owner, and it is two lines plus a test. Last month's big refactor is the vivid detail, but that was a different kind of job.",
+    "answer": "Think of fixing a leaking tap versus redesigning the plumbing. A redesign needs drawings first (<b>plan mode</b>). A known washer swap does not; you do it and check it (<b>direct execution</b>). <b>Rule: plan for big or open changes; do small, agreed ones directly.</b>",
+    "options": [
+     "Correct. Make the agreed change directly and check the diff.",
+     "Having Claude ask questions first (<b>interview pattern</b>) is for unclear requirements. These are agreed.",
+     "Runner-up. Planning first (<b>plan mode</b>) suits big changes with several approaches, like last month's refactor. This is two lines.",
+     "Mapping callers first (<b>Explore subagent</b>) is for big, noisy exploration. This change does not need it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>shared, sensitive code always deserves plan mode</b>, especially after plan mode saved a past refactor. But plan mode earns its keep when there are <i>decisions</i> to make: several approaches, many files, architecture. Here every decision is already made. <b>The size and openness of the change matter</b>, not how important the file is.",
+    "mapTitle": "Plan first or just do it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Small change, <b>approach agreed</b>",
+       "Nothing to decide",
+       "Direct execution, then review the diff"
+      ],
+      [
+       "Large or multi-file change, <b>several valid approaches</b>",
+       "Design decisions open",
+       "Plan mode first"
+      ],
+      [
+       "Requirements unclear to you",
+       "Missing knowledge",
+       "Interview pattern: Claude asks first"
+      ],
+      [
+       "Need to survey a lot of code",
+       "Verbose discovery",
+       "Explore subagent"
+      ],
+      [
+       "Behaviour hard to describe in words",
+       "Ambiguous spec",
+       "Concrete input/output examples or tests first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The fix is agreed with the service owner: a two-line guard",
+      "means": "The quiet clue. The approach is settled and tiny."
+     },
+     {
+      "quote": "The incident is still live.",
+      "means": "Extra planning rounds cost real time."
+     },
+     {
+      "quote": "last month's large refactor of it went through plan mode, which caught two interface breaks before any code changed",
+      "means": "The vivid detail. It pulls toward plan mode (<b>[[2]]</b>, the runner-up), but that was a large, open change."
+     },
+     {
+      "quote": "Which way of working fits this change best?",
+      "means": "Questions (<b>[[1]]</b>) and exploration (<b>[[3]]</b>) solve problems this change does not have. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Plan for large or open changes; do small, agreed ones directly and review the diff.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Direct execution: simple well-scoped changes (single validation check)."
+    }
+   }
+  },
+  {
+   "id": "s5q-s4-10",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Command arguments",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The engineer wants <code>/triage &lt;group-id&gt;</code> to run the team's first-response checklist: pull the group's latest events, locate the frames in the repository and list recent commits that touched them. Every joiner should get it on clone, and it must not be able to edit files. Whoever runs it usually carries straight on in the same conversation, asking about particular frames and commits it surfaced. <b>Which setup fits best?</b>",
+   "options": [
+    {
+     "t": "A Triage section in the project CLAUDE.md describing the checklist, the expected ID format and a no-edits rule.",
+     "why": "Incorrect. CLAUDE.md holds always-loaded standards; an on-demand checklist that takes an argument belongs in a command or skill, and a written rule does not stop edits."
+    },
+    {
+     "t": "A committed skill with <code>context: fork</code>, an argument-hint for the group ID and read-only allowed-tools.",
+     "why": "Runner-up. context: fork isolates a verbose workflow and returns only a summary, which is right when the main conversation should stay clean. Here the person carries on with questions about specific frames and commits, which need the triage detail in the main context."
+    },
+    {
+     "t": "A committed <code>.claude/commands/triage.md</code> whose frontmatter sets argument-hint and read-and-query allowed-tools.",
+     "why": "Correct. A project command arrives on clone, argument-hint shows that a group ID is expected, allowed-tools limits it to reading and querying, and its output stays in the conversation for follow-up questions."
+    },
+    {
+     "t": "A committed <code>.claude/commands/triage.md</code> that takes the ID as its argument, whose body says not to modify files.",
+     "why": "Incorrect. $ARGUMENTS passes the ID, but a body instruction not to edit is guidance, not a restriction; allowed-tools is what removes the ability to edit."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "explanation": "Project commands and skills under .claude/ are shared on clone; argument-hint documents the expected input and allowed-tools restricts capability. Use context: fork when a workflow's detail should not land in the main conversation.",
+   "runnerUp": 1,
+   "decider": "People carry on asking about specific frames and commits in the same conversation, so the triage detail must stay in the main context; if only a summary were needed afterwards, a forked skill would be better.",
+   "eli5": {
+    "question": "The team wants a shared /triage shortcut that takes an error ID and cannot edit files. The clue is: people carry on asking follow-up questions in the same chat about what triage found. So the details must stay in that chat.",
+    "answer": "Think of a checklist card everyone gets in the team kit (<b>.claude/commands/</b>). The card says what to fill in (<b>argument-hint</b>) and which tools you may pick up (<b>allowed-tools</b>). If the work were done in a back room (<b>context: fork</b>), you would get only a summary, and the follow-up questions would lack the detail. <b>Rule: fork a workflow when you want only its summary; keep it inline when you will build on its detail.</b>",
+    "options": [
+     "The always-loaded handbook (<b>CLAUDE.md</b>) is not an on-demand command, and a written rule does not stop edits.",
+     "Runner-up. Running in a back room (<b>context: fork</b>) keeps the chat clean, but the follow-up questions need the detail here.",
+     "Correct. Shared on clone, asks for the ID, and limited to read and query tools.",
+     "A written 'do not edit' line is a request, not a lock."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>context: fork is always the tidier choice</b> for a multi-step workflow, because it keeps noise out of the main conversation. But a fork returns a <i>summary</i>. When the user's next move is to dig into specific frames and commits from the output, that detail needs to be <b>in the main conversation</b>.",
+    "mapTitle": "Packaging a team workflow: where and how?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Shared on-demand workflow; detail <b>needed afterwards</b>",
+       "Runs inline",
+       "<code>.claude/commands/</code> with argument-hint and allowed-tools"
+      ],
+      [
+       "Verbose workflow; only the <b>summary</b> matters",
+       "Main context pollution",
+       "Skill with <code>context: fork</code>"
+      ],
+      [
+       "Must not edit files",
+       "Capability",
+       "<code>allowed-tools</code>, not a body instruction"
+      ],
+      [
+       "Personal shortcut",
+       "Scope",
+       "<code>~/.claude/commands/</code>"
+      ],
+      [
+       "Universal standard for every task",
+       "Always-on context",
+       "CLAUDE.md"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every joiner should get it on clone",
+      "means": "It must be committed in the project's .claude/ directory, not kept in a personal location."
+     },
+     {
+      "quote": "it must not be able to edit files",
+      "means": "A restriction, not a request. That rules out the body instruction in <b>[[3]]</b> and the CLAUDE.md rule in <b>[[0]]</b>."
+     },
+     {
+      "quote": "Whoever runs it usually carries straight on in the same conversation, asking about particular frames and commits it surfaced.",
+      "means": "The quiet clue. The detail must stay in this conversation, so a forked skill (<b>[[1]]</b>, the runner-up) would leave only a summary."
+     },
+     {
+      "quote": "Which setup fits best?",
+      "means": "Shared, argument-hinted, tool-limited and inline: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Fork a workflow when only its summary matters; keep it inline when the user will build on its detail.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)."
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,2124 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 Claude Code Configuration &amp; Workflows · D4 Prompt Engineering &amp; Structured Output",
+   "brief": "A fintech runs <b>Claude Code in GitHub Actions</b> on a TypeScript and Go monorepo, about 180 pull requests a week. Three workloads: a pre-merge review that posts inline comments at file and line, test generation for uncovered branches, and a nightly technical-debt sweep over roughly 2,000 files. <code>CLAUDE.md</code> and <code>.claude/</code> are committed. Developer trust in the review is low after a run of noisy findings."
+  },
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 Prompt Engineering &amp; Structured Output · D5 Context &amp; Reliability · D1 Agentic Architecture",
+   "brief": "A logistics company extracts vendor, invoice and PO numbers, line items, totals, currency and Incoterm from commercial invoices and bills of lading, then posts them to an ERP. About <b>15,000 documents a month</b> arrive in some 40 vendor layouts, including OCR'd faxes. Extraction uses tool use with a <b>JSON schema</b> and a validation-and-retry loop before posting; clerks handle exceptions."
+  }
+ ],
+ "questions": [
+  {
+   "id": "s5-01",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Non-interactive CI invocation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The review step runs <code>claude \"Check this diff for injection risks and report findings\"</code>, and a later step turns its stdout into inline comments. On every run the review step sits idle until GitHub's six-hour limit cancels it, after which the comment step fails with 'Unexpected end of JSON input'. The engineer who wrote the step tested it in a terminal, where it worked: they read the answer and typed /exit. The Actions runner provides no TTY. <b>What should the review step run instead?</b>",
+   "options": [
+    {
+     "t": "Add <code>--output-format json</code> plus a <code>--json-schema</code> for findings to the current command, and parse that.",
+     "why": "Runner-up. Structured output is the right way to feed the comment step, and it would win if the step finished and its prose were hard to parse. Here nothing is produced at all because the session never ends; the JSON error is a downstream symptom."
+    },
+    {
+     "t": "Wrap the command in an <code>expect</code> script that allocates a pseudo-terminal and sends <code>/exit</code> once the answer has appeared.",
+     "why": "Incorrect. It fakes the person at the keyboard instead of not needing one. It is brittle (it must guess when the answer is complete) and the supported mode already exists."
+    },
+    {
+     "t": "Run <code>claude -p</code> with the same prompt text, and have the next step read whatever it prints to standard output.",
+     "why": "Correct. The CLI is waiting for a person to type the next turn, exactly as it did in the engineer's terminal. <code>-p</code> (<code>--print</code>) is non-interactive mode: it answers once, prints and exits."
+    },
+    {
+     "t": "Export <code>CLAUDE_CODE_HEADLESS=1</code> in the step's environment, and leave the command and its prompt as they are.",
+     "why": "Incorrect. No such variable switches Claude Code into non-interactive mode. The supported switch is the <code>-p</code> flag."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The step idles until cancelled and the author ended the session by hand with /exit, so the session is waiting for input; if the step finished but its prose were unparseable, structured output flags would be the fix.",
+   "explanation": "In CI, Claude Code must run in print mode (<code>-p</code> / <code>--print</code>): one prompt in, one answer out, then exit. Output format flags shape what comes out, but they do not stop an interactive session from waiting for its next turn.",
+   "eli5": {
+    "question": "The CI job never finishes, and the next step then complains about empty JSON. The clue is: the author tested it by reading the answer and typing /exit by hand. So the question is how to run Claude Code with nobody at the keyboard. It is not really about JSON.",
+    "answer": "Think of a shop assistant who serves you and then waits for your next request until you say goodbye. In CI nobody says goodbye, so it waits for six hours. Print mode (<b><code>-p</code></b>) is the 'serve once and close the till' mode: it answers, prints, and exits. The JSON error only happened because nothing was printed. <b>Rule: in a pipeline, run Claude Code with <code>-p</code>.</b>",
+    "options": [
+     "Runner-up. Asking for JSON (<b>structured output</b>) would help if the job finished and the text was hard to read. Here the job never finishes.",
+     "A robot that types /exit for you (<b>expect</b>) is a fragile workaround. A proper non-interactive mode already exists.",
+     "Correct. <code>-p</code> answers once and exits, which is what an unattended job needs.",
+     "This setting does not exist. The real switch is the <code>-p</code> flag."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to read the <b>JSON error</b> as the problem and reach for output-format flags. But that error comes from the <i>next</i> step, after a six-hour cancellation. The review step itself never ended. <b>An interactive Claude Code session waits for another turn until someone exits</b>, and in CI nobody does.",
+    "diagram": "claude \"...\"     -> answers, then waits for you (hang)\nclaude -p \"...\"  -> answers, prints, exits\n  + --output-format json  -> same, but as JSON\n  + --json-schema ...     -> JSON in your shape",
+    "mapTitle": "CI step misbehaving? Which part of the invocation is wrong?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Step hangs until the job limit",
+       "Session is interactive",
+       "Run with <code>-p</code> / <code>--print</code>"
+      ],
+      [
+       "Step finishes, but prose is hard to parse",
+       "Output shape",
+       "<code>--output-format json</code> + <code>--json-schema</code>"
+      ],
+      [
+       "Review ignores repo conventions",
+       "Missing project context",
+       "Committed <code>CLAUDE.md</code>"
+      ],
+      [
+       "Review misses flaws in code it just wrote",
+       "Same-session self-review",
+       "Separate, independent invocation"
+      ],
+      [
+       "Step needs no tool loop and can wait hours",
+       "Interface choice",
+       "Message Batches API"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "On every run the review step sits idle until GitHub's six-hour limit cancels it",
+      "means": "Idle, not crashing: the process is waiting for something. That points at the invocation mode."
+     },
+     {
+      "quote": "after which the comment step fails with 'Unexpected end of JSON input'",
+      "means": "The vivid clue, but it is downstream. The comment step got nothing because the review never printed. This is what makes <b>[[0]]</b> tempting."
+     },
+     {
+      "quote": "they read the answer and typed /exit",
+      "means": "The quiet decider. Locally a human ended the session. In CI nobody can, so the session must be non-interactive: <b>[[2]]</b>."
+     },
+     {
+      "quote": "The Actions runner provides no TTY",
+      "means": "Faking a terminal (<b>[[1]]</b>) works around this instead of removing the need for one; <b>[[3]]</b> names a setting that does not exist."
+     }
+    ],
+    "rule": "A step that hangs is an invocation problem, not an output problem. Use <code>-p</code> first; add output-format flags only once the step actually finishes.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "-p / --print = non-interactive mode (no input hang)."
+    }
+   }
+  },
+  {
+   "id": "s5-02",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-parseable output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Inline comments are created by a Python script that runs regular expressions over the review's markdown to recover path, line and message. About 7% of comments attach to the wrong line, and 2% of runs post nothing because a heading or list style came back that the patterns never anticipated. Developers say the wording of the comments is fine. Nobody reads the review text directly; the script is its only consumer. <b>Which change fixes this at the source?</b>",
+   "options": [
+    {
+     "t": "Show two complete sample findings in the prompt, laid out in the exact heading and bullet style the patterns expect.",
+     "why": "Runner-up. Examples are the best way to make a layout consistent, and they would win if a human read the review and wanted a stable format. A program still has to parse the prose, and the next unexpected shape breaks it again."
+    },
+    {
+     "t": "Pass <code>--output-format json</code> with a <code>--json-schema</code> naming path, line, severity and body, and read fields directly.",
+     "why": "Correct. A program is the only consumer, so the review should hand it typed fields instead of prose to be re-parsed. The schema makes path and line values, not patterns to be guessed."
+    },
+    {
+     "t": "Review each changed file in its own invocation, so the job knows the path and only line and message need recovering.",
+     "why": "Incorrect. Per-file passes help attention on large pull requests, but line and message are still pulled out of free text, and that is where both failures come from."
+    },
+    {
+     "t": "Feed the script's parse error back into a second run of the review whenever the patterns fail to match.",
+     "why": "Incorrect. Retry with specific error feedback is a good loop for validated output, but here it pays for a second run to rescue prose that a schema would have made unnecessary. It does nothing for the 7% that parse but land on the wrong line."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The script is the only consumer of the review, so the output should be machine-readable fields; if people read the review and only the layout varied, few-shot examples of the format would be the better fix.",
+   "explanation": "When a program consumes model output, declare the shape: <code>--output-format json</code> with <code>--json-schema</code> turns findings into fields the posting script can read without guessing. Making prose more regular is still parsing prose.",
+   "eli5": {
+    "question": "A script tries to pick file names and line numbers out of written paragraphs, and sometimes gets them wrong. The clue is: no person reads the review; only the script does. So the question is what format a script should receive.",
+    "answer": "Imagine posting a parcel by writing the address somewhere in a letter and hoping the sorter finds it. It works until someone writes the letter differently. A printed address label with fixed boxes (<b>JSON output with a schema</b>) is read the same way every time. Since only the script reads this review, give it the label. <b>Rule: if a program reads the output, ask for JSON in a declared shape.</b>",
+    "options": [
+     "Runner-up. Showing examples (<b>few-shot</b>) makes the writing more regular. It would win if people read it. The script would still be guessing at text.",
+     "Correct. Fixed fields (path, line, body) that the script reads directly, with no guessing.",
+     "Splitting by file (<b>per-file passes</b>) helps attention. Line numbers would still be dug out of text.",
+     "Asking again after a failure (<b>retry with feedback</b>) costs a second run and does not fix wrong-line comments that parsed fine."
+    ]
+   },
+   "deep": {
+    "premise": "You might think the fix is to make the prose <b>more predictable</b>, since examples are the textbook tool for consistent format. That is the right tool when people read the output. When <b>a program</b> is the only reader, the real fix is to stop sending prose at all and send typed fields.",
+    "mapTitle": "Output is hard to use: who reads it, and what shape do they need?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A script consumes the findings",
+       "<code>--output-format json</code> + <code>--json-schema</code>",
+       "Fields, not text to parse"
+      ],
+      [
+       "People read it; layout and detail vary",
+       "2–4 few-shot examples of the format",
+       "Examples fix format consistency"
+      ],
+      [
+       "JSON is valid but a value is wrong",
+       "Validate in code, retry with the specific error",
+       "Schemas stop syntax errors only"
+      ],
+      [
+       "Large PR, uneven depth",
+       "Per-file passes + integration pass",
+       "Attention dilution"
+      ],
+      [
+       "Step never finishes in CI",
+       "<code>-p</code> print mode",
+       "Interactive session waits"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "runs regular expressions over the review's markdown to recover path, line and message",
+      "means": "The data the job needs (path, line) is being dug out of free text. That is the weak point."
+     },
+     {
+      "quote": "2% of runs post nothing because a heading or list style came back that the patterns never anticipated",
+      "means": "The vivid symptom. It invites <b>[[0]]</b> (show the exact layout) or <b>[[3]]</b> (retry on parse failure)."
+     },
+     {
+      "quote": "Developers say the wording of the comments is fine",
+      "means": "The content is good; only the transport is broken. Per-file passes (<b>[[2]]</b>) target content quality, not transport."
+     },
+     {
+      "quote": "the script is its only consumer",
+      "means": "The decider. The reader is a program, so give it fields: <b>[[1]]</b>. If people read it, <b>[[0]]</b> would be the better move."
+     }
+    ],
+    "rule": "Prose is for people; schemas are for programs. When a script is the consumer, declare the output schema instead of parsing text.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings → inline PR comments."
+    }
+   }
+  },
+  {
+   "id": "s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Project context in CI",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The CI reviewer keeps asking for coverage on generated protobuf stubs, which the repository deliberately excludes, and keeps recommending the mock-factory fixtures the team replaced with builders last year. Developers see the same two suggestions when they ask Claude Code for tests on their laptops, and so does the nightly sweep. The conventions are written up in <code>docs/testing.md</code>, which the platform team edits through ordinary pull requests. <b>Where should the fix go?</b>",
+   "options": [
+    {
+     "t": "Pass the exclusions and fixture rules to the review job through <code>--append-system-prompt</code> in the workflow.",
+     "why": "Runner-up. It would fix the CI review, and it would win if only that job were wrong. Laptops and the nightly sweep would still get the old advice, and a second copy of the rules would live in a workflow file nobody edits when conventions change."
+    },
+    {
+     "t": "Bake a <code>~/.claude/CLAUDE.md</code> with both rules into the runner image all Actions jobs start from.",
+     "why": "Incorrect. User-level memory in an image reaches CI jobs only, and it is not version-controlled with the repository. Developers' laptops are untouched."
+    },
+    {
+     "t": "Package both rules as a project skill in <code>.claude/skills/</code> that the review prompt tells Claude to invoke.",
+     "why": "Incorrect. Skills are on-demand workflows. Testing standards should apply to every session without anyone remembering to call them, including on laptops."
+    },
+    {
+     "t": "Add an <code>@import</code> line pointing at the existing standards document to the committed project <code>CLAUDE.md</code>.",
+     "why": "Correct. Project <code>CLAUDE.md</code> is loaded by every Claude Code session in the repository: the CI review, the nightly sweep and each laptop. <code>@import</code> pulls in the existing document, so the conventions stay in one place that the platform team already maintains."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Laptop sessions and the nightly sweep show the same mistakes, so the conventions must load for every session in the repository; if only the CI review were wrong, a workflow-level system prompt would do.",
+   "explanation": "<code>CLAUDE.md</code> is where a repository tells every Claude Code session its testing standards, fixtures and review criteria, in CI and on laptops alike. <code>@import</code> lets it reference an existing document instead of copying it.",
+   "eli5": {
+    "question": "Claude keeps suggesting things the team stopped doing. The clue is: the same wrong advice shows up on laptops and in the nightly job, not just the CI review. So the question is where to put the rules so every session sees them.",
+    "answer": "Think of a staff noticeboard in the office kitchen versus a sticky note on one person's desk. The project <code>CLAUDE.md</code> is the noticeboard: every Claude session in the repository reads it. An <b><code>@import</code></b> line pins the existing testing document to that board. A note in one workflow only reaches one job. <b>Rule: rules for everyone in the repo go in project CLAUDE.md.</b>",
+    "options": [
+     "Runner-up. A note added to one job's instructions (<b>--append-system-prompt</b>) would fix CI. It would win if only the CI review were wrong.",
+     "A personal settings file in the runner image (<b>user-level CLAUDE.md</b>) never reaches laptops and is not in the repo.",
+     "A <b>skill</b> is a recipe someone has to call. Standing rules should load by themselves.",
+     "Correct. Every session in the repo loads project <code>CLAUDE.md</code>, and <code>@import</code> reuses the existing document."
+    ]
+   },
+   "deep": {
+    "premise": "The stem opens on the <b>CI reviewer</b>, so it is natural to fix the CI job. But the same advice appears <b>on laptops and in the nightly sweep</b>. The fault is not one job's prompt; it is that <b>no session in the repository knows the conventions</b>.",
+    "diagram": "project CLAUDE.md  -> every session in the repo\n  @import docs/testing.md\nworkflow prompt    -> that one CI job\n~/.claude/CLAUDE.md -> that one machine\nskill              -> only when invoked",
+    "mapTitle": "Who needs these instructions, and how do they get them?",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Right home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every session in the repo, CI and laptops",
+       "Project <code>CLAUDE.md</code> (+ <code>@import</code>)",
+       "Committed, always loaded"
+      ],
+      [
+       "One CI job only",
+       "Job prompt / <code>--append-system-prompt</code>",
+       "Scoped to that run"
+      ],
+      [
+       "One developer's preferences",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not shared"
+      ],
+      [
+       "Only files matching a pattern",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads when relevant"
+      ],
+      [
+       "A task run on demand",
+       "Skill in <code>.claude/skills/</code>",
+       "Invoked, not always loaded"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The CI reviewer keeps asking for coverage on generated protobuf stubs",
+      "means": "The vivid, CI-only framing. It invites a CI-only fix like <b>[[0]]</b>."
+     },
+     {
+      "quote": "Developers see the same two suggestions when they ask Claude Code for tests on their laptops, and so does the nightly sweep",
+      "means": "The decider. Three different sessions share the mistake, so the fix must reach all of them. This rules out <b>[[0]]</b> and <b>[[1]]</b>."
+     },
+     {
+      "quote": "The conventions are written up in docs/testing.md",
+      "means": "The content already exists. It just is not loaded. An import reuses it instead of copying it."
+     },
+     {
+      "quote": "which the platform team edits through ordinary pull requests",
+      "means": "The home must be version-controlled in the repository. A runner image (<b>[[1]]</b>) is not; a skill (<b>[[2]]</b>) loads only on demand. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Ask who needs the rule. Everyone working in the repository means project <code>CLAUDE.md</code>; one job means that job's prompt.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "CLAUDE.md provides project context (testing standards, fixtures, review criteria)."
+    }
+   }
+  },
+  {
+   "id": "s5-04",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Session context isolation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Over three months, human reviewers raised eleven problems in tests the pipeline generated, two of them asserting on the wrong branch; the automated review flagged none. To save a runner start-up, one invocation does both jobs: its prompt asks Claude to write tests for uncovered branches, then to review the whole pull request, new tests included. The review prompt lists general quality checks but says nothing specific about assertions. <b>What change would most improve the review of generated tests?</b>",
+   "options": [
+    {
+     "t": "Run the review as a fresh invocation that receives the diff, generated tests included, but none of the generation turns.",
+     "why": "Correct. The reviewing session already holds the reasoning that produced the tests, so it reads its own choices as settled. A separate instance with no generation history checks them the way the human reviewers did."
+    },
+    {
+     "t": "Split the review into per-file passes followed by an integration pass over the changed and generated files together.",
+     "why": "Incorrect. Multi-pass review fixes attention dilution on large diffs. The problem here is not breadth but that the reviewer wrote the code it is checking."
+    },
+    {
+     "t": "Add review criteria for generated tests: each assertion must target the branch the test names, with a failing sample.",
+     "why": "Runner-up. Explicit criteria improve any reviewer, and this would win if the review already ran in its own session and simply lacked an assertion check. In the same session, the model still reviews tests it has just decided were right."
+    },
+    {
+     "t": "Enable extended thinking for the review half of the session, with a budget large enough to re-derive each test's intent.",
+     "why": "Incorrect. More reasoning in the same context still starts from the generation reasoning. Independent instances catch more than self-review with extended thinking."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "Generation and review share one session, so the reviewer carries the reasoning behind every test; if the review already ran independently, adding assertion criteria would be the better fix.",
+   "explanation": "A session is a weak reviewer of its own output, because its context still holds the reasoning that produced it. An independent instance with no generation history catches subtle issues that self-review, even with extended thinking, misses.",
+   "eli5": {
+    "question": "The automatic review never finds problems in tests the pipeline wrote, but people do. The clue is: the same run writes the tests and then reviews them. So the question is whether the reviewer can be fair to its own work.",
+    "answer": "Think of proof-reading your own essay straight after writing it. You read what you meant, not what you wrote. A friend who has never seen it catches the slip. A <b>fresh, independent instance</b> is that friend: it sees the tests without the reasons that produced them. <b>Rule: never let the session that wrote the code be its only reviewer.</b>",
+    "options": [
+     "Correct. A new session sees only the diff, like a friend reading your essay cold.",
+     "Reviewing file by file (<b>multi-pass</b>) helps with big diffs. The problem here is who is reviewing, not how much.",
+     "Runner-up. A checklist for assertions (<b>explicit criteria</b>) helps any reviewer. It would win if the reviewer were already separate.",
+     "Thinking harder (<b>extended thinking</b>) in the same session still starts from the author's own reasoning."
+    ]
+   },
+   "deep": {
+    "premise": "The two wrong-branch assertions make it look like a <b>missing criterion</b>: the prompt says nothing about assertions. But the reviewer never flagged <i>any</i> of eleven problems in generated tests. That pattern says the reviewer is <b>the author</b>, and an author re-reads its own choices as correct.",
+    "diagram": "one session:  write tests -> review (sees own reasoning)\ntwo sessions: write tests | review (sees only the diff)",
+    "mapTitle": "Review is missing things: is it the reviewer, the criteria, or the size?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Misses flaws only in code the same session wrote",
+       "Self-review in shared context",
+       "Independent review instance"
+      ],
+      [
+       "Independent reviewer misses one kind of flaw",
+       "Missing criterion",
+       "Explicit criteria + examples"
+      ],
+      [
+       "Large PR, uneven depth, contradictions",
+       "Attention dilution",
+       "Per-file passes + integration pass"
+      ],
+      [
+       "Many false positives in a vague category",
+       "Vague instruction",
+       "Categorical, testable criteria"
+      ],
+      [
+       "Severity swings on borderline cases",
+       "Instructions alone inconsistent",
+       "Few-shot examples with reasoning"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "two of them asserting on the wrong branch; the automated review flagged none",
+      "means": "The vivid symptom. It makes an assertion criterion (<b>[[2]]</b>) look like the fix."
+     },
+     {
+      "quote": "one invocation does both jobs",
+      "means": "The decider. The reviewer has the generation reasoning in its context, so it checks its own decisions."
+     },
+     {
+      "quote": "then to review the whole pull request, new tests included",
+      "means": "The review covers its own output. Extended thinking (<b>[[3]]</b>) adds reasoning on top of the same bias; per-file passes (<b>[[1]]</b>) change scope, not independence."
+     },
+     {
+      "quote": "The review prompt lists general quality checks but says nothing specific about assertions",
+      "means": "True, and worth fixing later. But it cannot explain zero flags across eleven different problems. Independence comes first: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "If a reviewer misses problems only in code it wrote, separate the reviewer. Add criteria once the reviewer is independent.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "Session context isolation: the session that generated code is less effective at reviewing its own changes than an independent instance."
+    }
+   }
+  },
+  {
+   "id": "s5-05",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria & precision",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Developers sampled 300 review findings and judged 22% worth acting on. The biggest group, about a third of all findings, says a doc comment is stale; reviewers say most of those comments are fine. That group traces to one prompt line asking Claude to keep code documentation trustworthy. Since the spike, developers skim past the whole review, including its accurate security notes. <b>What most improves precision?</b>",
+   "options": [
+    {
+     "t": "Add three worked findings showing stale doc comments that merit a report, each with its file, line and suggested fix.",
+     "why": "Runner-up. Examples are the best tool for consistent output, and they would win if the category were already defined as a checkable condition and only the findings' shape varied. Examples built on a vague goal still leave the boundary undefined."
+    },
+    {
+     "t": "Have a second instance grade every finding from one to five, and post only the findings it scores four or higher.",
+     "why": "Incorrect. A grader judges against the same undefined idea of 'trustworthy' and doubles the cost of every review. Define the category first."
+    },
+    {
+     "t": "Rewrite that line as a test: report a doc comment only when the behaviour it describes differs from what the code does.",
+     "why": "Correct. 'Trustworthy' has no boundary, so almost any comment can be flagged. A condition that compares claim and code can be checked, and categorical criteria are what move precision."
+    },
+    {
+     "t": "Tell the reviewer to stay conservative and to post a finding only when it is highly confident the problem is real.",
+     "why": "Incorrect. Hedging words do not improve precision the way categorical criteria do; the model can be confident about a wrong stale-comment flag."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The noisy group comes from a prompt line with no checkable boundary ('keep documentation trustworthy'); if the category were already a concrete condition and only output varied, few-shot examples would be the better lever.",
+   "explanation": "Vague instructions produce vague findings. Replace a goal like 'trustworthy' with a condition that can be checked against the code, because a high-false-positive category erodes trust in the accurate findings too.",
+   "eli5": {
+    "question": "A third of the review's comments are wrong, and they all come from one line in the prompt. The clue is: that line asks for documentation to be 'trustworthy', which is a feeling, not a test. So the question is how to make that line precise.",
+    "answer": "Imagine telling a referee to blow the whistle 'when play is unfair'. They will blow it all the time. Tell them 'when a player is offside', a rule they can check, and the whistles become right. The fix is a <b>checkable condition</b>: flag a comment only when what it says the code does is not what the code does. <b>Rule: replace adjectives with conditions you can check.</b>",
+    "options": [
+     "Runner-up. Showing examples (<b>few-shot</b>) makes output consistent. It would win if the rule itself were already clear.",
+     "A second judge (<b>grading pass</b>) uses the same vague idea and doubles the cost.",
+     "Correct. A clear test (comment says X, code does Y) replaces a vague goal.",
+     "Saying 'be careful' or 'only when sure' does not tell the model where the line is."
+    ]
+   },
+   "deep": {
+    "premise": "Examples feel like the strongest prompt tool, and for <b>consistency</b> they are. But this is a <b>precision</b> problem: the category itself has no boundary. 'Trustworthy documentation' can be read as almost anything, so the fix is to <b>define the category as a test</b> first.",
+    "mapTitle": "Review findings are bad: is the rule vague, or the output inconsistent?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "One category mostly false positives; instruction is a vague goal",
+       "No checkable boundary",
+       "Rewrite as an explicit condition"
+      ],
+      [
+       "Criteria are concrete, but findings vary in shape or severity",
+       "Instructions alone inconsistent",
+       "2–4 few-shot examples with reasoning"
+      ],
+      [
+       "Prompt says 'be conservative'",
+       "Hedging is not a criterion",
+       "Categorical criteria"
+      ],
+      [
+       "Review misses flaws in its own code",
+       "Self-review",
+       "Independent instance"
+      ],
+      [
+       "Want to know which categories get dismissed",
+       "No feedback data",
+       "Track a <code>detected_pattern</code> field"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Developers sampled 300 review findings and judged 22% worth acting on",
+      "means": "Low precision overall: the problem is false positives, not missed bugs."
+     },
+     {
+      "quote": "about a third of all findings, says a doc comment is stale; reviewers say most of those comments are fine",
+      "means": "One category drives most of the noise."
+     },
+     {
+      "quote": "That group traces to one prompt line asking Claude to keep code documentation trustworthy",
+      "means": "The decider. The line states a goal, not a test. Examples (<b>[[0]]</b>) or a grader (<b>[[1]]</b>) built on it inherit the vagueness."
+     },
+     {
+      "quote": "developers skim past the whole review, including its accurate security notes",
+      "means": "Why it matters: false positives erode trust in good findings. 'Be conservative' (<b>[[3]]</b>) is the documented non-fix. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Precision comes from categorical criteria. Turn 'keep X trustworthy' into 'flag only when claim and code disagree'.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for consistency",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The same kind of finding, a possible null dereference on a path that a caller guards, was posted as critical on one pull request and minor on another in the same week. Each severity level in the prompt is defined by a test the reviewer can apply, such as 'reachable from an unauthenticated request'. Most findings land at the same level on every run; the swings cluster on findings where two of the tests seem to apply at once. <b>What most improves consistency?</b>",
+   "options": [
+    {
+     "t": "Ask for a confidence value beside each severity, and lower a finding by one level when its confidence is below 0.7.",
+     "why": "Incorrect. Self-reported confidence is poorly calibrated, so this replaces one unstable judgement with another."
+    },
+    {
+     "t": "Add three worked findings near the boundary, each with the code, the level chosen and a line on why the other level lost.",
+     "why": "Correct. The written tests are fine; the inconsistency lives where two of them overlap. Few-shot examples that show the reasoning on borderline cases are the most effective way to make those calls consistent."
+    },
+    {
+     "t": "Expand each level's definition with extra qualifying conditions for guarded and partially guarded code paths.",
+     "why": "Runner-up. Sharper criteria would win if the levels were vague. Here they are already concrete tests, and more prose adds more conditions to weigh differently at the boundary."
+    },
+    {
+     "t": "Run the review three times per pull request and post each finding at the severity that at least two runs assigned.",
+     "why": "Incorrect. It triples cost on a blocking path and can still split on a boundary case. Voting hides inconsistency instead of teaching the boundary."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Each level is already defined by a checkable test and the swings only occur where two tests overlap; if the levels were vague prose, sharper definitions would come first.",
+   "explanation": "When instructions are already explicit but output still varies on borderline cases, few-shot examples are the most effective fix. Choose examples at the boundary and show why one level was chosen over the other.",
+   "eli5": {
+    "question": "The same kind of bug gets called 'critical' one day and 'minor' the next. The clue is: the levels are already defined by clear tests, and the wobble only happens when two tests both seem to fit. So the question is how to teach the tie-break.",
+    "answer": "Think of a new judge at a baking contest. The rulebook is clear, but some cakes sit right between two grades. What helps is watching a few past borderline cakes being graded, with the reason. That is <b>few-shot examples</b> for the boundary. <b>Rule: if the rules are clear but answers still wobble, show worked examples of the hard cases.</b>",
+    "options": [
+     "A self-reported score (<b>confidence</b>) is not reliable, so it just moves the wobble.",
+     "Correct. Worked borderline cases show how to break the tie, with the reason.",
+     "Runner-up. Tighter definitions (<b>explicit criteria</b>) would win if the levels were vague. They already are clear tests.",
+     "Voting across three runs costs three times as much and still splits on close cases."
+    ]
+   },
+   "deep": {
+    "premise": "Inconsistency feels like a <b>definition</b> problem, so the instinct is to write more careful rules. But these rules are already concrete tests. The swings happen only <b>where two tests overlap</b>. More prose cannot settle a tie; <b>showing a few worked ties</b> can.",
+    "mapTitle": "Output is inconsistent: are the rules vague, or are the cases hard?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Swings only on borderline cases; rules are concrete",
+       "Boundary not demonstrated",
+       "Few-shot examples showing the reasoning"
+      ],
+      [
+       "Swings everywhere; levels are adjectives",
+       "Vague criteria",
+       "Define each level as a checkable test"
+      ],
+      [
+       "Many false positives in one category",
+       "Category has no boundary",
+       "Categorical criterion"
+      ],
+      [
+       "Findings vary in format",
+       "Format not demonstrated",
+       "Examples of the output format"
+      ],
+      [
+       "Want a reliability signal",
+       "Self-confidence is uncalibrated",
+       "Calibrate on labelled data"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "was posted as critical on one pull request and minor on another in the same week",
+      "means": "The vivid symptom. It sounds like the levels are unclear, which invites <b>[[2]]</b>."
+     },
+     {
+      "quote": "Each severity level in the prompt is defined by a test the reviewer can apply",
+      "means": "The decider. The criteria are already explicit, so sharpening them (<b>[[2]]</b>) is not the missing piece."
+     },
+     {
+      "quote": "Most findings land at the same level on every run",
+      "means": "The instructions work in general. A confidence gate (<b>[[0]]</b>) or voting (<b>[[3]]</b>) would add cost to every finding to fix a few."
+     },
+     {
+      "quote": "the swings cluster on findings where two of the tests seem to apply at once",
+      "means": "The fault is the overlap. Worked borderline examples teach the tie-break: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Clear rules plus wobbly answers means show, don't tell: two to four worked examples at the boundary.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent."
+    }
+   }
+  },
+  {
+   "id": "s5-07",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch processing suitability",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Finance wants the 50% Message Batches discount applied wherever it fits. Spend splits three ways: the nightly debt sweep, started at 22:00 and read at stand-up; a weekly dependency audit published on Mondays; and the pre-merge review, which costs the most. Branch protection makes the review's status check required before the merge button enables, and developers usually wait for it. None of the three uses a multi-turn tool loop. <b>Which plan should the team adopt?</b>",
+   "options": [
+    {
+     "t": "Submit only the weekly audit as a batch, and keep the sweep and the review on synchronous requests.",
+     "why": "Incorrect. Overnight work read the next morning is the textbook batch case; keeping it synchronous gives up a saving that fits."
+    },
+    {
+     "t": "Submit the sweep and the audit as batches, and keep the review on synchronous requests.",
+     "why": "Correct. The sweep and audit are latency-tolerant, so they take the discount. The review gates the merge button and someone is waiting, so it needs a response time that batches do not promise."
+    },
+    {
+     "t": "Submit all three as batches, and have the review job poll for its result before posting its status.",
+     "why": "Runner-up. It would capture the largest saving, and it would win if the review were advisory rather than a required check. Batches can take up to 24 hours with no latency guarantee, so polling just holds the merge."
+    },
+    {
+     "t": "Submit all three as batches, and fall back to a synchronous call when a review result is late.",
+     "why": "Incorrect. For the blocking review the fallback would fire on most runs, so the team pays for both paths and maintains two code paths."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The review's status check is required before merging and developers wait on it, so it cannot use an interface with no latency guarantee; if the review were advisory, batching it too would be best.",
+   "explanation": "Match the interface to who is waiting. Message Batches cut cost by 50% but can take up to 24 hours with no latency guarantee, so they suit overnight and weekly work, not checks that block a merge.",
+   "eli5": {
+    "question": "Finance wants the cheap slow option for everything. The clue is: the review is a required check, and developers sit waiting for it before they can merge. So the question is which jobs can wait for a slow, cheap answer.",
+    "answer": "Think of choosing between economy post (half price, arrives within a day) and a courier (arrives now). Night-time reports and weekly reports can go economy. The review is a parcel someone is standing at the door waiting for. Use the <b>Message Batches API</b> only for work nobody is waiting on. <b>Rule: batch it only if nobody is blocked waiting.</b>",
+    "options": [
+     "Too cautious. A report read the next morning is exactly what batch is for.",
+     "Correct. The two reports can wait for cheap post; the waited-for review goes by courier.",
+     "Runner-up. Batching everything saves the most. It would win if the review were just advice, not a required check.",
+     "A backup courier for a late parcel means paying twice almost every time."
+    ]
+   },
+   "deep": {
+    "premise": "The review is <b>the biggest cost</b>, so it feels wrong to leave it out of the discount. But batch pricing comes with <b>no promise of when</b> the answer arrives, up to 24 hours. Cost is not the deciding factor; <b>whether someone is blocked waiting</b> is.",
+    "mapTitle": "Batch or real-time? Ask who is waiting and whether tools loop",
+    "map": {
+     "head": [
+      "Workload",
+      "Right interface",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Overnight report read next morning",
+       "Message Batches",
+       "Latency-tolerant, 50% cheaper"
+      ],
+      [
+       "Weekly audit",
+       "Message Batches",
+       "Latency-tolerant"
+      ],
+      [
+       "Required pre-merge check",
+       "Synchronous requests",
+       "Blocking, no batch latency guarantee"
+      ],
+      [
+       "Advisory review nobody waits on",
+       "Message Batches",
+       "Nothing is blocked"
+      ],
+      [
+       "Needs a multi-turn tool loop",
+       "Synchronous, or pre-fetch tool data",
+       "Batch has no tool loop per request"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the nightly debt sweep, started at 22:00 and read at stand-up",
+      "means": "Hours of slack and nobody waiting: a batch candidate. That rules out <b>[[0]]</b>."
+     },
+     {
+      "quote": "a weekly dependency audit published on Mondays",
+      "means": "Also latency-tolerant: batch."
+     },
+     {
+      "quote": "the pre-merge review, which costs the most",
+      "means": "The vivid pull toward <b>[[2]]</b>: the biggest saving is here."
+     },
+     {
+      "quote": "Branch protection makes the review's status check required before the merge button enables, and developers usually wait for it",
+      "means": "The decider. The review blocks people, so it stays synchronous. Polling (<b>[[2]]</b>) or a fallback (<b>[[3]]</b>) cannot add a latency guarantee. So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Batch saves 50% but promises nothing about time. Use it for work nobody is blocked on.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits); bad for blocking (pre-merge)."
+    }
+   }
+  },
+  {
+   "id": "s5-08",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch API limitations",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The nightly sweep was moved to the Message Batches API to halve its cost. Each request asks Claude to classify one file's debt and offers a <code>get_git_blame</code> tool, since who last touched the code and when changes the classification. Every result now ends with <code>stop_reason</code> \"tool_use\", a blame call for that same file, and no classification. The workflow has the full repository checked out before submitting, and the report is not read until morning. <b>What is the best fix?</b>",
+   "options": [
+    {
+     "t": "Run <code>git blame</code> in the workflow first, and put each file's blame output into that file's batch request.",
+     "why": "Correct. A batch request cannot run a tool loop: there is no way to return the tool result and continue. The blame data is known in advance, so supplying it up front keeps the sweep on the cheaper interface."
+    },
+    {
+     "t": "Set <code>tool_choice</code> to \"any\" on each request so the model must call the blame tool before it answers.",
+     "why": "Incorrect. The model is already calling the tool; that is where every request stops. Forcing a call deepens the problem."
+    },
+    {
+     "t": "Move the sweep back to synchronous requests that run the tool loop, and accept the higher cost for this job.",
+     "why": "Runner-up. Real-time requests support the tool loop, and this would win if the data the model needs could only be found as it went (which other files to inspect, say). Here every request needs the same, predictable data, so it can be fetched first and the discount kept."
+    },
+    {
+     "t": "Raise <code>max_tokens</code> on each request so the model has room to finish the blame call and the analysis after it.",
+     "why": "Incorrect. The requests did not run out of tokens; they stopped because the model asked for a tool. More tokens do not create a way to answer that request."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The blame data for every file is available to the workflow before submission and the job is latency-tolerant, so it can be pre-fetched and batched; if the needed data depended on what the model found, the job would have to go back to synchronous requests.",
+   "explanation": "The Message Batches API does not support multi-turn tool calling inside a single request. When the tool data is predictable, fetch it first and put it in the request; when it is not, use synchronous requests.",
+   "eli5": {
+    "question": "The cheap overnight batch returns half-finished answers that end with a request to use a tool. The clue is: the workflow already has the whole repository, so it can run the tool itself before sending. So the question is how to keep the cheap option and still give Claude the data.",
+    "answer": "Think of mailing a question to an expert who cannot phone you back. If they need a document, the letter just ends with 'please send me X'. The fix is to put X in the envelope from the start. A batch request (<b>Message Batches API</b>) is that one-way letter: no <b>tool loop</b>. Run <code>git blame</code> first and include it. <b>Rule: batch requests can't call tools and continue, so send the data with the question.</b>",
+    "options": [
+     "Correct. Put the blame output in the envelope, and keep the discount.",
+     "Forcing a tool call (<b>tool_choice any</b>) makes it ask for the tool even harder.",
+     "Runner-up. Going back to real-time works too. It would win if Claude had to decide what to look up as it went.",
+     "The answer was not cut off for length. It stopped to ask for a tool."
+    ]
+   },
+   "deep": {
+    "premise": "Seeing tool use fail, the natural move is to <b>go back to an interface that supports tools</b>. That works, but it throws away the saving. A batch request is a <b>single turn</b>: it cannot get a tool result back. The real question is <b>whether the tool data can be supplied up front</b>, and here it can.",
+    "diagram": "sync:  ask -> tool_use -> you run tool -> answer\nbatch: ask -> tool_use -> (end, nobody replies)\nfix:   ask + blame data -> answer",
+    "mapTitle": "Batch request stops at tool_use: what can you do?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Tool data predictable and available beforehand",
+       "Pre-fetch it into each batch request",
+       "Keeps the 50% saving"
+      ],
+      [
+       "Model must decide what to look up as it goes",
+       "Synchronous requests with a tool loop",
+       "Batch has no multi-turn tool calling"
+      ],
+      [
+       "Some batch items failed",
+       "Resubmit only those by <code>custom_id</code>",
+       "No need to redo the batch"
+      ],
+      [
+       "Output cut off mid-answer (<code>max_tokens</code>)",
+       "Raise <code>max_tokens</code>",
+       "Length, not tools"
+      ],
+      [
+       "Model answers in text instead of calling a tool",
+       "<code>tool_choice</code> \"any\" or forced",
+       "Guarantees a call"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "moved to the Message Batches API to halve its cost",
+      "means": "Cost is the goal, so a fix that keeps the batch interface beats one that abandons it."
+     },
+     {
+      "quote": "Every result now ends with stop_reason \"tool_use\"",
+      "means": "The model asked for a tool and nobody answered. Not a length cut-off, which rules out <b>[[3]]</b>; and it already calls the tool, which rules out <b>[[1]]</b>."
+     },
+     {
+      "quote": "The workflow has the full repository checked out before submitting",
+      "means": "The decider. The blame data can be produced before the batch goes out: <b>[[0]]</b>."
+     },
+     {
+      "quote": "the report is not read until morning",
+      "means": "Still latency-tolerant, so batch remains the right interface. Moving back to synchronous (<b>[[2]]</b>) only wins if the data could not be fetched first."
+     }
+    ],
+    "rule": "Batch requests can't run tool loops. If the tool data is predictable, fetch it first and keep the discount.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Batch API does not support multi-turn tool calling in a single request."
+    }
+   }
+  },
+  {
+   "id": "s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Schema-compliant output",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The sweep's summariser calls the Messages API and asks, in its system prompt, for a JSON array of findings in the reply text. About 3% of replies will not parse: a trailing comma, an unescaped quote inside a message, or a sentence of preamble before the bracket. Separately, a reviewer spotted one finding citing line 412 of a 300-line file. When parsing fails, the posting script skips that file's findings entirely. <b>Which change removes the parse failures at their source?</b>",
+   "options": [
+    {
+     "t": "Check each cited line against the file's length, and resend failures with the specific errors appended to the request.",
+     "why": "Runner-up. Validation plus retry with specific feedback is the right tool for the line-412 problem, and it would win if the question were about wrong values. For syntax failures it pays for a retry to fix something a schema prevents."
+    },
+    {
+     "t": "Prefill the assistant turn with an opening bracket, and strip trailing commas in a repair pass before parsing.",
+     "why": "Incorrect. Prefill removes the preamble and the repair pass patches one known shape, but an unescaped quote still breaks the parse. It treats failure shapes one by one."
+    },
+    {
+     "t": "Add two complete sample replies to the system prompt showing valid arrays with escaped quotes and no preamble.",
+     "why": "Incorrect. Examples make valid JSON more likely but cannot guarantee it. Schema-constrained tool use removes the syntax class entirely."
+    },
+    {
+     "t": "Define a <code>record_findings</code> tool whose input schema is the findings array, and force that tool in <code>tool_choice</code>.",
+     "why": "Correct. Tool use with a JSON schema is the most reliable way to get schema-compliant output and removes JSON syntax errors. It will not catch the out-of-range line, which is a semantic error that needs a check in code."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The 3% are syntax failures in free-text JSON, which tool use with a schema removes; if the question were about the line-412 value, validating in code and retrying with the specific error would be the fix.",
+   "explanation": "Tool use with a JSON schema eliminates syntax errors but not semantic ones. Use it to get well-formed output, then validate values (such as line numbers) in code.",
+   "eli5": {
+    "question": "Some of Claude's JSON replies are broken (stray commas, unescaped quotes, chatter before the bracket). The clue is: the question asks only about these parse failures, not the wrong line number. So it is asking how to stop broken JSON being produced.",
+    "answer": "Think of a paper form with boxes versus a blank page where you are asked to 'write it like a form'. The blank page invites mistakes. A tool with an input schema (<b>tool use with a JSON schema</b>) is the form with boxes: the reply always fits. It cannot tell if what you wrote in a box is true, so line 412 still needs checking in code. <b>Rule: schemas fix syntax; code checks fix meaning.</b>",
+    "options": [
+     "Runner-up. Checking values and retrying (<b>retry with feedback</b>) is right for wrong values like line 412. It is the wrong tool for broken syntax.",
+     "Patching known mistakes one by one misses the next one, such as an unescaped quote.",
+     "Examples (<b>few-shot</b>) make good JSON more likely, not certain.",
+     "Correct. A forced tool with a schema means the JSON is always well-formed."
+    ]
+   },
+   "deep": {
+    "premise": "The stem puts two problems side by side, and it is tempting to pick the fix that sounds most thorough, <b>validate and retry</b>. But the question asks only about <b>parse failures</b>, which are <b>syntax</b>. Syntax is removed at the source by schema-constrained tool use; validation is for <b>values</b>.",
+    "mapTitle": "Bad structured output: is it syntax or meaning?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Kind of error",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Trailing commas, bad quotes, preamble",
+       "Syntax",
+       "Tool use with JSON schema (forced tool)"
+      ],
+      [
+       "Valid JSON, impossible value (line 412 of 300)",
+       "Semantic",
+       "Validate in code, retry with the specific error"
+      ],
+      [
+       "Required field filled with invented data",
+       "Schema forces a value",
+       "Make the field nullable"
+      ],
+      [
+       "Model answers in prose, no tool call",
+       "Tool choice",
+       "<code>tool_choice</code> \"any\" or forced"
+      ],
+      [
+       "Field truly absent from the source",
+       "Missing information",
+       "Do not retry; represent absence"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "asks, in its system prompt, for a JSON array of findings in the reply text",
+      "means": "JSON is requested in free text, so nothing constrains its syntax."
+     },
+     {
+      "quote": "a trailing comma, an unescaped quote inside a message, or a sentence of preamble before the bracket",
+      "means": "Three different syntax failures. Patching shapes (<b>[[1]]</b>) or showing examples (<b>[[2]]</b>) makes them rarer, not impossible."
+     },
+     {
+      "quote": "a reviewer spotted one finding citing line 412 of a 300-line file",
+      "means": "The misdirection. This is a semantic error, the job of <b>[[0]]</b>, but it is not what is asked."
+     },
+     {
+      "quote": "Which change removes the parse failures at their source",
+      "means": "Source, and parse failures only. Schema-constrained tool use: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Tool use with a schema stops broken JSON. It does not stop wrong values; check those in code.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_use with JSON schemas = most reliable schema-compliant output (eliminates JSON syntax errors)."
+    }
+   }
+  },
+  {
+   "id": "s5-10",
+   "sid": "s5",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Confidence calibration",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "After the criteria rewrite, a reviewer labelled 400 recent findings and overall precision came out at 94%. The platform team now proposes letting findings block merges. Only that single overall figure was computed. Most of the 400 are null-safety or unhandled-promise findings; concurrency and floating-point findings, rarer but the ones tied to last year's production incidents, appear a handful of times each. <b>What is the best next step?</b>",
+   "options": [
+    {
+     "t": "Let only null-safety and unhandled-promise findings block for now, since they dominate the sample that scored well.",
+     "why": "Runner-up. Gating only on well-measured categories is sound, and it would win if precision had been computed for each of those two. Only an overall figure exists, so neither category's own precision is known yet."
+    },
+    {
+     "t": "Let a finding block only when two independent review instances both report it, and post the rest as advisory.",
+     "why": "Incorrect. Independent instances are good for review quality, but agreement measures repeatability, not correctness, and doubles the cost of a blocking check."
+    },
+    {
+     "t": "Label a new sample with a quota per finding category, and let each category block merges once its own precision clears the bar.",
+     "why": "Correct. 94% is an average dominated by two common categories. A sample with a quota per category measures each one, including the rare categories that matter most, before any of them can block."
+    },
+    {
+     "t": "Let only findings the reviewer marks as high confidence block merges, and post the rest as advisory comments.",
+     "why": "Incorrect. Self-reported confidence is an unreliable, uncalibrated proxy. It replaces measurement with the model's own opinion."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Only a single overall figure was computed, so no category's own precision is known; if per-category figures existed for the two common categories, gating on just those would be reasonable.",
+   "explanation": "Aggregate accuracy can hide weak performance in specific categories. Measure each category with stratified sampling before letting it drive an automatic decision such as blocking a merge.",
+   "eli5": {
+    "question": "The review is right 94% of the time overall, so the team wants it to block merges. The clue is: only one overall number was worked out, and most of the sample came from two common kinds of finding. So the question is whether that number tells you about the rare, dangerous kinds.",
+    "answer": "Think of a school that is 94% on time overall, measured mostly from students who live nearby. That tells you little about the few who come from far away. You need to check each group separately (<b>stratified sampling</b>). Then you trust each kind of finding only once its own score is good. <b>Rule: an average can hide a weak group; measure each group before automating.</b>",
+    "options": [
+     "Runner-up. Blocking only on the two common kinds sounds safe. It would win if each had its own measured score; only the overall number exists.",
+     "Two reviewers agreeing shows they agree, not that they are right.",
+     "Correct. Sample each category on purpose, and let a category block only once its own score is proven.",
+     "The model's own 'I'm sure' (<b>self-reported confidence</b>) is not a measurement."
+    ]
+   },
+   "deep": {
+    "premise": "94% sounds like strong evidence, and it is natural to trust at least the categories that dominated the sample. But <b>an average is not a per-category score</b>. Two categories could be 99% and 85% and still average 94%. Until each category is <b>measured on its own</b>, none has earned the right to block.",
+    "mapTitle": "Ready to automate? What has actually been measured?",
+    "map": {
+     "head": [
+      "What you have",
+      "What it proves",
+      "Next step"
+     ],
+     "rows": [
+      [
+       "One aggregate figure, uneven sample",
+       "Little about any single category",
+       "Stratified sample, per-category precision"
+      ],
+      [
+       "Per-category figures for some categories",
+       "Those categories are proven",
+       "Automate only those"
+      ],
+      [
+       "Model-reported confidence",
+       "Nothing until calibrated",
+       "Calibrate on labelled data"
+      ],
+      [
+       "Two runs agree",
+       "Repeatability, not correctness",
+       "Measure against labels"
+      ],
+      [
+       "Rare but high-impact category",
+       "Too few samples to judge",
+       "Quota it in the sample"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "overall precision came out at 94%",
+      "means": "The vivid number. It invites trusting the well-represented categories (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Only that single overall figure was computed",
+      "means": "The decider. No category has its own score, so <b>[[0]]</b> rests on a number that does not exist."
+     },
+     {
+      "quote": "Most of the 400 are null-safety or unhandled-promise findings",
+      "means": "The sample is lopsided; the average mostly reflects two categories."
+     },
+     {
+      "quote": "concurrency and floating-point findings, rarer but the ones tied to last year's production incidents, appear a handful of times each",
+      "means": "The categories that matter most are barely measured. Confidence (<b>[[3]]</b>) and agreement (<b>[[1]]</b>) do not measure them either. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "An overall score is not a per-category score. Sample each category on purpose before letting it make automatic decisions.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Aggregate accuracy (97%) can mask poor performance on specific doc types/fields."
+    }
+   }
+  },
+  {
+   "id": "s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Optional & nullable fields",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "About 11% of invoices come from small carriers whose templates print only an invoice number and a delivery reference. The schema declares <code>po_number</code> as a required string. On those documents the model returns plausible values, sometimes the invoice number reformatted, sometimes the vendor code joined to the date. They pass validation and post to the ERP, where accounts-payable clerks later find them matched against the wrong orders. <b>What is the right fix?</b>",
+   "options": [
+    {
+     "t": "Look up each extracted PO number in the ERP before posting, and send any without a matching order to the review queue.",
+     "why": "Runner-up. Checking against the system of record is good practice, and it would win if POs were printed but sometimes misread. Here the value never existed, so the lookup only catches some inventions, and an invented value that matches a real order slips through."
+    },
+    {
+     "t": "Allow <code>null</code> for <code>po_number</code> in the schema, and say in the field description which kinds of form may omit the number.",
+     "why": "Correct. The source has no PO number, but the schema demands one, so the model invents one. A nullable field gives the honest answer somewhere to go and removes the pressure to fabricate."
+    },
+    {
+     "t": "Add two sample invoices from those carriers to the prompt, each showing the PO field filled with an empty string.",
+     "why": "Incorrect. Examples do reduce hallucination, but an empty string in a required field is a workaround that hides 'absent' as a value, and the schema still demands something."
+    },
+    {
+     "t": "Add a pattern to the field requiring the prefix and digit count that the company's own purchase orders use.",
+     "why": "Incorrect. A format rule makes the invented value look more real; it does not make absence expressible."
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The carriers' templates print no PO number at all, so the information is absent from the source; if PO numbers were printed but misread, an ERP lookup before posting would be the better guard.",
+   "explanation": "If a value can legitimately be missing from the source, the schema must be able to say so. Optional or nullable fields prevent fabrication; a required field reads as 'produce something'.",
+   "eli5": {
+    "question": "The model invents purchase-order numbers. The clue is: these carriers' invoices print only an invoice number and a delivery reference, so there is no PO number to find. So the question is how to let the model say 'not there'.",
+    "answer": "Imagine a form where the 'PO number' box is mandatory and the clerk cannot submit without filling it. If the paper has none, the clerk makes one up. Let the box be left blank (<b>a nullable field</b>) and the honest answer becomes possible. <b>Rule: if the source may not have it, the schema must allow 'none'.</b>",
+    "options": [
+     "Runner-up. Checking against the ERP (<b>validation against a system of record</b>) would win if PO numbers were printed but misread.",
+     "Correct. A blank-allowed box (<b>nullable</b>) lets the model say 'there is no PO number'.",
+     "An empty string in a mandatory box is a disguise for 'none', not a real 'none'.",
+     "A format rule just makes invented numbers look more convincing."
+    ]
+   },
+   "deep": {
+    "premise": "The damage shows up <b>in the ERP</b>, so the instinct is to add a check there. But the fault starts earlier: the schema says <b>po_number is required</b> while the document <b>has none</b>. A required field with nothing to fill it is an instruction to invent.",
+    "mapTitle": "Wrong value extracted: was it misread, or never there?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Field absent from the source, schema requires it",
+       "Make it nullable / optional",
+       "Removes pressure to fabricate"
+      ],
+      [
+       "Field printed but sometimes misread",
+       "Validate against system of record, retry",
+       "Catches wrong readings"
+      ],
+      [
+       "Value outside a fixed list",
+       "Enum + <code>other</code> + detail",
+       "Records it without coercion"
+      ],
+      [
+       "Absent field triggering retries",
+       "Stop retrying; represent absence",
+       "Retries can't find what isn't there"
+      ],
+      [
+       "Totals do not add up",
+       "<code>calculated_total</code> + conflict flag",
+       "Reports the mismatch"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "whose templates print only an invoice number and a delivery reference",
+      "means": "The quiet decider: there is no PO number on these documents."
+     },
+     {
+      "quote": "The schema declares po_number as a required string",
+      "means": "The schema demands a value that does not exist. A format pattern (<b>[[3]]</b>) keeps that demand."
+     },
+     {
+      "quote": "sometimes the invoice number reformatted, sometimes the vendor code joined to the date",
+      "means": "Classic fabrication under a required field. Empty-string examples (<b>[[2]]</b>) still fill the box with something."
+     },
+     {
+      "quote": "where accounts-payable clerks later find them matched against the wrong orders",
+      "means": "The vivid symptom, pointing at an ERP lookup (<b>[[0]]</b>). That catches some bad values late but leaves the cause. Fix the schema: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Required means 'produce something'. If the document may not contain the value, make the field nullable.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication"
+    }
+   }
+  },
+  {
+   "id": "s6-02",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Extensible enums",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The <code>incoterm</code> field is an enum of the eleven Incoterms 2020 codes. Around 3% of documents print something else. Most of those are superseded 2010 codes such as DAT, which the model quietly turns into DAP; the rest are phrases a few freight forwarders made up for their own contracts, and the forwarder list grows every quarter. Downstream, nobody can tell a coerced code from one that was actually printed. <b>What is the best schema change?</b>",
+   "options": [
+    {
+     "t": "Add an <code>other</code> value to the enum plus an <code>incoterm_detail</code> string that holds the term exactly as printed.",
+     "why": "Correct. The enum keeps validating the 97% that fit, and anything else lands in <code>other</code> with the printed text kept for a person or a rule to read. Nothing is coerced, and new forwarder phrases need no schema change."
+    },
+    {
+     "t": "Add the Incoterms 2010 codes to the enum next to the 2020 ones, and map each to its successor during ERP posting.",
+     "why": "Runner-up. It handles the largest group cleanly and would win if superseded official codes were the only exceptions. The forwarders' own phrases still have nowhere to go, and that list keeps growing."
+    },
+    {
+     "t": "Make <code>incoterm</code> nullable, and return null whenever the printed term is not one of the eleven current codes.",
+     "why": "Incorrect. Nullable is right when a value is absent. Here a term is printed, and null throws it away."
+    },
+    {
+     "t": "Ask for a confidence score on <code>incoterm</code>, and send any value scored below 0.8 to a clerk for checking.",
+     "why": "Incorrect. Self-reported confidence is uncalibrated, and the coerced value is still the one stored."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Some exceptions are forwarders' own phrases and that list keeps growing, so the category is open-ended; if the only exceptions were superseded 2010 codes, adding them to the enum would be enough.",
+   "explanation": "For a category that is mostly closed but sometimes open, use an enum with an <code>other</code> value plus a detail field. You keep validation where it works and stop the model forcing odd values into the nearest slot.",
+   "eli5": {
+    "question": "The model forces unusual delivery terms into the nearest allowed code. The clue is: some of the odd terms are made-up phrases, and the list of firms using them keeps growing. So the question is how to cope with values you cannot list in advance.",
+    "answer": "Think of a drop-down menu with a fixed list. If your answer is not there, you pick the closest one, and the truth is lost. Add an <b>'Other: please specify'</b> option with a text box. You keep the tidy list for most people and capture everyone else exactly. <b>Rule: for lists that are mostly fixed but sometimes open, add 'other' plus a detail field.</b>",
+    "options": [
+     "Correct. 'Other' plus the exact printed words: nothing forced, nothing lost.",
+     "Runner-up. Adding the old official codes would win if those were the only odd values. Made-up phrases would still be forced.",
+     "Blank (<b>nullable</b>) is for 'nothing printed'. Here something is printed, and blank throws it away.",
+     "A self-given score (<b>confidence</b>) does not stop the wrong code being saved."
+    ]
+   },
+   "deep": {
+    "premise": "DAT turning into DAP is the vivid example, so the obvious fix is to <b>add the 2010 codes</b>. That handles the codes you have seen. But part of the set is <b>made-up phrases from a growing list</b>, which no enum can name in advance. The category is open, so it needs a <b>catch-all with the original text</b>.",
+    "mapTitle": "A value does not fit the schema: what kind of mismatch is it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Schema design",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Mostly fixed list, some unpredictable values",
+       "Enum + <code>other</code> + detail field",
+       "Keeps validation, records the rest"
+      ],
+      [
+       "A small, known, fixed set of extra codes",
+       "Add them to the enum",
+       "Closed set stays closed"
+      ],
+      [
+       "Value not present in the document",
+       "Nullable / optional",
+       "Absence is representable"
+      ],
+      [
+       "Model unsure between two valid values",
+       "<code>unclear</code> enum value + detail",
+       "Flags ambiguity"
+      ],
+      [
+       "Values entirely free-form",
+       "String field, normalise later",
+       "No list exists"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most of those are superseded 2010 codes such as DAT, which the model quietly turns into DAP",
+      "means": "The vivid case. It makes <b>[[1]]</b> look sufficient."
+     },
+     {
+      "quote": "phrases a few freight forwarders made up for their own contracts, and the forwarder list grows every quarter",
+      "means": "The decider. Part of the set is open-ended, so no list of codes covers it. That rules out <b>[[1]]</b> as the whole fix."
+     },
+     {
+      "quote": "nobody can tell a coerced code from one that was actually printed",
+      "means": "The printed term must be kept. Null (<b>[[2]]</b>) discards it; a confidence score (<b>[[3]]</b>) still stores the coerced code. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Closed lists break on open worlds. Add <code>other</code> plus a detail field, and keep the exact text.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "enum \"unclear\"/\"other\" + detail for extensible categories"
+    }
+   }
+  },
+  {
+   "id": "s6-03",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Self-checking extraction",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Spot checks found invoices whose printed line items do not add up to the printed total, sometimes a vendor's own error and sometimes a discount line the model skipped. In every such case the extracted line items summed exactly to the extracted total; the model had nudged one figure to make the record consistent. Accounts payable wants each of these held for a clerk rather than posted, with enough information to see what went wrong. <b>Which change does that?</b>",
+   "options": [
+    {
+     "t": "Recompute the line-item sum in the posting service, and hold any invoice where it differs from the extracted total.",
+     "why": "Runner-up. A code-side check is sound and would win if the extraction reported figures as printed. Because the model has already adjusted a figure, the extracted numbers agree and this check sees nothing."
+    },
+    {
+     "t": "Tell the model to copy every figure exactly as printed and to leave arithmetic errors in a vendor's document alone.",
+     "why": "Incorrect. A prompt instruction may reduce the nudging but gives no signal that a mismatch exists, so nothing is held for a clerk."
+    },
+    {
+     "t": "Send invoices containing discount or freight lines to a second extraction pass focused only on adjustment rows.",
+     "why": "Incorrect. It targets one cause (skipped discounts) and does nothing for vendor arithmetic errors or for the silent adjustment."
+    },
+    {
+     "t": "Add fields for the total as printed and the total summed from the extracted items, plus a mismatch boolean.",
+     "why": "Correct. The model reports both numbers instead of reconciling them, and the flag routes the invoice to a clerk. The gap between the two figures also hints at the cause: a missing discount line versus a vendor's arithmetic slip."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The extracted figures always agree because the model adjusts one of them, so a downstream sum check sees no mismatch; if the extraction reported figures as printed, recomputing in code would be enough.",
+   "explanation": "Build self-checking into the output: extract the stated total alongside a calculated total and add a conflict flag. Discrepancies should be reported as data, not reconciled inside the model.",
+   "eli5": {
+    "question": "Some invoices do not add up, but the extracted numbers always do, because the model quietly fixes one. The clue is: the extracted line items always sum exactly to the extracted total. So any check done later on the extracted numbers will find nothing.",
+    "answer": "Think of a cashier who, when the till does not balance, quietly changes one receipt so it does. Auditing the receipts later finds nothing wrong. Instead, ask the cashier to write down both the till total and the receipts total, and tick a box if they differ (<b>stated total, calculated total, conflict flag</b>). <b>Rule: ask for both numbers and a mismatch flag; never let the model hide the difference.</b>",
+    "options": [
+     "Runner-up. Re-adding in code would win if the model reported numbers as printed. It has already fixed them, so the check passes.",
+     "Asking nicely not to fix numbers gives no flag for the clerk.",
+     "A second pass for discounts covers only one of the two causes.",
+     "Correct. Two totals and a 'they differ' tick box make the problem visible."
+    ]
+   },
+   "deep": {
+    "premise": "A sum check <b>in code</b> sounds more reliable than anything the model reports, and usually it is. But it checks the <b>extracted</b> numbers, and the model has <b>already made them agree</b>. The mismatch must be captured <b>inside the extraction</b>, as data, before the model can smooth it away.",
+    "diagram": "printed:   items 950 | total 1,000\nextracted: items 1,000 | total 1,000  <- nudged\ncode sum check:  1,000 = 1,000  (passes)\nfix: stated 1,000 | calculated 950 | conflict true",
+    "mapTitle": "Numbers don't reconcile: where must the check live?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Model smooths mismatches before returning",
+       "Stated + calculated total + conflict flag",
+       "Mismatch becomes data"
+      ],
+      [
+       "Extraction reports figures as printed",
+       "Recompute in code, hold on mismatch",
+       "Deterministic check works"
+      ],
+      [
+       "Valid JSON, wrong value",
+       "Validate, retry with specific error",
+       "Semantic error"
+      ],
+      [
+       "Value absent from document",
+       "Nullable field",
+       "No fabrication"
+      ],
+      [
+       "Two sources disagree",
+       "Keep both, with attribution",
+       "Don't pick one silently"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "sometimes a vendor's own error and sometimes a discount line the model skipped",
+      "means": "Two causes. A discount-only pass (<b>[[2]]</b>) covers one."
+     },
+     {
+      "quote": "In every such case the extracted line items summed exactly to the extracted total",
+      "means": "The decider. A sum check on extracted figures (<b>[[0]]</b>) would always pass."
+     },
+     {
+      "quote": "the model had nudged one figure to make the record consistent",
+      "means": "The model is reconciling. The output must carry the conflict instead."
+     },
+     {
+      "quote": "with enough information to see what went wrong",
+      "means": "A prompt instruction (<b>[[1]]</b>) gives no flag and no figures. Two totals plus a flag do: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "If the model can hide a mismatch, make it report the mismatch: stated total, calculated total, conflict flag.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Self-correction: extract calculated_total alongside stated_total; conflict_detected booleans."
+    }
+   }
+  },
+  {
+   "id": "s6-04",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Validation & retry loops",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Failed validations are retried up to five times with the message 'Output failed validation, please try again.' A breakdown of last month's retries shows the documents that reach all five attempts are almost all bills of lading from two carriers whose forms have no box for the consignee's tax registration, a value the schema requires. Those documents consume about a fifth of extraction spend and still end in manual entry. <b>What change cuts that spend most?</b>",
+   "options": [
+    {
+     "t": "Replace the generic retry message with the validator's specific errors, naming each field and the rule it broke.",
+     "why": "Runner-up. Retry with specific error feedback is the right loop for values that are printed but misformatted, and it would win if that were what burned the retries. Here the value is not on the form, so better feedback still fails five times."
+    },
+    {
+     "t": "Give the two carriers' documents a separate prompt with worked examples of their bill-of-lading layout.",
+     "why": "Incorrect. Layout examples help when a value is present but hard to find. They cannot locate a box the form does not have."
+    },
+    {
+     "t": "Let that registration field be null, and send documents where it is null to the clerk queue without any retry.",
+     "why": "Correct. The value is not on these forms, so no retry can find it. Allowing null stops the fabrication pressure and the retries, and the documents go straight to the clerks they end up with anyway."
+    },
+    {
+     "t": "Lower the retry limit from five attempts to two for all documents, and send whatever still fails to manual entry.",
+     "why": "Incorrect. It trims spend on the hopeless documents but also cuts retries that rescue recoverable ones, and still spends two attempts on documents that can never pass."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The documents that exhaust the retries come from forms with no box for the required value, so the information is absent from the source; if the value were printed but misformatted, specific error feedback would be the fix.",
+   "explanation": "Retry with specific error feedback works when the retry can use the feedback. It is useless when the information is absent from the source; then the schema should represent absence and the document should leave the loop.",
+   "eli5": {
+    "question": "Most retry money goes on documents that fail five times and then go to a person anyway. The clue is: those carriers' forms have no box for the required tax registration. So no amount of retrying can find it.",
+    "answer": "Think of sending someone back to the shelf five times for a book the library does not own. Better directions do not help; the book is not there. Allow the field to be empty (<b>nullable</b>) and send those documents straight to a clerk. <b>Rule: don't retry for information the document doesn't contain.</b>",
+    "options": [
+     "Runner-up. Telling the model exactly what failed (<b>specific error feedback</b>) would win if the value were on the form but written wrongly.",
+     "Examples of the layout (<b>few-shot</b>) cannot find a box that isn't there.",
+     "Correct. Allow 'not present' and skip the pointless retries.",
+     "Fewer retries for everyone also hurts the documents that retries can fix."
+    ]
+   },
+   "deep": {
+    "premise": "The generic 'please try again' message is the obvious weakness, and <b>specific error feedback</b> is the textbook fix for retry loops. But feedback only helps if the answer <b>exists in the document</b>. These forms <b>have no box</b> for the field, so every retry is spent looking for nothing.",
+    "mapTitle": "Retries failing: is the information there to find?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Value absent from the source",
+       "Nullable field; route out of the loop",
+       "Retries can't create information"
+      ],
+      [
+       "Value present but misformatted",
+       "Retry with specific validation errors",
+       "Feedback guides the fix"
+      ],
+      [
+       "Value present but layout unusual",
+       "Few-shot examples of that layout",
+       "Teaches where to look"
+      ],
+      [
+       "Valid JSON, values don't reconcile",
+       "Stated vs calculated + conflict flag",
+       "Surfaces the mismatch"
+      ],
+      [
+       "Batch items failed",
+       "Resubmit only those by <code>custom_id</code>",
+       "No need to redo all"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Failed validations are retried up to five times with the message 'Output failed validation, please try again.'",
+      "means": "The vivid weakness. It invites <b>[[0]]</b>."
+     },
+     {
+      "quote": "from two carriers whose forms have no box for the consignee's tax registration, a value the schema requires",
+      "means": "The decider. The information is not on the page, so feedback (<b>[[0]]</b>) and layout examples (<b>[[1]]</b>) cannot help."
+     },
+     {
+      "quote": "Those documents consume about a fifth of extraction spend and still end in manual entry",
+      "means": "They go to a clerk anyway; the retries are pure waste."
+     },
+     {
+      "quote": "What change cuts that spend most",
+      "means": "Lowering the limit for all (<b>[[3]]</b>) still spends two attempts and hurts recoverable documents. Allowing null and routing straight out: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Before improving a retry, ask whether the answer is in the document. If not, stop retrying and represent absence.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retries are ineffective when info is absent from the source (vs format/structural errors)."
+    }
+   }
+  },
+  {
+   "id": "s6-05",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot across varied structures",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Field accuracy is 96% on the six largest vendors and 71% on the thirty-four in the long tail. All eight worked documents in the prompt come from the big six, chosen because they were to hand. Tail layouts differ: totals printed above the items, tables running across pages, two vendors labelling the invoice number 'Ref'. Procurement signs roughly one new vendor a month, and their first invoices arrive before anyone has seen the layout. <b>What most improves tail accuracy?</b>",
+   "options": [
+    {
+     "t": "Swap most of the eight for tail documents with unusual layouts, each with a note on how its fields were located.",
+     "why": "Correct. Examples teach generalisation when they show varied and ambiguous structures with the reasoning. Eight variations of formats already at 96% teach nothing new; varied tail layouts carry over to unseen vendors."
+    },
+    {
+     "t": "Add written layout rules: totals may sit above or below items, tables may span pages, and 'Ref' can mean invoice number.",
+     "why": "Incorrect. Explicit rules cover the variations already seen. They do not show how to reason about a new layout, which is where few-shot examples beat instructions."
+    },
+    {
+     "t": "Keep a prompt per vendor with that vendor's own samples, chosen by the sender's address when a document arrives.",
+     "why": "Runner-up. Per-vendor prompts would lift accuracy on known vendors and could win if the vendor list were fixed. A new vendor arrives most months before anyone has seen the layout, so there is no prompt for it, and forty prompts to maintain."
+    },
+    {
+     "t": "Extend the prompt to around forty samples, one from every current vendor, ordered from highest to lowest volume.",
+     "why": "Incorrect. It adds a large token cost to every document and teaches recall of known layouts, not generalisation to the next vendor."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "New vendors arrive monthly and their first invoices come before anyone has seen the layout, so the prompt must generalise; if the vendor set were fixed, per-vendor prompts would be a strong option.",
+   "explanation": "Few-shot examples should show ambiguous and varied structures so the model can generalise to new patterns. Choose them from where the model fails, not where it already succeeds.",
+   "eli5": {
+    "question": "The model is great on big vendors and weak on small ones. The clue is: a new vendor arrives about every month, and nobody sees their layout first. So the fix must help with layouts nobody has seen yet.",
+    "answer": "Think of training a new post-room worker. Showing them eight parcels from the same courier teaches little. Showing a handful of oddly labelled parcels, and how you found the address on each, prepares them for parcels they have never seen. That is choosing <b>varied few-shot examples</b>. <b>Rule: pick examples from the hard, varied cases, with the reasoning shown.</b>",
+    "options": [
+     "Correct. Varied tail examples with the 'how I found it' note help with new layouts too.",
+     "A written list of known quirks (<b>explicit rules</b>) does not prepare for the next new quirk.",
+     "Runner-up. A prompt per vendor (<b>per-vendor prompts</b>) would win if no new vendors ever arrived.",
+     "Forty examples cost a lot of space on every document and still only cover known vendors."
+    ]
+   },
+   "deep": {
+    "premise": "With 34 weak vendors, it feels thorough to give <b>each vendor its own prompt</b>. That works for vendors you already know. But a <b>new vendor arrives most months</b>, unseen. The prompt has to <b>generalise</b>, and that is what varied examples with reasoning do.",
+    "mapTitle": "Accuracy weak on some layouts: tailor, list, or teach?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Varied layouts, new ones keep arriving",
+       "2–4 varied few-shot examples with reasoning",
+       "Generalises to unseen layouts"
+      ],
+      [
+       "Small, fixed set of known vendors",
+       "Per-vendor prompts",
+       "Tailoring pays off"
+      ],
+      [
+       "Field missing from some layouts",
+       "Nullable field",
+       "No fabrication"
+      ],
+      [
+       "Consistent format needed",
+       "Examples showing the format",
+       "Shows, not tells"
+      ],
+      [
+       "Accuracy needs validating before automating",
+       "Measure by doc type and field",
+       "Averages hide weak strata"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Field accuracy is 96% on the six largest vendors and 71% on the thirty-four in the long tail",
+      "means": "The weakness is in the varied tail, not in general."
+     },
+     {
+      "quote": "All eight worked documents in the prompt come from the big six",
+      "means": "The examples teach only the formats that already work."
+     },
+     {
+      "quote": "totals printed above the items, tables running across pages, two vendors labelling the invoice number 'Ref'",
+      "means": "The vivid list. It invites writing rules for each (<b>[[1]]</b>), which covers only these."
+     },
+     {
+      "quote": "their first invoices arrive before anyone has seen the layout",
+      "means": "The decider. Per-vendor prompts (<b>[[2]]</b>) and one-per-vendor samples (<b>[[3]]</b>) need the layout first. Varied examples generalise: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Pick few-shot examples from where the model fails, showing varied structures and how fields were found.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Demonstrate ambiguous-case handling; enable generalization to novel patterns; reduce extraction hallucination."
+    }
+   }
+  },
+  {
+   "id": "s6-06",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Field-level calibration",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "On a labelled set of 200 recent documents, field-level accuracy is 97%, and the team wants to post to the ERP without review. The set was drawn at random from last month's intake, so OCR'd faxes, about 8% of volume, supplied sixteen of the 200. Vendor name is almost never wrong; multi-line item tables are where most of the errors sat. <b>What should happen before review is removed?</b>",
+   "options": [
+    {
+     "t": "Keep a random 3% of posted documents under clerk review each week, and stop review once a quarter passes cleanly.",
+     "why": "Incorrect. Ongoing sampling is useful, but a random 3% has the same blind spot (few faxes), and it checks after posting rather than deciding what may post."
+    },
+    {
+     "t": "Calibrate a per-field confidence score on the 200 labelled documents, and route fields below the threshold to a clerk.",
+     "why": "Runner-up. Field-level confidence calibrated on labelled data is the right routing tool once the labelled set represents each document type. Sixteen faxes are too few to calibrate faxes at all, so the threshold would be set mostly by clean PDFs."
+    },
+    {
+     "t": "Label a new sample with a fixed quota per document type, and report accuracy for every type and field pair.",
+     "why": "Correct. A random sample barely covers faxes and averages easy fields with hard ones. A sample with a quota per type gives each type and field its own figure, which is what decides what can skip review."
+    },
+    {
+     "t": "Send line-item tables to a second, independent extraction instance, and post only rows on which both instances agree.",
+     "why": "Incorrect. Agreement measures repeatability, not accuracy, and it ignores the fax problem. It is a change to extraction, not a measurement of it."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Faxes supplied only sixteen of the 200 labelled documents, so nothing reliable is known about them; with a labelled set that covered each type well, calibrating field-level confidence on it would be the next step.",
+   "explanation": "Aggregate accuracy can mask poor performance on specific document types and fields. Validate by type and field, using stratified sampling so rare types are measured, before automating; calibrated confidence comes after.",
+   "eli5": {
+    "question": "The team wants to stop human checks because accuracy is 97%. The clue is: only sixteen of the 200 checked documents were faxes. So the 97% says almost nothing about faxes.",
+    "answer": "Think of tasting a soup from the top only. It tastes fine, but the bottom of the pot might be burnt. Before serving without checking, taste every layer (<b>stratified sampling</b> by document type) and judge each field on its own. <b>Rule: measure each type and field separately before you automate.</b>",
+    "options": [
+     "Random spot checks after posting have the same blind spot and come too late.",
+     "Runner-up. A tuned confidence score (<b>calibrated confidence</b>) is the right router, but only once the labelled set covers faxes properly.",
+     "Correct. Sample every document type on purpose and score each type-and-field pair.",
+     "Two extractors agreeing shows they agree, not that they are right."
+    ]
+   },
+   "deep": {
+    "premise": "Calibrating confidence on labelled data sounds like the <b>advanced, correct</b> answer, and it is part of the end state. But calibration is only as good as the labelled set, and this set has <b>16 faxes</b>. The first job is to <b>measure each type and field properly</b>; routing comes after.",
+    "mapTitle": "Can we stop human review? What has the evidence covered?",
+    "map": {
+     "head": [
+      "Situation",
+      "Next step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "High average, rare type barely sampled",
+       "Stratified sample by type and field",
+       "Average hides weak strata"
+      ],
+      [
+       "Labelled set covers each type well",
+       "Calibrate field confidence, route low scores",
+       "Targets review effort"
+      ],
+      [
+       "Model-reported confidence only",
+       "Calibrate before trusting",
+       "Self-reports are unreliable"
+      ],
+      [
+       "Ongoing monitoring after automation",
+       "Stratified sampling of high-confidence output",
+       "Catches drift"
+      ],
+      [
+       "Two extractors agree",
+       "Still measure against labels",
+       "Agreement is not accuracy"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "field-level accuracy is 97%, and the team wants to post to the ERP without review",
+      "means": "A single average is being used to automate everything."
+     },
+     {
+      "quote": "The set was drawn at random from last month's intake",
+      "means": "Random means rare types are rare in the sample too. A random 3% (<b>[[0]]</b>) repeats this."
+     },
+     {
+      "quote": "supplied sixteen of the 200",
+      "means": "The decider. Too few faxes to measure or calibrate, which undermines <b>[[1]]</b>."
+     },
+     {
+      "quote": "multi-line item tables are where most of the errors sat",
+      "means": "Fields differ sharply. Agreement voting (<b>[[3]]</b>) does not measure this. Measure by type and field: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Before automating, validate by document type and by field with a stratified sample. Calibrate routing on a set that covers every type.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Validate accuracy by document type and field before automating."
+    }
+   }
+  },
+  {
+   "id": "s6-07",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Tool-result bloat & lost-in-the-middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "Scanned bills of lading reach the model through an OCR tool that returns over forty fields per text block, including per-character bounding boxes and confidences. A twelve-page document fills most of the context window this way, though extraction reads only each block's text and page number. The misses are line-item rows, dozens per page, and they cluster on pages four to nine, while the first and last pages come through cleanly. <b>Which TWO changes together best address this?</b>",
+   "options": [
+    {
+     "t": "Switch to a model with a larger context window, so the full OCR output sits well inside the limit.",
+     "why": "Incorrect. The output already fits. A bigger window makes the middle bigger; it does not change how the middle is processed."
+    },
+    {
+     "t": "Reduce each OCR result to its words and page index before the tool result goes back to the model.",
+     "why": "Correct. Tool results pile up and use tokens far out of proportion to their value. Two fields out of forty are needed, so trimming the rest shrinks the context sharply and loses nothing."
+    },
+    {
+     "t": "Open the document with a summary of its key fields and mark each page with an explicit page heading.",
+     "why": "Runner-up. Key summaries at the start and clear section headings are a real mitigation, and would win if a few key facts had to survive. The misses here are dozens of rows per middle page, which no opening summary can carry."
+    },
+    {
+     "t": "Instruct the model to give middle pages the same attention as the first and last pages of the document.",
+     "why": "Incorrect. Asking for attention does not change how attention is distributed over a long input."
+    },
+    {
+     "t": "Extract rows in passes of a few pages each, then merge the row lists from each pass in a final step.",
+     "why": "Correct. Misses in the middle of a long input are the 'lost in the middle' effect. Short passes put every page near the start or end of some input, and the rows are exactly the detail that must survive."
+    }
+   ],
+   "answer": [
+    1,
+    4
+   ],
+   "runnerUp": 2,
+   "decider": "The misses are dozens of line-item rows per middle page, too much detail for an opening summary to carry, so the input must be shortened and split; if only a few key facts had to survive, a summary up front with section headings would be the second change.",
+   "explanation": "Two forces are at work: verbose tool results filling the window, and the middle of a long input being processed less reliably than its ends. Trim tool results to the fields used, and split the work so detailed content never sits deep in the middle.",
+   "eli5": {
+    "question": "The model misses table rows in the middle of long scanned documents. The clue is: the misses are dozens of rows per page, and the OCR tool sends forty fields when only two are used. So the question is how to make the input smaller and stop the middle being skipped.",
+    "answer": "Think of reading a 12-chapter book where every word comes with a page of notes about its ink and position. You would skim the middle. First, throw away the notes you never use (<b>trim tool output</b>). Then read a few chapters at a time and combine your lists (<b>split into passes</b>), so no chapter is ever deep in the middle. <b>Rule: trim what you don't use, and keep important detail away from the middle of a long input.</b>",
+    "options": [
+     "A bigger window just makes a bigger middle.",
+     "Correct. Keep only text and page; throw away the rest.",
+     "Runner-up. A summary at the top with headings (<b>key summary + section headers</b>) helps keep a few facts. It cannot hold dozens of rows per page.",
+     "Asking for more care does not change how a long input is read.",
+     "Correct. A few pages per pass means no page is buried in the middle."
+    ]
+   },
+   "deep": {
+    "premise": "It is easy to treat this as one problem. It is <b>two</b>: the tool sends far more than is used, and <b>the middle of a long input is read less reliably</b> than its ends. The guide's mitigation of a summary at the top with headings helps when a <b>few facts</b> must survive, not when <b>dozens of rows per page</b> must.",
+    "diagram": "12 pages x 40+ fields  -> context nearly full\n   start [ok]  middle [misses]  end [ok]\nfix 1: 40 fields -> 2 (text, page)\nfix 2: pages 1-3 | 4-6 | 7-9 | 10-12 -> merge",
+    "mapTitle": "Detail lost in long input: what is crowding it out, and where?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Tool results huge, most fields unused",
+       "Tool output bloat",
+       "Trim to the fields used"
+      ],
+      [
+       "Many detailed items lost mid-input",
+       "Lost in the middle",
+       "Split into shorter passes, then merge"
+      ],
+      [
+       "A few key facts lost mid-input",
+       "Lost in the middle",
+       "Key summary up front + section headings"
+      ],
+      [
+       "Facts lost across a long conversation",
+       "Progressive summarisation",
+       "Persistent case-facts block"
+      ],
+      [
+       "Output cut off at the end",
+       "<code>max_tokens</code>",
+       "Raise the limit"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "returns over forty fields per text block, including per-character bounding boxes and confidences",
+      "means": "Most of the tool output is unused bulk: trim it (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "extraction reads only each block's text and page number",
+      "means": "Nothing is lost by trimming. And since it already fits, a bigger window (<b>[[0]]</b>) adds nothing."
+     },
+     {
+      "quote": "The misses are line-item rows, dozens per page",
+      "means": "The decider. Too much detail for an opening summary (<b>[[2]]</b>) to carry."
+     },
+     {
+      "quote": "they cluster on pages four to nine, while the first and last pages come through cleanly",
+      "means": "Lost in the middle. Shorter passes (<b>[[4]]</b>) remove the middle; an instruction (<b>[[3]]</b>) does not."
+     }
+    ],
+    "rule": "Trim tool results to what you use. If lots of detail sits mid-input, split the input; if only a few facts do, summarise them up front.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Tool results accumulate and consume tokens disproportionately (40+ fields when 5 are relevant)."
+    }
+   }
+  },
+  {
+   "id": "s6-08",
+   "sid": "s6",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Empty results vs access failures",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An MCP tool, <code>get_attachments</code>, returns an empty array both when an invoice genuinely has no attachments and when the attachment store cannot be reached. The store goes offline for 20 to 40 minutes during its nightly index rebuild, which overlaps the extraction run. Last quarter 1.2% of invoices posted as having no supporting documents although a customs declaration existed, and clearance was delayed each time. <b>What is the right fix?</b>",
+   "options": [
+    {
+     "t": "Retry the store inside the tool with exponential backoff for up to sixty seconds before returning the empty array.",
+     "why": "Runner-up. Local retry of transient failures is good practice and would win if outages lasted seconds. These last 20 to 40 minutes, so after sixty seconds the tool still returns an empty array that looks like 'none'."
+    },
+    {
+     "t": "Hold every invoice whose attachment list comes back empty in a review queue until a clerk confirms the documents.",
+     "why": "Incorrect. Most empty results are genuine, so this queues the common case to catch a rare failure, while the tool still hides which is which."
+    },
+    {
+     "t": "Compare attachment counts with the ERP after posting, and raise an exception when the two counts disagree.",
+     "why": "Incorrect. It finds the problem after posting, when the clearance delay has already started, and the ERP only knows what extraction gave it."
+    },
+    {
+     "t": "Return <code>isError</code> with a transient category and <code>isRetryable: true</code> when unreachable, keeping <code>[]</code> for none found.",
+     "why": "Correct. An outage and a genuine 'no attachments' are opposite facts that share one return value. Separating them lets the agent hold or retry the outage case and proceed on the genuine one."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Outages last 20 to 40 minutes, longer than any local retry, so the tool must report the failure as a failure; if outages lasted seconds, retrying inside the tool would hide them safely.",
+   "explanation": "Distinguish access failures from valid empty results. Return structured errors (<code>isError</code>, category, retryability) so the agent can choose the right recovery; a shared empty value makes that impossible.",
+   "eli5": {
+    "question": "The tool says 'no attachments' both when there are none and when it could not check. The clue is: the store is offline for 20 to 40 minutes at a time. So a quick retry inside the tool will not get past the outage.",
+    "answer": "Imagine a receptionist who says 'no messages' both when there are none and when the message system is down. You would never chase anything. They should say 'the system is down, try later' when it is (<b>a structured error with <code>isError</code></b>). Then 'no messages' means what it says. <b>Rule: 'I couldn't check' must look different from 'there's nothing'.</b>",
+    "options": [
+     "Runner-up. Retrying for a minute (<b>local retry with backoff</b>) would win if outages were short. These last up to 40 minutes.",
+     "Holding every empty result sends mostly genuine cases to clerks.",
+     "Checking after posting is too late; the delay has already happened.",
+     "Correct. 'Couldn't reach the store, try again' versus 'genuinely none'."
+    ]
+   },
+   "deep": {
+    "premise": "Outages are <b>transient</b>, and the textbook answer for transient failures is <b>retry locally</b>. That is right only if the outage ends before the retry gives up. Here outages last <b>20 to 40 minutes</b>, so the tool must say <b>'I could not check'</b> instead of 'none'.",
+    "mapTitle": "Tool returned nothing: is that an answer or a failure?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right response",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Store unreachable for minutes or longer",
+       "<code>isError</code>, transient, retryable",
+       "Caller can hold or retry later"
+      ],
+      [
+       "Brief blips of a few seconds",
+       "Local retry with backoff, then error",
+       "Recovers without bothering caller"
+      ],
+      [
+       "Genuinely nothing found",
+       "Valid empty result",
+       "A real answer"
+      ],
+      [
+       "Bad input from caller",
+       "Validation error, not retryable",
+       "Retrying won't help"
+      ],
+      [
+       "Policy forbids the action",
+       "Business error, not retryable, explanation",
+       "Needs a different path"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "returns an empty array both when an invoice genuinely has no attachments and when the attachment store cannot be reached",
+      "means": "Two opposite facts share one return value: the core defect."
+     },
+     {
+      "quote": "The store goes offline for 20 to 40 minutes during its nightly index rebuild",
+      "means": "The decider. A sixty-second retry (<b>[[0]]</b>) ends long before the outage does."
+     },
+     {
+      "quote": "which overlaps the extraction run",
+      "means": "This is not rare noise; it happens every night, so the failure must be visible to the agent."
+     },
+     {
+      "quote": "clearance was delayed each time",
+      "means": "Fixing after posting (<b>[[2]]</b>) is too late; holding every empty result (<b>[[1]]</b>) blocks the common case. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Never let 'couldn't check' and 'nothing there' share a return value. Return a structured, retryable error for the first.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "distinguish access failures from valid empty results"
+    }
+   }
+  },
+  {
+   "id": "s6-09",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Prompt chaining",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "One prompt classifies each document, extracts its fields, converts amounts to USD and checks business rules, all in a single call. Accuracy dropped when the rule checks were added. When a packing list is read as an invoice, everything downstream is wrong in ways that still pass the rule checks. Whatever its type, every document goes through those four steps in that order, each using the previous step's result. <b>What is the best restructuring?</b>",
+   "options": [
+    {
+     "t": "Give a coordinator agent the four jobs as tools, and let it choose the next step based on what each result reveals.",
+     "why": "Runner-up. Dynamic decomposition is right when the next step depends on what is found, and would win if documents needed different steps. Here every document takes the same four steps, so a coordinator adds cost and variability for no gain."
+    },
+    {
+     "t": "Keep one call, and add an independent reviewer instance that checks the full output before anything is posted.",
+     "why": "Incorrect. Independent review helps catch subtle errors, but a misclassified document can look consistent, and the single call still does four jobs at once."
+    },
+    {
+     "t": "Split the work into four sequential calls, with the type from the first call choosing the extraction schema for the next.",
+     "why": "Correct. A fixed sequence of dependent steps is what prompt chaining is for. Each call has one job, and the classification becomes an output that can be checked before extraction relies on it."
+    },
+    {
+     "t": "Keep one call, and reorganise the prompt into four headed sections with the classification instructions placed first.",
+     "why": "Incorrect. Headings make a prompt easier to read but leave four jobs competing in one pass, with no checkpoint after classification."
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Every document runs the same four steps in the same order, so a fixed chain fits; if the steps varied with what each document revealed, an adaptive coordinator would be better.",
+   "explanation": "Prompt chaining suits a fixed sequence of dependent steps: each step does one job, and each intermediate result can be checked. Adaptive decomposition is for work whose next step depends on what is found.",
+   "eli5": {
+    "question": "One prompt does four jobs at once, and a wrong first guess spoils everything after it. The clue is: every document goes through the same four steps in the same order. So the question is whether you need a fixed assembly line or a manager deciding as you go.",
+    "answer": "Think of an assembly line versus a foreman who decides each next step. When every product goes through the same stations in the same order, an assembly line (<b>prompt chaining</b>) is simpler and you can inspect the product between stations. A foreman (<b>adaptive coordinator</b>) helps only when products need different steps. <b>Rule: fixed steps in a fixed order, use a chain.</b>",
+    "options": [
+     "Runner-up. A foreman deciding steps (<b>dynamic decomposition</b>) would win if documents needed different steps.",
+     "An inspector at the end (<b>independent review</b>) can be fooled by output that is wrong but consistent.",
+     "Correct. Four stations in a row, each checkable before the next.",
+     "Headings tidy the prompt; it is still one crowded pass."
+    ]
+   },
+   "deep": {
+    "premise": "'Agentic' can sound more advanced than a fixed pipeline, so a <b>coordinator choosing steps</b> is tempting. But that flexibility only pays when the steps <b>vary by case</b>. Here they never do: <b>same four steps, same order</b>. A chain is simpler and gives a checkpoint after classification.",
+    "diagram": "classify -> extract (type's schema) -> to USD -> rules\n   ^ check here: packing list or invoice?",
+    "mapTitle": "Splitting a multi-step job: fixed chain or adaptive plan?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right structure",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Same steps, same order for every item",
+       "Prompt chaining",
+       "Simple, each step checkable"
+      ],
+      [
+       "Next step depends on what is found",
+       "Adaptive decomposition",
+       "Plan grows from findings"
+      ],
+      [
+       "Many files to review",
+       "Per-file passes + integration pass",
+       "Avoids attention dilution"
+      ],
+      [
+       "Reviewer misses own mistakes",
+       "Independent instance",
+       "No shared reasoning"
+      ],
+      [
+       "A step must always run first",
+       "Forced <code>tool_choice</code>",
+       "Deterministic order"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "all in a single call",
+      "means": "Four jobs compete for attention in one pass."
+     },
+     {
+      "quote": "Accuracy dropped when the rule checks were added",
+      "means": "Adding a job hurt the others: a sign to split. Headings (<b>[[3]]</b>) keep one pass."
+     },
+     {
+      "quote": "everything downstream is wrong in ways that still pass the rule checks",
+      "means": "An early error stays hidden. A final reviewer (<b>[[1]]</b>) may not see it either; a checkpoint after classification does."
+     },
+     {
+      "quote": "every document goes through those four steps in that order",
+      "means": "The decider. Fixed sequence, so a chain (<b>[[2]]</b>) rather than a coordinator (<b>[[0]]</b>)."
+     }
+    ],
+    "rule": "Fixed steps in a fixed order: chain them, one job per call. Save adaptive coordinators for work whose steps depend on what is found.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings."
+    }
+   }
+  },
+  {
+   "id": "s6-10",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Prerequisite ordering",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After extraction, enrichment tools look up the vendor's tax registration and contract terms; they need the vendor identity and document type that <code>extract_metadata</code> establishes. In about 8% of runs the model opens with an enrichment lookup, using a vendor guessed from the filename, and gets another vendor's data. In a further 3% it replies in prose on its first turn without calling any tool. The metadata step has to come first on every request. <b>Which mechanism achieves that?</b>",
+   "options": [
+    {
+     "t": "Set <code>tool_choice</code> to <code>{\"type\": \"tool\", \"name\": \"extract_metadata\"}</code> on the first request, then return to <code>auto</code>.",
+     "why": "Correct. Forcing the named tool makes the first call <code>extract_metadata</code> on every request. It fixes both failures: enrichment cannot go first, and the model cannot answer in prose instead."
+    },
+    {
+     "t": "Expand the enrichment tools' descriptions to say vendor identity must come from <code>extract_metadata</code> output.",
+     "why": "Incorrect. Better descriptions improve tool selection but stay probabilistic, and they do nothing for the prose replies."
+    },
+    {
+     "t": "Add a pre-call hook that rejects enrichment calls until <code>extract_metadata</code> has returned, with an error naming it.",
+     "why": "Runner-up. A prerequisite gate is the right tool when a call must be blocked until another has run, and would win if wrong ordering were the only failure. It cannot make the model call any tool, so the 3% prose replies still skip the metadata step."
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>{\"type\": \"any\"}</code> on the first request, and keep it there until metadata exists.",
+     "why": "Incorrect. \"any\" stops the prose replies but lets the model pick any tool, including an enrichment lookup."
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "Some runs call no tool at all on the first turn, which a blocking hook cannot fix; if the only failure were enrichment going first, a prerequisite gate would serve as well.",
+   "explanation": "<code>tool_choice</code> answers different questions: <code>auto</code> lets the model decide, <code>any</code> requires some tool, and a forced named tool requires that specific one. Use the forced setting when a particular tool must run first.",
+   "eli5": {
+    "question": "The model sometimes skips the first required step, in two ways. The clue is: in 3% of runs it does not call any tool at all; it just writes an answer. So the fix has to make it call the right tool, not only stop it calling the wrong one.",
+    "answer": "Think of a security desk. A guard who stops people going upstairs without a badge (<b>a hook</b>) prevents the wrong order. But someone who walks out without visiting the desk at all is not stopped. Telling the visitor 'your first stop is the badge desk' (<b>forced <code>tool_choice</code></b>) covers both. <b>Rule: if one specific tool must run first, force that tool.</b>",
+    "options": [
+     "Correct. Forcing the named tool means the first call is always the metadata step.",
+     "Better labels (<b>tool descriptions</b>) help, but cannot guarantee anything.",
+     "Runner-up. A blocking guard (<b>prerequisite hook</b>) stops enrichment going first. It would win if that were the only problem.",
+     "'Must call some tool' (<b>any</b>) still lets it choose the wrong one."
+    ]
+   },
+   "deep": {
+    "premise": "The 8% wrong-order case is the vivid one, and a <b>prerequisite hook</b> is the textbook fix for wrong order. But a hook only reacts to calls the model makes. In the <b>3% prose case</b> the model makes <b>no call</b>, so nothing is blocked and metadata never runs. Forcing the named tool covers <b>both</b> failures.",
+    "diagram": "auto:   model may call a tool or write text\nany:    model must call some tool\nforced: model must call THIS tool\nhook:   blocks a bad call; can't cause a call",
+    "mapTitle": "Need a tool to run? Which control actually guarantees it?",
+    "map": {
+     "head": [
+      "Requirement",
+      "Mechanism",
+      "Limit"
+     ],
+     "rows": [
+      [
+       "A specific tool must run first",
+       "Forced <code>tool_choice</code> (named tool)",
+       "Only for that request"
+      ],
+      [
+       "Model must call some tool, not write text",
+       "<code>tool_choice</code> \"any\"",
+       "Doesn't pick which"
+      ],
+      [
+       "Block a call until a prerequisite ran",
+       "Hook / prerequisite gate",
+       "Can't force a call"
+      ],
+      [
+       "Model often picks the wrong similar tool",
+       "Better tool descriptions",
+       "Probabilistic"
+      ],
+      [
+       "Policy limit on an action (e.g. refund cap)",
+       "Hook that blocks and redirects",
+       "Deterministic"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "In about 8% of runs the model opens with an enrichment lookup",
+      "means": "The vivid failure: wrong order. A hook (<b>[[2]]</b>) handles this one."
+     },
+     {
+      "quote": "In a further 3% it replies in prose on its first turn without calling any tool",
+      "means": "The decider. No call happens, so a hook has nothing to block. Descriptions (<b>[[1]]</b>) don't help either."
+     },
+     {
+      "quote": "The metadata step has to come first on every request",
+      "means": "A specific tool, every time. \"any\" (<b>[[3]]</b>) forces a call but not which one. Forcing the named tool: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Hooks stop wrong calls; they don't cause right ones. If a specific tool must run first, force it with <code>tool_choice</code>.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment); \"any\" guarantees a tool call rather than text."
+    }
+   }
+  }
+ ]
+}
