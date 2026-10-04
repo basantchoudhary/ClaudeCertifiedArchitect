@@ -208,6 +208,7 @@
       (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
              '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
       deepHtml(s) +
+      (window.SIMS && window.SIMS[s.q.id] ? '<p class="simlink"><a href="sim.html#' + s.q.id + '" target="_blank">▶ See it run: apply each option in the simulator</a></p>' : '') +
       '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
       (s.q.faq ? '<details class="deep faq" open><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
         return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +

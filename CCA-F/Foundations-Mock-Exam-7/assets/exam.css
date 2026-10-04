@@ -159,3 +159,5 @@ ul.traps .fitems{font-size:12px;color:var(--dim);font-style:italic}
 .dev q{display:block;font-style:italic;color:var(--dim)}
 .drule{margin:4px 0;padding:8px 12px;border-left:3px solid var(--ok);background:var(--card2);border-radius:6px;font-weight:600}
 .dguide{font-size:12px;color:var(--dim);margin-top:8px}
+.simlink{margin:4px 0 14px}
+.simlink a{display:inline-block;background:rgba(124,92,255,.16);border:1px solid var(--acc);border-radius:8px;padding:7px 12px;color:var(--ink);text-decoration:none;font-weight:600}

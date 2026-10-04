@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mock 7 Simulator</title>
+<link rel="stylesheet" href="assets/exam.css">
+<style>
+:root{ --l-cust:#94a3b8; --l-loop:#a78bfa; --l-api:#60a5fa; --l-hook:#f59e0b; --l-tool:#22c55e; --l-sub:#2dd4bf; --l-block:#ef4444; }
+@media (prefers-color-scheme: light){
+  :root{ --l-cust:#64748b; --l-loop:#6d4aff; --l-api:#2563eb; --l-hook:#b45309; --l-tool:#15803d; --l-sub:#0f766e; --l-block:#dc2626; }
+}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button,.ctl button,.worlds button{background:var(--card2);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button.on,.worlds button.on{border-color:var(--acc);background:rgba(124,92,255,.16)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.card h2{margin:0 0 8px;font-size:16px;color:var(--acc2)}
+.brief{font-size:13px;color:var(--dim);margin:0 0 10px}
+.worlds{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.wdesc{font-size:13px;margin:6px 0 0;color:var(--dim)}
+.opts{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
+.opts li{border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer;background:var(--card2)}
+.opts li:hover{border-color:var(--acc2)}
+.opts li.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.opts li b{margin-right:6px}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+.ctl button:disabled{opacity:.45;cursor:default}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:var(--c)}
+.trace{list-style:none;margin:0;padding:0;position:relative}
+.trace li{position:relative;padding:0 0 12px 22px;animation:in .25s ease}
+.trace li::before{content:"";position:absolute;left:5px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.trace li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:2px;background:var(--line)}
+.trace li:last-child::after{display:none}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+.lane{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--c);margin-right:6px}
+.st{font-weight:600}
+.note{font-size:13px;color:var(--dim);margin:2px 0}
+.trace pre{background:var(--card2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin:6px 0 0;
+  font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.trace li.m-bad pre{border-color:var(--no)} .trace li.m-ok pre{border-color:var(--ok)} .trace li.m-warn pre{border-color:var(--warn)}
+.outcome{border-radius:10px;padding:12px 14px;margin-top:8px;border:1px solid var(--line);background:var(--card2)}
+.outcome.ok{border-color:var(--ok)} .outcome.no{border-color:var(--no)} .outcome.wa{border-color:var(--warn)}
+.outcome .v{font-weight:700;margin-right:6px}
+.outcome.ok .v{color:var(--ok)} .outcome.no .v{color:var(--no)} .outcome.wa .v{color:var(--warn)}
+.dots{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 2px}
+.dots i{width:16px;height:16px;border-radius:4px;background:var(--ok)} .dots i.x{background:var(--no)}
+.tagline{font-size:12px;color:var(--dim)}
+.empty{color:var(--dim);font-size:14px;padding:6px 0}
+</style>
+</head>
+<body>
+<header class="page">
+  <div class="crumb"><a href="../CCA-F_Study_Guide.html">CCA-F</a> › <a href="index.html">Mock Exam #7</a> › Simulator</div>
+  <h1>See it run</h1>
+  <div class="tag">Pick an answer, apply it to the system and watch what happens · then change the deciding fact and see the runner-up win</div>
+</header>
+
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+
+  <div class="card">
+    <h2 id="qobj"></h2>
+    <p class="brief" id="brief"></p>
+    <p id="qtext"></p>
+    <div class="worlds" id="worlds"></div>
+    <p class="wdesc" id="wdesc"></p>
+    <ul class="opts" id="opts"></ul>
+    <div class="ctl">
+      <button id="step">Step ▸</button><button id="play">Play all ▸▸</button>
+      <button id="run20">Run 20 chats</button><button id="reset">Reset</button>
+    </div>
+    <div class="legend">
+      <span style="--c:var(--l-cust)">Customer</span><span style="--c:var(--l-loop)">Your loop code</span>
+      <span style="--c:var(--l-api)">Claude API</span><span style="--c:var(--l-hook)">Hook</span>
+      <span style="--c:var(--l-tool)">Tool</span><span style="--c:var(--l-sub)">Subagent</span><span style="--c:var(--l-block)">Constraint</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>What happens</h2>
+    <ol class="trace" id="trace"></ol>
+    <div id="outcome"></div>
+    <div id="many"></div>
+  </div>
+
+  <div id="deep"></div>
+</div>
+
+<footer>CCA-F · Mock Exam #7 · scripted simulations: every trace is hand-written and deterministic, with no live model calls</footer>
+
+<script src="assets/questions.js"></script>
+<script src="assets/sims.js"></script>
+<script>
+(function () {
+  var QS = {}; window.EXAM.questions.forEach(function (q) { QS[q.id] = q; });
+  var SC = {}; window.EXAM.scenarios.forEach(function (s) { SC[s.id] = s; });
+  var ids = Object.keys(window.SIMS);
+  var LANES = { cust: 'Customer', loop: 'Your loop', api: 'Claude API', hook: 'Hook', tool: 'Tool', sub: 'Subagent', block: 'Constraint' };
+  var cur = { id: null, world: 'A', opt: null, shown: 0 };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
+  var letter = function (i) { return String.fromCharCode(65 + i); };
+
+  function run() { return cur.opt == null ? null : window.SIMS[cur.id].runs[cur.world][cur.opt]; }
+
+  function pick(id) {
+    cur = { id: id, world: 'A', opt: null, shown: 0 };
+    try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    var q = QS[id], sim = window.SIMS[id];
+    $('tabs').innerHTML = ids.map(function (x) {
+      return '<button data-id="' + x + '" class="' + (x === id ? 'on' : '') + '">' + esc(QS[x].obj) + '</button>'; }).join('');
+    $('qobj').textContent = q.id + ' · ' + q.obj;
+    $('brief').innerHTML = SC[q.sid].brief;
+    $('qtext').innerHTML = q.question;
+    $('opts').innerHTML = q.options.map(function (o, i) {
+      return '<li data-i="' + i + '"><b>' + letter(i) + '.</b>' + o.t + '</li>'; }).join('');
+    $('deep').innerHTML = deepHtml(q);
+    drawWorlds(); draw();
+  }
+
+  function drawWorlds() {
+    var sim = window.SIMS[cur.id];
+    $('worlds').innerHTML = sim.worlds.map(function (w) {
+      return '<button data-w="' + w.id + '" class="' + (w.id === cur.world ? 'on' : '') + '">World ' + w.id + ' · ' + w.label + '</button>'; }).join('');
+    $('wdesc').innerHTML = sim.worlds.filter(function (w) { return w.id === cur.world; })[0].desc;
+  }
+
+  function stepHtml(s) {
+    var p = s.payload == null ? '' : '<pre>' + esc(typeof s.payload === 'string' ? s.payload : JSON.stringify(s.payload, null, 2)) + '</pre>';
+    return '<li class="m-' + s.mark + '" style="--c:var(--l-' + s.lane + ')"><span class="lane">' + LANES[s.lane] + '</span>' +
+      '<span class="st">' + esc(s.title) + '</span>' + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') + p + '</li>';
+  }
+
+  function draw() {
+    [].forEach.call($('opts').children, function (li) { li.classList.toggle('on', +li.dataset.i === cur.opt); });
+    var r = run();
+    $('step').disabled = $('play').disabled = !r || cur.shown >= r.steps.length;
+    $('run20').disabled = !r;
+    $('many').innerHTML = '';
+    if (!r) { $('trace').innerHTML = '<li class="empty" style="--c:var(--line)">Choose an option above to apply it, then press Step or Play.</li>'; $('outcome').innerHTML = ''; return; }
+    $('trace').innerHTML = r.steps.slice(0, cur.shown).map(stepHtml).join('');
+    if (cur.shown >= r.steps.length) {
+      var q = QS[cur.id], o = r.outcome;
+      var role = q.answer.indexOf(cur.opt) >= 0 ? 'the keyed answer' : (cur.opt === q.runnerUp ? 'the runner-up' : 'a distractor');
+      var cls = o.ok ? (o.warn ? 'wa' : 'ok') : 'no';
+      $('outcome').innerHTML = '<div class="outcome ' + cls + '"><span class="v">' + (o.ok ? (o.warn ? 'Works, with a cost.' : 'Requirement met.') : 'Requirement not met.') + '</span>' +
+        o.text + '<div class="tagline">Option ' + letter(cur.opt) + ' is ' + role + ' in the question as written.</div></div>';
+    } else $('outcome').innerHTML = '';
+  }
+
+  function many() {
+    var r = run(); if (!r) return;
+    var fails = Math.round((1 - r.rate) * 20), dots = [];
+    for (var i = 0; i < 20; i++) dots.push(false);
+    for (var k = 0; k < fails; k++) dots[(k * 7 + 13) % 20] = true;
+    var met = 20 - fails;
+    $('many').innerHTML = '<h4 style="margin:14px 0 2px">The same change over 20 chats</h4><div class="dots">' +
+      dots.map(function (x) { return '<i class="' + (x ? 'x' : '') + '"></i>'; }).join('') + '</div>' +
+      '<div class="tagline">' + met + ' of 20 meet the requirement. ' +
+      (r.rate === 1 ? 'Deterministic: the change is enforced in code or by the API.' : r.rate === 0 ? 'The change cannot be made under this world\'s constraint.' :
+       'Probabilistic: the model usually complies. Whether that is enough depends on the requirement: <b>must never</b> or <b>should usually</b>.') + '</div>';
+  }
+
+  function deepHtml(q) {
+    var d = q.deep; if (!d) return '';
+    var L = function (t) { return String(t).replace(/\[\[(\d)\]\]/g, function (_, i) { return letter(+i); }); };
+    return '<details class="deep" open><summary>Think it through</summary>' +
+      '<h4>1 · The premise to correct</h4><p>' + L(d.premise) + '</p>' +
+      (d.diagram ? '<pre class="ddia">' + esc(d.diagram) + '</pre>' : '') +
+      '<h4>2 · Mind map: ' + L(d.mapTitle) + '</h4><div class="dtable"><table><tr>' +
+      d.map.head.map(function (h) { return '<th>' + L(h) + '</th>'; }).join('') + '</tr>' +
+      d.map.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + L(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '</table></div><h4>3 · Apply it to this question</h4><ol class="dev">' +
+      d.evidence.map(function (x) { return '<li><q>' + L(x.quote) + '</q><div>' + L(x.means) + '</div></li>'; }).join('') +
+      '</ol><h4>4 · Rule to remember</h4><blockquote class="drule">' + L(d.rule) + '</blockquote>' +
+      '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>“' + esc(d.guide.quote) + '”</i></p></details>';
+  }
+
+  $('tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) pick(b.dataset.id); };
+  $('worlds').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; cur.world = b.dataset.w; cur.shown = 0; drawWorlds(); draw(); };
+  $('opts').onclick = function (e) { var li = e.target.closest('li'); if (!li) return; cur.opt = +li.dataset.i; cur.shown = 0; draw(); };
+  $('step').onclick = function () { cur.shown++; draw(); };
+  $('play').onclick = function () { var r = run(); if (r) { cur.shown = r.steps.length; draw(); } };
+  $('reset').onclick = function () { cur.shown = 0; draw(); };
+  $('run20').onclick = function () { var r = run(); if (r) { cur.shown = r.steps.length; draw(); many(); } };
+
+  var h = location.hash.slice(1);
+  pick(window.SIMS[h] ? h : ids[0]);
+})();
+</script>
+</body>
+</html>
