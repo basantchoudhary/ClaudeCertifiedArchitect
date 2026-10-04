@@ -15,7 +15,7 @@ const files = ['sims.js'].concat(fs.readdirSync(dir).filter(f => /^sims-.+\.js$/
 files.forEach(f => require(path.join(dir, f)));
 
 const Q = {}; window.EXAM.questions.forEach(q => { Q[q.id] = q; });
-const LANES = new Set(['cust', 'loop', 'api', 'hook', 'tool', 'sub', 'block']);
+const LANES = new Set(['cust', 'loop', 'api', 'hook', 'tool', 'sub', 'block', 'file', 'ctx']);
 const MARKS = new Set(['', 'ok', 'bad', 'warn']);
 let errors = 0;
 const err = (id, m) => { errors++; console.log('  ✗ ' + id + ': ' + m); };
@@ -39,6 +39,9 @@ for (const [id, s] of Object.entries(window.SIMS)) {
         if (!LANES.has(st.lane)) err(tag, 'step ' + k + ' bad lane ' + st.lane);
         if (!MARKS.has(st.mark)) err(tag, 'step ' + k + ' bad mark ' + st.mark);
         if (!st.title) err(tag, 'step ' + k + ' no title');
+        if (st.meter && !(st.meter.total > 0 && Array.isArray(st.meter.parts) && st.meter.parts.every(x => x.label && x.tokens >= 0))) err(tag, 'step ' + k + ' bad meter');
+        if (st.meter && st.meter.parts.reduce((a, x) => a + x.tokens, 0) > st.meter.total) err(tag, 'step ' + k + ' meter over total');
+        if (st.table && !(Array.isArray(st.table.head) && st.table.rows.every(r => r.length === st.table.head.length))) err(tag, 'step ' + k + ' bad table');
       });
       const clean = r.outcome.ok && !r.outcome.warn;
       if (!r.outcome.ok && !r.steps.some(st => st.mark === 'bad' || st.mark === 'warn' || st.lane === 'block')) err(tag, 'fails but no step shows the failure');

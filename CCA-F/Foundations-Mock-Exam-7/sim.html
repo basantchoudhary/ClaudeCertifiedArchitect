@@ -6,9 +6,11 @@
 <title>Mock 7 Simulator</title>
 <link rel="stylesheet" href="assets/exam.css">
 <style>
-:root{ --l-cust:#94a3b8; --l-loop:#a78bfa; --l-api:#60a5fa; --l-hook:#f59e0b; --l-tool:#22c55e; --l-sub:#2dd4bf; --l-block:#ef4444; }
+:root{ --l-cust:#94a3b8; --l-loop:#a78bfa; --l-api:#60a5fa; --l-hook:#f59e0b; --l-tool:#22c55e; --l-sub:#2dd4bf; --l-block:#ef4444; --l-file:#e879f9; --l-ctx:#38bdf8;
+  --k-sys:#64748b; --k-keep:#22c55e; --k-tool:#f59e0b; --k-drop:#ef4444; --k-new:#a78bfa; }
 @media (prefers-color-scheme: light){
-  :root{ --l-cust:#64748b; --l-loop:#6d4aff; --l-api:#2563eb; --l-hook:#b45309; --l-tool:#15803d; --l-sub:#0f766e; --l-block:#dc2626; }
+  :root{ --l-cust:#64748b; --l-loop:#6d4aff; --l-api:#2563eb; --l-hook:#b45309; --l-tool:#15803d; --l-sub:#0f766e; --l-block:#dc2626; --l-file:#a21caf; --l-ctx:#0369a1;
+    --k-sys:#94a3b8; --k-keep:#16a34a; --k-tool:#d97706; --k-drop:#dc2626; --k-new:#7c3aed; }
 }
 .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:13px;color:var(--dim)}
 .picker select{flex:1 1 280px;max-width:100%;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px}
@@ -49,6 +51,12 @@
 .dots i{width:16px;height:16px;border-radius:4px;background:var(--ok)} .dots i.x{background:var(--no)}
 .tagline{font-size:12px;color:var(--dim)}
 .empty{color:var(--dim);font-size:14px;padding:6px 0}
+.meter{margin:6px 0 0}
+.meter .bar{display:flex;height:14px;border-radius:5px;overflow:hidden;background:var(--card2);border:1px solid var(--line)}
+.meter .bar i{display:block;height:100%;background:var(--k)}
+.meter .keys{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--dim);margin-top:4px}
+.meter .keys span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:var(--k)}
+.trace .dtable{margin-top:6px}
 </style>
 </head>
 <body>
@@ -70,13 +78,9 @@
     <ul class="opts" id="opts"></ul>
     <div class="ctl">
       <button id="step">Step ▸</button><button id="play">Play all ▸▸</button>
-      <button id="run20">Run 20 chats</button><button id="reset">Reset</button>
+      <button id="run20">Run 20 times</button><button id="reset">Reset</button>
     </div>
-    <div class="legend">
-      <span style="--c:var(--l-cust)" id="whoLegend">Customer</span><span style="--c:var(--l-loop)">Your loop code</span>
-      <span style="--c:var(--l-api)">Claude API</span><span style="--c:var(--l-hook)">Hook</span>
-      <span style="--c:var(--l-tool)">Tool</span><span style="--c:var(--l-sub)">Subagent</span><span style="--c:var(--l-block)">Constraint</span>
-    </div>
+    <div class="legend" id="legend"></div>
   </div>
 
   <div class="card">
@@ -97,12 +101,18 @@
 <script src="assets/sims-s1b.js"></script>
 <script src="assets/sims-s3.js"></script>
 <script src="assets/sims-s4s6.js"></script>
+<script src="assets/sims-cfg.js"></script>
+<script src="assets/sims-ctx.js"></script>
+<script src="assets/sims-multi.js"></script>
+<script src="assets/sims-cli.js"></script>
+<script src="assets/sims-prompt.js"></script>
 <script>
 (function () {
   var QS = {}; window.EXAM.questions.forEach(function (q) { QS[q.id] = q; });
   var SC = {}; window.EXAM.scenarios.forEach(function (s) { SC[s.id] = s; });
   var ids = window.EXAM.questions.map(function (q) { return q.id; }).filter(function (id) { return window.SIMS[id]; });
-  var LANES = { cust: 'Customer', loop: 'Your loop', api: 'Claude API', hook: 'Hook', tool: 'Tool', sub: 'Subagent', block: 'Constraint' };
+  var BASE = { cust: 'Customer', loop: 'Your loop', api: 'Claude API', hook: 'Hook', tool: 'Tool', sub: 'Subagent', block: 'Constraint', file: 'Config file', ctx: 'Context window' };
+  var LANES = BASE;
   var cur = { id: null, world: 'A', opt: null, shown: 0 };
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
@@ -119,7 +129,10 @@
       return '<optgroup label="' + esc(SC[sid].title.replace(/<[^>]+>/g, '')) + '">' + groups[sid].map(function (x) {
         return '<option value="' + x + '"' + (x === id ? ' selected' : '') + '>' + x.replace('m7-', '') + ' \u00b7 ' + esc(QS[x].obj) + '</option>'; }).join('') + '</optgroup>'; }).join('');
     $('pos').textContent = (ids.indexOf(id) + 1) + ' of ' + ids.length;
-    LANES.cust = sim.who || 'Customer'; $('whoLegend').textContent = LANES.cust;
+    LANES = Object.assign({}, BASE, { cust: sim.who || 'Customer' }, sim.labels || {});
+    var used = {}; ['A', 'B'].forEach(function (w) { sim.runs[w].forEach(function (r) { r.steps.forEach(function (st) { used[st.lane] = 1; }); }); });
+    $('legend').innerHTML = Object.keys(BASE).filter(function (k) { return used[k]; }).map(function (k) {
+      return '<span style="--c:var(--l-' + k + ')">' + esc(LANES[k]) + '</span>'; }).join('');
     $('qobj').textContent = q.id + ' · ' + q.obj;
     $('brief').innerHTML = SC[q.sid].brief;
     $('qtext').innerHTML = q.question;
@@ -138,8 +151,26 @@
 
   function stepHtml(s) {
     var p = s.payload == null ? '' : '<pre>' + esc(typeof s.payload === 'string' ? s.payload : JSON.stringify(s.payload, null, 2)) + '</pre>';
-    return '<li class="m-' + s.mark + '" style="--c:var(--l-' + s.lane + ')"><span class="lane">' + LANES[s.lane] + '</span>' +
-      '<span class="st">' + esc(s.title) + '</span>' + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') + p + '</li>';
+    return '<li class="m-' + s.mark + '" style="--c:var(--l-' + s.lane + ')"><span class="lane">' + esc(LANES[s.lane]) + '</span>' +
+      '<span class="st">' + esc(s.title) + '</span>' + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') +
+      (s.meter ? meterHtml(s.meter) : '') + (s.table ? tableHtml(s.table) : '') + p + '</li>';
+  }
+
+  /* meter: { total: tokens, parts: [{ label, tokens, kind: sys|keep|tool|drop|new }] } — a context-window bar */
+  function meterHtml(m) {
+    var used = m.parts.reduce(function (a, x) { return a + x.tokens; }, 0);
+    var k = function (x) { return '--k:var(--k-' + (x.kind || 'keep') + ')'; };
+    var fmt = function (n) { return n >= 1000 ? Math.round(n / 1000) + 'k' : String(n); };
+    return '<div class="meter"><div class="bar">' + m.parts.map(function (x) {
+        return '<i style="' + k(x) + ';width:' + (100 * x.tokens / m.total) + '%" title="' + esc(x.label) + '"></i>'; }).join('') +
+      '</div><div class="keys">' + m.parts.map(function (x) { return '<span style="' + k(x) + '">' + esc(x.label) + ' ' + fmt(x.tokens) + '</span>'; }).join('') +
+      '<span style="--k:transparent">' + fmt(used) + ' of ' + fmt(m.total) + ' tokens</span></div></div>';
+  }
+
+  /* table: { head: [...], rows: [[...]] } — numbers such as cost, latency or sampled accuracy */
+  function tableHtml(t) {
+    return '<div class="dtable"><table><tr>' + t.head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>' +
+      t.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></div>';
   }
 
   function draw() {
@@ -165,7 +196,7 @@
     for (var i = 0; i < 20; i++) dots.push(false);
     for (var k = 0; k < fails; k++) dots[(k * 7 + 13) % 20] = true;
     var met = 20 - fails;
-    $('many').innerHTML = '<h4 style="margin:14px 0 2px">The same change over 20 chats</h4><div class="dots">' +
+    $('many').innerHTML = '<h4 style="margin:14px 0 2px">The same change, 20 runs</h4><div class="dots">' +
       dots.map(function (x) { return '<i class="' + (x ? 'x' : '') + '"></i>'; }).join('') + '</div>' +
       '<div class="tagline">' + met + ' of 20 meet the requirement. ' +
       (r.rate === 1 ? 'Deterministic: the change is enforced in code or by the API.' : r.rate === 0 ? 'The change cannot be made under this world\'s constraint.' :

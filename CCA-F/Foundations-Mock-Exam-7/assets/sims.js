@@ -19,6 +19,8 @@
   /* Shared helpers for the per-scenario files (sims-*.js). Each file calls SIMLIB.add(sim). */
   window.SIMS = window.SIMS || {};
   window.SIMLIB = { MODEL: MODEL, S: S, req: req, res: res, T: T, U: U, R: R, E: E,
+    /* X(step, { meter: {...} }) or X(step, { table: {...} }) attaches a context bar or a numbers table to a step */
+    X: function (step, extra) { return Object.assign(step, extra); },
     add: function (sim) { window.SIMS[sim.id] = sim; } };
 
   /* ------------------------------------------------------------ m7-s1-01 stop_reason */
