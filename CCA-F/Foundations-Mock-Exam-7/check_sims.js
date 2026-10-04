@@ -54,6 +54,12 @@ for (const [id, s] of Object.entries(window.SIMS)) {
     });
   }
 }
+// every question highlights 1-2 deciding sentences (simview.js clues; add hand marks to CLUES there if not)
+require(path.join(dir, 'simview.js'));
+window.EXAM.questions.forEach(q => {
+  const k = window.SimView.clueCount(q);
+  if (k < 1 || k > 2) err(q.id, 'deciding-sentence highlight covers ' + k + ' sentences (want 1-2)');
+});
 const n = Object.keys(window.SIMS).length;
 console.log((errors ? errors + ' problem(s)' : 'ok') + ' — ' + n + ' sims from ' + files.join(', '));
 process.exit(errors ? 1 : 0);

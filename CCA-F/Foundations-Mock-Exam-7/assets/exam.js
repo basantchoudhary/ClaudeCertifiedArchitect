@@ -106,7 +106,9 @@
         '</ul>' +
         '<p class="pathhint">' + (q.eli5 ? 'Wording unclear? Tap <b>Understand</b> first. ' : '') +
           'The other steps unlock once you answer.</p>' +
-        (q.eli5 ? '<div class="understand" hidden><b>In plain words:</b> ' + q.eli5.question + '</div>' : '');
+        (q.eli5 ? '<div class="understand" hidden><b>In plain words:</b> ' + q.eli5.question +
+          (!EXAMMODE && window.SimView && window.SimView.clueCount(q) ? '<div><button class="cluebtn">Show me the clue in the question</button></div>' : '') +
+          '</div>' : '');
 
       var ul = document.createElement('ul');
       ul.className = 'opts';
@@ -142,6 +144,13 @@
         if (step === 'understand') {
           var u = card.querySelector('.understand'); u.hidden = !u.hidden; li.classList.toggle('on', !u.hidden);
         } else if (state[qi].graded && step !== 'answer') openTab(qi, step);
+      });
+      var cb = card.querySelector('.cluebtn');
+      if (cb) cb.addEventListener('click', function () {
+        if (state[qi].graded) return;
+        state[qi].clueUsed = true;
+        card.querySelector('.qtext').innerHTML = window.SimView.clueHtml(q, 'hint');
+        cb.disabled = true; cb.textContent = 'Clue underlined in the question above';
       });
 
       var ex = document.createElement('div'); ex.className = 'explain';
@@ -179,7 +188,7 @@
     });
     if (panel === 'sim') {
       if (!s.sim) s.sim = window.SimView.mount(card.querySelector('.tab[data-t="sim"] .simhost'), s.q.id,
-        { order: s.order, pick: s.picked, qtextEl: card.querySelector('.qtext') });
+        { order: s.order, pick: s.picked, qtextEl: card.querySelector('.qtext'), markClue: true });
       var first = s.picked.filter(function (i) { return s.q.answer.indexOf(i) < 0; })[0];
       if (first == null) first = s.picked.length ? s.picked[0] : s.q.answer[0];
       if (name === 'whatif') s.sim.setWorld('B', s.q.runnerUp); else s.sim.setWorld('A', first);
@@ -246,17 +255,20 @@
       return '<div class="nextbtn"><button data-go="' + (go || 'nextq') + '">' + (label || 'Next question \u2193') + '</button></div>';
     };
 
+    var hasClue = window.SimView && window.SimView.clueCount(s.q) > 0;
+    if (hasClue) card.querySelector('.qtext').innerHTML = window.SimView.clueHtml(s.q, 'mark');
     card.querySelector('.explain').innerHTML =
       '<div class="result ' + rcls + '"><span class="big">' + head + '</span>' +
         (s.picked.length ? '<span>You picked <b>' + ls(s.picked) + '</b></span>' : '') +
         '<span>Correct: <b>' + ls(s.q.answer) + '</b></span>' +
         '<span>Runner-up: <b>' + L[ru] + '</b></span>' +
+        (s.clueUsed ? '<span class="clueused">clue used</span>' : '') +
         '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
       '<div class="tabs">' + tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
       '<div class="tab" data-t="why">' +
         (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
                '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
-        (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
+        (s.q.decider ? '<div class="decider"><b>Deciding fact' + (hasClue ? ' <mark class="clue">highlighted in the question</mark>' : '') + ':</b> ' + s.q.decider + '</div>' : '') +
         '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
         (s.q.faq ? '<details class="deep faq"><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
           return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +

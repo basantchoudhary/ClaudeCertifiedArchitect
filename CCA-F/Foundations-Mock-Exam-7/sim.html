@@ -72,7 +72,7 @@
     $('qobj').textContent = q.id + ' · ' + q.obj;
     $('brief').innerHTML = SC[q.sid].brief;
     $('qtext').innerHTML = q.question;
-    window.SimView.mount($('sim'), id, { qtextEl: $('qtext') });
+    window.SimView.mount($('sim'), id, { qtextEl: $('qtext'), markClue: true });
     $('deep').innerHTML = window.SimView.deep(q, function (i) { return String.fromCharCode(65 + i); });
   }
   $('pick').onchange = function () { pick(this.value); };

@@ -41,6 +41,47 @@
       '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>“' + esc(d.guide.quote) + '”</i></p>';
   }
 
+  /* Deciding sentences. Found from the ELI5 clue quote ("The clue is: “…”") or, failing that, the deep-layer
+     evidence whose meaning names the decider. CLUES lists the few that need marking by hand. */
+  var CLUES = {
+    'm7-s5-08': ['Nobody reads it until the Monday planning meeting', 'the report uses only its build file and lockfile'],
+    'm7-s6-09': ['Scans from small carriers are rare in that sample', 'Compliance wants error rates measured for each document type']
+  };
+  function norm(s) {
+    return String(s).replace(/<[^>]+>/g, '').replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+      .replace(/\s+/g, ' ').trim().toLowerCase().replace(/^["']+|[.,;:!?…"']+$/g, '');
+  }
+  function clues(q) {
+    if (CLUES[q.id]) return CLUES[q.id].map(norm);
+    var stem = norm(q.question), found = [];
+    var eli = q.eli5 && q.eli5.question || '', at = eli.search(/clue/i);
+    if (at >= 0) (eli.slice(at).match(/“[^”]+”|"[^"]+"/g) || []).forEach(function (m) {
+      var c = norm(m); if (c && stem.indexOf(c) >= 0) found.push(c); });
+    if (!found.length) ((q.deep && q.deep.evidence) || []).forEach(function (e) {
+      if (/decid/i.test(e.means)) { var c = norm(e.quote); if (c && stem.indexOf(c) >= 0) found.push(c); } });
+    return found;
+  }
+  function sentences(html) { return html.split(/(?<=[.?!][”"]?)\s+(?=[A-Z“"<])/); }
+  function isHit(sent, cs) {
+    if (/\?\s*$/.test(sent.replace(/<[^>]+>/g, ''))) return false;   // never the question line itself
+    var n = norm(sent);
+    return cs.some(function (c) { return n.indexOf(c) >= 0 || (n.length > 12 && c.indexOf(n) >= 0); });
+  }
+  /* mode: 'mark' (after answering), 'hint' (before answering), 'whatif' (World B: strike it, show the change) */
+  function clueHtml(q, mode, desc) {
+    var cs = clues(q), parts = sentences(q.question), last = -1;
+    if (!cs.length) return q.question;
+    var out = parts.map(function (s, i) {
+      if (!isHit(s, cs)) return s;
+      last = i;
+      if (mode === 'whatif') return '<del class="clue">' + s + '</del>';
+      return '<mark class="clue' + (mode === 'hint' ? ' hint' : '') + '" title="Deciding fact">' + s + '</mark>';
+    });
+    if (mode === 'whatif' && last >= 0) out[last] += ' <ins class="whatif">What if: ' + desc + '</ins>';
+    return out.join(' ');
+  }
+  function clueCount(q) { var cs = clues(q); return sentences(q.question).filter(function (s) { return cs.length && isHit(s, cs); }).length; }
+
   function mount(el, qid, o) {
     o = o || {};
     var q = qs()[qid], sim = window.SIMS && window.SIMS[qid];
@@ -81,9 +122,14 @@
           (x.id === 'A' ? 'World A · the question as written' : 'World B · what if one fact changed?') + '</button>'; }).join('');
       var wd = $('.wdesc');
       wd.className = 'wdesc' + (b ? ' whatif' : '');
-      wd.innerHTML = b ? '<span class="wh">What if… (this is not the exam question)</span>The question is changed for this world: ' + w.desc +
+      var marked = clueCount(q) > 0;
+      wd.innerHTML = b ? '<span class="wh">What if… (this is not the exam question)</span>' +
+        (marked ? 'The struck-out sentence in the question is replaced: ' : 'The question is changed for this world: ') + w.desc +
         ' Anything in the question that says otherwise no longer holds. Watch which option wins now.' : w.desc;
-      if (o.qtextEl) o.qtextEl.classList.toggle('dim', b);
+      if (o.qtextEl) {
+        o.qtextEl.innerHTML = b ? clueHtml(q, 'whatif', w.desc) : (o.markClue ? clueHtml(q, 'mark') : q.question);
+        o.qtextEl.classList.toggle('dim', b && !marked);
+      }
     }
 
     function stepHtml(s) {
@@ -146,5 +192,5 @@
     return { setWorld: function (w, opt) { cur.world = w; if (opt != null) cur.opt = opt; cur.shown = 0; drawWorlds(); draw(); } };
   }
 
-  window.SimView = { mount: mount, deep: deep };
+  window.SimView = { mount: mount, deep: deep, clueHtml: clueHtml, clueCount: clueCount };
 })();
