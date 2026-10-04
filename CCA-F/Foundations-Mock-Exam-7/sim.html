@@ -22,6 +22,10 @@
 .brief{font-size:13px;color:var(--dim);margin:0 0 10px}
 .worlds{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
 .wdesc{font-size:13px;margin:6px 0 0;color:var(--dim)}
+.wdesc.whatif{color:var(--ink);font-size:14px;border:1px solid var(--warn);border-left-width:4px;border-radius:8px;padding:10px 12px;background:rgba(245,158,11,.08)}
+.wdesc.whatif .wh{display:block;font-weight:700;color:var(--warn);margin-bottom:3px}
+#qtext{transition:opacity .2s}
+#qtext.dim{opacity:.45;text-decoration:line-through;text-decoration-color:rgba(245,158,11,.5)}
 .opts{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
 .opts li{border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer;background:var(--card2)}
 .opts li:hover{border-color:var(--acc2)}
@@ -146,7 +150,11 @@
     var sim = window.SIMS[cur.id];
     $('worlds').innerHTML = sim.worlds.map(function (w) {
       return '<button data-w="' + w.id + '" class="' + (w.id === cur.world ? 'on' : '') + '">World ' + w.id + ' · ' + w.label + '</button>'; }).join('');
-    $('wdesc').innerHTML = sim.worlds.filter(function (w) { return w.id === cur.world; })[0].desc;
+    var w = sim.worlds.filter(function (x) { return x.id === cur.world; })[0], b = cur.world === 'B';
+    $('wdesc').className = 'wdesc' + (b ? ' whatif' : '');
+    $('wdesc').innerHTML = b ? '<span class="wh">What if\u2026 (this is not the exam question)</span>The question above is changed for this world: ' + w.desc +
+      ' Anything in the question that says otherwise no longer holds. Watch which option wins now.' : w.desc;
+    $('qtext').classList.toggle('dim', b);
   }
 
   function stepHtml(s) {
