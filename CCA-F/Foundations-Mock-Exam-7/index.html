@@ -43,13 +43,15 @@
           appear in any option.</li>
       <li><b>Topic tags stay hidden</b> until the question is graded.</li>
     </ul>
-    <p><b>Use it to learn, not just to test.</b> Under every question there is an <b>Explain this question simply</b>
-    link: open it before you answer to see, in everyday words, what is being asked and which sentence holds the clue.
-    After you answer, the plain-language explanation comes first: why the right answer is right, why each wrong one is
-    wrong, and a one-line rule to remember. Then a <b>Think it through</b> section works the question the way an
-    examiner would: the assumption that makes it confusing, a mind map of the whole topic (what you observe → where
-    the fault is → the fix), each key sentence of the question quoted with what it proves, and the exam-guide line it
-    comes from. The technical version is folded underneath.</p>
+    <p><b>Use it to learn, not just to test.</b> Every question has the same six steps, shown as a strip under it:</p>
+    <ol class="howto">
+      <li><b>Understand</b>Before answering: the question in plain words and the sentence that holds the clue.</li>
+      <li><b>Answer</b>Pick an option. In practice mode it is graded straight away.</li>
+      <li><b>Why</b>Right or wrong, which one was the runner-up, and why each option wins or loses.</li>
+      <li><b>Think it through</b>The premise to correct, a mind map (what you see &rarr; where the fault is &rarr; the fix), the key sentences quoted, the rule to remember.</li>
+      <li><b>See it run</b>A simulator: apply any option to the system and watch the requests, tools, hooks and result step by step. Your pick is preselected.</li>
+      <li><b>What if</b>The same question with the deciding fact changed. The runner-up wins, so you see exactly which fact decided it.</li>
+    </ol>
     <p>When an answer is revealed you see the <b>deciding fact</b>, and the runner-up is marked in amber. The final report
     tells you how many of your wrong answers were the runner-up. If that is most of them, you know the material and the
     gap is in how you read the question. Before choosing, find the sentence that rules out the second-best option.</p>
@@ -88,6 +90,7 @@
 <script src="assets/sims-multi.js"></script>
 <script src="assets/sims-cli.js"></script>
 <script src="assets/sims-prompt.js"></script>
+<script src="assets/simview.js"></script>
 <script src="assets/exam.js"></script>
 </body>
 </html>

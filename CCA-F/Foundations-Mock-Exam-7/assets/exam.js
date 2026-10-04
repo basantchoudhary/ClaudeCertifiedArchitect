@@ -97,7 +97,16 @@
           (sel > 1 ? '<span class="qmulti">Select ' + (NUMWORD[sel] || sel) + '</span>' : '') +
         '</div>' +
         '<div class="qtext">' + q.question + '</div>' +
-        (q.eli5 ? '<details class="eli5q"><summary>Explain this question simply</summary><div>' + q.eli5.question + '</div></details>' : '');
+        '<ul class="path">' +
+          (q.eli5 ? '<li data-s="understand" class="ready">Understand</li>' : '') +
+          '<li data-s="answer" class="now">Answer</li>' +
+          '<li data-s="why" class="lock">Why</li>' +
+          (q.deep ? '<li data-s="deep" class="lock">Think it through</li>' : '') +
+          (hasSim(q) ? '<li data-s="sim" class="lock">See it run</li><li data-s="whatif" class="lock">What if</li>' : '') +
+        '</ul>' +
+        '<p class="pathhint">' + (q.eli5 ? 'Wording unclear? Tap <b>Understand</b> first. ' : '') +
+          'The other steps unlock once you answer.</p>' +
+        (q.eli5 ? '<div class="understand" hidden><b>In plain words:</b> ' + q.eli5.question + '</div>' : '');
 
       var ul = document.createElement('ul');
       ul.className = 'opts';
@@ -127,6 +136,13 @@
         ul.appendChild(li);
       });
       card.appendChild(ul);
+      card.querySelector('.path').addEventListener('click', function (e) {
+        var li = e.target.closest('li'); if (!li) return;
+        var step = li.dataset.s;
+        if (step === 'understand') {
+          var u = card.querySelector('.understand'); u.hidden = !u.hidden; li.classList.toggle('on', !u.hidden);
+        } else if (state[qi].graded && step !== 'answer') openTab(qi, step);
+      });
 
       var ex = document.createElement('div'); ex.className = 'explain';
       card.appendChild(ex);
@@ -145,23 +161,38 @@
     sb.classList.add('show');
   }
 
-  function deepHtml(s) {
-    var d = s.q.deep; if (!d) return '';
-    var letter = {}; s.order.forEach(function (orig, pos) { letter[orig] = String.fromCharCode(65 + pos); });
-    var L = function (t) { return String(t).replace(/\[\[(\d)\]\]/g, function (_, i) { return letter[+i] || '?'; }); };
-    var table = '<div class="dtable"><table><tr>' + d.map.head.map(function (h) { return '<th>' + L(h) + '</th>'; }).join('') + '</tr>' +
-      d.map.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + L(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
-      '</table></div>';
-    var ev = '<ol class="dev">' + d.evidence.map(function (x) {
-      return '<li><q>' + L(x.quote) + '</q><div>' + L(x.means) + '</div></li>'; }).join('') + '</ol>';
-    return '<details class="deep" open><summary>Think it through</summary>' +
-      '<h4>1 · The premise to correct</h4><p>' + L(d.premise) + '</p>' +
-      (d.diagram ? '<pre class="ddia">' + esc(d.diagram) + '</pre>' : '') +
-      '<h4>2 · Mind map: ' + L(d.mapTitle) + '</h4>' + table +
-      '<h4>3 · Apply it to this question</h4>' + ev +
-      '<h4>4 · Rule to remember</h4><blockquote class="drule">' + L(d.rule) + '</blockquote>' +
-      '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>\u201c' + esc(d.guide.quote) + '\u201d</i></p>' +
-      '</details>';
+  function hasSim(q) { return !!(window.SIMS && window.SIMS[q.id] && window.SimView); }
+  function letters(s) { var L = {}; s.order.forEach(function (orig, pos) { L[orig] = String.fromCharCode(65 + pos); }); return L; }
+
+  /* Tabs after grading. "See it run" and "What if" share one simulator: World A with the learner's pick,
+     or World B with the runner-up applied. */
+  var NEXT = { why: 'deep', deep: 'sim', sim: 'whatif' };
+  function openTab(qi, name) {
+    var s = state[qi], card = document.getElementById('q' + qi);
+    if (!card.querySelector('.tab[data-t="' + name + '"]') && name !== 'whatif') return;
+    var panel = name === 'whatif' ? 'sim' : name;
+    card.querySelectorAll('.tab').forEach(function (t) { t.hidden = t.dataset.t !== panel; });
+    card.querySelectorAll('.tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === name); });
+    card.querySelectorAll('.path li').forEach(function (li) {
+      if (li.dataset.s === name) li.classList.add('done');
+      li.classList.toggle('on', li.dataset.s === name);
+    });
+    if (panel === 'sim') {
+      if (!s.sim) s.sim = window.SimView.mount(card.querySelector('.tab[data-t="sim"] .simhost'), s.q.id,
+        { order: s.order, pick: s.picked, qtextEl: card.querySelector('.qtext') });
+      var first = s.picked.filter(function (i) { return s.q.answer.indexOf(i) < 0; })[0];
+      if (first == null) first = s.picked.length ? s.picked[0] : s.q.answer[0];
+      if (name === 'whatif') s.sim.setWorld('B', s.q.runnerUp); else s.sim.setWorld('A', first);
+      var nb = card.querySelector('.tab[data-t="sim"] .nextbtn button');
+      nb.dataset.go = name === 'whatif' ? 'nextq' : 'whatif';
+      nb.textContent = name === 'whatif' ? 'Next question \u2193' : 'Next: What if one fact changed? \u2192';
+    } else if (s.sim) s.sim.setWorld('A');
+  }
+  function goNext(qi, go) {
+    if (go === 'nextq') {
+      var n = document.getElementById('q' + (qi + 1));
+      if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else openTab(qi, go);
   }
 
   function grade(qi) {
@@ -203,19 +234,47 @@
              : s.q.options[orig].why) + '</div>';
     }).join('');
 
+    var L = letters(s), ls = function (arr) { return arr.map(function (i) { return L[i]; }).sort().join(', '); };
+    var rcls = s.picked.length === 0 ? '' : ok ? 'ok' : (s.fellForRunnerUp ? 'ru' : 'no');
+    var head = s.picked.length === 0 ? 'Skipped' : ok ? '\u2713 Correct' :
+      (s.fellForRunnerUp ? '\u2717 Close: you picked the runner-up' : '\u2717 Incorrect' + (s.partial ? ' (' + s.partial + ' of ' + s.q.select + ' right)' : ''));
+    var tabs = [['why', 'Why'], s.q.deep ? ['deep', 'Think it through'] : null,
+      hasSim(s.q) ? ['sim', 'See it run'] : null, hasSim(s.q) ? ['whatif', 'What if'] : null].filter(Boolean);
+    var nextBtn = function (t) {
+      var go = NEXT[t]; if (go === 'deep' && !s.q.deep) go = 'sim'; if (go === 'sim' && !hasSim(s.q)) go = null;
+      var label = { deep: 'Next: Think it through \u2192', sim: 'Next: See it run \u2192', whatif: 'Next: What if one fact changed? \u2192' }[go];
+      return '<div class="nextbtn"><button data-go="' + (go || 'nextq') + '">' + (label || 'Next question \u2193') + '</button></div>';
+    };
+
     card.querySelector('.explain').innerHTML =
-      '<div class="eh">Explanation ' + res + '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
-      (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
-             '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
-      deepHtml(s) +
-      (window.SIMS && window.SIMS[s.q.id] ? '<p class="simlink"><a href="sim.html#' + s.q.id + '" target="_blank">▶ See it run: apply each option in the simulator</a></p>' : '') +
-      '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
-      (s.q.faq ? '<details class="deep faq" open><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
-        return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +
-      (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary>' : '') +
-      (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
-      '<div class="ebody">' + s.q.explanation + '</div>' +
-      (el5 ? '</details>' : '');
+      '<div class="result ' + rcls + '"><span class="big">' + head + '</span>' +
+        (s.picked.length ? '<span>You picked <b>' + ls(s.picked) + '</b></span>' : '') +
+        '<span>Correct: <b>' + ls(s.q.answer) + '</b></span>' +
+        '<span>Runner-up: <b>' + L[ru] + '</b></span>' +
+        '<span class="trap">Trap: ' + esc(s.q.trap) + '</span></div>' +
+      '<div class="tabs">' + tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="tab" data-t="why">' +
+        (el5 ? '<div class="eli5a"><div class="wh">In plain words</div>' +
+               '<p><b>The question:</b> ' + el5.question + '</p><p><b>The answer:</b> ' + el5.answer + '</p></div>' : '') +
+        (s.q.decider ? '<div class="decider"><b>Deciding fact:</b> ' + s.q.decider + '</div>' : '') +
+        '<div class="whys"><div class="wh">Option by option</div>' + rows + '</div>' +
+        (s.q.faq ? '<details class="deep faq"><summary>Your follow-up questions</summary>' + s.q.faq.map(function (f) {
+          return '<h4>' + f.q + '</h4><p>' + f.a + '</p>'; }).join('') + '</details>' : '') +
+        (el5 ? '<details class="tech exam"><summary>Exam-level explanation</summary><div class="ebody">' + s.q.explanation + '</div></details>'
+             : '<div class="ebody">' + s.q.explanation + '</div>') +
+        nextBtn('why') + '</div>' +
+      (s.q.deep ? '<div class="tab" data-t="deep" hidden>' + window.SimView.deep(s.q, function (i) { return L[i] || '?'; }) + nextBtn('deep') + '</div>' : '') +
+      (hasSim(s.q) ? '<div class="tab" data-t="sim" hidden><div class="simhost"></div><div class="nextbtn"><button data-go="whatif"></button></div></div>' : '');
+
+    card.querySelectorAll('.path li').forEach(function (li) {
+      li.classList.remove('lock', 'now');
+      if (li.dataset.s === 'answer' || li.dataset.s === 'understand') li.classList.add('done'); else li.classList.add('ready');
+    });
+    card.querySelector('.explain').onclick = function (e) {
+      var t = e.target.closest('.tabs button'), n = e.target.closest('.nextbtn button');
+      if (t) openTab(qi, t.dataset.t); else if (n) goNext(qi, n.dataset.go);
+    };
+    openTab(qi, 'why');
 
     updateBar();
   }

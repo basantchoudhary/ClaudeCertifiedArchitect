@@ -6,68 +6,19 @@
 <title>Mock 7 Simulator</title>
 <link rel="stylesheet" href="assets/exam.css">
 <style>
-:root{ --l-cust:#94a3b8; --l-loop:#a78bfa; --l-api:#60a5fa; --l-hook:#f59e0b; --l-tool:#22c55e; --l-sub:#2dd4bf; --l-block:#ef4444; --l-file:#e879f9; --l-ctx:#38bdf8;
-  --k-sys:#64748b; --k-keep:#22c55e; --k-tool:#f59e0b; --k-drop:#ef4444; --k-new:#a78bfa; }
-@media (prefers-color-scheme: light){
-  :root{ --l-cust:#64748b; --l-loop:#6d4aff; --l-api:#2563eb; --l-hook:#b45309; --l-tool:#15803d; --l-sub:#0f766e; --l-block:#dc2626; --l-file:#a21caf; --l-ctx:#0369a1;
-    --k-sys:#94a3b8; --k-keep:#16a34a; --k-tool:#d97706; --k-drop:#dc2626; --k-new:#7c3aed; }
-}
 .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:13px;color:var(--dim)}
 .picker select{flex:1 1 280px;max-width:100%;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px}
-.ctl button,.worlds button{background:var(--card2);color:var(--ink);border:1px solid var(--line);
-  border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
-.worlds button.on{border-color:var(--acc);background:rgba(124,92,255,.16)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 .card h2{margin:0 0 8px;font-size:16px;color:var(--acc2)}
 .brief{font-size:13px;color:var(--dim);margin:0 0 10px}
-.worlds{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
-.wdesc{font-size:13px;margin:6px 0 0;color:var(--dim)}
-.wdesc.whatif{color:var(--ink);font-size:14px;border:1px solid var(--warn);border-left-width:4px;border-radius:8px;padding:10px 12px;background:rgba(245,158,11,.08)}
-.wdesc.whatif .wh{display:block;font-weight:700;color:var(--warn);margin-bottom:3px}
-#qtext{transition:opacity .2s}
-#qtext.dim{opacity:.45;text-decoration:line-through;text-decoration-color:rgba(245,158,11,.5)}
-.opts{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:8px}
-.opts li{border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer;background:var(--card2)}
-.opts li:hover{border-color:var(--acc2)}
-.opts li.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
-.opts li b{margin-right:6px}
-.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
-.ctl button:disabled{opacity:.45;cursor:default}
-.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
-.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:var(--c)}
-.trace{list-style:none;margin:0;padding:0;position:relative}
-.trace li{position:relative;padding:0 0 12px 22px;animation:in .25s ease}
-.trace li::before{content:"";position:absolute;left:5px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--c)}
-.trace li::after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:2px;background:var(--line)}
-.trace li:last-child::after{display:none}
-@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
-.lane{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--c);margin-right:6px}
-.st{font-weight:600}
-.note{font-size:13px;color:var(--dim);margin:2px 0}
-.trace pre{background:var(--card2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin:6px 0 0;
-  font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
-.trace li.m-bad pre{border-color:var(--no)} .trace li.m-ok pre{border-color:var(--ok)} .trace li.m-warn pre{border-color:var(--warn)}
-.outcome{border-radius:10px;padding:12px 14px;margin-top:8px;border:1px solid var(--line);background:var(--card2)}
-.outcome.ok{border-color:var(--ok)} .outcome.no{border-color:var(--no)} .outcome.wa{border-color:var(--warn)}
-.outcome .v{font-weight:700;margin-right:6px}
-.outcome.ok .v{color:var(--ok)} .outcome.no .v{color:var(--no)} .outcome.wa .v{color:var(--warn)}
-.dots{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 2px}
-.dots i{width:16px;height:16px;border-radius:4px;background:var(--ok)} .dots i.x{background:var(--no)}
-.tagline{font-size:12px;color:var(--dim)}
-.empty{color:var(--dim);font-size:14px;padding:6px 0}
-.meter{margin:6px 0 0}
-.meter .bar{display:flex;height:14px;border-radius:5px;overflow:hidden;background:var(--card2);border:1px solid var(--line)}
-.meter .bar i{display:block;height:100%;background:var(--k)}
-.meter .keys{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--dim);margin-top:4px}
-.meter .keys span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;background:var(--k)}
-.trace .dtable{margin-top:6px}
+.card h4{margin:14px 0 6px;font-size:14px}
 </style>
 </head>
 <body>
 <header class="page">
   <div class="crumb"><a href="../CCA-F_Study_Guide.html">CCA-F</a> › <a href="index.html">Mock Exam #7</a> › Simulator</div>
   <h1>See it run</h1>
-  <div class="tag">Pick an answer, apply it to the system and watch what happens · then change the deciding fact and see the runner-up win</div>
+  <div class="tag">Revision view of the simulator that sits under every exam question · apply any option, then switch to World B to see the runner-up win</div>
 </header>
 
 <div class="wrap">
@@ -76,25 +27,14 @@
   <div class="card">
     <h2 id="qobj"></h2>
     <p class="brief" id="brief"></p>
-    <p id="qtext"></p>
-    <div class="worlds" id="worlds"></div>
-    <p class="wdesc" id="wdesc"></p>
-    <ul class="opts" id="opts"></ul>
-    <div class="ctl">
-      <button id="step">Step ▸</button><button id="play">Play all ▸▸</button>
-      <button id="run20">Run 20 times</button><button id="reset">Reset</button>
-    </div>
-    <div class="legend" id="legend"></div>
+    <div class="qtext" id="qtext"></div>
+    <div id="sim"></div>
   </div>
 
   <div class="card">
-    <h2>What happens</h2>
-    <ol class="trace" id="trace"></ol>
-    <div id="outcome"></div>
-    <div id="many"></div>
+    <h2>Think it through</h2>
+    <div id="deep"></div>
   </div>
-
-  <div id="deep"></div>
 </div>
 
 <footer>CCA-F · Mock Exam #7 · scripted simulations: every trace is hand-written and deterministic, with no live model calls</footer>
@@ -110,130 +50,32 @@
 <script src="assets/sims-multi.js"></script>
 <script src="assets/sims-cli.js"></script>
 <script src="assets/sims-prompt.js"></script>
+<script src="assets/simview.js"></script>
 <script>
 (function () {
   var QS = {}; window.EXAM.questions.forEach(function (q) { QS[q.id] = q; });
   var SC = {}; window.EXAM.scenarios.forEach(function (s) { SC[s.id] = s; });
   var ids = window.EXAM.questions.map(function (q) { return q.id; }).filter(function (id) { return window.SIMS[id]; });
-  var BASE = { cust: 'Customer', loop: 'Your loop', api: 'Claude API', hook: 'Hook', tool: 'Tool', sub: 'Subagent', block: 'Constraint', file: 'Config file', ctx: 'Context window' };
-  var LANES = BASE;
-  var cur = { id: null, world: 'A', opt: null, shown: 0 };
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); };
-  var letter = function (i) { return String.fromCharCode(65 + i); };
 
-  function run() { return cur.opt == null ? null : window.SIMS[cur.id].runs[cur.world][cur.opt]; }
+  var groups = {}; ids.forEach(function (x) { (groups[QS[x].sid] = groups[QS[x].sid] || []).push(x); });
+  $('pick').innerHTML = Object.keys(groups).map(function (sid) {
+    return '<optgroup label="' + esc(SC[sid].title.replace(/<[^>]+>/g, '')) + '">' + groups[sid].map(function (x) {
+      return '<option value="' + x + '">' + x.replace('m7-', '') + ' · ' + esc(QS[x].obj) + '</option>'; }).join('') + '</optgroup>'; }).join('');
 
   function pick(id) {
-    cur = { id: id, world: 'A', opt: null, shown: 0 };
+    var q = QS[id];
     try { history.replaceState(null, '', '#' + id); } catch (e) {}
-    var q = QS[id], sim = window.SIMS[id];
-    var groups = {}; ids.forEach(function (x) { (groups[QS[x].sid] = groups[QS[x].sid] || []).push(x); });
-    $('pick').innerHTML = Object.keys(groups).map(function (sid) {
-      return '<optgroup label="' + esc(SC[sid].title.replace(/<[^>]+>/g, '')) + '">' + groups[sid].map(function (x) {
-        return '<option value="' + x + '"' + (x === id ? ' selected' : '') + '>' + x.replace('m7-', '') + ' \u00b7 ' + esc(QS[x].obj) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    $('pick').value = id;
     $('pos').textContent = (ids.indexOf(id) + 1) + ' of ' + ids.length;
-    LANES = Object.assign({}, BASE, { cust: sim.who || 'Customer' }, sim.labels || {});
-    var used = {}; ['A', 'B'].forEach(function (w) { sim.runs[w].forEach(function (r) { r.steps.forEach(function (st) { used[st.lane] = 1; }); }); });
-    $('legend').innerHTML = Object.keys(BASE).filter(function (k) { return used[k]; }).map(function (k) {
-      return '<span style="--c:var(--l-' + k + ')">' + esc(LANES[k]) + '</span>'; }).join('');
     $('qobj').textContent = q.id + ' · ' + q.obj;
     $('brief').innerHTML = SC[q.sid].brief;
     $('qtext').innerHTML = q.question;
-    $('opts').innerHTML = q.options.map(function (o, i) {
-      return '<li data-i="' + i + '"><b>' + letter(i) + '.</b>' + o.t + '</li>'; }).join('');
-    $('deep').innerHTML = deepHtml(q);
-    drawWorlds(); draw();
+    window.SimView.mount($('sim'), id, { qtextEl: $('qtext') });
+    $('deep').innerHTML = window.SimView.deep(q, function (i) { return String.fromCharCode(65 + i); });
   }
-
-  function drawWorlds() {
-    var sim = window.SIMS[cur.id];
-    $('worlds').innerHTML = sim.worlds.map(function (w) {
-      return '<button data-w="' + w.id + '" class="' + (w.id === cur.world ? 'on' : '') + '">World ' + w.id + ' · ' + w.label + '</button>'; }).join('');
-    var w = sim.worlds.filter(function (x) { return x.id === cur.world; })[0], b = cur.world === 'B';
-    $('wdesc').className = 'wdesc' + (b ? ' whatif' : '');
-    $('wdesc').innerHTML = b ? '<span class="wh">What if\u2026 (this is not the exam question)</span>The question above is changed for this world: ' + w.desc +
-      ' Anything in the question that says otherwise no longer holds. Watch which option wins now.' : w.desc;
-    $('qtext').classList.toggle('dim', b);
-  }
-
-  function stepHtml(s) {
-    var p = s.payload == null ? '' : '<pre>' + esc(typeof s.payload === 'string' ? s.payload : JSON.stringify(s.payload, null, 2)) + '</pre>';
-    return '<li class="m-' + s.mark + '" style="--c:var(--l-' + s.lane + ')"><span class="lane">' + esc(LANES[s.lane]) + '</span>' +
-      '<span class="st">' + esc(s.title) + '</span>' + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') +
-      (s.meter ? meterHtml(s.meter) : '') + (s.table ? tableHtml(s.table) : '') + p + '</li>';
-  }
-
-  /* meter: { total: tokens, parts: [{ label, tokens, kind: sys|keep|tool|drop|new }] } — a context-window bar */
-  function meterHtml(m) {
-    var used = m.parts.reduce(function (a, x) { return a + x.tokens; }, 0);
-    var k = function (x) { return '--k:var(--k-' + (x.kind || 'keep') + ')'; };
-    var fmt = function (n) { return n >= 1000 ? Math.round(n / 1000) + 'k' : String(n); };
-    return '<div class="meter"><div class="bar">' + m.parts.map(function (x) {
-        return '<i style="' + k(x) + ';width:' + (100 * x.tokens / m.total) + '%" title="' + esc(x.label) + '"></i>'; }).join('') +
-      '</div><div class="keys">' + m.parts.map(function (x) { return '<span style="' + k(x) + '">' + esc(x.label) + ' ' + fmt(x.tokens) + '</span>'; }).join('') +
-      '<span style="--k:transparent">' + fmt(used) + ' of ' + fmt(m.total) + ' tokens</span></div></div>';
-  }
-
-  /* table: { head: [...], rows: [[...]] } — numbers such as cost, latency or sampled accuracy */
-  function tableHtml(t) {
-    return '<div class="dtable"><table><tr>' + t.head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>' +
-      t.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></div>';
-  }
-
-  function draw() {
-    [].forEach.call($('opts').children, function (li) { li.classList.toggle('on', +li.dataset.i === cur.opt); });
-    var r = run();
-    $('step').disabled = $('play').disabled = !r || cur.shown >= r.steps.length;
-    $('run20').disabled = !r;
-    $('many').innerHTML = '';
-    if (!r) { $('trace').innerHTML = '<li class="empty" style="--c:var(--line)">Choose an option above to apply it, then press Step or Play.</li>'; $('outcome').innerHTML = ''; return; }
-    $('trace').innerHTML = r.steps.slice(0, cur.shown).map(stepHtml).join('');
-    if (cur.shown >= r.steps.length) {
-      var q = QS[cur.id], o = r.outcome;
-      var role = q.answer.indexOf(cur.opt) >= 0 ? 'the keyed answer' : (cur.opt === q.runnerUp ? 'the runner-up' : 'a distractor');
-      var cls = o.ok ? (o.warn ? 'wa' : 'ok') : 'no';
-      $('outcome').innerHTML = '<div class="outcome ' + cls + '"><span class="v">' + (o.ok ? (o.warn ? 'Works, with a cost.' : 'Requirement met.') : 'Requirement not met.') + '</span>' +
-        o.text + '<div class="tagline">Option ' + letter(cur.opt) + ' is ' + role + ' in the question as written.</div></div>';
-    } else $('outcome').innerHTML = '';
-  }
-
-  function many() {
-    var r = run(); if (!r) return;
-    var fails = Math.round((1 - r.rate) * 20), dots = [];
-    for (var i = 0; i < 20; i++) dots.push(false);
-    for (var k = 0; k < fails; k++) dots[(k * 7 + 13) % 20] = true;
-    var met = 20 - fails;
-    $('many').innerHTML = '<h4 style="margin:14px 0 2px">The same change, 20 runs</h4><div class="dots">' +
-      dots.map(function (x) { return '<i class="' + (x ? 'x' : '') + '"></i>'; }).join('') + '</div>' +
-      '<div class="tagline">' + met + ' of 20 meet the requirement. ' +
-      (r.rate === 1 ? 'Deterministic: the change is enforced in code or by the API.' : r.rate === 0 ? 'The change cannot be made under this world\'s constraint.' :
-       'Probabilistic: the model usually complies. Whether that is enough depends on the requirement: <b>must never</b> or <b>should usually</b>.') + '</div>';
-  }
-
-  function deepHtml(q) {
-    var d = q.deep; if (!d) return '';
-    var L = function (t) { return String(t).replace(/\[\[(\d)\]\]/g, function (_, i) { return letter(+i); }); };
-    return '<details class="deep" open><summary>Think it through</summary>' +
-      '<h4>1 · The premise to correct</h4><p>' + L(d.premise) + '</p>' +
-      (d.diagram ? '<pre class="ddia">' + esc(d.diagram) + '</pre>' : '') +
-      '<h4>2 · Mind map: ' + L(d.mapTitle) + '</h4><div class="dtable"><table><tr>' +
-      d.map.head.map(function (h) { return '<th>' + L(h) + '</th>'; }).join('') + '</tr>' +
-      d.map.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + L(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
-      '</table></div><h4>3 · Apply it to this question</h4><ol class="dev">' +
-      d.evidence.map(function (x) { return '<li><q>' + L(x.quote) + '</q><div>' + L(x.means) + '</div></li>'; }).join('') +
-      '</ol><h4>4 · Rule to remember</h4><blockquote class="drule">' + L(d.rule) + '</blockquote>' +
-      '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>“' + esc(d.guide.quote) + '”</i></p></details>';
-  }
-
   $('pick').onchange = function () { pick(this.value); };
-  $('worlds').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; cur.world = b.dataset.w; cur.shown = 0; drawWorlds(); draw(); };
-  $('opts').onclick = function (e) { var li = e.target.closest('li'); if (!li) return; cur.opt = +li.dataset.i; cur.shown = 0; draw(); };
-  $('step').onclick = function () { cur.shown++; draw(); };
-  $('play').onclick = function () { var r = run(); if (r) { cur.shown = r.steps.length; draw(); } };
-  $('reset').onclick = function () { cur.shown = 0; draw(); };
-  $('run20').onclick = function () { var r = run(); if (r) { cur.shown = r.steps.length; draw(); many(); } };
-
   var h = location.hash.slice(1);
   pick(window.SIMS[h] ? h : ids[0]);
 })();
