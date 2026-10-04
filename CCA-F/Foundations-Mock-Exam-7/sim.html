@@ -10,10 +10,11 @@
 @media (prefers-color-scheme: light){
   :root{ --l-cust:#64748b; --l-loop:#6d4aff; --l-api:#2563eb; --l-hook:#b45309; --l-tool:#15803d; --l-sub:#0f766e; --l-block:#dc2626; }
 }
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.tabs button,.ctl button,.worlds button{background:var(--card2);color:var(--ink);border:1px solid var(--line);
+.picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:13px;color:var(--dim)}
+.picker select{flex:1 1 280px;max-width:100%;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px}
+.ctl button,.worlds button{background:var(--card2);color:var(--ink);border:1px solid var(--line);
   border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
-.tabs button.on,.worlds button.on{border-color:var(--acc);background:rgba(124,92,255,.16)}
+.worlds button.on{border-color:var(--acc);background:rgba(124,92,255,.16)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
 .card h2{margin:0 0 8px;font-size:16px;color:var(--acc2)}
 .brief{font-size:13px;color:var(--dim);margin:0 0 10px}
@@ -58,7 +59,7 @@
 </header>
 
 <div class="wrap">
-  <div class="tabs" id="tabs"></div>
+  <label class="picker">Question <select id="pick"></select><span id="pos"></span></label>
 
   <div class="card">
     <h2 id="qobj"></h2>
@@ -72,7 +73,7 @@
       <button id="run20">Run 20 chats</button><button id="reset">Reset</button>
     </div>
     <div class="legend">
-      <span style="--c:var(--l-cust)">Customer</span><span style="--c:var(--l-loop)">Your loop code</span>
+      <span style="--c:var(--l-cust)" id="whoLegend">Customer</span><span style="--c:var(--l-loop)">Your loop code</span>
       <span style="--c:var(--l-api)">Claude API</span><span style="--c:var(--l-hook)">Hook</span>
       <span style="--c:var(--l-tool)">Tool</span><span style="--c:var(--l-sub)">Subagent</span><span style="--c:var(--l-block)">Constraint</span>
     </div>
@@ -92,11 +93,15 @@
 
 <script src="assets/questions.js"></script>
 <script src="assets/sims.js"></script>
+<script src="assets/sims-s1a.js"></script>
+<script src="assets/sims-s1b.js"></script>
+<script src="assets/sims-s3.js"></script>
+<script src="assets/sims-s4s6.js"></script>
 <script>
 (function () {
   var QS = {}; window.EXAM.questions.forEach(function (q) { QS[q.id] = q; });
   var SC = {}; window.EXAM.scenarios.forEach(function (s) { SC[s.id] = s; });
-  var ids = Object.keys(window.SIMS);
+  var ids = window.EXAM.questions.map(function (q) { return q.id; }).filter(function (id) { return window.SIMS[id]; });
   var LANES = { cust: 'Customer', loop: 'Your loop', api: 'Claude API', hook: 'Hook', tool: 'Tool', sub: 'Subagent', block: 'Constraint' };
   var cur = { id: null, world: 'A', opt: null, shown: 0 };
   var $ = function (id) { return document.getElementById(id); };
@@ -109,8 +114,12 @@
     cur = { id: id, world: 'A', opt: null, shown: 0 };
     try { history.replaceState(null, '', '#' + id); } catch (e) {}
     var q = QS[id], sim = window.SIMS[id];
-    $('tabs').innerHTML = ids.map(function (x) {
-      return '<button data-id="' + x + '" class="' + (x === id ? 'on' : '') + '">' + esc(QS[x].obj) + '</button>'; }).join('');
+    var groups = {}; ids.forEach(function (x) { (groups[QS[x].sid] = groups[QS[x].sid] || []).push(x); });
+    $('pick').innerHTML = Object.keys(groups).map(function (sid) {
+      return '<optgroup label="' + esc(SC[sid].title.replace(/<[^>]+>/g, '')) + '">' + groups[sid].map(function (x) {
+        return '<option value="' + x + '"' + (x === id ? ' selected' : '') + '>' + x.replace('m7-', '') + ' \u00b7 ' + esc(QS[x].obj) + '</option>'; }).join('') + '</optgroup>'; }).join('');
+    $('pos').textContent = (ids.indexOf(id) + 1) + ' of ' + ids.length;
+    LANES.cust = sim.who || 'Customer'; $('whoLegend').textContent = LANES.cust;
     $('qobj').textContent = q.id + ' · ' + q.obj;
     $('brief').innerHTML = SC[q.sid].brief;
     $('qtext').innerHTML = q.question;
@@ -178,7 +187,7 @@
       '<p class="dguide">Exam guide, ' + esc(d.guide.obj) + ': <i>“' + esc(d.guide.quote) + '”</i></p></details>';
   }
 
-  $('tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) pick(b.dataset.id); };
+  $('pick').onchange = function () { pick(this.value); };
   $('worlds').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; cur.world = b.dataset.w; cur.shown = 0; drawWorlds(); draw(); };
   $('opts').onclick = function (e) { var li = e.target.closest('li'); if (!li) return; cur.opt = +li.dataset.i; cur.shown = 0; draw(); };
   $('step').onclick = function () { cur.shown++; draw(); };

@@ -14,6 +14,12 @@
   var T = function (t) { return { type: 'text', text: t }; };
   var U = function (id, name, input) { return { type: 'tool_use', id: id, name: name, input: input }; };
   var R = function (id, content) { return { type: 'tool_result', tool_use_id: id, content: content }; };
+  var E = function (id, content) { return { type: 'tool_result', tool_use_id: id, is_error: true, content: content }; };
+
+  /* Shared helpers for the per-scenario files (sims-*.js). Each file calls SIMLIB.add(sim). */
+  window.SIMS = window.SIMS || {};
+  window.SIMLIB = { MODEL: MODEL, S: S, req: req, res: res, T: T, U: U, R: R, E: E,
+    add: function (sim) { window.SIMS[sim.id] = sim; } };
 
   /* ------------------------------------------------------------ m7-s1-01 stop_reason */
   var custMsg = 'My box from last Tuesday was missing the salmon.';
@@ -192,6 +198,5 @@
     }
   };
 
-  window.SIMS = {};
-  [s101, s104, s105].forEach(function (s) { window.SIMS[s.id] = s; });
+  [s101, s104, s105].forEach(window.SIMLIB.add);
 })();
