@@ -224,7 +224,13 @@
      "obj": "1.3 Configure subagent invocation, context passing, and spawning",
      "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
     }
-   }
+   },
+   "faq": [
+    {
+     "q": "Why isn't giving the subagent read-only get_customer and lookup_order right? Shouldn't it fetch what it needs?",
+     "a": "Tools fetch facts that live <b>in systems</b>. Here the facts live <b>only in the chat</b>: which items spoiled, when the box arrived and what the customer wants. <code>lookup_order</code> returns what was shipped, not “the salmon was spoiled” or “I want a refund”. The subagent never saw the chat (subagents inherit nothing), so the coordinator, which already holds those facts, must write them into the Task prompt. Flip the decider and the answer flips: if the customer had filed the claim in the app, so those facts were stored on the order record, scoped lookup tools would be the clean fix. The question tests <b>where the facts live</b>, not whether tools are good."
+    }
+   ]
   },
   {
    "id": "m7-s1-03",
