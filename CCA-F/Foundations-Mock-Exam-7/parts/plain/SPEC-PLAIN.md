@@ -25,9 +25,13 @@ The official sample questions in `CCAR-F-Exam-Guide.md` section 9 are the style 
 
 ## Option rules
 - Four options, each a **real practice** a sensible engineer might suggest. No silly options.
-- **One clear winner** for someone who knows the exam guide. It fixes the cause, at the right size.
-- Every wrong option is wrong for a reason you can **name in a few words**. That name goes in the option's
-  `trap` field and starts its `why` ("Wrong: overbuilt. …"). Typical names:
+- **No clean winner** (calibration, 28 Oct): on the real exam the options are all correct practices that
+  would work to some degree. Never include an option that plainly fails (forcing the wrong tool, a hook that
+  only logs). The key is the option that fits *this* situation best: it fixes the cause, at the right size,
+  as the exam guide recommends.
+- Each other option loses for a reason you can **name in a few words**. That name goes in the option's
+  `trap` field, and its `why` starts "Works, but" ("Works, but overbuilt. …"). The key's `why` starts "Best.".
+  Typical names:
   - **overbuilt**: more machinery than the problem needs (classifier, new agent, new tool, hook for a nicety)
   - **only usually works**: prompt or examples where a rule must hold every time
   - **wrong action**: does something other than what was asked

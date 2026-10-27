@@ -129,10 +129,10 @@ def check(qs, errors, warns):
         ru = q.get("runnerUp")
         if PLAIN:
             for i, o in enumerate(opts):
-                if i in ans and not o["why"].startswith("Correct."):
-                    e(f"option {i}: correct why must start with 'Correct.'")
-                if i not in ans and (not o.get("trap") or not o["why"].startswith("Wrong:")):
-                    e(f"option {i}: wrong option needs a 'trap' label and a why starting 'Wrong:'")
+                if i in ans and not o["why"].startswith("Best."):
+                    e(f"option {i}: key why must start with 'Best.'")
+                if i not in ans and (not o.get("trap") or not o["why"].startswith("Works, but")):
+                    e(f"option {i}: every other option must be a practice that works; needs a 'trap' label and a why starting 'Works, but'")
             if re.search(r"\bif\b[^.]*\b(would|could)\b", plain(q.get("question", "")), re.I):
                 e("plain stem reads like a planted what-if clue")
         elif isinstance(ru, int) and not opts[ru]["why"].startswith("Runner-up."):

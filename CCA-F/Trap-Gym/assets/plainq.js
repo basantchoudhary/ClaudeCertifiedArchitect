@@ -24,7 +24,7 @@
     c.appendChild(el("div", "stem", q.question));
     const opts = [];
     q.options.forEach((o, i) => {
-      const b = el("button", "opt", `<b class="l">${L[i]}</b>${o.t}<div class="why">${o.trap ? `<span class="chip rose">${o.trap}</span>` : `<span class="chip mint">correct</span>`}${o.why}</div>`);
+      const b = el("button", "opt", `<b class="l">${L[i]}</b>${o.t}<div class="why">${o.trap ? `<span class="chip rose">${o.trap}</span>` : `<span class="chip mint">best</span>`}${o.why}</div>`);
       b.onclick = () => {
         if (c.classList.contains("done")) return;
         c.classList.add("done");

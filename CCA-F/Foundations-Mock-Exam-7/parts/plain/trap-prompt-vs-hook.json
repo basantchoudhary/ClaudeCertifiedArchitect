@@ -21,22 +21,22 @@
    "options": [
     {
      "t": "Add a system-prompt rule to mention cards by their last four digits only, with two examples.",
-     "why": "Wrong: only usually works. A prompt rule lowers the chance, but prompts have a non-zero failure rate, and this is a must-never.",
+     "why": "Works, but only usually. A clear rule with examples cuts the leaks, but prompts have a non-zero failure rate, and this is a must-never.",
      "trap": "only usually works"
     },
     {
-     "t": "Register a <code>PostToolUse</code> hook that masks the card number in each <code>get_customer</code> result.",
-     "why": "Correct. The hook changes the result before Claude reads it, so the agent can't repeat a number it never saw. The server stays as it is."
+     "t": "Add a <code>PostToolUse</code> hook that masks the card field in results before Claude reads them.",
+     "why": "Best. The hook changes the result before Claude reads it, so the agent can't repeat a number it never saw. The server stays as it is."
     },
     {
-     "t": "Add a <code>PreToolUse</code> hook that blocks <code>get_customer</code> calls during customer chats.",
-     "why": "Wrong: wrong action. The agent needs <code>get_customer</code> to do its job. Blocking the call breaks support instead of hiding one field.",
-     "trap": "wrong action"
+     "t": "Route <code>get_customer</code> through a subagent told to pass on only the name, plan and box IDs.",
+     "why": "Works, but still a model choosing. The subagent sees the full number and decides what to pass on; its instructions are not a filter.",
+     "trap": "only usually works"
     },
     {
-     "t": "Add a <code>PostToolUse</code> hook that logs any card number in a tool result for security to review.",
-     "why": "Wrong: records the leak, doesn't stop it. By the time the log is written, Claude already has the number.",
-     "trap": "hides the problem"
+     "t": "Scan each reply for card-number patterns and block the reply before it reaches the customer.",
+     "why": "Works, but only for the formats it knows. A number read out with spaces or in parts slips past, and Claude still has the number.",
+     "trap": "catches only some cases"
     }
    ],
    "answer": [
@@ -51,8 +51,8 @@
     "options": [
      "A written rule usually works, but “usually” isn't enough for a must-never.",
      "Correct. Black out the number before Claude ever sees it.",
-     "Blocking the whole lookup means the agent can't help anyone.",
-     "A log notices the number but still hands it to Claude."
+     "A helper told to pass on only some fields still sees the number, and might pass it on.",
+     "Checking each reply catches the obvious cases, but Claude still knows the number."
     ]
    },
    "deep": {
@@ -100,11 +100,11 @@
      },
      {
       "quote": "Twice, the agent read a card number to a customer",
-      "means": "The number reaches Claude in ordinary chats. Logging it (<b>[[3]]</b>) records that without stopping it."
+      "means": "The number reaches Claude in ordinary chats. Scanning replies (<b>[[3]]</b>) catches only the patterns it knows."
      },
      {
       "quote": "Security says this must never happen",
-      "means": "The decider: a must-never. A prompt rule (<b>[[0]]</b>) is probabilistic, and blocking the tool (<b>[[2]]</b>) breaks the agent."
+      "means": "The decider: a must-never. A prompt rule (<b>[[0]]</b>) and a subagent told what to pass on (<b>[[2]]</b>) both still rely on the model choosing."
      },
      {
       "quote": "What is the best fix?",
@@ -129,22 +129,22 @@
    "question": "Refunds above $150 must go to a human. The system prompt says so, yet a monthly review found a few larger refunds that the agent made itself. Finance wants this to stop completely. What should the team <b>do</b>?",
    "options": [
     {
-     "t": "Add a <code>PreToolUse</code> hook that blocks <code>process_refund</code> over $150 and hands the case to a human.",
-     "why": "Correct. The hook checks every refund call before it runs. Code enforces the limit every time, which a prompt can't promise."
+     "t": "Add a <code>PreToolUse</code> hook that blocks <code>process_refund</code> over the limit and hands the case to a human.",
+     "why": "Best. The hook checks every refund call before it runs. Code enforces the limit every time, which a prompt can't promise."
     },
     {
-     "t": "Move the limit to the top of the system prompt and add three examples of refusing larger refunds.",
-     "why": "Wrong: only usually works. Clearer prompting cuts the misses but can't remove them, and finance wants zero.",
+     "t": "Restate the limit first in Claude's instructions, with three examples of declining big refunds.",
+     "why": "Works, but only usually. Clearer prompting cuts the misses but can't remove them, and finance wants zero.",
      "trap": "only usually works"
     },
     {
-     "t": "Add a <code>PostToolUse</code> hook that flags any refund above the limit in <code>process_refund</code> results for finance.",
-     "why": "Wrong: too late. A PostToolUse hook sees the result after the money has gone.",
-     "trap": "hides the problem"
+     "t": "Run a nightly job that finds refunds over $150, reverses them and sends each case to a human.",
+     "why": "Works, but after the money has gone. Reversals catch every case, but customers see a refund taken back, and the rule was still broken first.",
+     "trap": "too late"
     },
     {
      "t": "Have a second Claude instance review each refund decision before the agent replies to the customer.",
-     "why": "Wrong: still a model's judgement. A reviewer catches some cases but is probabilistic too, and it adds a model call to every refund.",
+     "why": "Works, but still a model's judgement. A second instance catches some cases but is probabilistic too, and it adds a model call to every refund.",
      "trap": "overbuilt"
     }
    ],
@@ -160,7 +160,7 @@
     "options": [
      "Correct. The till won't open above the limit.",
      "A bigger sign by the till still relies on the cashier remembering.",
-     "Checking the receipt afterwards doesn't bring the money back.",
+     "Taking money back the next day is messier than not paying it out.",
      "A second cashier watching helps, but can also miss things, and costs more."
     ]
    },
@@ -213,7 +213,7 @@
      },
      {
       "quote": "Finance wants this to stop completely",
-      "means": "The decider: zero misses means code. A reviewer model (<b>[[3]]</b>) is probabilistic, and a PostToolUse flag (<b>[[2]]</b>) comes after the refund."
+      "means": "The decider: zero misses means code, before the action. A reviewer model (<b>[[3]]</b>) is probabilistic, and a nightly reversal (<b>[[2]]</b>) comes after the refund."
      },
      {
       "quote": "What should the team do?",

@@ -33,21 +33,21 @@
    "options": [
     {
      "t": "Add a system-prompt instruction to suggest a pause, plus two short example chats.",
-     "why": "Correct. A soft behaviour, where an occasional miss does no harm, is what prompt guidance is for. One instruction and two examples are easy to maintain."
+     "why": "Best. A soft behaviour, where an occasional miss does no harm, is what prompt guidance is for. One instruction and two examples are easy to maintain."
     },
     {
      "t": "Add a <code>PreToolUse</code> hook that blocks <code>escalate_to_human</code> until a pause has been offered.",
-     "why": "Wrong: overbuilt. Hooks give guarantees, which business rules need. A retention idea doesn't need code that detects cancellations and tracks what was said.",
+     "why": "Works, but overbuilt. The hook would make the offer happen every time, but it needs code to spot cancellations and track what was said. Guarantees are for business rules.",
      "trap": "overbuilt"
     },
     {
-     "t": "Set <code>tool_choice</code> to force a <code>pause_subscription</code> call when a customer asks to cancel.",
-     "why": "Wrong: wrong action. Forcing the tool pauses the subscription without asking. The goal is to suggest a pause, not apply one.",
-     "trap": "wrong action"
+     "t": "Add the pause offer to the <code>escalate_to_human</code> description, so Claude offers it before calling the tool.",
+     "why": "Works, but wrong home. Claude does read tool descriptions, but they explain when and how to call a tool. How to talk to the customer belongs in the system prompt, where it is easy to find and change.",
+     "trap": "wrong home"
     },
     {
      "t": "Route every cancellation request to a new retention subagent before it reaches a human.",
-     "why": "Wrong: overbuilt. A new subagent adds a handoff and another prompt to maintain, all for one sentence of behaviour.",
+     "why": "Works, but overbuilt. A retention subagent could make the offer well, but it adds a handoff and another prompt to maintain, for one sentence of behaviour.",
      "trap": "overbuilt"
     }
    ],
@@ -63,7 +63,7 @@
     "options": [
      "Correct. A plain instruction plus examples sets the nudge.",
      "A lock in code (a <b>hook</b>) is for things that must never be skipped. Here skipping is allowed.",
-     "Forcing the pause tool would pause people who only wanted to talk about cancelling.",
+     "Tool instructions would work, but they're the wrong place for how to talk to customers.",
      "A whole new helper agent for one friendly sentence is too much."
     ]
    },
@@ -94,9 +94,9 @@
        "The model can't repeat what it never saw"
       ],
       [
-       "The model must call one specific tool right now",
-       "<code>tool_choice</code> forced to that tool",
-       "Runs the tool without asking"
+       "Guidance on when and how to call a tool",
+       "The tool's description",
+       "Claude reads it when choosing tools"
       ],
       [
        "Instructions are clear but output still varies",
@@ -108,7 +108,7 @@
     "evidence": [
      {
       "quote": "Product would like the agent to suggest pausing the subscription first, before it hands the customer over",
-      "means": "The goal is to <i>suggest</i>, not to pause. Forcing <code>pause_subscription</code> (<b>[[2]]</b>) pauses without asking."
+      "means": "The goal is a suggestion in the conversation. That belongs in Claude's instructions, not in a tool's description (<b>[[2]]</b>)."
      },
      {
       "quote": "This is a retention idea, not a business rule, so the agent does not have to do it in every chat",
@@ -139,21 +139,21 @@
    "options": [
     {
      "t": "Add few-shot examples to the system prompt that turn a delivery date into a box ID first.",
-     "why": "Wrong: leaves the cause in place. Examples add tokens to every request while the one-line description stays unclear. They are a later step if clear descriptions aren't enough.",
+     "why": "Works, but leaves the cause in place. Examples would teach the date-to-ID step, but they add tokens to every request while the one-line description stays unclear. They are a later step.",
      "trap": "works around the cause"
     },
     {
      "t": "Add a routing layer that detects dates and calls <code>get_customer</code> before <code>lookup_order</code>.",
-     "why": "Wrong: overbuilt for a first step. Code that hunts for dates in messages is fragile and far more work than fixing a one-line description.",
+     "why": "Works, but overbuilt for a first step. Code that spots dates and calls get_customer first would fix this case, but it is fragile and far more work than a better description.",
      "trap": "overbuilt"
     },
     {
      "t": "Expand the <code>lookup_order</code> description with the ID format, an example, and where IDs come from.",
-     "why": "Correct. Claude learns how to call a tool mainly from its description. This one gives no ID format and no route from a date to an ID, and fixing that is cheap."
+     "why": "Best. Claude learns how to call a tool mainly from its description. This one gives no ID format and no route from a date to an ID, and fixing that is cheap."
     },
     {
      "t": "Add a <code>lookup_order_by_date</code> tool that takes a delivery date and returns the box.",
-     "why": "Wrong: more than a first step, and a new tool with an equally thin description can be misused too.",
+     "why": "Works, but more than a first step. A date-based tool would handle this request, but it is new code, and with equally thin descriptions the agent can misuse it too.",
      "trap": "overbuilt"
     }
    ],
@@ -253,21 +253,21 @@
    "options": [
     {
      "t": "A <code>CLAUDE.md</code> in <code>mobile/</code>, and one in <code>packages/shared/ui/</code> that imports it.",
-     "why": "Wrong: tied to folders. The convention follows a file name pattern, so folder files need one copy per tree and also load for non-screen files there.",
+     "why": "Works, but tied to folders. Folder CLAUDE.md files would load the conventions for screens, but they need one per tree and also load for every other file in those folders.",
      "trap": "wrong home"
     },
     {
      "t": "An <code>/a11y</code> skill that engineers invoke when they work on a screen.",
-     "why": "Wrong: loads only on request. It depends on someone remembering to invoke it.",
+     "why": "Works, but only when someone remembers. A skill loads when it is invoked, so screens edited without it miss the conventions.",
      "trap": "wrong home"
     },
     {
      "t": "A file in <code>.claude/rules/</code> whose <code>paths:</code> frontmatter is <code>**/*.screen.tsx</code>.",
-     "why": "Correct. A path-scoped rule loads whenever Claude edits a matching file, in any folder, and stays out of server work."
+     "why": "Best. A path-scoped rule loads whenever Claude edits a matching file, in any folder, and stays out of server work."
     },
     {
      "t": "A separate markdown file pulled into the root <code>CLAUDE.md</code> with an <code>@import</code> line.",
-     "why": "Wrong: still loads in every session. @import splits memory into files; it doesn't make loading conditional.",
+     "why": "Works, but still loads everywhere. @import keeps the conventions in their own file, which is tidier, but they still load in every session, including server work.",
      "trap": "wrong home"
     }
    ],
@@ -363,21 +363,21 @@
    "options": [
     {
      "t": "Add two example certificates with no deductible to the prompt, each with its expected output.",
-     "why": "Wrong: a prompt fix for a schema problem. While the schema demands a number, there is no honest output for the examples to show.",
+     "why": "Works, but only partly. Examples show what to do when no deductible is printed, but while the schema demands a number the model has no honest value to return.",
      "trap": "only usually works"
     },
     {
      "t": "Make deductible nullable in the schema, and state in its description when to return null.",
-     "why": "Correct. A required number forces the model to invent one. A nullable field gives it an honest way to say “not printed”."
+     "why": "Best. A required number forces the model to invent one. A nullable field gives it an honest way to say “not printed”."
     },
     {
      "t": "Keep deductible required and have the model enter -1 whenever no deductible is printed.",
-     "why": "Wrong: -1 is still a number. Every system downstream must know the convention, or -1 posts as a real value.",
+     "why": "Works, but fragile. -1 marks the gap, but it is still a number: every system downstream must know the convention, or -1 posts as a real value.",
      "trap": "hides the problem"
     },
     {
-     "t": "Add a validator that rejects a deductible equal to the limit, then retry the extraction.",
-     "why": "Wrong: a retry can't produce a value the document doesn't contain, and the invented 0s still get through.",
+     "t": "Add a <code>deductible_printed</code> flag beside the number, and have reviewers ignore the number when it is false.",
+     "why": "Works, but the invented number stays. The flag tells reviewers to ignore it, but the required field still puts a made-up value in the record, where other systems can use it.",
      "trap": "hides the problem"
     }
    ],
@@ -394,7 +394,7 @@
      "Showing examples doesn't help while the form still has no blank option.",
      "Correct. Let the field be empty when nothing is printed.",
      "-1 is still a number someone can mistake for a real one.",
-     "Asking again can't find a number that isn't on the page."
+     "A “please ignore” sticker helps, but the made-up number is still on the form."
     ]
    },
    "deep": {
@@ -442,7 +442,7 @@
      },
      {
       "quote": "In the schema, deductible is a required number",
-      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) and retries (<b>[[3]]</b>) can't fix a schema with no honest answer."
+      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) can't fix a schema with no honest answer, and a flag (<b>[[3]]</b>) leaves the invented number in the record."
      },
      {
       "quote": "Those values are posted as if they were printed, and reviewers cannot tell them apart from real ones",
@@ -472,23 +472,23 @@
    "question": "Some refund disputes go on for a long time. When a chat gets close to the context limit, the SDK replaces older turns with a summary. After that, the agent sometimes offers a smaller refund than it promised earlier. It also forgets which items the customer said were missing. Which change <b>best fixes this</b>?",
    "options": [
     {
-     "t": "Trim each tool result to the fields the agent needs before it enters the conversation history.",
-     "why": "Wrong: a fix for a different problem. Trimming slows how fast the context fills, but the promises still pass through summaries.",
+     "t": "Before each refund offer, have the agent call <code>lookup_order</code> again to reload the order and its items.",
+     "why": "Works, but only for what the order system knows. It reloads the order, but the promised amount and the items the customer reported missing were said in the chat, not stored there.",
      "trap": "different problem"
     },
     {
      "t": "Raise the threshold for summarising older turns, so more of each chat stays word for word.",
-     "why": "Wrong: delays the loss. Long chats still cross the threshold, and the same facts get blurred.",
+     "why": "Works, but only delays it. More of each chat stays word for word, but long disputes still cross the threshold and the same facts get blurred.",
      "trap": "delays the problem"
     },
     {
      "t": "Tell the summariser to quote every amount and item mentioned in the earlier turns.",
-     "why": "Wrong: still lossy. The facts go through a summary on every pass, and each pass can drop or change them.",
+     "why": "Works, but still lossy. A careful summary keeps most amounts, but the facts go through a summary on every pass, and each pass can drop or change them.",
      "trap": "only usually works"
     },
     {
      "t": "Keep a case-facts block of promised amounts, missing items and order IDs in every request.",
-     "why": "Correct. Facts kept outside the summarised history survive every summary, and the agent sees them on every turn."
+     "why": "Best. Facts kept outside the summarised history survive every summary, and the agent sees them on every turn."
     }
    ],
    "answer": [
@@ -501,7 +501,7 @@
     "question": "To save space, old parts of the chat get squeezed into a summary. After that, the agent forgets what it promised. The clue: the facts get lost <i>in the summary</i>.",
     "answer": "When a long meeting is summarised, exact numbers get rounded off. A good assistant keeps a separate card with the key facts: “promised $40 credit; salmon and rice missing”. The summary can be rough; the card stays exact. That card is a <b>case-facts block</b> sent with every request. <b>Rule: numbers and promises that must survive go in a facts block, not the summary.</b>",
     "options": [
-     "Making tool output smaller saves space, but the promises still get squeezed.",
+     "Re-reading the order helps, but the promises were made in the chat, not in the order.",
      "Summarising later only moves the problem further down the chat.",
      "A better summary is still a summary; numbers can still slip.",
      "Correct. Keep the key facts on a separate card that never gets summarised."
@@ -547,7 +547,7 @@
      },
      {
       "quote": "After that, the agent sometimes offers a smaller refund than it promised earlier",
-      "means": "The decider. The loss starts after summarising, so the summary is the cause. Trimming tool results (<b>[[0]]</b>) doesn't touch it."
+      "means": "The decider. The loss starts after summarising, so the summary is the cause. Reloading the order (<b>[[0]]</b>) doesn't bring back what was promised in the chat."
      },
      {
       "quote": "It also forgets which items the customer said were missing",
