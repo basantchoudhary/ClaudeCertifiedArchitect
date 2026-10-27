@@ -1,0 +1,1090 @@
+{
+ "scenarios": [
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m4p-s6-01",
+   "was": "s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Optional & nullable fields",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Some certificates are issued while a policy is still being bound. On those, the policy number box says “to be assigned”. The schema makes <code>policy_number</code> a required string. For these certificates, the extraction returns the binder number or a string built from the carrier code and date. Those values post as real policy numbers, and renewals later link to the wrong policy. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Check each policy number against the carrier's records before posting, and queue any that have no matching policy.",
+     "why": "Works, but treats the symptom. A lookup catches some invented numbers, but the number was never printed, and an invented one that happens to match a real policy slips through.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Make <code>policy_number</code> nullable, not required, and say that unbound certificates may leave it blank for now.",
+     "why": "Best. Nothing is printed, yet the schema demands a value, so the model invents one. A nullable field gives the honest answer somewhere to go."
+    },
+    {
+     "t": "Add two unbound certificates to the prompt as examples, with the field filled with an empty string.",
+     "why": "Works, but hides the problem. An empty string is a workaround that dresses up “absent” as a value, and the schema still demands something.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Add a validator rule rejecting a policy number equal to the binder number, then retry extraction.",
+     "why": "Works, but only for one symptom. It stops the copied binder number, but a retry cannot find a number that is not printed, so the model invents a different one.",
+     "trap": "only one symptom"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "On those, the policy number box says “to be assigned”.",
+   "explanation": "When a value can be legitimately missing from the source, the schema must be able to say so. Optional or nullable fields prevent fabrication; a required field reads as “produce something”.",
+   "eli5": {
+    "question": "Some certificates have no policy number yet, but the schema demands one, so the extraction makes one up. The clue: the box literally says “to be assigned”.",
+    "answer": "Picture a form where the policy number box must be filled before you can hand it in. If you don't have the number, you scribble something plausible. Add a “not yet assigned” option and the scribbling stops. In a JSON schema that option is a <b>nullable field</b>. <b>Rule: if the source can lack a value, the schema must allow “none”.</b>",
+    "options": [
+     "Checking the scribbled number against the carrier helps, but a made-up number can still match a real policy.",
+     "Correct. Let the box be empty when nothing is printed.",
+     "Writing an empty string still fills the box with a pretend value.",
+     "Rejecting one kind of scribble just makes the next scribble different."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>made-up values should be caught after extraction</b>, by a lookup or a validator. But the cause is upstream: the schema gives the model no honest way to say “not printed”, so it produces something plausible. Fix the schema, and the invention stops at the source.",
+    "diagram": "required string + “to be assigned” → binder no. posted\nnullable string + “to be assigned” → null (honest)",
+    "mapTitle": "A value is wrong in the output. Where is the cause?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Plausible values where the source has none",
+       "Field is required",
+       "Make it nullable, describe when"
+      ],
+      [
+       "Value is printed but sometimes misread",
+       "Extraction error",
+       "Check against the system of record"
+      ],
+      [
+       "Odd categories forced into the nearest slot",
+       "Closed enum",
+       "Add <code>other</code> plus a detail field"
+      ],
+      [
+       "Value printed but in the wrong format",
+       "Format slip",
+       "Retry with the specific validation error"
+      ],
+      [
+       "Accuracy drops on unusual layouts",
+       "Too few patterns shown",
+       "Varied few-shot examples"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Some certificates are issued while a policy is still being bound",
+      "means": "A missing policy number is a normal, expected case."
+     },
+     {
+      "quote": "On those, the policy number box says “to be assigned”",
+      "means": "The decider. The value is absent from the source. A validator retry (<b>[[3]]</b>) cannot find what is not printed."
+     },
+     {
+      "quote": "The schema makes policy_number a required string",
+      "means": "The cause: the schema forces a value. An empty string (<b>[[2]]</b>) obeys the schema by pretending."
+     },
+     {
+      "quote": "Those values post as real policy numbers",
+      "means": "Invented values look real. A lookup (<b>[[0]]</b>) only catches the ones that fail to match."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Fix the cause in the schema: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Value can be absent from the source → make the field nullable. A required field invites invention.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-02",
+   "was": "s6-02",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Extensible enums",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Each coverage limit has a <code>limit_basis</code> enum with three values: per occurrence, per claim and aggregate. Some certificates print other bases. Most are “per project” or “per location” aggregates, which the extraction posts as plain aggregate. The rest are carriers' own wordings, and new ones appear every few months. Reviewers cannot tell a forced value from a printed one. Which schema change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add an <code>other</code> value to the enum, plus a <code>limit_basis_detail</code> string for the printed wording.",
+     "why": "Best. The enum keeps validating the common bases, and anything else lands in <code>other</code> with the printed text kept. Nothing is forced, and new wordings need no schema change."
+    },
+    {
+     "t": "Add per project aggregate and per location aggregate to the enum, next to the three existing values.",
+     "why": "Works, but only for today's list. It handles the biggest group cleanly, but the carriers' own wordings still get forced into a slot, and that list keeps growing.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Make <code>limit_basis</code> nullable, and return null when the printed basis is not one of the three.",
+     "why": "Works, but loses detail. Nothing is forced any more, but a basis that was printed is thrown away, so reviewers still can't see what the certificate said.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "Ask for a confidence score on <code>limit_basis</code>, and send values scored below a threshold to a reviewer.",
+     "why": "Works, but leans on a weak signal. Self-reported confidence is poorly calibrated, and the forced value is still the one stored.",
+     "trap": "unreliable signal"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The rest are carriers' own wordings, and new ones appear every few months.",
+   "explanation": "For a category that is mostly closed but sometimes open, use an enum with an <code>other</code> value plus a detail field. Validation stays where it works and odd values stop being forced into the nearest slot.",
+   "eli5": {
+    "question": "A three-value list can't hold every limit basis carriers print, so odd ones get squeezed into “aggregate”. The clue: carriers keep inventing <i>new</i> wordings.",
+    "answer": "A sorting rack with three labelled shelves works until odd parcels arrive. Adding two more shelves helps this month, but next month brings new shapes. A shelf marked “other”, with a note saying what each parcel really is, handles every future surprise. That is an <b>enum with <code>other</code> plus a detail field</b>. <b>Rule: mostly-closed list that keeps growing → add “other” and keep the printed text.</b>",
+    "options": [
+     "Correct. An “other” shelf with a note never runs out of room.",
+     "Two more shelves fit today's odd parcels; new shapes next month still get squeezed.",
+     "Leaving odd parcels unlabelled stops the squeezing, but you lose what they were.",
+     "Asking the sorter how sure they feel doesn't change which shelf the parcel went on."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a forced category means the list is missing values</b>, so add them. That works for a closed set. Here part of the set is open: carriers keep inventing wordings. An enum needs an escape hatch, <code>other</code>, plus a field that keeps the printed text.",
+    "diagram": "per occurrence | per claim | aggregate | other\n  other → limit_basis_detail: “per project aggregate”",
+    "mapTitle": "Values don't fit the enum. What kind of misfit?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Odd values, and new ones keep appearing",
+       "Open-ended category",
+       "<code>other</code> plus a detail field"
+      ],
+      [
+       "A fixed, known set of extra values",
+       "Enum is incomplete",
+       "Add those values to the enum"
+      ],
+      [
+       "No value printed at all",
+       "Absent from source",
+       "Nullable field"
+      ],
+      [
+       "Printed text is ambiguous",
+       "Unclear category",
+       "<code>unclear</code> value plus detail"
+      ],
+      [
+       "Routing on how sure the model feels",
+       "Uncalibrated confidence",
+       "Calibrate on labelled data"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most are “per project” or “per location” aggregates, which the extraction posts as plain aggregate",
+      "means": "Values are being forced into the nearest slot. Adding these two (<b>[[1]]</b>) covers the biggest group."
+     },
+     {
+      "quote": "The rest are carriers' own wordings, and new ones appear every few months",
+      "means": "The decider. The set is open, so any fixed list (<b>[[1]]</b>) falls behind."
+     },
+     {
+      "quote": "Reviewers cannot tell a forced value from a printed one",
+      "means": "The printed text must be kept. Null (<b>[[2]]</b>) drops it; a confidence score (<b>[[3]]</b>) still stores the forced value."
+     },
+     {
+      "quote": "Which schema change is the best fix?",
+      "means": "Add an escape hatch that keeps the wording: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Mostly-closed category that keeps growing → enum with “other” plus a detail field.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "enum \"unclear\"/\"other\" + detail for extensible categories"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-03",
+   "was": "s6-03",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Self-checking extraction",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Property certificates list each location's insured value and then a printed total. In spot checks, some printed values did not add up to the printed total. Some carriers had made errors; elsewhere a row on a continuation page was skipped. Yet most extracted records still added up, because the model had changed one figure. Reviewers want these held, with enough detail to see why. Which change <b>does that</b>?",
+   "options": [
+    {
+     "t": "Recompute the sum of location values in the posting service, and hold any record that differs from the total.",
+     "why": "Works, but sees too little. A code check is sound, but the model has already changed a figure in most records, so the extracted numbers agree and the check passes them.",
+     "trap": "too late in the chain"
+    },
+    {
+     "t": "Tell the model to copy every figure exactly as printed and to leave a carrier's arithmetic errors alone.",
+     "why": "Works, but only usually. It may reduce the quiet edits, but it gives no signal that a mismatch exists, so nothing is held for a reviewer.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Send certificates with continuation pages to a second pass that reads only the location rows again.",
+     "why": "Works, but for one cause. It helps with skipped rows, but does nothing for carrier errors or for the model quietly changing a figure.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add fields for the total as printed and the total summed from the extracted rows, plus a mismatch flag.",
+     "why": "Best. The model reports both numbers instead of reconciling them, and the flag holds the certificate. The gap between the two also hints at the cause."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Yet most extracted records still added up, because the model had changed one figure.",
+   "explanation": "Build self-checking into the output: extract the stated total alongside a calculated total, plus a conflict flag. Discrepancies are reported as data instead of being reconciled inside the model.",
+   "eli5": {
+    "question": "The printed figures on some certificates don't add up, but the model quietly fixes one number so its record looks tidy. The clue: the extracted records <i>still added up</i>.",
+    "answer": "A cashier whose till is short shouldn't quietly move a coin to make it balance. They should write down “counted 98, receipt says 100” and flag it. For extraction that means two fields, the <b>stated total</b> and the <b>calculated total</b>, plus a <b>mismatch flag</b>. <b>Rule: report the conflict as data; don't let the model reconcile it.</b>",
+    "options": [
+     "A manager recounting later sees a balanced till, because the cashier already moved the coin.",
+     "Asking the cashier not to fiddle may help, but nobody is told when the till is short.",
+     "Recounting one drawer helps with one cause, not the others.",
+     "Correct. Write both counts down and raise a flag when they differ."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a sum check in code catches arithmetic problems</b>. It does, if the extracted figures are the printed ones. Here the model edits a figure so its output balances, so the check sees nothing. A strict schema stops syntax errors, not this kind of semantic error. The fix is to make the model <b>report both totals</b> and a flag.",
+    "diagram": "printed rows sum 9.6m, printed total 10m\n  stated_total 10m | calculated_total 9.6m\n  → conflict_detected: true → held for review",
+    "mapTitle": "Numbers don't reconcile. Where should it be caught?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Output balances but source doesn't",
+       "Model reconciles silently",
+       "Stated total, calculated total, flag"
+      ],
+      [
+       "Output figures copied faithfully, some don't sum",
+       "Source or reading error",
+       "Recompute in code and hold"
+      ],
+      [
+       "Rows missed on continuation pages",
+       "Attention on long input",
+       "Focused pass on those pages"
+      ],
+      [
+       "Valid JSON with wrong values",
+       "Semantic error",
+       "Self-check fields and validation"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "In spot checks, some printed values did not add up to the printed total",
+      "means": "The mismatch is real and in the source."
+     },
+     {
+      "quote": "Some carriers had made errors; elsewhere a row on a continuation page was skipped",
+      "means": "Two causes. A second pass on continuation pages (<b>[[2]]</b>) covers only one."
+     },
+     {
+      "quote": "Yet most extracted records still added up, because the model had changed one figure",
+      "means": "The decider. A code check on extracted numbers (<b>[[0]]</b>) sees balanced records."
+     },
+     {
+      "quote": "Reviewers want these held, with enough detail to see why",
+      "means": "A signal is needed, which an instruction (<b>[[1]]</b>) does not give. Both totals plus a flag: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Don't let the model reconcile figures. Extract the stated total and a calculated total, and flag conflicts.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops",
+     "quote": "Self-correction: extract calculated_total alongside stated_total; conflict_detected booleans"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-04",
+   "was": "s6-04",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Validation & retry loops",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "When validation fails, the pipeline retries up to five times. Each retry says only “Output failed validation, please try again”. Most documents that use all five attempts are policy schedules from two carriers. Those schedules have no place for the carrier's licence number, which the schema requires. These documents use about a fifth of extraction spend, and reviewers still key them in by hand. What change <b>cuts that spend most</b>?",
+   "options": [
+    {
+     "t": "Replace the generic retry message with the validator's specific errors, naming each field and its rule.",
+     "why": "Works, but for a different failure. Specific feedback is the right loop for values printed but misformatted. Here the value isn't on the page, so retries still fail.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Give these two carriers' schedules their own prompt with worked examples of where each field appears.",
+     "why": "Works, but for a different failure. Layout examples help when a value is present but hard to find. They cannot find a box the form doesn't have.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Allow a null value for that field, and route those documents straight to manual entry without a retry.",
+     "why": "Best. No retry can find a value that is not printed. Allowing null stops both the invention pressure and the wasted retries, and the documents go straight to the reviewers who handle them anyway."
+    },
+    {
+     "t": "Lower the retry limit from five attempts to two for every document, and send what fails to review.",
+     "why": "Works, but too blunt. It trims spend on these documents, but also cuts retries that rescue fixable ones, and still spends two attempts on documents that can never pass.",
+     "trap": "blunt cut"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Those schedules have no place for the carrier's licence number, which the schema requires.",
+   "explanation": "Retry with specific error feedback works when the model can use the feedback. It is useless when the information is absent from the source; then the schema should allow absence and the document should leave the loop.",
+   "eli5": {
+    "question": "Retries burn money on two carriers' schedules that always fail. The clue: those forms have <i>no place</i> for the licence number at all.",
+    "answer": "Sending a clerk back five times to find a box that isn't on the form wastes five trips. Better instructions won't help; the box isn't there. Mark the field as “may be empty” and pass those forms straight to the person who fills it in by hand. That is a <b>nullable field plus routing</b>, with no retry. <b>Rule: retries fix misread values, not missing ones.</b>",
+    "options": [
+     "Clearer instructions help a clerk who misread a box, not one looking for a box that isn't there.",
+     "A map of the form helps find a box that exists. This one doesn't.",
+     "Correct. Stop sending them back; pass the form to the person who handles it.",
+     "Fewer trips for everyone saves some money, but also stops trips that would have worked."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>retries fail because the feedback is too vague</b>. Specific feedback is the fix when the value is on the page but misformatted. Here the value is <b>absent from the source</b>, so every retry fails however good the message is. Let the schema say “absent” and take the document out of the loop.",
+    "diagram": "value printed, wrong format → retry with specific error\nvalue not on the form       → null → reviewer, no retry",
+    "mapTitle": "Validation keeps failing. Will a retry help?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Value not on the form at all",
+       "Absent from source",
+       "Nullable field, route without retry"
+      ],
+      [
+       "Value printed but misformatted",
+       "Format or structure slip",
+       "Retry with the specific error"
+      ],
+      [
+       "Value present but hard to locate",
+       "Unusual layout",
+       "Few-shot layout examples"
+      ],
+      [
+       "Retries rescue many documents",
+       "Recoverable errors",
+       "Keep the retry limit"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each retry says only “Output failed validation, please try again”",
+      "means": "The loop retries blindly, which looks like the problem, and better messages (<b>[[0]]</b>) are tempting."
+     },
+     {
+      "quote": "Those schedules have no place for the carrier's licence number, which the schema requires",
+      "means": "The decider. The value is absent from the source. Feedback (<b>[[0]]</b>) and layout examples (<b>[[1]]</b>) can't conjure it."
+     },
+     {
+      "quote": "reviewers still key them in by hand",
+      "means": "These documents end with a person anyway, so sending them there directly loses nothing. A lower limit for all (<b>[[3]]</b>) hits fixable documents too."
+     },
+     {
+      "quote": "What change cuts that spend most?",
+      "means": "Stop retrying what cannot succeed: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Information absent from the source → allow null and route it out. Retries help only when the value is there.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops",
+     "quote": "Retries are ineffective when info is absent from the source"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-05",
+   "was": "s6-05",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot across varied structures",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The prompt holds eight worked certificates, all picked from the six largest carriers because they were to hand. Accuracy is high for those carriers and much lower for the rest. Smaller carriers put limits in footnotes, in tables split across pages, or under labels like “Each Claim”. New carriers join often, and their first certificates arrive before anyone has seen the layout. What <b>most improves</b> accuracy on the smaller carriers?",
+   "options": [
+    {
+     "t": "Swap most of the eight for small-carrier certificates with unusual layouts, each noting how fields were found.",
+     "why": "Best. Examples teach generalisation when they show varied, awkward structures and the reasoning. Varied layouts carry over to carriers nobody has seen yet."
+    },
+    {
+     "t": "Add written layout rules: limits may sit in footnotes, tables may split, and Each Claim means per claim.",
+     "why": "Works, but only for what's been seen. Rules cover the variations already listed. They don't show how to reason about a new layout, where examples do better.",
+     "trap": "only what's seen"
+    },
+    {
+     "t": "Keep a prompt per carrier with that carrier's own samples, picked by the sender when a certificate arrives.",
+     "why": "Works, but overbuilt. It lifts accuracy on known carriers, but a new carrier has no prompt yet, and there are many prompts to maintain.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Extend the prompt to one sample from every current carrier, ordered from the highest volume to the lowest.",
+     "why": "Works, but overbuilt. It adds a large token cost to every document and teaches recall of known layouts, not how to handle the next one.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "New carriers join often, and their first certificates arrive before anyone has seen the layout.",
+   "explanation": "Few-shot examples should show varied and ambiguous structures so the model can generalise to new patterns. Choose them where the model fails, not where it already succeeds.",
+   "eli5": {
+    "question": "All the worked examples come from the big carriers, and accuracy is poor on everyone else. The clue: new carriers arrive <i>before anyone has seen their layout</i>, so the model must cope with the unknown.",
+    "answer": "If you train a new clerk only on the neatest forms, they freeze on the first messy one. Show them a few awkward forms and talk through how you found each box, and they learn to cope with forms they've never seen. Those are <b>varied few-shot examples with reasoning</b>. <b>Rule: pick examples from where the model struggles, and show how the answer was found.</b>",
+    "options": [
+     "Correct. A few awkward forms, with the reasoning, teach the clerk to handle new ones.",
+     "A list of known quirks helps with those quirks, not with the next new one.",
+     "A binder per carrier works for carriers you know; a new carrier has no binder yet.",
+     "One example of every form is a huge binder, and still says nothing about the next new one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>more examples, or more specific examples, means better accuracy</b>. What matters is which examples. Eight variations of layouts the model already reads well teach nothing new. A few <b>varied, awkward examples with the reasoning shown</b> help the model generalise to layouts it has never seen.",
+    "mapTitle": "Accuracy is low on some documents. What do examples need to show?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "New layouts keep arriving unseen",
+       "Varied, awkward examples with reasoning",
+       "Generalises to novel layouts"
+      ],
+      [
+       "Fixed set of known senders",
+       "Per-sender prompts or examples",
+       "Each layout covered directly"
+      ],
+      [
+       "Known quirks, few in number",
+       "Written rules can do",
+       "Nothing new to generalise"
+      ],
+      [
+       "Instructions alone give inconsistent output",
+       "Add 2–4 targeted examples",
+       "Most effective for consistency"
+      ],
+      [
+       "Examples all from easy cases",
+       "Swap for hard cases",
+       "Easy ones teach nothing new"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "all picked from the six largest carriers because they were to hand",
+      "means": "The examples were chosen by convenience, not by where the model fails."
+     },
+     {
+      "quote": "Smaller carriers put limits in footnotes, in tables split across pages, or under labels like “Each Claim”",
+      "means": "Varied structures, the case few-shot handles. Listing them as rules (<b>[[1]]</b>) covers only these."
+     },
+     {
+      "quote": "New carriers join often, and their first certificates arrive before anyone has seen the layout",
+      "means": "The decider. Per-carrier prompts (<b>[[2]]</b>) and one sample per carrier (<b>[[3]]</b>) can't cover an unseen carrier."
+     },
+     {
+      "quote": "What most improves accuracy on the smaller carriers?",
+      "means": "Varied examples that generalise: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Choose few-shot examples that show varied, awkward layouts with reasoning, so the model generalises to new ones.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Demonstrate ambiguous-case handling; enable generalization to novel patterns"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-06",
+   "was": "s6-06",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Field-level calibration",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "The team measured 97% field accuracy on 200 certificates labelled during a quiet month. Now they want to post results without review. That month held mostly standard certificates. Long policy schedules arrive mainly at renewal time, so only a handful were in the set. Insured names were almost never wrong, and most errors were in limits on those schedules. What should happen <b>before review is removed</b>?",
+   "options": [
+    {
+     "t": "Keep a random sample of posted results under review each week, and stop once a quarter passes cleanly.",
+     "why": "Works, but too late. Ongoing sampling is useful, but a random sample has the same blind spot, and it checks after posting rather than deciding what may post.",
+     "trap": "too late"
+    },
+    {
+     "t": "Calibrate a confidence score per field on the labelled set, and route fields under a threshold to review.",
+     "why": "Works, but too early. Calibrated field confidence is the right routing tool once the labelled set covers each type. A handful of schedules can't calibrate schedules.",
+     "trap": "too early"
+    },
+    {
+     "t": "Label a new sample with a fixed quota per document type, and report accuracy for every type and field.",
+     "why": "Best. The first sample barely covers schedules and averages easy fields with hard ones. A quota per type gives each type and field its own figure, which is what decides what can skip review."
+    },
+    {
+     "t": "Run a second extraction on long schedules, and post only the limits on which both runs agree.",
+     "why": "Works, but measures the wrong thing. Agreement shows repeatability, not accuracy, and it changes the extraction instead of measuring it.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Long policy schedules arrive mainly at renewal time, so only a handful were in the set.",
+   "explanation": "Aggregate accuracy can hide poor performance on specific document types and fields. Measure by type and field, with stratified sampling so rare types are covered, before automating; calibrated confidence comes after.",
+   "eli5": {
+    "question": "A test said 97% accurate, but it was taken in a quiet month with almost no long schedules, and those are where the errors are. The clue: <i>only a handful</i> of schedules were in the set.",
+    "answer": "If you test a new driver only on quiet Sunday roads, a great score says little about rush hour. Test them on a fixed number of trips of each kind, and score each kind separately. That is <b>stratified sampling</b>, with accuracy reported <b>per document type and field</b>. <b>Rule: one big average can hide a weak spot. Measure each type and field before trusting automation.</b>",
+    "options": [
+     "Spot-checking some trips later helps, but uses the same quiet roads, and the driver is already alone.",
+     "Asking the driver how confident they feel needs rush-hour practice first to mean anything.",
+     "Correct. Test each kind of road a set number of times, and score each kind separately.",
+     "Two drivers agreeing doesn't prove either one drove well."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>97% accuracy means the system is ready</b>. An average over a sample that barely contains the hard documents hides where errors live. Before removing review, measure accuracy <b>by document type and by field</b>, using a sample with a quota per type. Calibrated confidence routing comes after, once there is enough labelled data for each type.",
+    "diagram": "random sample:  standard ████████████  schedules █\nstratified:     standard ██████  schedules ██████",
+    "mapTitle": "Ready to remove review? What evidence do you need?",
+    "map": {
+     "head": [
+      "Situation",
+      "Next step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "High average, rare types barely sampled",
+       "Stratified sample, report per type and field",
+       "Average hides weak spots"
+      ],
+      [
+       "Each type well covered by labels",
+       "Calibrate field confidence, route low ones",
+       "Threshold now means something"
+      ],
+      [
+       "Automation already live",
+       "Ongoing sampled review",
+       "Catches drift over time"
+      ],
+      [
+       "Model rates its own confidence",
+       "Don't route on it uncalibrated",
+       "Self-confidence is unreliable"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team measured 97% field accuracy on 200 certificates labelled during a quiet month",
+      "means": "One average from one kind of month."
+     },
+     {
+      "quote": "Long policy schedules arrive mainly at renewal time, so only a handful were in the set",
+      "means": "The decider. Schedules are barely measured, so calibrating on this set (<b>[[1]]</b>) or random checks (<b>[[0]]</b>) inherit the gap."
+     },
+     {
+      "quote": "Insured names were almost never wrong, and most errors were in limits on those schedules",
+      "means": "Errors cluster by type and field, so they must be measured that way. Two runs agreeing (<b>[[3]]</b>) is not a measure of accuracy."
+     },
+     {
+      "quote": "What should happen before review is removed?",
+      "means": "Measure each type and field first: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Before automating, validate accuracy per document type and field with a stratified sample. An overall figure can hide the weak spot.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Validate accuracy by document type and field before automating"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-07",
+   "was": "s6-07",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Tool-result bloat & lost-in-the-middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "Scanned policy schedules reach the model through an OCR tool. It returns over forty fields per text block, such as a box for every character. Extraction uses only each block's text and page number. A long schedule fills most of the context this way. The misses are rows from vehicle and location lists, and they cluster on the middle pages. Which <b>TWO</b> changes fit best?",
+   "options": [
+    {
+     "t": "Switch to a model with a larger context window, so the full OCR output sits well inside the limit.",
+     "why": "Works, but delays the problem. More room helps a little, but the output already fits, and a bigger window makes a bigger middle.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Trim each OCR result to its text and page number before the tool result goes back to the model.",
+     "why": "Best. Tool results use tokens far beyond their value. Two fields out of forty are needed, so trimming shrinks the context sharply and loses nothing."
+    },
+    {
+     "t": "Open the input with a summary of the key fields, and mark every page with a clear page heading.",
+     "why": "Works, but carries too little. Key points up front with headings help a few facts survive, but dozens of rows per middle page can't fit in an opening summary.",
+     "trap": "only key facts"
+    },
+    {
+     "t": "Extract rows a few pages at a time in separate passes, then merge the row lists in a final step.",
+     "why": "Best. Misses in the middle of a long input are the “lost in the middle” effect. Short passes keep every page near the start or end of some input."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "The misses are rows from vehicle and location lists, and they cluster on the middle pages.",
+   "explanation": "Two forces are at work: verbose tool results filling the context, and the middle of a long input being processed less reliably than its ends. Trim tool results to the fields used, and split the work so detailed rows never sit deep in the middle.",
+   "eli5": {
+    "question": "A bloated OCR output fills the context, and rows in the middle pages go missing. The clues: extraction needs only <i>two fields</i> out of forty, and the misses <i>cluster on the middle pages</i>.",
+    "answer": "Reading a phone book where every name comes with forty lines of printing notes, you skim, and the middle pages blur. First strip each entry to the name and page. Then read a few pages at a time and combine your lists. That is <b>trimming tool results</b> plus <b>splitting into passes</b>. <b>Rule: cut tool output to what's used, and don't leave detail buried in the middle.</b>",
+    "options": [
+     "A bigger table to spread the phone book on doesn't stop the middle pages blurring.",
+     "Correct. Strip each entry to what you need before reading.",
+     "A cover note helps you remember a few facts, not dozens of rows per page.",
+     "Correct. Read a few pages at a time, then combine the lists."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a full context means the model needs more room</b>. Two separate things are wrong. Tool output is mostly fields nobody uses, and long input loses detail in its middle (“lost in the middle”). Trim the output, and split the reading so no page sits deep in the middle.",
+    "diagram": "OCR block: 40+ fields → keep text, page\nschedule: pp 1-3 | pp 4-6 | ... → merge rows",
+    "mapTitle": "Long input, missed details. What is the cause?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Context full of fields never used",
+       "Verbose tool results",
+       "Trim results to the fields used"
+      ],
+      [
+       "Middle detail missed, many rows",
+       "Lost in the middle",
+       "Short passes, then merge"
+      ],
+      [
+       "A few key facts lost in the middle",
+       "Lost in the middle",
+       "Key summary first, clear headings"
+      ],
+      [
+       "Input truly too large to fit",
+       "Size",
+       "Split into passes"
+      ],
+      [
+       "Numbers blurred after summarising",
+       "Lossy summary",
+       "Keep a facts block"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It returns over forty fields per text block, such as a box for every character",
+      "means": "Bloated tool results."
+     },
+     {
+      "quote": "Extraction uses only each block's text and page number",
+      "means": "Two fields are enough, so trim the rest: <b>[[1]]</b>."
+     },
+     {
+      "quote": "A long schedule fills most of the context this way",
+      "means": "The output already fits, so a bigger window (<b>[[0]]</b>) adds room, not attention."
+     },
+     {
+      "quote": "The misses are rows from vehicle and location lists, and they cluster on the middle pages",
+      "means": "The decider. Lost in the middle, with many rows. A summary up front (<b>[[2]]</b>) can't carry them; short passes can: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Trim tool results to the fields used, and split long detailed input into passes so nothing sits deep in the middle.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Tool results accumulate and consume tokens disproportionately (40+ fields when 5 are relevant)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-08",
+   "was": "s6-08",
+   "sid": "s6",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Empty results vs access failures",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An MCP tool, <code>get_endorsements</code>, returns the endorsements filed with a certificate. It returns an empty list both when there are none and when the document store is unreachable. The store goes offline for about half an hour each night, during the extraction run. Some certificates then post with no endorsements although one existed. Contract holders were told the client lacked required cover. What is the <b>right fix</b>?",
+   "options": [
+    {
+     "t": "Retry the store inside the tool with exponential backoff for up to a minute, then return the list.",
+     "why": "Works, but too short. Local retry is good practice for brief blips, but these outages last half an hour, so the tool still returns an empty list that looks like “none”.",
+     "trap": "too short"
+    },
+    {
+     "t": "Hold every certificate whose endorsement list comes back empty in a queue until a reviewer confirms it.",
+     "why": "Works, but overbuilt. Most empty lists are genuine, so this queues the common case to catch a rare failure, and the tool still hides which is which.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Compare endorsement counts with the carrier's portal after posting, and raise an alert when they differ.",
+     "why": "Works, but too late. It finds the problem after the record is posted and the contract holder has already been told.",
+     "trap": "too late"
+    },
+    {
+     "t": "Return <code>isError</code> with a transient category and <code>isRetryable: true</code> when unreachable; keep [] for none.",
+     "why": "Best. An outage and a genuine “no endorsements” are opposite facts sharing one return value. Separating them lets the agent hold or retry the outage and move on for the genuine case."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "It returns an empty list both when there are none and when the document store is unreachable.",
+   "explanation": "Distinguish access failures from valid empty results. Return structured errors (isError, category, retryability) so the agent can choose the right recovery; a shared empty value makes that impossible.",
+   "eli5": {
+    "question": "The tool says “no endorsements” both when there really are none and when it couldn't reach the store. The clue: one answer means two <i>opposite</i> things.",
+    "answer": "If a receptionist says “no messages” both when there are none and when the phone line was down, you'll miss calls. They should say “line down, try again later” when it was down. For an MCP tool that's an <b>error result</b> (<code>isError</code>, a transient category, retryable) for the outage, and an empty list only for a true “none”. <b>Rule: a failure to look is not the same as finding nothing.</b>",
+    "options": [
+     "Redialling for a minute helps with a blip, not a line that's down for half an hour.",
+     "Double-checking every “no messages” works, but most of them were true.",
+     "Finding out next morning is after the caller was already let down.",
+     "Correct. Say “line down” when it's down, and “no messages” only when there are none."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the fix is to retry harder or check more</b>. The real fault is that the tool reports two opposite facts the same way. Once an outage comes back as a <b>structured error</b>, and an empty list means only “none”, the agent can make the right choice.",
+    "diagram": "store down  → isError, transient, isRetryable: true\nstore up, 0 → [] (valid empty result)",
+    "mapTitle": "A tool came back empty. What should it have said?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool should return",
+      "Agent can then"
+     ],
+     "rows": [
+      [
+       "Store reachable, nothing filed",
+       "Empty list, success",
+       "Proceed"
+      ],
+      [
+       "Store unreachable for a long time",
+       "<code>isError</code>, transient, retryable",
+       "Hold or retry later"
+      ],
+      [
+       "Brief blip of a few seconds",
+       "Retry inside the tool first",
+       "Never see the blip"
+      ],
+      [
+       "Bad input to the tool",
+       "Validation error, not retryable",
+       "Fix the input"
+      ],
+      [
+       "Policy forbids the action",
+       "Business error with an explanation",
+       "Explain or escalate"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It returns an empty list both when there are none and when the document store is unreachable",
+      "means": "The decider: two opposite facts share one value. Holding all empties (<b>[[1]]</b>) works around it."
+     },
+     {
+      "quote": "The store goes offline for about half an hour each night, during the extraction run",
+      "means": "Outages are long, so a one-minute retry (<b>[[0]]</b>) still ends in a false “none”."
+     },
+     {
+      "quote": "Contract holders were told the client lacked required cover",
+      "means": "The harm happens at posting. A check after posting (<b>[[2]]</b>) is too late."
+     },
+     {
+      "quote": "What is the right fix?",
+      "means": "Report the outage as an error: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Distinguish access failures from valid empty results; return a structured, retryable error for an outage.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "distinguish access failures from valid empty results"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-09",
+   "was": "s6-09",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Prompt chaining",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "One prompt does four jobs in a single call. It sorts each document by type, extracts its fields, standardises the limits and checks them against the client's contract. Accuracy dropped when the contract checks were added. When an endorsement is read as a certificate, every later step is wrong but looks consistent. Every document takes the same four steps in the same order. What is the <b>best restructuring</b>?",
+   "options": [
+    {
+     "t": "Give a coordinator agent the four jobs as tools, and let it pick each next step from the last result.",
+     "why": "Works, but overbuilt. Dynamic decomposition suits work whose next step depends on what is found. Every document takes the same four steps, so a coordinator adds cost and variability.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Keep one call, and add an independent reviewer instance that checks the full output before posting.",
+     "why": "Works, but too late. A fresh reviewer catches some errors, but a misread type produces output that looks consistent, and the one call still juggles four jobs.",
+     "trap": "too late"
+    },
+    {
+     "t": "Split the work into four calls in sequence, with the document type from the first picking the schema.",
+     "why": "Best. A fixed sequence of dependent steps is what prompt chaining is for. Each call has one job, and the type becomes an output that can be checked before extraction relies on it."
+    },
+    {
+     "t": "Keep one call, and reorganise the prompt into four headed sections with the type instructions first.",
+     "why": "Works, but only tidier. Headings make the prompt easier to follow, but four jobs still compete in one pass, with no checkpoint after sorting.",
+     "trap": "only tidier"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Every document takes the same four steps in the same order.",
+   "explanation": "Prompt chaining suits a fixed sequence of dependent steps: each step does one job, and each intermediate result can be checked. Adaptive decomposition is for work whose next step depends on what is found.",
+   "eli5": {
+    "question": "One big prompt does four jobs at once and gets worse as jobs are added. The clue: every document takes the <i>same four steps</i>, in the <i>same order</i>.",
+    "answer": "A small kitchen where one cook takes the order, preps, cooks and plates at once makes mistakes. An assembly line, with one station per step, works better when every dish follows the same route. Each station checks what it receives. That is <b>prompt chaining</b>: a fixed sequence of focused calls. <b>Rule: same steps every time → a fixed chain. Steps depend on what you find → a coordinator.</b>",
+    "options": [
+     "A head chef deciding each next step is great for unusual orders. Here every dish follows the same route.",
+     "A taster at the end helps, but a wrong order that's cooked well still looks fine.",
+     "Correct. One station per step, and the first station's ticket decides the recipe.",
+     "Writing the recipe in neat sections doesn't give the cook fewer jobs at once."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>more agent autonomy is more robust</b>. Adaptive decomposition is for work whose next step depends on what is found. When every document follows the same dependent steps, a <b>fixed chain</b> of focused calls is simpler and more predictable, and it creates a checkpoint after each step.",
+    "diagram": "classify → extract(schema by type) → standardise → check\n   ↑ type can be checked here",
+    "mapTitle": "How should this multi-step work be split?",
+    "map": {
+     "head": [
+      "Situation",
+      "Structure",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Same steps in the same order every time",
+       "Prompt chain",
+       "Focused calls, checkpoints between"
+      ],
+      [
+       "Next step depends on what was found",
+       "Coordinator with dynamic subtasks",
+       "Adapts to findings"
+      ],
+      [
+       "Many files, each analysed alone",
+       "Per-file passes plus integration",
+       "Avoids attention dilution"
+      ],
+      [
+       "Subtle errors in finished output",
+       "Independent review instance",
+       "Fresh eyes catch more"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "One prompt does four jobs in a single call",
+      "means": "Four jobs compete in one pass. Headings (<b>[[3]]</b>) keep that."
+     },
+     {
+      "quote": "Accuracy dropped when the contract checks were added",
+      "means": "Each job added dilutes the others."
+     },
+     {
+      "quote": "When an endorsement is read as a certificate, every later step is wrong but looks consistent",
+      "means": "The type needs its own checkpoint. A reviewer at the end (<b>[[1]]</b>) sees consistent output."
+     },
+     {
+      "quote": "Every document takes the same four steps in the same order",
+      "means": "The decider. A fixed sequence, so a coordinator (<b>[[0]]</b>) is more than needed. Chain it: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Fixed sequence of dependent steps → prompt chaining. Steps that depend on findings → adaptive decomposition.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings"
+    }
+   }
+  },
+  {
+   "id": "m4p-s6-10",
+   "was": "s6-10",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Prerequisite ordering",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After extraction, enrichment tools look up the carrier's financial rating and the client's contract terms. They need the carrier and document type that <code>extract_metadata</code> establishes. In about 8% of runs, the model calls an enrichment tool first, with a carrier guessed from the file name. In another 3%, it replies in prose on its first turn and calls no tool. How can metadata <b>come first on every request</b>?",
+   "options": [
+    {
+     "t": "Set <code>tool_choice</code> to <code>{\"type\": \"tool\", \"name\": \"extract_metadata\"}</code> on the first request, then auto.",
+     "why": "Best. Forcing the named tool makes the first call <code>extract_metadata</code> on every request. It fixes both failures: enrichment can't go first, and the model can't answer in prose."
+    },
+    {
+     "t": "Expand the enrichment tools' descriptions to say the carrier must come from <code>extract_metadata</code> output.",
+     "why": "Works, but only usually. Clearer descriptions improve tool selection but stay probabilistic, and they do nothing for the prose replies.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a pre-call hook that rejects enrichment calls until <code>extract_metadata</code> has returned, naming it.",
+     "why": "Works, but half the problem. A prerequisite gate blocks enrichment from going first, but it can't make the model call any tool, so the prose replies still skip the metadata step.",
+     "trap": "half the problem"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>{\"type\": \"any\"}</code> for the opening turn, and keep it until metadata exists.",
+     "why": "Works, but half the problem. “any” stops the prose replies, but the model can still pick an enrichment tool first.",
+     "trap": "half the problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "In another 3%, it replies in prose on its first turn and calls no tool.",
+   "explanation": "tool_choice answers different questions: auto lets the model decide, any requires some tool, and a forced named tool requires that one. Use the forced setting when a particular tool must run first.",
+   "eli5": {
+    "question": "The model sometimes skips the metadata step, either by calling another tool first or by just writing text. The clue: <i>two</i> different failures, and one of them calls no tool at all.",
+    "answer": "A nurse must take your details before the doctor sees you. A guard who stops you seeing the doctor first fixes one problem, but not patients who walk out without seeing anyone. Saying “your first stop is the details desk, no exceptions” fixes both. That is a <b>forced <code>tool_choice</code></b> naming <code>extract_metadata</code>. <b>Rule: a specific tool must run first → force that tool by name.</b>",
+    "options": [
+     "Correct. The first stop is fixed to the details desk for everyone.",
+     "Better signs help most patients, but some still go the wrong way, and the ones who walk out aren't helped.",
+     "A guard at the doctor's door stops the wrong order, not patients who walk out.",
+     "“See someone first” stops walk-outs, but they might still see the doctor before the details desk."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a prerequisite gate is always the strongest ordering fix</b>. A gate blocks a wrong call; it cannot make the model call anything. Here some runs call no tool at all. <code>tool_choice</code> can force a <b>specific named tool</b> on the first request, which fixes both failures.",
+    "diagram": "auto  → may answer in prose\nany   → some tool, maybe enrichment\ntool: extract_metadata → that tool, first",
+    "mapTitle": "Which tool_choice (or gate) fits the failure?",
+    "map": {
+     "head": [
+      "Failure",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A specific tool must run first",
+       "Forced named <code>tool_choice</code>",
+       "That tool, every time"
+      ],
+      [
+       "Model replies in text, any tool is fine",
+       "<code>tool_choice: any</code>",
+       "Some tool, not text"
+      ],
+      [
+       "Wrong call order, model does call tools",
+       "Prerequisite gate in a hook",
+       "Blocks until the prerequisite ran"
+      ],
+      [
+       "Model picks the wrong similar tool",
+       "Better tool descriptions",
+       "Descriptions drive selection"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "They need the carrier and document type that extract_metadata establishes",
+      "means": "A strict ordering need."
+     },
+     {
+      "quote": "In about 8% of runs, the model calls an enrichment tool first",
+      "means": "One failure: wrong order. A gate (<b>[[2]]</b>) handles this; “any” (<b>[[3]]</b>) does not."
+     },
+     {
+      "quote": "In another 3%, it replies in prose on its first turn and calls no tool",
+      "means": "The decider. A gate can't force a call, and descriptions (<b>[[1]]</b>) don't help prose replies."
+     },
+     {
+      "quote": "How can metadata come first on every request?",
+      "means": "Force the named tool: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "A particular tool must run first → force it by name with tool_choice. “any” only guarantees some tool.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment); \"any\" guarantees a tool call rather than text"
+    }
+   }
+  }
+ ]
+}

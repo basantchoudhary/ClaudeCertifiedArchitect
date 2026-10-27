@@ -1,0 +1,1044 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m4p-s5-01",
+   "was": "s5-01",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Non-interactive CI invocation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The review job runs <code>claude \"Check this diff for injection risks\"</code> in a workflow step. The engineer tested it in a terminal, where she read the answer and typed <code>/exit</code>. On the runner, the step sits idle until the job's time limit cancels it. The next step, which turns the reply into comments, then has nothing to read. What should the review step <b>run instead</b>?",
+   "options": [
+    {
+     "t": "Wrap the command in an <code>expect</code> script that sends <code>/exit</code> once the answer appears.",
+     "why": "Works, but a workaround. It fakes the person at the keyboard, and it must guess when the answer is finished. The CLI already has a mode that needs no person.",
+     "trap": "workaround"
+    },
+    {
+     "t": "Set a short time limit on the step so a stuck run fails within minutes, not hours.",
+     "why": "Works, but hides the problem. The job fails sooner and wastes fewer runner hours, but it still produces no review.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Run <code>claude -p</code> with the same prompt, and have the next step read its standard output.",
+     "why": "Best. <code>-p</code> (<code>--print</code>) is non-interactive mode: Claude answers once, prints the reply and exits, so nothing waits for a person."
+    },
+    {
+     "t": "Replace the step with a script that sends the diff to the Messages API and prints the reply.",
+     "why": "Works, but overbuilt. A direct API call does finish, but it rebuilds the job by hand and gives up the Claude Code setup the repository already commits.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The engineer tested it in a terminal, where she read the answer and typed /exit.",
+   "explanation": "In CI, Claude Code runs in print mode (-p / --print): one prompt in, one answer out, then exit. Without it the CLI waits for a person to type the next turn.",
+   "eli5": {
+    "question": "A command that worked in a terminal hangs forever in CI. The clue: in the terminal, a person <i>typed /exit</i> to finish it. On the runner, nobody is there to type.",
+    "answer": "Think of a phone call that only ends when someone hangs up. In a terminal, the engineer hung up by typing <code>/exit</code>. In CI nobody is on the line, so the call stays open. Claude Code has a “leave a message” mode instead: <code>claude -p</code> (print mode) answers once, prints the reply and hangs up by itself. <b>Rule: Claude Code in a script or CI → always use -p.</b>",
+    "options": [
+     "A robot that hangs up for you works, but it has to guess when the other side is done talking.",
+     "Cutting the call off sooner saves time, but you still get no message.",
+     "Correct. Leave-a-message mode: answer once, then hang up by itself.",
+     "Writing your own phone works, but you already own one with the right button."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a hang in CI needs a timeout or a trick to end the session</b>. The real cause is simpler: plain <code>claude \"...\"</code> starts an <i>interactive</i> session that waits for the next turn. The supported answer is <b>print mode</b>, <code>-p</code>, which is built for scripts.",
+    "diagram": "claude \"...\"     → answers, then waits for input (hang)\nclaude -p \"...\"  → answers, prints, exits (CI-safe)",
+    "mapTitle": "Claude Code in CI misbehaves. What fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Step hangs until the job is cancelled",
+       "Interactive session waiting for input",
+       "<code>claude -p</code>"
+      ],
+      [
+       "Step finishes, script can't parse the reply",
+       "Free-text output",
+       "<code>--output-format json</code> + <code>--json-schema</code>"
+      ],
+      [
+       "CI ignores team conventions",
+       "Context not in the repository",
+       "Project <code>CLAUDE.md</code>"
+      ],
+      [
+       "Review misses problems in its own code",
+       "Same session wrote and reviews",
+       "Independent review instance"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The engineer tested it in a terminal, where she read the answer and typed /exit",
+      "means": "The decider. The command is interactive: it only ends when a person ends it. An <code>expect</code> script (<b>[[0]]</b>) fakes that person instead of not needing one."
+     },
+     {
+      "quote": "On the runner, the step sits idle until the job's time limit cancels it",
+      "means": "Nobody types the next turn on the runner. A shorter timeout (<b>[[1]]</b>) only makes the failure quicker."
+     },
+     {
+      "quote": "The next step, which turns the reply into comments, then has nothing to read",
+      "means": "The empty input is a symptom of the hang, not a separate problem."
+     },
+     {
+      "quote": "What should the review step run instead?",
+      "means": "Keep Claude Code and its committed setup; switch it to print mode: <b>[[2]]</b>. Rebuilding on the raw API (<b>[[3]]</b>) is more work than the fix needs."
+     }
+    ],
+    "rule": "Claude Code in a pipeline → claude -p. It answers once and exits.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "-p / --print = non-interactive mode (no input hang)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-02",
+   "was": "s5-02",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-parseable output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The review job runs <code>claude -p</code>, and its findings come back as markdown. A Python script uses regular expressions to pull out the file, line and message for each inline comment. Some comments land on the wrong line. On some runs nothing posts, because a heading came back in a style the patterns don't expect. Only the script reads this output. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add two sample findings to the prompt, in the exact heading and bullet style the patterns expect.",
+     "why": "Works, but only usually. Examples make the layout steadier, but the script still parses prose, and the next unexpected shape breaks it again.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add <code>--output-format json</code> and a <code>--json-schema</code> with file, line, severity and message.",
+     "why": "Best. A program is the only reader, so it should get named fields, not prose to re-parse. The schema makes file and line values instead of patterns to guess."
+    },
+    {
+     "t": "Make the patterns accept more heading and list styles, with a test for each failure seen so far.",
+     "why": "Works, but treats the symptom. Each fix covers one shape the script has already met, and the next new shape fails again.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Review each changed file in its own run, so the script knows the file and parses only line and message.",
+     "why": "Works, but different problem. Per-file runs help attention on big diffs, but line and message are still pulled out of free text.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Only the script reads this output.",
+   "explanation": "When a program consumes Claude Code output in CI, declare its shape: --output-format json with --json-schema gives the posting script fields to read instead of prose to parse.",
+   "eli5": {
+    "question": "A script reads Claude's markdown with patterns and keeps breaking. The clue: <i>only the script reads this output</i>, so nobody needs nice prose.",
+    "answer": "Asking someone to write a letter you then cut up with scissors is fragile. Handing them a form with labelled boxes is not. For Claude Code the form is <code>--output-format json</code> plus a <code>--json-schema</code> naming the boxes: file, line, severity, message. <b>Rule: a program reads it → structured output from the CLI, not prose.</b>",
+    "options": [
+     "A sample letter helps the writer, but you are still cutting up letters.",
+     "Correct. A form with labelled boxes the script can read directly.",
+     "Sharper scissors cut the letters you've seen; the next odd letter still tears.",
+     "One letter per file is shorter, but it is still a letter to cut up."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>parsing failures mean the prose needs to be more regular</b>, through examples or better patterns. That is still parsing prose. When a program is the only reader, the CLI can hand it <b>structured output</b>: JSON whose fields a schema fixes.",
+    "diagram": "claude -p ... --output-format json --json-schema f.json\n  → [{\"file\":..., \"line\":..., \"message\":...}]",
+    "mapTitle": "Who reads the output, and what do they need?",
+    "map": {
+     "head": [
+      "Reader and need",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A script needs named fields",
+       "<code>--output-format json</code> + <code>--json-schema</code>",
+       "Fields, not prose"
+      ],
+      [
+       "A person reads it; layout varies",
+       "Format examples in the prompt",
+       "Steady enough for people"
+      ],
+      [
+       "Large diff, uneven attention",
+       "Per-file passes + integration pass",
+       "Focus, not format"
+      ],
+      [
+       "Run hangs waiting for input",
+       "<code>-p</code> / <code>--print</code>",
+       "Non-interactive mode"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A Python script uses regular expressions to pull out the file, line and message for each inline comment",
+      "means": "A program is parsing free text to recover fields."
+     },
+     {
+      "quote": "On some runs nothing posts, because a heading came back in a style the patterns don't expect",
+      "means": "The layout drifts. Examples (<b>[[0]]</b>) and wider patterns (<b>[[2]]</b>) chase the drift instead of removing it."
+     },
+     {
+      "quote": "Only the script reads this output",
+      "means": "The decider. No human needs prose, so ask for fields: <b>[[1]]</b>. Per-file runs (<b>[[3]]</b>) still leave line and message in prose."
+     }
+    ],
+    "rule": "A script consuming Claude Code findings → --output-format json + --json-schema.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings → inline PR comments"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-03",
+   "was": "s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Project context in CI",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The test generator keeps writing tests for generated API client code, which the team leaves untested on purpose. It also uses mock factories that the team replaced with builders last year. Developers get the same advice from Claude Code on their laptops. The testing conventions are already written up in <code>docs/testing.md</code>, which the platform team keeps current. Where should the fix <b>go</b>?",
+   "options": [
+    {
+     "t": "In the test generator's workflow step, as testing conventions passed with <code>--append-system-prompt</code>.",
+     "why": "Works, but covers only CI. The generator would improve, but laptops keep the old advice, and a second copy lives in a workflow file.",
+     "trap": "covers only CI"
+    },
+    {
+     "t": "In a project skill in <code>.claude/skills/testing/</code> that the generator's prompt invokes.",
+     "why": "Works, but only when invoked. CI would call it, but developers on laptops must remember to, and standards should apply in every session.",
+     "trap": "only when invoked"
+    },
+    {
+     "t": "In a <code>.claude/rules/</code> file with a copy of the conventions and <code>paths:</code> for test files.",
+     "why": "Works, but a second copy. It would load for test files everywhere, but it duplicates a document the platform team already maintains, and the two drift.",
+     "trap": "second copy"
+    },
+    {
+     "t": "In the committed project <code>CLAUDE.md</code>, as an <code>@import</code> of <code>docs/testing.md</code>.",
+     "why": "Best. Project memory loads in every Claude Code session in the repository, in CI and on laptops. The import reuses the document the platform team already keeps current."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "The testing conventions are already written up in docs/testing.md, which the platform team keeps current.",
+   "explanation": "CLAUDE.md is where a repository gives every Claude Code session its testing standards and fixtures, in CI and locally. @import lets it reference an existing document instead of copying it.",
+   "eli5": {
+    "question": "Claude writes outdated tests both in CI and on laptops. The team already has a good testing guide. The clue: <i>everyone</i> gets the bad advice, and the guide <i>already exists</i>.",
+    "answer": "The team already has a handbook, but nobody gave Claude a copy. The fix is to clip the handbook into the team's noticeboard, the committed project <code>CLAUDE.md</code>, with an <code>@import</code> line. Every session reads the noticeboard, and the platform team keeps editing the one handbook. <b>Rule: project standards → project CLAUDE.md, and @import a document that already exists.</b>",
+    "options": [
+     "Telling only the CI worker fixes CI; people on laptops still get the old advice.",
+     "A manual someone has to open helps only the people who remember to open it.",
+     "A photocopy pinned by the test files works until the handbook changes and the copy doesn't.",
+     "Correct. Pin the real handbook to the board everyone reads."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a CI problem needs a CI fix</b>. Laptops show the same wrong advice, so the gap is in the project context every session shares. That is the job of the committed <b>project CLAUDE.md</b>, and <code>@import</code> lets it point at the document the team already maintains.",
+    "diagram": "CLAUDE.md:  @docs/testing.md\n  → CI test job, CI review, every laptop session",
+    "mapTitle": "Where should a team convention live?",
+    "map": {
+     "head": [
+      "Who needs it, when",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every session, CI and laptops",
+       "Project <code>CLAUDE.md</code> (with <code>@import</code>)",
+       "Always loaded; one source"
+      ],
+      [
+       "Only files matching a pattern, written fresh",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads for matching files"
+      ],
+      [
+       "One CI job only",
+       "<code>--append-system-prompt</code> in the workflow",
+       "Job-specific instruction"
+      ],
+      [
+       "A task someone runs on request",
+       "Skill in <code>.claude/skills/</code>",
+       "Loads when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The test generator keeps writing tests for generated API client code, which the team leaves untested on purpose",
+      "means": "Claude doesn't know the team's testing standards."
+     },
+     {
+      "quote": "Developers get the same advice from Claude Code on their laptops",
+      "means": "Not a CI-only gap. A workflow flag (<b>[[0]]</b>) fixes one job; a skill (<b>[[1]]</b>) needs someone to invoke it."
+     },
+     {
+      "quote": "The testing conventions are already written up in docs/testing.md, which the platform team keeps current",
+      "means": "The decider. Reuse that document: <b>[[3]]</b>. A copy in a rules file (<b>[[2]]</b>) drifts from it."
+     }
+    ],
+    "rule": "Testing standards for every session → project CLAUDE.md; @import an existing document instead of copying it.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "CLAUDE.md provides project context (testing standards, fixtures, review criteria)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-04",
+   "was": "s5-04",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Session context isolation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "To save a runner start-up, one <code>claude -p</code> call does two jobs. It writes tests for the new endpoints, then reviews the whole pull request, new tests included. Human reviewers keep finding generated tests that assert on the wrong thing. The automated review has not flagged one of them. Its prompt lists only general quality checks. What would <b>most improve</b> the review of generated tests?",
+   "options": [
+    {
+     "t": "Run the review as a separate <code>claude -p</code> call that gets the diff but no generation turns.",
+     "why": "Best. The combined session still holds the reasoning that wrote the tests, so it reads them as settled. A fresh instance checks them the way the human reviewers do."
+    },
+    {
+     "t": "Add a review check that each assertion tests the behaviour that the test's name describes.",
+     "why": "Works, but leaves the cause. Explicit criteria help any reviewer, but this reviewer is checking tests it has just decided were right.",
+     "trap": "leaves the cause"
+    },
+    {
+     "t": "Turn on extended thinking for the review half, with room to re-derive each test's intent.",
+     "why": "Works, but same blind spot. More reasoning in the same context still starts from the generation reasoning.",
+     "trap": "same blind spot"
+    },
+    {
+     "t": "Split the review into per-file passes plus one cross-file pass over source and new tests.",
+     "why": "Works, but different problem. Multi-pass review fixes thin attention on large diffs. The problem here is that the reviewer wrote what it reviews.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "one claude -p call does two jobs",
+   "explanation": "A session is a weak reviewer of its own output, because it keeps the reasoning that produced it. An independent instance with no generation history catches more than self-review, even with extended thinking.",
+   "eli5": {
+    "question": "The same Claude call writes tests and then reviews them, and its review never finds the bad tests humans find. The clue: <i>one call does two jobs</i>.",
+    "answer": "Marking your own homework rarely finds your mistakes: you read what you meant, not what you wrote. A different marker catches them. Here that means a separate <code>claude -p</code> call that sees the diff but not the reasoning that wrote the tests (an <b>independent review instance</b>). <b>Rule: never let the writer review its own work in the same session.</b>",
+    "options": [
+     "Correct. A fresh marker who never saw the working.",
+     "A sharper marking scheme helps, but the student is still marking their own homework.",
+     "Thinking longer about your own answers mostly convinces you they're right.",
+     "Marking page by page helps with long homework, but it's still your own homework."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a review that misses problems needs better criteria or more thinking</b>. Those help an independent reviewer. Here the reviewer is the same session that wrote the tests, so it keeps the reasoning behind them and tends to agree with itself. The fix is <b>who reviews</b>.",
+    "diagram": "now:  one session: write tests → review PR → approve\nfix:  session A writes → fresh claude -p reviews diff",
+    "mapTitle": "A review step misses problems. What's wrong with it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Reviewer is the session that wrote the code",
+       "Separate review instance",
+       "No shared reasoning"
+      ],
+      [
+       "Independent reviewer lacks a specific check",
+       "Explicit criteria for that check",
+       "Says what counts"
+      ],
+      [
+       "Large diff reviewed in one pass",
+       "Per-file passes + cross-file pass",
+       "Avoids thin attention"
+      ],
+      [
+       "Hard reasoning, independent reviewer",
+       "Extended thinking",
+       "More room to reason"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "one claude -p call does two jobs",
+      "means": "The decider. The writer and the reviewer share one context."
+     },
+     {
+      "quote": "Human reviewers keep finding generated tests that assert on the wrong thing",
+      "means": "Independent readers catch what the session misses."
+     },
+     {
+      "quote": "Its prompt lists only general quality checks",
+      "means": "Criteria (<b>[[1]]</b>) would help, but the same session would still apply them to its own tests."
+     },
+     {
+      "quote": "What would most improve the review of generated tests?",
+      "means": "Change the reviewer, not its effort: <b>[[0]]</b>. Extended thinking (<b>[[2]]</b>) and more passes (<b>[[3]]</b>) keep the same reviewer."
+     }
+    ],
+    "rule": "Generated code is reviewed by a separate instance, not by the session that wrote it.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "the session that generated code is less effective at reviewing its own changes than an independent instance"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-05",
+   "was": "s5-05",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria & precision",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Developers act on few of the review's findings. The biggest group says a doc comment is out of date, and most of those comments are fine. That group comes from one prompt line: “keep code documentation trustworthy”. Developers now skim past the whole review, including its accurate security findings. What change <b>most improves precision</b>?",
+   "options": [
+    {
+     "t": "Add three sample findings of stale doc comments, each with its file, line and suggested fix.",
+     "why": "Works, but too early. Examples steady the shape of findings, but they rest on a goal with no boundary, so Claude still guesses what counts.",
+     "trap": "too early"
+    },
+    {
+     "t": "Have a second instance score each finding, and post only the ones it rates high.",
+     "why": "Works, but overbuilt. A grader cuts some noise, but it judges against the same vague “trustworthy” and doubles the cost of every review.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Reword that line: flag a doc comment only when what it claims differs from what the code does.",
+     "why": "Best. “Trustworthy” has no boundary, so almost any comment can be flagged. A condition comparing claim and code can be checked, and explicit criteria are what raise precision."
+    },
+    {
+     "t": "Post doc-comment findings in a folded summary at the end, not as inline comments.",
+     "why": "Works, but hides the problem. Security findings stand out again, but the doc-comment findings are as wrong as before.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "That group comes from one prompt line: “keep code documentation trustworthy”.",
+   "explanation": "Vague goals produce vague findings. Replace a goal like “trustworthy” with a condition checkable against the code, because a noisy category erodes trust in the accurate findings too.",
+   "eli5": {
+    "question": "One vague prompt line creates lots of wrong findings, and people now ignore the whole review. The clue: the line says <i>trustworthy</i>, which has no clear edge.",
+    "answer": "Telling a proofreader “make sure the captions are good” gets every caption flagged. Telling them “flag a caption only when it describes something not in the picture” gets the real errors. That is an <b>explicit criterion</b>: a test Claude can check against the code. <b>Rule: replace vague goals with conditions you can check.</b>",
+    "options": [
+     "Showing sample corrections helps, but the proofreader still doesn't know which captions count.",
+     "A second proofreader with the same vague brief is just as unsure, and twice the cost.",
+     "Correct. Give a test: flag it only when the words don't match the picture.",
+     "Moving the corrections to the back hides them, but they are still wrong."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a noisy category needs examples, a filter or a quieter place</b>. Those treat its output. The cause is the instruction: “trustworthy” has no boundary. The exam guide's fix is an <b>explicit criterion</b>, for example flag a comment only when its claim contradicts the code.",
+    "mapTitle": "Too many false findings. What sharpens them?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "One category is mostly false flags",
+       "Vague goal in the prompt",
+       "Explicit, checkable criterion"
+      ],
+      [
+       "Criterion clear, findings' shape varies",
+       "Prose underspecifies output",
+       "A few worked examples"
+      ],
+      [
+       "Prompt says “only if highly confident”",
+       "Confidence wording",
+       "Swap for categories"
+      ],
+      [
+       "Category can't be made precise yet",
+       "No good test exists",
+       "Turn it off for now"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The biggest group says a doc comment is out of date, and most of those comments are fine",
+      "means": "One category is mostly false positives."
+     },
+     {
+      "quote": "That group comes from one prompt line: “keep code documentation trustworthy”",
+      "means": "The decider. The cause is a vague goal. Examples (<b>[[0]]</b>) and a grader (<b>[[1]]</b>) both inherit it."
+     },
+     {
+      "quote": "Developers now skim past the whole review, including its accurate security findings",
+      "means": "The noise costs trust in good findings. Folding it away (<b>[[3]]</b>) hides it without fixing it."
+     },
+     {
+      "quote": "What change most improves precision?",
+      "means": "Precision comes from what counts as a finding: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "A vague goal makes false positives; rewrite it as a condition Claude can check against the code.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions (\"flag comments only when claimed behavior contradicts actual code\" vs \"check comments are accurate\")"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-06",
+   "was": "s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for consistency",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The review prompt defines each severity level with a clear test, such as “reachable from an unauthenticated request”. Most findings get the same level on every run. A possible null dereference on a guarded path was marked critical on one pull request and minor on another. The swings happen where two of the tests seem to apply at once. What <b>most improves</b> consistency?",
+   "options": [
+    {
+     "t": "Add more conditions to each level's definition to cover guarded and partly guarded paths.",
+     "why": "Works, but more of the same. Sharper wording helps when levels are vague. These are already clear tests, and more conditions add more to weigh at the boundary.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Add a few borderline findings, each with the level chosen and why the other level lost.",
+     "why": "Best. The written tests are fine; the inconsistency sits where two of them overlap. Examples that show the reasoning on borderline cases make those calls consistent."
+    },
+    {
+     "t": "Run the review three times, and post each finding at the level most runs gave it.",
+     "why": "Works, but overbuilt. Voting smooths some swings, but it triples the cost of a check developers wait on, and it hides the boundary rather than teaching it.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Ask Claude to reason step by step through each test before it picks a level.",
+     "why": "Works, but only usually. Reasoning helps a little, but at the boundary two tests still fit, and Claude has nothing showing which one wins.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The swings happen where two of the tests seem to apply at once.",
+   "explanation": "When instructions are already explicit but output still varies on borderline cases, few-shot examples are the most effective fix. Choose boundary cases and show why one level beat the other.",
+   "eli5": {
+    "question": "Severity rules are clear and work most of the time, but borderline findings flip between levels. The clue: the swings happen where <i>two tests apply at once</i>.",
+    "answer": "A referee who knows the rulebook still calls borderline fouls differently. What helps is watching replays of borderline calls with the reason for each decision. For Claude, those replays are <b>few-shot examples</b>: a few boundary findings, each with the level chosen and why the other lost. <b>Rule: clear rules but inconsistent borderline calls → show worked examples.</b>",
+    "options": [
+     "A thicker rulebook gives the referee more rules to weigh against each other.",
+     "Correct. Replays of borderline calls, with the reason for each.",
+     "Three referees voting smooths some calls, at three times the cost, and none of them learns the boundary.",
+     "Thinking harder helps a little, but two rules still fit and nothing shows which wins."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>inconsistent output means the rules need more words</b>. Here the rules are clear tests and work on most findings. The swings sit at the <b>overlap</b> between two tests. The exam guide's fix for that is <b>few-shot examples</b> that show the reasoning on ambiguous cases.",
+    "mapTitle": "Output varies. Is it the rule or the boundary?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Clear tests, swings on borderline cases",
+       "Overlap between tests",
+       "2–4 boundary examples with reasons"
+      ],
+      [
+       "Levels described in vague words",
+       "No real test to apply",
+       "Explicit severity criteria"
+      ],
+      [
+       "One category mostly false flags",
+       "Vague goal",
+       "Checkable condition"
+      ],
+      [
+       "Review misses its own mistakes",
+       "Same session reviews",
+       "Independent instance"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The review prompt defines each severity level with a clear test",
+      "means": "The criteria are already explicit, so adding more conditions (<b>[[0]]</b>) is more of the same."
+     },
+     {
+      "quote": "Most findings get the same level on every run",
+      "means": "The rules work in clear cases."
+     },
+     {
+      "quote": "The swings happen where two of the tests seem to apply at once",
+      "means": "The decider. A boundary problem, which examples teach: <b>[[1]]</b>. Voting (<b>[[2]]</b>) and step-by-step reasoning (<b>[[3]]</b>) don't show which test wins."
+     }
+    ],
+    "rule": "Clear criteria, inconsistent borderline calls → a few worked boundary examples with the reason for each.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "2-4 targeted examples showing reasoning for the chosen action"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-07",
+   "was": "s5-07",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch processing suitability",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Finance wants the Message Batches discount used wherever it fits. Three jobs cost the most. The pull-request review is a required check, and developers wait for it before they can merge. A new nightly flaky-test summary is read at the morning stand-up. The weekly dependency-risk report is read at Monday planning. Which plan should the team <b>adopt</b>?",
+   "options": [
+    {
+     "t": "Batch the nightly summary and the weekly report, and keep the review on real-time calls.",
+     "why": "Best. The summary and the report are read hours later, so they take the discount. The review blocks a merge while someone waits, and batches promise no response time."
+    },
+    {
+     "t": "Batch all three, and have the review job poll for its result before it posts a status.",
+     "why": "Works, but blocks the merge. It saves the most, but batches can take up to a day with no latency promise, and the merge button waits that long.",
+     "trap": "blocks the merge"
+    },
+    {
+     "t": "Batch only the weekly report, and keep the nightly summary and review on real-time calls.",
+     "why": "Works, but misses savings. The report is a good fit, but the overnight summary is too, and it stays at full price.",
+     "trap": "misses savings"
+    },
+    {
+     "t": "Batch all three, and fall back to a real-time call when a review result is slow.",
+     "why": "Works, but overbuilt. For the blocking review the fallback would fire on most runs, so the team pays for both paths and keeps two code paths.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The pull-request review is a required check, and developers wait for it before they can merge.",
+   "explanation": "Message Batches save 50% but can take up to 24 hours with no latency guarantee. They suit overnight and weekly work, not checks that block a merge.",
+   "eli5": {
+    "question": "Finance wants the cheap, slow option wherever it fits. The clue: developers <i>wait</i> for the review before they can merge; nobody waits for the summary or the report.",
+    "answer": "Overnight post is half price but arrives whenever it arrives. It's fine for a letter read next week, not for a key someone is standing at the door waiting for. The <b>Message Batches API</b> is that overnight post: half price, up to a day, no promised time. <b>Rule: someone waiting → real-time. Read later → batch.</b>",
+    "options": [
+     "Correct. Send the two letters read later by cheap post, and hand-deliver the key.",
+     "Sending the key by cheap post and checking the mailbox leaves someone stuck at the door.",
+     "Only one letter goes by cheap post; the other one could have too.",
+     "Cheap post with a courier backup for the key means paying for the courier almost every time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the biggest saving is the best plan</b>. The Message Batches API is half price but has no latency promise, up to 24 hours. It fits work read later and does not fit a <b>blocking</b> check that people wait on.",
+    "mapTitle": "Does this job fit the Message Batches API?",
+    "map": {
+     "head": [
+      "Job",
+      "Who waits?",
+      "Interface"
+     ],
+     "rows": [
+      [
+       "Required pre-merge review",
+       "A developer, now",
+       "Real-time"
+      ],
+      [
+       "Nightly summary read at stand-up",
+       "Nobody until morning",
+       "Batch"
+      ],
+      [
+       "Weekly report read Monday",
+       "Nobody for days",
+       "Batch"
+      ],
+      [
+       "Advisory review nobody waits on",
+       "Nobody",
+       "Batch could fit"
+      ],
+      [
+       "Job needing multi-turn tool calls",
+       "Any",
+       "Real-time (no tool loop in a batch)"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Finance wants the Message Batches discount used wherever it fits",
+      "means": "The goal is to save where it fits, not everywhere."
+     },
+     {
+      "quote": "The pull-request review is a required check, and developers wait for it before they can merge",
+      "means": "The decider. Blocking work stays real-time. Polling (<b>[[1]]</b>) holds the merge; a fallback (<b>[[3]]</b>) runs two paths."
+     },
+     {
+      "quote": "A new nightly flaky-test summary is read at the morning stand-up",
+      "means": "Latency-tolerant, so it should be batched too, which <b>[[2]]</b> misses."
+     },
+     {
+      "quote": "Which plan should the team adopt?",
+      "means": "Batch the two read-later jobs, keep the review real-time: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Batch what is read later; keep anything someone waits on real-time.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits); bad for blocking (pre-merge)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-08",
+   "was": "s5-08",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch API limitations",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A new nightly job sorts each file's technical debt into classes through the Message Batches API. Each request offers a <code>get_git_blame</code> tool, since who changed the code and when affects the class. Every result now ends with <code>stop_reason</code> “tool_use”, a blame call for that file, and no class. The workflow has the repository checked out. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Move the job back to real-time requests that run the tool loop, and accept the higher cost.",
+     "why": "Works, but gives up the discount. Real-time calls run the tool loop, but every request needs the same predictable data, which can be fetched first.",
+     "trap": "gives up the discount"
+    },
+    {
+     "t": "Drop the blame tool, and have Claude classify each file from its content alone.",
+     "why": "Works, but loses data. Every request finishes, but the classes ignore who changed the code and when, which the team says matters.",
+     "trap": "loses data"
+    },
+    {
+     "t": "Answer each stopped request in a second batch, with its blame result added as a new turn.",
+     "why": "Works, but overbuilt. A second round can finish the job, but each tool call costs another batch wait, and the data was known up front.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Run <code>git blame</code> before submitting, and put each file's output in its own request.",
+     "why": "Best. A batch request cannot run a tool loop. The blame data is predictable, so supplying it up front keeps the job on the cheaper interface."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Every result now ends with stop_reason “tool_use”, a blame call for that file, and no class.",
+   "explanation": "The Message Batches API does not support multi-turn tool calling within one request. When the tool data is predictable, fetch it first and put it in the request; when it is not, use real-time requests.",
+   "eli5": {
+    "question": "Batch requests stop as soon as Claude asks for a tool. The clue: every request asks for the <i>same, predictable</i> thing, a blame for its own file, and the workflow can get it.",
+    "answer": "A batch is like a letter: you can't phone mid-letter to ask a question. If you already know the writer will ask “who last changed this file?”, you put the answer in the envelope. Here that means running <code>git blame</code> first and putting each file's output in its request. <b>Rule: batches can't run tool loops; if the tool data is predictable, send it in the request.</b>",
+    "options": [
+     "Switching to phone calls works, but costs double when one sheet in the envelope would do.",
+     "Removing the question means the letter is answered without facts the team says matter.",
+     "Mailing the answer back and waiting for another letter works, but it's slow and the answer was known all along.",
+     "Correct. Put the blame output in the envelope from the start."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a batch that stops on <code>tool_use</code> needs a different interface</b>. The Message Batches API cannot continue a tool loop inside one request. But when the tool data is <b>predictable</b>, you can fetch it first and include it, and keep the batch discount.",
+    "diagram": "now:  batch req → Claude: tool_use(get_git_blame) → stops\nfix:  git blame in workflow → blame text in each request\n      → Claude classifies → end_turn",
+    "mapTitle": "A job needs extra data. How do you get it to Claude?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Batch job, tool data predictable",
+       "Fetch first, include in the request",
+       "Keeps the discount"
+      ],
+      [
+       "Data depends on what Claude finds",
+       "Real-time requests with a tool loop",
+       "Batches can't loop"
+      ],
+      [
+       "Tool data adds nothing to the result",
+       "Drop the tool",
+       "Simpler request"
+      ],
+      [
+       "Some batch requests failed",
+       "Resubmit those by <code>custom_id</code>",
+       "Only redo what failed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each request offers a get_git_blame tool, since who changed the code and when affects the class",
+      "means": "The blame data matters, so dropping it (<b>[[1]]</b>) lowers quality."
+     },
+     {
+      "quote": "Every result now ends with stop_reason “tool_use”, a blame call for that file, and no class",
+      "means": "The decider. Each request needs the same predictable data, and a batch can't run the tool loop. Extra batch rounds (<b>[[2]]</b>) work around that slowly."
+     },
+     {
+      "quote": "The workflow has the repository checked out",
+      "means": "The data can be fetched before submitting: <b>[[3]]</b>. Going real-time (<b>[[0]]</b>) isn't needed."
+     }
+    ],
+    "rule": "Batch requests can't call tools in a loop; fetch predictable tool data first and include it.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Batch API does not support multi-turn tool calling in a single request"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-09",
+   "was": "s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Schema-compliant output",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The weekly report's summariser calls the Messages API. Its system prompt asks for a JSON array of risks in the reply text. Some replies will not parse: a trailing comma, an unescaped quote, or a sentence before the bracket. When that happens, the posting script drops that module from the report. Which change <b>removes these parse failures</b> at the source?",
+   "options": [
+    {
+     "t": "Define a <code>record_risks</code> tool whose input schema is the array, and force it in <code>tool_choice</code>.",
+     "why": "Best. Tool use with a JSON schema is the most reliable way to get schema-compliant output, and it removes JSON syntax errors at the source."
+    },
+    {
+     "t": "Add two complete sample replies to the prompt, with escaped quotes and no text before the array.",
+     "why": "Works, but only usually. Examples make valid JSON more likely, but nothing enforces it, and a few replies still break.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Prefill the reply with an opening bracket, and strip trailing commas before parsing.",
+     "why": "Works, but patches symptoms. Prefill stops the preamble and the repair fixes one shape, but an unescaped quote still breaks the parse.",
+     "trap": "patches symptoms"
+    },
+    {
+     "t": "Retry each reply that won't parse, with the parser's error added to the request.",
+     "why": "Works, but too late. Retry with specific errors often repairs the reply, but it pays for a second call to fix what a schema prevents.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "Which change removes these parse failures at the source?",
+   "explanation": "Tool use with a JSON schema eliminates JSON syntax errors. Retries, repairs and examples treat failures after or around the fact. Values still need checking in code, since schemas don't catch semantic errors.",
+   "eli5": {
+    "question": "Claude writes JSON as plain text and some replies are broken: a stray comma, a quote, a sentence before it. The clue: fix it <i>at the source</i>, not after.",
+    "answer": "Asking someone to type a table neatly still gives typos. Giving them a form with fixed boxes means the layout can't break. For the API, that form is a <b>tool with a JSON schema</b>: define <code>record_risks</code> and force it with <code>tool_choice</code>, and Claude's answer arrives as well-formed tool input. <b>Rule: need valid JSON every time → tool use with a schema.</b>",
+    "options": [
+     "Correct. A form with fixed boxes; the layout can't break.",
+     "A neat sample helps most typists, but some replies still have typos.",
+     "Fixing the two typos you've seen leaves the third kind, the stray quote.",
+     "Sending it back with the error fixes it, but only after a wasted round."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>broken JSON needs better instructions or a repair step</b>. Those reduce or patch errors. <b>Tool use with a JSON schema</b> removes the whole class of syntax errors. It doesn't check the meaning of values, which still needs validation in code.",
+    "diagram": "now:  prompt → reply text \"[ {...}, ]\" → parse fails\nfix:  tool_choice = record_risks → tool input (valid JSON)",
+    "mapTitle": "Output goes wrong. Syntax or meaning?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Kind of error",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Commas, quotes, preamble break parsing",
+       "Syntax",
+       "Tool use with a schema, forced"
+      ],
+      [
+       "Valid JSON, wrong or impossible values",
+       "Semantic",
+       "Validate in code, retry with the error"
+      ],
+      [
+       "Required field missing in source",
+       "Absent information",
+       "Nullable field, no retry"
+      ],
+      [
+       "Model replies in text, not a tool",
+       "Tool not forced",
+       "<code>tool_choice</code> any or named"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Its system prompt asks for a JSON array of risks in the reply text",
+      "means": "The format is only requested. Examples (<b>[[1]]</b>) still only request it."
+     },
+     {
+      "quote": "a trailing comma, an unescaped quote, or a sentence before the bracket",
+      "means": "Several kinds of syntax error. A repair for two of them (<b>[[2]]</b>) leaves the quote."
+     },
+     {
+      "quote": "Which change removes these parse failures at the source?",
+      "means": "The decider. At the source means before a reply is ever wrong, not a retry afterwards (<b>[[3]]</b>): <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Valid JSON every time → tool use with a JSON schema; check the values in code.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_use with JSON schemas = most reliable schema-compliant output (eliminates JSON syntax errors)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s5-10",
+   "was": "s5-10",
+   "sid": "s5",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Confidence calibration",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "A reviewer labelled a sample of recent review findings, and overall precision came out at 94%. The platform team now wants findings to block merges. Most findings in the sample are about null safety. Concurrency findings are rare but tied to past production incidents, and only a handful were in the sample. Only the overall figure was computed. What is the <b>best next step</b>?",
+   "options": [
+    {
+     "t": "Let findings block for a trial period, with an easy override, and track how often it is used.",
+     "why": "Works, but too late. Override rates show some errors, but bad blocks hit real merges first, and rare categories may never show up.",
+     "trap": "too late"
+    },
+    {
+     "t": "Label a new sample with a quota per category, and let each block once its own precision is high.",
+     "why": "Best. 94% is an average dominated by one common category. A quota per category measures each one, including the rare ones that matter most, before it can block."
+    },
+    {
+     "t": "Let only null-safety findings block for now, as they make up most of the well-scored sample.",
+     "why": "Works, but not measured yet. It is a sensible start, but only the overall figure exists, so null safety's own precision is still unknown.",
+     "trap": "not measured yet"
+    },
+    {
+     "t": "Let a finding block only when two independent review runs both report it.",
+     "why": "Works, but measures agreement. Two runs agreeing cuts some noise, but agreement is not correctness, and it doubles the cost of a blocking check.",
+     "trap": "wrong measure"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Only the overall figure was computed.",
+   "explanation": "Aggregate accuracy can hide weak performance in specific categories. Measure each category with stratified sampling before letting it drive an automatic decision such as blocking a merge.",
+   "eli5": {
+    "question": "The review scores 94% overall, and the team wants it to block merges. The clue: <i>only the overall figure</i> exists, and the rare, risky category barely appears in it.",
+    "answer": "A school's average grade can look great while one class is failing. Before giving a class a privilege, you check that class's own grades. Here, label a new sample with a fixed number of findings from each category (<b>stratified sampling</b>), and let a category block merges only when its own precision is high. <b>Rule: an average can hide a weak category; measure each one before automating it.</b>",
+    "options": [
+     "Trying it on real students and counting complaints finds problems only after they hurt someone.",
+     "Correct. Check each class's own grades before giving that class the privilege.",
+     "The big class is probably fine, but nobody has actually checked its grades.",
+     "Two teachers agreeing on a grade doesn't mean the grade is right."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>94% overall means the review is ready to automate</b>. An average is dominated by its biggest group. The rare concurrency category, the one tied to incidents, barely shows in it. The exam guide says to <b>validate accuracy by type before automating</b>, using stratified sampling.",
+    "diagram": "overall 94%  = mostly null-safety findings\nconcurrency  = a handful → precision unknown",
+    "mapTitle": "Is this automated decision safe to turn on?",
+    "map": {
+     "head": [
+      "What you know",
+      "Risk",
+      "Next step"
+     ],
+     "rows": [
+      [
+       "Only an overall figure",
+       "Weak categories hidden",
+       "Stratified sample, measure each category"
+      ],
+      [
+       "Precision measured per category",
+       "Some categories below bar",
+       "Let only the strong ones block"
+      ],
+      [
+       "Model reports its own confidence",
+       "Uncalibrated",
+       "Calibrate on a labelled set first"
+      ],
+      [
+       "Categories measured and good",
+       "Drift over time",
+       "Keep sampling after launch"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "overall precision came out at 94%",
+      "means": "A single average, not a per-category result."
+     },
+     {
+      "quote": "Concurrency findings are rare but tied to past production incidents, and only a handful were in the sample",
+      "means": "The category that matters most is barely measured. A trial on live merges (<b>[[0]]</b>) may never see it."
+     },
+     {
+      "quote": "Only the overall figure was computed",
+      "means": "The decider. Even null safety's own figure is unknown, so gating on it (<b>[[2]]</b>) is still a guess. Agreement between runs (<b>[[3]]</b>) is not precision."
+     },
+     {
+      "quote": "What is the best next step?",
+      "means": "Measure each category first: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Before an automated decision, measure accuracy per category with a stratified sample; an average hides weak spots.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Validate accuracy by document type and field before automating"
+    }
+   }
+  }
+ ]
+}

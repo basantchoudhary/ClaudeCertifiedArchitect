@@ -1,0 +1,1097 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m4p-s1-01",
+   "was": "s1-01",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Enforcement & gates",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "A hook blocks <code>process_refund</code> until <code>get_customer</code> returns a verified customer ID. It was added after refunds went to the wrong accounts. Gift boxes go to people who have no customer record, so every gift refund now goes to a human. Staff settle these quickly by matching the gift code and delivery address, and <code>lookup_order</code> returns both. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Exempt gift boxes from the hook, and add prompt steps with examples for matching the gift code and address.",
+     "why": "Works, but only usually. Clear steps with examples would be followed most of the time, but this check exists because refunds went to the wrong accounts, so it has to stay in code.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Keep the hook as it is, and attach a structured case summary to each gift escalation for staff.",
+     "why": "Works, but the queue stays. A good summary helps staff work faster, but every gift refund still leaves the chat and waits for a person.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Widen the hook: a tool-confirmed match of gift code and delivery address also unlocks that refund.",
+     "why": "Best. The gate stays in code, but it now accepts a second proof of identity that a tool confirms. Gift refunds settle in the chat without weakening the check."
+    },
+    {
+     "t": "Have checkout create a customer record for each gift recipient, so <code>get_customer</code> can verify them.",
+     "why": "Works, but wrong home. It changes another system to fit the agent, does nothing for gifts already sent, and a record built at checkout says little about who is in the chat.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Staff settle these quickly by matching the gift code and delivery address, and lookup_order returns both.",
+   "explanation": "When a code gate blocks a legitimate path, widen what the gate accepts rather than moving the check into the prompt. Identity checks before money moves need programmatic enforcement.",
+   "eli5": {
+    "question": "A guard checks ID before any refund. Gift recipients have no ID card on file, so the guard sends all of them to a person. The clue: staff already check them another way, and the tools can confirm that way.",
+    "answer": "Think of a door guard who only accepts one kind of pass. Some honest visitors carry a different, equally good pass. You don't fire the guard or ask visitors to vouch for themselves. You teach the guard to accept the second pass too (<b>widen the prerequisite gate</b>). <b>Rule: when a code check blocks a real case, widen what the check accepts. Don't move the check into the prompt.</b>",
+    "options": [
+     "Sending the guard home and leaving a note works most days. This check exists because refunds went astray, so a note is not enough.",
+     "A tidier file for the person at the desk helps, but every gift visitor still queues at the desk.",
+     "Correct. The guard stays, and now accepts a second pass a tool can confirm.",
+     "Printing ID cards for every gift recipient changes another office, and a card made at checkout doesn't prove who is talking."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think the hook is <b>too strict</b>, so it should step aside for gift boxes. But the hook exists because refunds went to the wrong accounts. The real gap is that it accepts <b>only one kind of proof</b>. A gate can accept a second proof, as long as a tool confirms it.",
+    "diagram": "process_refund requested\n  verified customer ID?            → allow\n  gift code + address match tool?  → allow\n  neither                          → block, escalate",
+    "mapTitle": "A code gate blocks a legitimate case. What now?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Real case has another proof a tool can confirm",
+       "Widen the gate's pass condition",
+       "Check stays deterministic, case settles in chat"
+      ],
+      [
+       "Rule is a nicety, misses are acceptable",
+       "Prompt steps with examples",
+       "Cheap; occasional lapse is fine"
+      ],
+      [
+       "Rule protects money or identity",
+       "Keep it in code (hook or gate)",
+       "Prompts have a non-zero failure rate"
+      ],
+      [
+       "Case truly needs a person's judgement",
+       "Escalate with a structured summary",
+       "Person decides fast with the facts"
+      ],
+      [
+       "Data missing in another system",
+       "Fix that system only if the agent can't confirm it",
+       "Changing other systems is slow and wide"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It was added after refunds went to the wrong accounts",
+      "means": "This check must hold every time. Exempting gifts and writing prompt steps (<b>[[0]]</b>) turns it into a request."
+     },
+     {
+      "quote": "so every gift refund now goes to a human",
+      "means": "The problem is the queue. A better handoff (<b>[[1]]</b>) speeds the queue up but keeps it."
+     },
+     {
+      "quote": "Staff settle these quickly by matching the gift code and delivery address, and lookup_order returns both",
+      "means": "The decider. A second proof already exists and a tool can confirm it, so the gate can accept it: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Which change fits best?",
+      "means": "Fix it inside the agent's own gate. Creating records at checkout (<b>[[3]]</b>) reaches into another system."
+     }
+    ],
+    "rule": "Identity checks before money stay in code. When the gate blocks a real case, widen what it accepts; don't swap it for a prompt.",
+    "guide": {
+     "obj": "1.4 Enforcement and handoff patterns",
+     "quote": "When deterministic compliance is required (e.g., identity verification before financial ops), prompt instructions have a non-zero failure rate."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-02",
+   "was": "s1-02",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Structured error responses",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "<code>lookup_order</code> can fail in two ways. Either no box matches the ID, or the order database times out. Both return <code>isError</code> with the text “Operation failed.” The agent sometimes tells a customer their box does not exist when the lookup only timed out. Customers often mistype box IDs. The timeouts come at evening peaks and last several minutes. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Retry the database read inside <code>lookup_order</code> with backoff, and return the error once retries run out.",
+     "why": "Works, but delays the problem. Retries ride out brief blips, but these timeouts last minutes, so the agent still gets the same vague error in the end.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Return an <code>errorCategory</code> of not_found or transient, an <code>isRetryable</code> flag and a short description.",
+     "why": "Best. The agent can now tell a missing box from a timeout. It asks the customer to check a mistyped ID, and says “try again shortly” for a timeout."
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that rewrites each failure as “The order service is briefly unavailable.”",
+     "why": "Works, but hides the problem. Timeout chats improve, but the hook sees the same text for a mistyped ID, so those customers are told the service is down.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Tell the agent in its prompt to ask the customer to recheck the box ID before saying it does not exist.",
+     "why": "Works, but only usually. A recheck helps mistyped IDs, but the agent still cannot see which failure happened, so timeouts still end in a wrong answer.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Both return isError with the text “Operation failed.”",
+   "explanation": "A uniform error message stops the agent from picking the right recovery. Structured errors that separate a transient timeout from a genuine not-found let it retry or explain correctly.",
+   "eli5": {
+    "question": "Two very different failures come back with the same words. The agent has to guess which one happened, and sometimes guesses wrong. The clue: both return the text “Operation failed.”",
+    "answer": "Picture a shop assistant who phones the stockroom. Whether the item doesn't exist or the stockroom phone is engaged, the reply is just “no”. The fix is a reply that says which kind of “no” it is (<b>structured error with errorCategory and isRetryable</b>). Then the assistant knows whether to say “check the code” or “try again in a minute”. <b>Rule: different failures need different labels, so the agent can choose the right recovery.</b>",
+    "options": [
+     "Ringing again a few times helps for a quick blip. These outages last minutes, so the reply is still the same vague “no”.",
+     "Correct. The reply now says which kind of failure it was.",
+     "Saying “stockroom closed” every time is right for timeouts, but wrong for customers who mistyped their code.",
+     "Asking customers to recheck helps typos, but the assistant still can't tell when the stockroom is down."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think the agent is <b>careless</b> and needs better instructions or more retries. But it is doing its best with a message that says nothing. <b>“Operation failed” hides which failure happened</b>, so no prompt or hook downstream can tell them apart. The tool has to say it.",
+    "mapTitle": "What should a failing tool tell the agent?",
+    "map": {
+     "head": [
+      "Failure",
+      "What the tool returns",
+      "What the agent does"
+     ],
+     "rows": [
+      [
+       "No record matches (bad input)",
+       "<code>errorCategory: not_found</code>, not retryable",
+       "Ask the customer to check the ID"
+      ],
+      [
+       "Timeout or outage (transient)",
+       "<code>errorCategory: transient</code>, retryable",
+       "Say “try again shortly” or retry later"
+      ],
+      [
+       "Brief blip of a second or two",
+       "Retry inside the tool first",
+       "Usually never sees the error"
+      ],
+      [
+       "Policy says no (business)",
+       "Not retryable, with a plain reason",
+       "Explain the rule to the customer"
+      ],
+      [
+       "Same text for every failure",
+       "“Operation failed”",
+       "Guesses, often wrong"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Either no box matches the ID, or the order database times out",
+      "means": "Two different failures that need different replies."
+     },
+     {
+      "quote": "Both return isError with the text “Operation failed.”",
+      "means": "The decider. The message hides the difference. A hook that rewrites it (<b>[[2]]</b>) and a prompt rule (<b>[[3]]</b>) still can't see which one happened."
+     },
+     {
+      "quote": "Customers often mistype box IDs",
+      "means": "Not-found is common and real, so treating every failure as an outage misleads many customers."
+     },
+     {
+      "quote": "The timeouts come at evening peaks and last several minutes",
+      "means": "Retries inside the tool (<b>[[0]]</b>) run out before the outage ends."
+     }
+    ],
+    "rule": "Return structured errors (category, retryable flag, short description) so the agent can tell a missing record from a timeout.",
+    "guide": {
+     "obj": "2.2 Structured error responses for MCP tools",
+     "quote": "Uniform \"Operation failed\" prevents good recovery decisions."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-03",
+   "was": "s1-03",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks & normalization",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 2,
+   "question": "Customers can claim a refund within 30 days of delivery. The agent checks each box against that window. Delivery dates reach it in three shapes, one per warehouse system: Unix seconds, ISO dates, and a plain number such as <code>20260403</code>. The agent misjudges the plain number, mostly near month ends. Another warehouse system joins soon. Which <b>TWO</b> changes make the answer the same for every source?",
+   "options": [
+    {
+     "t": "Add a <code>PostToolUse</code> hook that turns each delivery date into one ISO form before Claude reads it.",
+     "why": "Best. Code converts every format before Claude sees it, so the plain number never reaches Claude. A new warehouse needs one more rule in the hook."
+    },
+    {
+     "t": "Add a <code>convert_date</code> tool, and tell the agent to call it before any refund-window question.",
+     "why": "Works, but only usually. The tool converts dates correctly, but calling it is a request, so some chats will skip it.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Describe all three date shapes in the system prompt, with a worked conversion for each one.",
+     "why": "Works, but only usually. Examples make mistakes rarer, but Claude still converts and counts the days itself, which is where the month-end errors come from.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have <code>lookup_order</code> also return <code>days_since_delivery</code> and a <code>within_window</code> flag.",
+     "why": "Best. The tool does the date maths in code, so Claude reads the answer instead of working it out, whatever the source format."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Delivery dates reach it in three shapes, one per warehouse system",
+   "explanation": "Deterministic data handling belongs in code. A hook normalises mixed formats before the model sees them, and a tool can return derived values instead of asking the model to compute them.",
+   "eli5": {
+    "question": "Dates arrive written three different ways, and the agent misreads one of them. Soon there will be a fourth. The clue: the answer must be the same whatever system the date came from.",
+    "answer": "Imagine a post room that gets letters dated in three styles. Instead of training every clerk to read all three, you stamp one standard date on each letter as it arrives (<b>a PostToolUse hook that normalises</b>). Even better, the sender can write “arrived 12 days ago” on the envelope (<b>the tool returns the computed value</b>). <b>Rule: format conversion and date maths belong in code, not in Claude's head.</b>",
+    "options": [
+     "Correct. Every date is stamped in one standard form before Claude reads it.",
+     "A conversion machine on the desk helps, but clerks still have to remember to use it.",
+     "A wall chart of date styles helps, but the clerk still does the sums and still slips at month ends.",
+     "Correct. The answer arrives already worked out."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think Claude needs <b>better instructions about dates</b>. But converting formats and counting days are exact jobs with one right answer. That is work for code. Claude should receive either <b>one clean format</b> or the <b>answer already computed</b>.",
+    "diagram": "lookup_order result\n  1743638400 | 2026-04-03 | 20260403\n        ↓ PostToolUse hook\n  2026-04-03  (one ISO form)\n  + days_since_delivery, within_window from the tool",
+    "mapTitle": "Who should handle exact data work?",
+    "map": {
+     "head": [
+      "Job",
+      "Best place",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Convert mixed formats to one",
+       "<code>PostToolUse</code> hook",
+       "Runs on every result, before Claude reads it"
+      ],
+      [
+       "Compute a derived value (days, totals)",
+       "The tool itself",
+       "Claude reads the answer, no maths"
+      ],
+      [
+       "A step Claude must take every time",
+       "Code, not a prompt request",
+       "Prompts are followed most of the time, not always"
+      ],
+      [
+       "Explain how formats look",
+       "System prompt",
+       "Helps judgement, not exact work"
+      ],
+      [
+       "Judging an unclear customer claim",
+       "Claude",
+       "Needs reasoning, not a formula"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Delivery dates reach it in three shapes, one per warehouse system",
+      "means": "The decider. Mixed formats are exactly what a normalising hook (<b>[[0]]</b>) is for."
+     },
+     {
+      "quote": "The agent misjudges the plain number, mostly near month ends",
+      "means": "The error is in Claude's own conversion and day counting. Prompt examples (<b>[[2]]</b>) leave that work with Claude."
+     },
+     {
+      "quote": "Another warehouse system joins soon",
+      "means": "The fix must scale. One more hook rule or tool-side calculation (<b>[[3]]</b>) handles it."
+     },
+     {
+      "quote": "Which TWO changes make the answer the same for every source?",
+      "means": "The same answer every time needs code. A tool Claude must remember to call (<b>[[1]]</b>) is still a request."
+     }
+    ],
+    "rule": "Normalise formats in a PostToolUse hook and compute derived values in the tool. Don't ask Claude to do exact conversions.",
+    "guide": {
+     "obj": "1.5 Agent SDK hooks for interception and normalization",
+     "quote": "Normalize heterogeneous formats (Unix ts, ISO 8601, numeric codes)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-04",
+   "was": "s1-04",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Multi-concern decomposition",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Many customers raise several unrelated things in one message. For example: “My salmon was spoiled, please pause next week, and where is today's box?” The agent settles the first request and ends its turn. The customer then has to write back about the rest. Each request takes one or two tool calls, and they rarely depend on each other. Which change <b>best cuts</b> these repeat contacts?",
+   "options": [
+    {
+     "t": "Spawn a subagent per request with the Task tool, and have a coordinator merge their findings into one reply.",
+     "why": "Works, but overbuilt. Subagents suit long, separate investigations. These requests take one or two tool calls each, so the coordination costs more than it saves.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "End every reply by asking the customer whether anything else in their message still needs help.",
+     "why": "Works, but leaves work undone. The question invites the customer back, but the turn still ends with requests open, so they still have to write again.",
+     "trap": "leaves work undone"
+    },
+    {
+     "t": "Before the loop accepts <code>end_turn</code>, check that the draft reply mentions each request.",
+     "why": "Works, but only usually. Matching words catches some misses, but a reply can mention a request without settling it.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have the agent list the separate requests first, then settle or escalate each one before it ends.",
+     "why": "Best. A list of requests gives the agent a checklist to finish in the same contact, with no extra machinery."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The agent settles the first request and ends its turn.",
+   "explanation": "Decompose a multi-concern message into its separate requests and handle each before ending the turn. Subagents earn their overhead only when each piece needs a long, isolated investigation.",
+   "eli5": {
+    "question": "A customer asks three things at once, and the agent answers only the first. The clue: each request is small and they don't depend on each other.",
+    "answer": "Think of a waiter given three requests at one table. A good waiter jots all three on the pad first, then brings each before walking away (<b>decompose the request into a list and work through it</b>). You don't need three extra waiters for three small jobs. <b>Rule: several requests in one message → list them, then settle each before ending the turn.</b>",
+    "options": [
+     "Three extra waiters plus a head waiter works, but it's a lot of staff for three small jobs.",
+     "Asking “anything else?” is polite, but the waiter still walks away with two orders unfilled.",
+     "Checking the reply mentions each request helps, but mentioning a request is not the same as settling it.",
+     "Correct. Write the list first, then finish each item."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to reach for <b>subagents</b> whenever a message has several parts. But subagents are for heavy, separate investigations whose output would crowd the main context. Here each request is <b>one or two tool calls</b>. The missing piece is simply a plan: list the requests, then finish them all.",
+    "mapTitle": "A message holds several requests. How should the agent handle them?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Several small, independent requests",
+       "List them, then settle each in one turn",
+       "A checklist, no extra machinery"
+      ],
+      [
+       "Several requests, each a long investigation",
+       "Subagents via the Task tool, then merge",
+       "Isolates heavy context"
+      ],
+      [
+       "Requests depend on each other",
+       "Handle in order, using earlier results",
+       "Later steps need earlier answers"
+      ],
+      [
+       "One request needs a policy exception",
+       "Escalate that one, settle the rest",
+       "Escalation is per request"
+      ],
+      [
+       "Unsure whether all were handled",
+       "Track the list, not words in the reply",
+       "Mentioning is not resolving"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many customers raise several unrelated things in one message",
+      "means": "Several requests, so the agent needs to split them up first."
+     },
+     {
+      "quote": "The agent settles the first request and ends its turn",
+      "means": "The decider. Nothing tells the agent the others exist. Asking “anything else?” (<b>[[1]]</b>) still ends the turn early."
+     },
+     {
+      "quote": "Each request takes one or two tool calls, and they rarely depend on each other",
+      "means": "Small work, so subagents (<b>[[0]]</b>) are more machinery than needed."
+     },
+     {
+      "quote": "Which change best cuts these repeat contacts?",
+      "means": "Finish everything in one contact: <b>[[3]]</b>. Word-matching the draft (<b>[[2]]</b>) can't tell mentioned from settled."
+     }
+    ],
+    "rule": "Several requests in one message: list them, then settle or escalate each before ending the turn.",
+    "guide": {
+     "obj": "1.4 Enforcement and handoff patterns",
+     "quote": "Decompose multi-concern requests; investigate in parallel with shared context"
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-05",
+   "was": "s1-05",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Escalation calibration",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The agent often hands customers to a person when the person then settles the case with no exception. It also handles some cases that needed an exception. In those it promises remedies the company does not offer. The escalation guidance in its system prompt is one line: “Escalate when appropriate.” An engineer proposes having Claude rate its own confidence and escalating low scores. What is the <b>best next step</b>?",
+   "options": [
+    {
+     "t": "Write clear escalate-or-resolve criteria into the prompt, with a few contrasting example cases.",
+     "why": "Best. The agent has no real definition of when to escalate. Explicit criteria with contrasting examples fix both kinds of mistake at low cost."
+    },
+    {
+     "t": "Have Claude rate its confidence each turn, and escalate cases below a cut-off tuned on past chats.",
+     "why": "Works, but weak signal. A tuned cut-off moves the balance, but Claude's own confidence does not track whether a case needs an exception, so one error trades for the other.",
+     "trap": "wrong signal"
+    },
+    {
+     "t": "Train a classifier on past escalation labels to route each case before the agent replies.",
+     "why": "Works, but overbuilt. A classifier is worth its cost once clear criteria are in place and still fall short. Here the guidance is one vague line, so the cheap fix comes first.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add a sentiment check that escalates customers who sound frustrated, whatever else is going on.",
+     "why": "Works, but wrong signal. Some upset customers do need a person, but mood does not track complexity: calm customers can need exceptions, angry ones often have simple problems.",
+     "trap": "wrong signal"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The escalation guidance in its system prompt is one line: “Escalate when appropriate.”",
+   "explanation": "Self-reported confidence and sentiment are unreliable proxies for case complexity. When the escalation boundary is unclear, define it with explicit criteria and contrasting examples first.",
+   "eli5": {
+    "question": "The agent escalates the wrong cases in both directions. Someone suggests a confidence score. The clue: the only guidance it has is “Escalate when appropriate.”",
+    "answer": "Imagine a new shop assistant told only “call the manager when appropriate”. Sometimes they call for nothing, sometimes they promise things they can't. Asking them how sure they feel won't help. Give them a clear list of when to call and when not to, with a few real examples (<b>explicit criteria plus few-shot examples</b>). <b>Rule: unclear escalation → write the criteria first. Confidence and mood are poor signals.</b>",
+    "options": [
+     "Correct. Tell the assistant exactly when to call the manager, with examples.",
+     "Asking the assistant how sure they feel moves the line, but their feeling doesn't match which cases need the manager.",
+     "Hiring a second person to sort cases works, but costs far more than writing down the rule first. It wins only once the rule exists and still falls short.",
+     "Calling the manager for every grumpy customer misses calm customers with tricky problems."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think the agent needs a <b>number</b> to decide with, like a confidence score. But the agent's own sense of confidence does not track whether a case needs a policy exception. The real gap is that <b>nobody has told it where the line is</b>. One vague sentence is all it has.",
+    "mapTitle": "Escalation is off. What fixes it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Guidance is vague or missing",
+       "Explicit criteria + contrasting examples",
+       "Defines the boundary at low cost"
+      ],
+      [
+       "Clear criteria exist and still fail",
+       "A trained classifier on labelled cases",
+       "Worth its cost only after the cheap fix"
+      ],
+      [
+       "Customer asks for a person",
+       "Escalate at once",
+       "An explicit request is a trigger"
+      ],
+      [
+       "Routing by self-rated confidence",
+       "Avoid",
+       "Poorly matched to real complexity"
+      ],
+      [
+       "Routing by sentiment",
+       "Avoid",
+       "Mood is not complexity"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent often hands customers to a person when the person then settles the case with no exception",
+      "means": "Over-escalation: the agent doesn't know which cases it can settle."
+     },
+     {
+      "quote": "It also handles some cases that needed an exception",
+      "means": "Under-escalation too. Both errors point to an undefined boundary, not a missing score."
+     },
+     {
+      "quote": "The escalation guidance in its system prompt is one line: “Escalate when appropriate.”",
+      "means": "The decider. The cheap, direct fix is to write the boundary down: <b>[[0]]</b>. A classifier (<b>[[2]]</b>) comes after that."
+     },
+     {
+      "quote": "An engineer proposes having Claude rate its own confidence and escalating low scores",
+      "means": "Self-rated confidence (<b>[[1]]</b>) and sentiment (<b>[[3]]</b>) are unreliable signals of complexity."
+     }
+    ],
+    "rule": "When escalation is miscalibrated, write explicit criteria with contrasting examples first. Self-rated confidence and sentiment are poor proxies.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Sentiment-based escalation and self-reported confidence are unreliable proxies for complexity."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-06",
+   "was": "s1-06",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Preserving critical facts",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "In long chats the agent starts to slip. It rounds refund amounts and asks again for box IDs the customer already gave. Each <code>get_customer</code> call returns over 40 fields, and the agent calls it several times per chat. The workflow uses only a handful of those fields. The slips begin while the context window is still under half full. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Move to a model with a larger context window, and keep the full history in every request.",
+     "why": "Works, but delays the problem. More room helps when history gets cut off, but the window is under half full. The facts are getting buried, not dropped.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Strip each <code>get_customer</code> result to the values the agent needs before it joins the history.",
+     "why": "Best. Repeated 40-field results bury the few facts that matter. Trimming them removes the noise around the amounts and IDs."
+    },
+    {
+     "t": "Every ten turns, summarise the older turns and replace them in the history with that summary.",
+     "why": "Works, but loses detail. A shorter history has less noise, but summaries tend to round amounts and drop IDs, which are the very slips seen here.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "Call <code>get_customer</code> again before each reply, so the agent works from fresh values.",
+     "why": "Works, but adds noise. Fresh values sit near the end where Claude reads well, but each call adds another 40-field result, and it can't recover IDs the customer typed.",
+     "trap": "adds noise"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Each get_customer call returns over 40 fields, and the agent calls it several times per chat.",
+   "explanation": "Tool results pile up and swamp the context long before it is full. Trim verbose tool output to the fields the workflow uses, so key facts are not lost in the middle.",
+   "eli5": {
+    "question": "Late in long chats, the agent rounds amounts and forgets IDs. The clue: each customer lookup dumps over 40 fields, many times per chat, and the window isn't even half full.",
+    "answer": "Imagine a desk where every phone call adds a 40-page printout, though you only need five lines from it. After a few calls, the important note is buried under paper. A bigger desk doesn't help. Cut each printout down to the five lines you need (<b>trim tool results to the relevant fields</b>). <b>Rule: when facts get lost before the window is full, cut the noise, not the history.</b>",
+    "options": [
+     "A bigger desk holds more paper, but the note is still buried under it.",
+     "Correct. Keep only the lines you use from each printout.",
+     "Writing a short summary clears the desk, but summaries round numbers and lose IDs.",
+     "Fetching a fresh printout puts the numbers on top, but adds another 40 pages each time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think the agent is <b>running out of room</b>. But the window is under half full. The problem is <b>noise</b>: big tool results repeated many times bury the few facts that matter in the middle of the context, where models read least reliably.",
+    "mapTitle": "Facts get lost in a long chat. Why, and what fixes it?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Slips while the window is far from full",
+       "Verbose tool results bury key facts",
+       "Trim results to the fields used"
+      ],
+      [
+       "Amounts and IDs lost after summarising",
+       "Summary condensed the exact values",
+       "A case-facts block kept outside the summary"
+      ],
+      [
+       "Early turns cut off at the limit",
+       "History really is too long",
+       "Bigger window, or a structured summary"
+      ],
+      [
+       "Facts in the middle overlooked",
+       "Lost-in-the-middle effect",
+       "Key facts at the top, with clear headers"
+      ],
+      [
+       "Stale values used",
+       "Data changed since the lookup",
+       "Fetch again before acting"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It rounds refund amounts and asks again for box IDs the customer already gave",
+      "means": "Exact facts are being lost. Summaries (<b>[[2]]</b>) are known to round amounts and drop IDs."
+     },
+     {
+      "quote": "Each get_customer call returns over 40 fields, and the agent calls it several times per chat",
+      "means": "The decider. Lots of repeated noise. Calling it more (<b>[[3]]</b>) adds more."
+     },
+     {
+      "quote": "The workflow uses only a handful of those fields",
+      "means": "Most of each result can go: <b>[[1]]</b>."
+     },
+     {
+      "quote": "The slips begin while the context window is still under half full",
+      "means": "Not an overflow, so a bigger window (<b>[[0]]</b>) misses the cause."
+     }
+    ],
+    "rule": "Before the window is full, lost facts mean too much noise. Trim tool results to the fields you use.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Tool results accumulate and consume tokens disproportionately (40+ fields when 5 are relevant)."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-07",
+   "was": "s1-07",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Tool distribution",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Over time the support agent has gained many tools. Next to the five core ones sit back-office tools such as <code>issue_credit_memo</code>, <code>adjust_inventory</code> and <code>override_price</code>. Each is needed in very few chats, and they are sometimes called when they should not be. Since the list grew, the agent picks the wrong core tool more often, spread across all five. Which change <b>best reverses</b> this?",
+   "options": [
+    {
+     "t": "Leave the everyday tools where they are, and move the rarely used ones to a specialist it hands off to.",
+     "why": "Best. A short tool list on the agent that handles most chats restores reliable selection, and the rare tools stay available through the specialist."
+    },
+    {
+     "t": "Rewrite every tool description with inputs, examples and boundaries that set it apart from its neighbours.",
+     "why": "Works, but a different problem. Sharper descriptions fix confusion between look-alike tools. These mistakes are spread across all the core tools and began as the list grew.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks back-office tools unless a supervisor approved the case.",
+     "why": "Works, but a different problem. The hook stops misuse of the back-office tools, but they stay in the list, so choosing among the core tools is still harder.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Merge all the tools into a few broad ones, each taking an action parameter that names the operation.",
+     "why": "Works, but blurs the tools. Fewer tools shortens the list, but generic action tools hide what each operation does, so selection inside them gets harder.",
+     "trap": "blurs the tools"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Since the list grew, the agent picks the wrong core tool more often, spread across all five.",
+   "explanation": "Too many tools on one agent degrades selection. Keep the high-frequency tools on the front-line agent and scope rare capabilities to a specialist.",
+   "eli5": {
+    "question": "The agent's toolbox got crowded, and now it grabs the wrong everyday tool more often. The clue: the mistakes spread across all five core tools and began as the list grew.",
+    "answer": "Think of a kitchen drawer stuffed with gadgets you use once a year. Finding the everyday knife gets slower and sloppier. You move the rare gadgets to a cupboard in the back room (<b>a specialist agent</b>) and keep the drawer for daily tools. <b>Rule: too many tools → keep the frequent ones on the main agent, move rare ones to a specialist.</b>",
+    "options": [
+     "Correct. Clear the drawer; rare gadgets live with a specialist.",
+     "Better labels help when two tools look alike. Here the drawer is simply too full.",
+     "Locking the rare gadgets stops misuse, but they still clutter the drawer.",
+     "Gluing gadgets into a few multi-tools empties the drawer, but now each tool is harder to tell apart inside."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think wrong tool picks always mean <b>bad descriptions</b>. That is true when two tools look alike. But when errors are <b>spread across every tool</b> and started as the list grew, the cause is the <b>number of tools</b>. Selection gets less reliable as one agent holds more of them.",
+    "mapTitle": "The agent picks the wrong tool. Why?",
+    "map": {
+     "head": [
+      "Pattern of mistakes",
+      "Likely cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Spread across all tools, began as the list grew",
+       "Too many tools on one agent",
+       "Move rare tools to a specialist"
+      ],
+      [
+       "Between two look-alike tools",
+       "Vague or overlapping descriptions",
+       "Rewrite descriptions with boundaries"
+      ],
+      [
+       "Rare tool used when it shouldn't be",
+       "Tool given outside its role",
+       "Scope it to a role, or gate it"
+      ],
+      [
+       "One generic tool used for many jobs",
+       "Blurry action-parameter tool",
+       "Split into purpose-specific tools"
+      ],
+      [
+       "Model answers in text instead of calling",
+       "Tool choice left to auto",
+       "Set <code>tool_choice</code> for that step"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Over time the support agent has gained many tools",
+      "means": "The list is long, which points to tool count."
+     },
+     {
+      "quote": "Each is needed in very few chats, and they are sometimes called when they should not be",
+      "means": "These tools are off the agent's main job, so they belong with a specialist: <b>[[0]]</b>. A hook (<b>[[2]]</b>) stops misuse but leaves them in the list."
+     },
+     {
+      "quote": "Since the list grew, the agent picks the wrong core tool more often, spread across all five",
+      "means": "The decider. Not look-alike confusion, so better descriptions (<b>[[1]]</b>) miss the cause. Merging into generic tools (<b>[[3]]</b>) blurs them."
+     }
+    ],
+    "rule": "Errors spread across all tools as the list grew → too many tools. Keep frequent tools on the main agent; move rare ones to a specialist.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Too many tools (18 vs 4-5) degrades selection reliability."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-08",
+   "was": "s1-08",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The description of <code>escalate_to_human</code> is one line. It reads: “Escalate the conversation to a human manager or supervisor.” The agent calls it when customers say things like “my office manager ordered this box”. Most needless handoffs come from messages like that. The same tool also handles refunds above the agent's limit. The other tools have full descriptions with inputs and boundaries. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add example chats to the system prompt where a customer mentions a manager and the agent carries on.",
+     "why": "Works, but works around the cause. Examples help once the description is clear. Here the one-line description is what invites the mistake, so fix it first.",
+     "trap": "works around the cause"
+    },
+    {
+     "t": "Add a line to the system prompt saying a mention of a manager is not a request for a person.",
+     "why": "Works, but wrong home. The prompt line patches one wording. The tool description is where Claude decides which tool to call, and it still says “manager”.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Split the tool into <code>request_person</code> and <code>escalate_large_refund</code>, each with its own inputs.",
+     "why": "Works, but overbuilt for a first step. Purpose-specific tools can be good design, but it is more work, and each new tool still needs a proper description.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Rewrite the description: when to hand over, when not to, and what the handoff needs as input.",
+     "why": "Best. Descriptions are the main signal for choosing a tool. Stating the real triggers and exclusions fixes the keyword match where it starts."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "It reads: “Escalate the conversation to a human manager or supervisor.”",
+   "explanation": "Tool descriptions are the primary mechanism for tool selection. When a description is minimal, expanding it with when to use it, when not to, and its inputs is the highest-leverage first step.",
+   "eli5": {
+    "question": "The agent hands people over whenever they mention a manager, even in passing. The clue: the tool's description is one line that literally says “manager”.",
+    "answer": "Think of a door labelled only “Manager”. People walk through it whenever the word comes up. Rewrite the sign to say who should use the door, who shouldn't, and what to bring (<b>a full tool description</b>). The sign is where the choice is made. <b>Rule: a minimal tool description is the first thing to fix when Claude picks a tool wrongly.</b>",
+    "options": [
+     "Showing examples helps once the sign is clear. Today the sign itself causes the mistake.",
+     "A note elsewhere about the word “manager” patches one case, but the door still says “Manager”.",
+     "Building two new doors can be good later, but it's more work, and each still needs a clear sign.",
+     "Correct. Rewrite the sign: when to use it, when not to, and what to bring."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to fix tool mistakes in the <b>system prompt</b>, with rules or examples. But Claude chooses a tool mainly from its <b>description</b>. A one-line description that mentions “manager” invites keyword matching. The cheapest, most direct first step is to fix the description itself.",
+    "mapTitle": "Claude picks a tool wrongly. Where do you start?",
+    "map": {
+     "head": [
+      "What you find",
+      "First step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Description is one line or vague",
+       "Rewrite it: when to use, when not, inputs",
+       "Descriptions drive tool choice"
+      ],
+      [
+       "Description is clear, model still slips",
+       "Add contrasting examples",
+       "Examples sharpen an already clear rule"
+      ],
+      [
+       "One tool does two unrelated jobs",
+       "Split into purpose-specific tools (later step)",
+       "Clear input contracts per job"
+      ],
+      [
+       "Prompt wording pulls toward a tool",
+       "Reword the prompt",
+       "Keyword wording creates false links"
+      ],
+      [
+       "Too many tools on one agent",
+       "Move rare tools to a specialist",
+       "Shorter list, better choice"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The description of escalate_to_human is one line. It reads: “Escalate the conversation to a human manager or supervisor.”",
+      "means": "The decider. A minimal description that contains the word “manager” is the root cause."
+     },
+     {
+      "quote": "The agent calls it when customers say things like “my office manager ordered this box”",
+      "means": "Keyword matching on “manager”. A prompt line (<b>[[1]]</b>) patches this one word but leaves the description as it is."
+     },
+     {
+      "quote": "The same tool also handles refunds above the agent's limit",
+      "means": "The tool has real uses that must keep working, which the description must name."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "First step means the cheapest fix at the cause: <b>[[3]]</b>. Splitting the tool (<b>[[2]]</b>) is a bigger later move; examples (<b>[[0]]</b>) come after the description is clear."
+     }
+    ],
+    "rule": "When Claude misroutes to a tool with a minimal description, rewrite the description first: when to use it, when not, and its inputs.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces",
+     "quote": "Tool descriptions are the primary mechanism LLMs use for selection; minimal descriptions → unreliable selection among similar tools."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-09",
+   "was": "s1-09",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 The agentic loop",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The loop checks <code>stop_reason</code>. On <code>tool_use</code>, it runs the tool and sends the output back as a new user message, rewritten as a plain sentence. The assistant turn that asked for the tool is not added to the history. The agent sometimes looks up a box it has just looked up. Once it told a customer a refund went through when none was made. Which change <b>fixes this</b>?",
+   "options": [
+    {
+     "t": "Send each tool result back as its raw structured output instead of a rewritten sentence.",
+     "why": "Works, but a different problem. Raw output keeps fields that rewording can drop, but Claude still has no record of which calls it made.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Keep a case-facts block listing each tool call made so far and its result in every request.",
+     "why": "Works, but works around the cause. It rebuilds the call record by hand, while the loop keeps dropping the real one.",
+     "trap": "works around the cause"
+    },
+    {
+     "t": "Keep each <code>tool_use</code> request from Claude in the history, followed by its <code>tool_result</code>.",
+     "why": "Best. Each call and its result sit in the history as a pair, so Claude can see what it already did and what came back."
+    },
+    {
+     "t": "Add a hook that blocks a second <code>lookup_order</code> call for a box already looked up.",
+     "why": "Works, but treats one symptom. It stops repeat lookups, but Claude can still claim a refund it never requested.",
+     "trap": "treats a symptom"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The assistant turn that asked for the tool is not added to the history.",
+   "explanation": "In the agentic loop, the assistant's tool_use turn and the matching tool_result must both be appended to the history. Dropping either leaves Claude without a record of what it did.",
+   "eli5": {
+    "question": "The agent repeats lookups it just did and claims actions it never took. The clue: the turn where Claude asked for the tool is never saved.",
+    "answer": "Imagine a diary where you write down the answers you got, but never the questions you asked. Later you can't tell what you already asked, or whether you actually did something. The fix is to write both lines every time: the request and its answer (<b>tool_use and tool_result as a pair in the history</b>). <b>Rule: every tool call goes into the history with its result.</b>",
+    "options": [
+     "Copying answers word for word is tidier, but the questions are still missing from the diary.",
+     "Keeping a separate notes page works, but it rebuilds by hand what the diary should already hold.",
+     "Correct. Write the request and its answer, every time.",
+     "Blocking repeat lookups stops one symptom, but the agent can still claim a refund it never asked for."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to blame the <b>rewritten sentences</b>, since rewording can lose details. But losing a field does not explain repeating a lookup that just ran, or claiming a refund that was never called. Those need a <b>missing record of the calls</b>. The loop drops the assistant turn that holds each <code>tool_use</code>.",
+    "diagram": "history must hold, in order:\n  assistant: text + tool_use(lookup_order)\n  user:      tool_result(lookup_order)\n  assistant: next step ...",
+    "mapTitle": "The agent forgets or invents its own actions. Why?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Repeats calls, claims calls never made",
+       "<code>tool_use</code> turns missing from history",
+       "Append each tool_use and its tool_result"
+      ],
+      [
+       "Wrong details from a tool result",
+       "Result reworded, fields dropped",
+       "Return structured output"
+      ],
+      [
+       "Loop stops before tools run",
+       "Stops on text, not <code>stop_reason</code>",
+       "Loop on tool_use, stop on end_turn"
+      ],
+      [
+       "Early facts forgotten in a long chat",
+       "Lost in the middle",
+       "Case-facts block at the top"
+      ],
+      [
+       "Runs forever",
+       "No safety cap",
+       "Add a cap as a backstop only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "it runs the tool and sends the output back as a new user message, rewritten as a plain sentence",
+      "means": "Rewording can lose fields (<b>[[0]]</b>), but that doesn't explain the symptoms below."
+     },
+     {
+      "quote": "The assistant turn that asked for the tool is not added to the history",
+      "means": "The decider. Claude never sees its own calls: <b>[[2]]</b>."
+     },
+     {
+      "quote": "The agent sometimes looks up a box it has just looked up",
+      "means": "It can't see that it already called the tool. Blocking repeats (<b>[[3]]</b>) only hides this one symptom."
+     },
+     {
+      "quote": "Once it told a customer a refund went through when none was made",
+      "means": "With no record of calls, it can't tell what it did. A hand-made call list (<b>[[1]]</b>) rebuilds what the loop should keep."
+     }
+    ],
+    "rule": "Append both the assistant's tool_use turn and the matching tool_result to the history, every iteration.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops",
+     "quote": "Tool results are appended to conversation history so the model reasons about the next action."
+    }
+   }
+  },
+  {
+   "id": "m4p-s1-10",
+   "was": "s1-10",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Handoff patterns",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "When the agent escalates, it attaches the full chat transcript. Staff say picking up a handoff now takes longer than handling the case from scratch. Most of that time goes on working out what the agent already tried and why it stopped. Usually the person only has to approve or decline one refund. Which handoff design <b>serves staff best</b>?",
+   "options": [
+    {
+     "t": "Attach only the last five turns of the chat, where the reason to escalate usually shows up.",
+     "why": "Works, but loses history. Fewer turns are quicker to read, but the earlier steps are exactly what staff are trying to work out.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "Send a structured summary: IDs, root cause, steps tried, the amount and a recommended action.",
+     "why": "Best. Staff see what was tried, why it stopped and what is proposed in one place, so approving or declining is quick."
+    },
+    {
+     "t": "Pin the customer ID, box ID and refund amount in a header above the unchanged transcript.",
+     "why": "Works, but a different problem. The header speeds up finding IDs, but staff still read the whole chat to learn what was tried and why it stopped.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Replace the transcript with one reason code from a fixed list of escalation categories.",
+     "why": "Works, but too thin. A code helps route the case, but it loses the amount, the cause and what was already tried.",
+     "trap": "loses detail"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Most of that time goes on working out what the agent already tried and why it stopped.",
+   "explanation": "A person picking up an escalation needs a structured handoff: identifiers, root cause, what was tried, the amount and a recommended action. They should not have to read the transcript to get it.",
+   "eli5": {
+    "question": "Staff get the whole chat and spend ages working out what happened. The clue: the slow part is learning what the agent tried and why it stopped.",
+    "answer": "Think of a nurse handing over at shift change. They don't hand over a recording of the whole day. They give a short sheet: who, what's wrong, what was tried, what's pending, what they suggest (<b>a structured handoff summary</b>). <b>Rule: hand a person a summary with IDs, root cause, steps tried, amount and recommended action.</b>",
+    "options": [
+     "The last few minutes of the recording are shorter, but the earlier steps are what the next nurse needs.",
+     "Correct. A short handover sheet with everything needed to decide.",
+     "A name tag on the recording helps find the patient, but you still have to play the whole recording.",
+     "A one-word code helps send the patient to the right ward, but says nothing about what was tried."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think the human just needs <b>the key IDs pulled out</b>. But finding IDs is not the slow part. The time goes on rebuilding <b>what the agent tried and why it stopped</b>. A structured summary answers that directly, so the person can decide without reading the chat.",
+    "mapTitle": "What should a handoff to a person contain?",
+    "map": {
+     "head": [
+      "What slows the person",
+      "Best handoff",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Working out what was tried and why it stopped",
+       "Structured summary with steps, cause and recommendation",
+       "Answers the decision directly"
+      ],
+      [
+       "Finding the customer and box IDs",
+       "IDs pinned at the top",
+       "Speeds up lookup only"
+      ],
+      [
+       "Routing to the right team",
+       "A reason code",
+       "Good for queues, thin for decisions"
+      ],
+      [
+       "Checking a detail from the chat",
+       "Transcript available on request",
+       "Backup, not the main read"
+      ],
+      [
+       "Only the latest turns sent",
+       "Avoid",
+       "Drops the earlier steps"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When the agent escalates, it attaches the full chat transcript",
+      "means": "Raw history, no structure."
+     },
+     {
+      "quote": "Most of that time goes on working out what the agent already tried and why it stopped",
+      "means": "The decider. Pinning IDs (<b>[[2]]</b>) and a reason code (<b>[[3]]</b>) don't answer this. The last turns (<b>[[0]]</b>) cut the earlier steps."
+     },
+     {
+      "quote": "Usually the person only has to approve or decline one refund",
+      "means": "They need the amount and a recommendation in one place: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Escalate with a structured summary (IDs, root cause, steps tried, amount, recommended action), not a raw transcript.",
+    "guide": {
+     "obj": "1.4 Enforcement and handoff patterns",
+     "quote": "compile structured handoff summaries (customer ID, root cause, refund amount, recommended action) for humans without the transcript"
+    }
+   }
+  }
+ ]
+}

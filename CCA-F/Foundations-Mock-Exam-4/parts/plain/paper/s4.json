@@ -1,0 +1,1106 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m4p-s4-01",
+   "was": "m4-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Built-in tool selection",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The engineer wants to turn on a strict TypeScript check but skip the generated GraphQL files. The code generator names every output file <code>*.generated.ts</code> and writes a 'do not edit' comment at the top. An old formatter run rewrote the top lines of many files. Some generated files are leftovers that nothing imports any more. How should Claude <b>build the list</b>?",
+   "options": [
+    {
+     "t": "Use Glob with the pattern <code>**/*.generated.ts</code> and take every matching path.",
+     "why": "Best. Glob matches file paths, and every generated file follows the naming rule, leftovers included."
+    },
+    {
+     "t": "Use Grep for the 'do not edit' header comment and take every file that has it.",
+     "why": "Works, but only usually. The formatter rewrote the top lines of many files, so some generated files no longer carry the header.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Read the code generator's config file and list every output file it declares.",
+     "why": "Works, but misses old files. The config describes today's outputs; leftovers from removed queries are not in it.",
+     "trap": "misses leftovers"
+    },
+    {
+     "t": "Use Grep on import lines that mention <code>.generated</code> and collect those paths.",
+     "why": "Works, but looks from the wrong side. Imports show the files somebody uses, so leftovers that nothing imports are missed.",
+     "trap": "misses leftovers"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The code generator names every output file *.generated.ts",
+   "explanation": "When a reliable file-name pattern identifies the files, Glob is the tool. Grep searches contents, which only works when the content marker is reliable.",
+   "eli5": {
+    "question": "Claude must find every generated file. The clue is: <b>every output file is named <code>*.generated.ts</code></b>, while the header comment has been damaged in many files.",
+    "answer": "Think of a library where every cookbook has a red spine, but some title pages were torn out. To find all the cookbooks, you look at the spines, not inside the books. Looking at names is <b>Glob</b>; looking inside is <b>Grep</b>. The name rule holds for every generated file, even unused leftovers. <b>Rule: if the name tells you, use Glob; if only the contents tell you, use Grep.</b>",
+    "options": [
+     "Correct. Every generated file has the same kind of name, so a name pattern finds them all.",
+     "Checking the title page works for most books. Some title pages were torn out by the formatter.",
+     "The catalogue lists only today's books. Old leftovers were never recorded there.",
+     "This lists books that someone borrowed. Books nobody borrows are left off."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Grep is the search tool</b> for everything. Grep searches <i>inside</i> files. Here the reliable signal is the <b>file name</b>, and Glob matches file paths. The header inside the file was damaged, so content search now misses some files.",
+    "diagram": "Glob **/*.generated.ts  → every generated file\nGrep 'do not edit'     → only files whose header survived\nGrep imports           → only files someone still imports",
+    "mapTitle": "What reliably marks the files you want?",
+    "map": {
+     "head": [
+      "Reliable marker",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A file-name pattern",
+       "Glob",
+       "Matches paths, ignores contents"
+      ],
+      [
+       "Text inside the file",
+       "Grep",
+       "Searches contents across many files"
+      ],
+      [
+       "One known file to change",
+       "Edit (or Read + Write)",
+       "Targeted change"
+      ],
+      [
+       "Understanding a flow",
+       "Grep entry points, then Read",
+       "Follow the calls step by step"
+      ],
+      [
+       "A list kept in config",
+       "Read the config",
+       "Only as complete as the config is"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The code generator names every output file *.generated.ts",
+      "means": "The decider. A name pattern covers every generated file, so Glob (<b>[[0]]</b>) finds them all."
+     },
+     {
+      "quote": "An old formatter run rewrote the top lines of many files",
+      "means": "The header is no longer reliable, so a Grep for it (<b>[[1]]</b>) misses some files."
+     },
+     {
+      "quote": "Some generated files are leftovers that nothing imports any more",
+      "means": "Leftovers are missing from imports (<b>[[3]]</b>) and from today's generator config (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "How should Claude build the list?",
+      "means": "Match the reliable name pattern: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Reliable name pattern → Glob. Reliable text inside → Grep.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Grep = content search; Glob = file path patterns"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-02",
+   "was": "m4-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit failure fallback",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A long deployment config has four environment blocks with the same settings. Each block's name sits on its first line, far above the settings. Every block contains <code>timeout: 30</code>, and only the staging block must change it to 60. Claude's <code>Edit</code> call fails because its old text matches four places. What should Claude <b>do next</b>?",
+   "options": [
+    {
+     "t": "Retry Edit with old text long enough to reach up to the staging name line.",
+     "why": "Works, but clumsy. The old text would have to copy the whole block from its name line down to the value, which is long and easy to get wrong.",
+     "trap": "clumsy"
+    },
+    {
+     "t": "Run <code>sed</code> through Bash on the line number of the staging timeout.",
+     "why": "Works, but leaves the file tools. A shell edit by line number is fragile and skips the Read and Write route made for this case.",
+     "trap": "wrong tool"
+    },
+    {
+     "t": "Read the whole file, change the staging value, then Write the file back.",
+     "why": "Best. Edit needs a unique text match. When there is none, the fallback is Read plus Write, where Claude can use the block's position."
+    },
+    {
+     "t": "Ask the engineer to make this one change by hand in their own editor.",
+     "why": "Works, but hands the job back. Claude can make this change itself with Read and Write.",
+     "trap": "hands it back"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Claude's Edit call fails because its old text matches four places.",
+   "explanation": "Edit makes a targeted change by unique text match. When the text is not unique, fall back to Read plus Write.",
+   "eli5": {
+    "question": "Claude tried to change one value with Edit, and Edit refused because the same text appears four times. The clue is: <b>the old text matches four places</b>.",
+    "answer": "Edit is like find-and-replace that only works when the word appears once. Here the same line appears in four identical blocks. So Claude opens the whole file (<b>Read</b>), changes the line in the staging block, and saves the whole file (<b>Write</b>). <b>Rule: Edit fails on a non-unique match → Read the file and Write it back.</b>",
+    "options": [
+     "This can work, but Claude would have to copy a long, identical chunk exactly. Easy to get wrong.",
+     "A shell edit by line number works, but it is fragile and skips the file tools.",
+     "Correct. Read the whole file, change the right block, Write it back.",
+     "The engineer could do it, but Claude can do it safely itself."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a longer match always fixes a failed Edit</b>. That works when the text near the change is different. Here the blocks are identical all the way up to their name lines. The documented fallback is <b>Read the whole file, then Write it back</b>.",
+    "diagram": "production: ... timeout: 30\nqa:         ... timeout: 30\nstaging:    ... timeout: 30   ← change this one\ndev:        ... timeout: 30",
+    "mapTitle": "Which file tool fits this change?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Change text that appears once",
+       "Edit",
+       "Targeted change by unique match"
+      ],
+      [
+       "Change text that appears in several identical places",
+       "Read + Write",
+       "Edit cannot pick one; position can"
+      ],
+      [
+       "Change every copy of the text",
+       "Edit with replace_all",
+       "All matches are meant"
+      ],
+      [
+       "Create a new file",
+       "Write",
+       "Nothing to match"
+      ],
+      [
+       "Find files by name",
+       "Glob",
+       "Path patterns, not contents"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A long deployment config has four environment blocks with the same settings",
+      "means": "Identical blocks mean any nearby text repeats too."
+     },
+     {
+      "quote": "Each block's name sits on its first line, far above the settings",
+      "means": "A unique match would need a long copy of the block (<b>[[0]]</b>). Possible, but clumsy."
+     },
+     {
+      "quote": "Claude's Edit call fails because its old text matches four places",
+      "means": "The decider. Edit needs a unique match, so the fallback is Read plus Write: <b>[[2]]</b>."
+     },
+     {
+      "quote": "What should Claude do next?",
+      "means": "Claude can finish the job itself with its file tools. No need for sed (<b>[[1]]</b>) or the engineer (<b>[[3]]</b>)."
+     }
+    ],
+    "rule": "Edit fails because the text is not unique → Read the whole file and Write it back.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "When Edit fails on non-unique match → Read + Write fallback"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-03",
+   "was": "m4-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP configuration scoping",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team wants the Linear MCP server ready for anyone working in this repo. That includes contractors, who must be productive in their first session. Each person signs in with their own Linear API key. Priya is also trying an early error-tracking MCP server across three repos. It sometimes crashes on start-up, and nobody else uses it. Which setup <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Each engineer adds Linear to their own <code>~/.claude.json</code>, and Priya adds her server there too.",
+     "why": "Works, but not shared. Each contractor would have to set up Linear by hand before they could use it.",
+     "trap": "not shared"
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with both servers, each reading its key from an environment variable.",
+     "why": "Works, but pushes Priya's trial onto everyone. Every teammate would load a server they don't use, crashes included.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with the Linear server and one shared team key written into it.",
+     "why": "Works, but puts a secret in git. It also replaces each person's own key with one shared key.",
+     "trap": "secret in git"
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with Linear reading <code>${LINEAR_API_KEY}</code>; Priya's stays in her <code>~/.claude.json</code>.",
+     "why": "Best. The project file shares Linear with everyone on clone, the variable keeps each key out of git, and the personal trial stays personal."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "That includes contractors, who must be productive in their first session.",
+   "explanation": "Shared servers go in a committed project .mcp.json with environment-variable expansion for secrets. Personal or experimental servers go in the user's ~/.claude.json.",
+   "eli5": {
+    "question": "Two servers, two audiences. Linear is for everyone, including new contractors. Priya's server is her own experiment. The clue is: <b>contractors must be productive in their first session</b>.",
+    "answer": "Think of an office. Shared tools go in the common cupboard that comes with the building (<b>project <code>.mcp.json</code></b>, committed to git). Each person's key stays in their own pocket (<b>an environment variable</b>). A personal gadget stays in your own drawer (<b><code>~/.claude.json</code></b>). <b>Rule: shared server → .mcp.json with ${VAR}; personal or experimental → ~/.claude.json.</b>",
+    "options": [
+     "Every person stocks their own drawer. New contractors start with an empty drawer.",
+     "Priya's half-broken gadget ends up in the common cupboard for everyone.",
+     "The key is taped to the cupboard door, where anyone with the repo can see it.",
+     "Correct. Shared tool in the cupboard, keys in pockets, the trial in Priya's own drawer."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>secrets mean the server can't be committed</b>. The server definition can be shared while the secret stays out: <code>.mcp.json</code> expands <code>${VAR}</code> from each person's environment. Experimental servers belong at user level, so the team doesn't inherit them.",
+    "diagram": "repo/.mcp.json        linear → ${LINEAR_API_KEY}  (shared)\n~/.claude.json (Priya) error-tracker trial    (personal)",
+    "mapTitle": "Who needs this server, and where does it go?",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Where it goes",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Everyone in the repo",
+       "Project <code>.mcp.json</code>, committed",
+       "Arrives with a clone"
+      ],
+      [
+       "Everyone, but each with their own secret",
+       "<code>.mcp.json</code> with <code>${VAR}</code>",
+       "No secret in git"
+      ],
+      [
+       "Only you, in many repos",
+       "<code>~/.claude.json</code>",
+       "Personal, not shared"
+      ],
+      [
+       "An unstable trial",
+       "<code>~/.claude.json</code>",
+       "Others don't inherit its problems"
+      ],
+      [
+       "Instructions about how to use a tool",
+       "<code>CLAUDE.md</code>",
+       "Context, not server setup"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team wants the Linear MCP server ready for anyone working in this repo",
+      "means": "A shared server, so it belongs in the project file."
+     },
+     {
+      "quote": "That includes contractors, who must be productive in their first session",
+      "means": "The decider. Per-person setup (<b>[[0]]</b>) leaves contractors without Linear on day one."
+     },
+     {
+      "quote": "Each person signs in with their own Linear API key",
+      "means": "Keys come from each person's environment, not from git (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "It sometimes crashes on start-up, and nobody else uses it",
+      "means": "The trial is personal. Sharing it (<b>[[1]]</b>) hands its crashes to everyone. So: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Shared server → committed .mcp.json with ${VAR} for secrets. Personal or experimental → ~/.claude.json.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Scoping: project-level .mcp.json (shared) vs user-level ~/.claude.json (personal/experimental)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-04",
+   "was": "m4-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tools vs built-ins",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team also runs an MCP server over a code index that resolves Ruby definitions, even in vendored gems and metaprogrammed code. Its one tool, <code>lookup</code>, has the description 'Search code.' When asked where a method is defined, Claude mostly uses Grep instead. It often lands on a same-named method in a gem. What is the <b>most effective fix</b>?",
+   "options": [
+    {
+     "t": "Add a CLAUDE.md section telling Claude to use lookup for every definition question.",
+     "why": "Works, but works around the cause. A standing instruction nudges the choice, while the two-word description still gives Claude no reason to prefer the tool.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Rewrite lookup's description: what it finds that Grep misses, inputs, examples.",
+     "why": "Best. The description is what Claude reads when choosing a tool. Saying what lookup resolves that text search cannot lets Claude pick it on its merits."
+    },
+    {
+     "t": "Rename lookup to <code>resolve_symbol</code> and split it into definition and reference tools.",
+     "why": "Works, but more than needed. Renaming and splitting is good design for overlapping tools; here one tool simply has an empty description.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Deny Grep in the project's permission settings, leaving lookup as the code search.",
+     "why": "Works, but too blunt. Claude would use lookup, but it would also lose Grep for the plain text searches it is right for.",
+     "trap": "too blunt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Its one tool, lookup, has the description 'Search code.'",
+   "explanation": "Tool descriptions are the main signal Claude uses to choose tools. Enhance an MCP tool's description so Claude doesn't prefer a built-in like Grep over a more capable tool.",
+   "eli5": {
+    "question": "A better tool exists, but Claude keeps reaching for Grep. The clue is: <b>the tool's description is just 'Search code.'</b>",
+    "answer": "Picture two shops on a street. One sign says 'Shop'. The other says 'Hardware: keys cut, paint mixed'. You walk into the one whose sign tells you it has what you need. The sign is the <b>tool description</b>. Write what lookup can do that Grep can't, with inputs and examples. <b>Rule: wrong tool picked → fix the description first.</b>",
+    "options": [
+     "A note telling you to use the first shop helps a bit. Its sign still says nothing.",
+     "Correct. A clear sign says what the shop does better than the one next door.",
+     "Rebuilding the shop into two shops is a bigger job than painting a proper sign.",
+     "Closing the other shop forces the choice, but you lose it for things it does well."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude needs to be told</b> which tool to use. Claude picks tools mainly from their <b>descriptions</b>. 'Search code.' sounds like Grep, so Claude takes the tool it knows. Fix the description and Claude can choose on merit.",
+    "mapTitle": "Why is Claude picking the wrong tool?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "First fix"
+     ],
+     "rows": [
+      [
+       "Built-in used over a better MCP tool",
+       "MCP description is thin",
+       "Rewrite the description: what it does better, inputs, examples"
+      ],
+      [
+       "Two tools confused with each other",
+       "Overlapping, generic tools",
+       "Rename or split into purpose-specific tools"
+      ],
+      [
+       "Tool picked for a keyword in the prompt",
+       "Wording links words to a tool",
+       "Reword the instructions"
+      ],
+      [
+       "Too many tools, choices slip",
+       "Too wide a tool set",
+       "Give each agent fewer, scoped tools"
+      ],
+      [
+       "A team habit to follow",
+       "Missing project context",
+       "<code>CLAUDE.md</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "resolves Ruby definitions, even in vendored gems and metaprogrammed code",
+      "means": "lookup is the more capable tool. Nothing about it is broken."
+     },
+     {
+      "quote": "Its one tool, lookup, has the description 'Search code.'",
+      "means": "The decider. The description says nothing about what lookup does better, so it is the thing to fix: <b>[[1]]</b>."
+     },
+     {
+      "quote": "When asked where a method is defined, Claude mostly uses Grep instead",
+      "means": "Only one tool is involved, so splitting it (<b>[[2]]</b>) is more than this needs."
+     },
+     {
+      "quote": "What is the most effective fix?",
+      "means": "Fix the cause. A CLAUDE.md note (<b>[[0]]</b>) or denying Grep (<b>[[3]]</b>) works around it."
+     }
+    ],
+    "rule": "Claude prefers a built-in over a better MCP tool → improve the MCP tool's description.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-05",
+   "was": "m4-s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Incremental exploration",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The engineer must explain why some learners' streaks reset a day early. To get oriented, they first had Claude read the whole progress engine, about 150 files. The session is now at 70% of its context window. Claude's answers lean on 'typical Rails patterns' rather than this code. Only a few files deal with day boundaries. What should the engineer <b>do instead</b>?",
+   "options": [
+    {
+     "t": "Run <code>/compact</code> to shrink the loaded code, then keep asking in this session.",
+     "why": "Works, but delays the problem. It frees space, but Claude's view is still a broad read of the engine, now compressed further. The streak path was never traced.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Have an Explore subagent read the whole engine and return a summary per module.",
+     "why": "Works, but answers a different need. A module map helps with a broad overview; this is one bug, which needs the code path traced.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Grep for the streak reset and day-boundary code, then Read along that path.",
+     "why": "Best. Find the entry points with Grep, then Read the files the flow calls into, spending context only on code that matters."
+    },
+    {
+     "t": "Keep a scratchpad file of key findings while Claude reads through the engine.",
+     "why": "Works, but keeps the same strategy. A scratchpad saves findings, but Claude is still reading everything first.",
+     "trap": "delays the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Only a few files deal with day boundaries.",
+   "explanation": "Build understanding incrementally: Grep for entry points, then Read to follow the flow. Reading everything up front fills the context and gives generic answers.",
+   "eli5": {
+    "question": "Claude read a whole package and now gives vague answers. The clue is: <b>only a few files deal with day boundaries</b>. The question is not about saving space; it is about reading the right code.",
+    "answer": "To fix one leaky pipe, you don't read the plans for the whole building. You find the tap that leaks, then follow that one pipe. In code, <b>Grep</b> finds where the streak reset happens, and <b>Read</b> follows the files it calls. <b>Rule: one bug → search for the entry point, then follow the flow. Don't read everything first.</b>",
+    "options": [
+     "Squeezing the building plans into a smaller book still doesn't trace the leaky pipe.",
+     "A summary of every room is useful for a tour. You need the one pipe.",
+     "Correct. Find the leak, then follow that pipe.",
+     "Taking notes while reading all the plans is still reading all the plans."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the problem is running out of space</b>. The real problem is the <b>strategy</b>: reading everything first. Answers turn generic because the important code is buried. Build understanding <b>incrementally</b>: Grep for the entry point, then Read along the flow.",
+    "mapTitle": "What does this exploration need?",
+    "map": {
+     "head": [
+      "Situation",
+      "Approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "One specific bug or flow",
+       "Grep entry points, then Read along the path",
+       "Context goes only to relevant code"
+      ],
+      [
+       "A broad map of an unfamiliar area",
+       "Explore subagent returns a summary",
+       "Verbose discovery stays out of the main context"
+      ],
+      [
+       "Long session, room running out",
+       "<code>/compact</code>",
+       "Reduces context use"
+      ],
+      [
+       "Findings needed across sessions",
+       "Scratchpad file",
+       "Keeps key facts"
+      ],
+      [
+       "Read everything first",
+       "Avoid",
+       "Fills context, answers turn generic"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "they first had Claude read the whole progress engine, about 150 files",
+      "means": "The read-everything strategy. Compacting (<b>[[0]]</b>) or a scratchpad (<b>[[3]]</b>) keeps that strategy."
+     },
+     {
+      "quote": "Claude's answers lean on 'typical Rails patterns' rather than this code",
+      "means": "A sign the relevant code is lost among everything else."
+     },
+     {
+      "quote": "Only a few files deal with day boundaries",
+      "means": "The decider. The job is to trace a few files, not to map the engine (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "What should the engineer do instead?",
+      "means": "A different strategy: search, then follow the path: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "One specific question → Grep for the entry point, then Read along the flow. Never read it all first.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Build understanding incrementally: Grep entry points → Read to follow imports/trace flows (not read-all-upfront)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-06",
+   "was": "m4-s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resumption with stale state",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Yesterday the engineer and Claude planned a reminder-email change across nine files and edited three. Overnight a teammate's merge renamed <code>next_reminder_at</code> to <code>reminder_due_at</code> in one untouched file. Nothing else in the change moved. After <code>--resume</code>, Claude's next edit used the old name and failed. The session is at 35% of its window. What is the <b>best next step</b>?",
+   "options": [
+    {
+     "t": "Stay in the resumed session, tell Claude about the rename, and re-read that file.",
+     "why": "Best. Resuming restores the conversation, not the files. When one known file changed, telling Claude and re-reading that file is enough."
+    },
+    {
+     "t": "Start a new session seeded with a summary of the design, the edits, and what remains.",
+     "why": "Works, but gives up a good session. A fresh start beats resuming when many tool results are stale. Here only one file changed, and the session has room to spare.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Stay in the resumed session and have Claude re-read all nine files first.",
+     "why": "Works, but more than needed. Only one file changed, and Claude's view of the other eight is still correct.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Carry on with the plan, and have Claude re-read a file whenever an edit there fails.",
+     "why": "Works, but waits for failures. Claude already knows which file changed, so there is no reason to find out by failing again.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Nothing else in the change moved.",
+   "explanation": "When resuming after files changed, tell the agent about the change. Start fresh from a structured summary only when much of the earlier context is stale.",
+   "eli5": {
+    "question": "Claude came back to yesterday's work, but one file changed overnight. The clue is: <b>nothing else in the change moved</b>, and the session still has plenty of room.",
+    "answer": "You come back to a half-built shelf. A friend swapped one screw overnight and tells you. You don't start the whole shelf again; you check that one part. In Claude Code, <b><code>--resume</code></b> brings back the conversation, not fresh copies of the files. <b>Tell Claude what changed and re-read that file.</b> <b>Rule: one known change → tell the agent and re-read it. Much stale → start fresh with a summary.</b>",
+    "options": [
+     "Correct. Mention the swapped screw and check that one part.",
+     "Starting over from notes works, but throws away a session that is mostly still right.",
+     "Checking every screw works, but only one was swapped.",
+     "Waiting for the shelf to wobble before you look is the slow way."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a resumed session is either fine or ruined</b>. Resuming restores the conversation, but Claude's copies of the files may be out of date. The fix scales with how much changed: <b>tell Claude about a known change</b>; start fresh with a summary only when much is stale.",
+    "mapTitle": "How much changed since the session?",
+    "map": {
+     "head": [
+      "What changed",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "One known file",
+       "Resume, tell Claude, re-read that file",
+       "Small fix, keeps the context"
+      ],
+      [
+       "Many files, or unknown changes",
+       "New session with a structured summary",
+       "Old tool results are unreliable"
+      ],
+      [
+       "Nothing",
+       "<code>--resume</code> and carry on",
+       "The context is still accurate"
+      ],
+      [
+       "Want to try two approaches",
+       "<code>fork_session</code>",
+       "Separate branches from one baseline"
+      ],
+      [
+       "Session running out of room",
+       "<code>/compact</code>",
+       "Reduces context use"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "renamed next_reminder_at to reminder_due_at in one untouched file",
+      "means": "The change is known exactly, so Claude can be told."
+     },
+     {
+      "quote": "Nothing else in the change moved",
+      "means": "The decider. Only one file is stale, so re-reading all nine (<b>[[2]]</b>) or starting over (<b>[[1]]</b>) is more than needed."
+     },
+     {
+      "quote": "Claude's next edit used the old name and failed",
+      "means": "Waiting for more failures (<b>[[3]]</b>) repeats this."
+     },
+     {
+      "quote": "The session is at 35% of its window",
+      "means": "There is room, so keep the session: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Resuming after a known change → tell the agent what changed and re-read that file.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "Inform the agent about file changes when resuming after modifications"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-07",
+   "was": "m4-s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 When not to delegate",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The engineer proposes that Claude spawn a subagent for each edit in a six-step change, so every edit gets a clean context. Each step changes a few lines and builds on the step before. The engineer reviews every diff in the main session before approving the next. The session sits at 20% of its window. What is the <b>best approach</b>?",
+   "options": [
+    {
+     "t": "Spawn a subagent per edit, passing it the earlier results and the relevant CLAUDE.md rules.",
+     "why": "Works, but overbuilt. Passing earlier results is right when you delegate, but each handoff costs effort for a few-line change.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Hand the whole six-step change to one subagent and review its final diff.",
+     "why": "Works, but drops the review. The engineer wants to approve each step before the next one starts.",
+     "trap": "skips the review"
+    },
+    {
+     "t": "Run <code>/compact</code> between edits to keep each edit's working context small.",
+     "why": "Works, but not needed. At 20% of the window there is little to reclaim, and each summary may drop detail the next step needs.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Make the six edits in the main session one at a time, reviewing each diff.",
+     "why": "Best. Subagents pay off by isolating noisy work or running independent tasks in parallel. Small, dependent, reviewed steps need neither."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Each step changes a few lines and builds on the step before.",
+   "explanation": "Delegate to subagents to isolate verbose output or to run independent work in parallel. Small, dependent steps reviewed in the main session gain nothing from delegation.",
+   "eli5": {
+    "question": "Should each small edit get its own helper? The clue is: <b>each step changes a few lines and builds on the step before</b>, and the session has lots of room.",
+    "answer": "A helper is worth it when there is a messy job to take away, like sorting a whole box of papers. Here each step is a few lines, depends on the last one, and you check each one. Sending a helper each time means explaining the whole story again. <b>Rule: delegate noisy or independent work; keep small, dependent steps in the main session.</b>",
+    "options": [
+     "Briefing a new helper for every small step costs more than doing the step.",
+     "One helper doing everything means you can't check each step as it happens.",
+     "Tidying the desk between steps is fine, but the desk is nearly empty.",
+     "Correct. Do the small steps yourself, checking each one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a clean context is always better</b>. Subagents start with no history, so everything they need must be passed in. That cost pays off when they <b>isolate verbose output</b> or run <b>independent</b> work in parallel. Here the steps are small, depend on each other, and the main session has plenty of room.",
+    "mapTitle": "Is a subagent worth its handoff cost?",
+    "map": {
+     "head": [
+      "Kind of work",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Small, dependent steps, reviewed one by one",
+       "Main session",
+       "No noise to isolate; history matters"
+      ],
+      [
+       "Verbose discovery or search",
+       "Subagent (e.g. Explore)",
+       "Keeps noise out of the main context"
+      ],
+      [
+       "Independent tasks",
+       "Parallel subagents in one response",
+       "Run side by side"
+      ],
+      [
+       "Delegated work that needs earlier results",
+       "Subagent with those results in its prompt",
+       "No automatic inheritance"
+      ],
+      [
+       "Main session near its limit",
+       "<code>/compact</code>",
+       "Reduces context use"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each step changes a few lines and builds on the step before",
+      "means": "The decider. Nothing verbose to isolate, and order matters, so a subagent per edit (<b>[[0]]</b>) adds handoff cost."
+     },
+     {
+      "quote": "The engineer reviews every diff in the main session before approving the next",
+      "means": "One subagent for everything (<b>[[1]]</b>) skips these step reviews."
+     },
+     {
+      "quote": "The session sits at 20% of its window",
+      "means": "Plenty of room, so compacting (<b>[[2]]</b>) solves nothing."
+     },
+     {
+      "quote": "What is the best approach?",
+      "means": "Keep the edits in the main session: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Subagents isolate noisy or independent work. Small, dependent, reviewed steps stay in the main session.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "subagent delegation isolates verbose output"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-08",
+   "was": "m4-s4-08",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.x Tool permissions",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The repo also holds the Terraform for production, under <code>infra/</code>. The team lead's limits: Claude may read anything and edit app code without asking. It must never change a file under infra/ or run <code>terraform apply</code>. The limits depend only on paths and commands. They must reach every teammate on clone. What is the <b>simplest setup</b> that enforces them?",
+   "options": [
+    {
+     "t": "Add a root CLAUDE.md section saying infra/ is read-only and Terraform is off-limits.",
+     "why": "Works, but only usually. CLAUDE.md is context Claude usually follows. A must-never rule needs enforcement.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Commit deny rules in <code>.claude/settings.json</code> for edits under infra/ and terraform apply.",
+     "why": "Best. Permission deny rules block paths and commands every time, and a committed project settings file reaches everyone on clone."
+    },
+    {
+     "t": "Commit a PreToolUse hook script that checks each Edit, Write and Bash call against the rules.",
+     "why": "Works, but overbuilt. A hook enforces too, and fits rules about what a change contains. For plain paths and commands, deny rules do it with no code.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Put the same deny rules in each engineer's own <code>~/.claude/settings.json</code>.",
+     "why": "Works, but not shared. User settings don't travel with a clone, so new teammates start without the rules.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "The limits depend only on paths and commands.",
+   "explanation": "Rules that must hold every time need enforcement, not instructions. When they depend only on paths and commands, committed permission deny rules are the simplest enforcement.",
+   "eli5": {
+    "question": "Claude must never touch production Terraform. The clue is: <b>the limits depend only on paths and commands</b>, and they must reach everyone on clone.",
+    "answer": "A sign saying 'staff only' is usually obeyed (<b>CLAUDE.md</b>). A locked door is always obeyed (<b>permission deny rules</b>). A guard who inspects every bag (<b>a hook</b>) also works, but you only need one when the rule depends on what's in the bag. Here the rule is just 'this door, this command', so a lock is enough. Putting it in the project file shares it with everyone. <b>Rule: path or command limit → committed deny rule; content-dependent rule → hook.</b>",
+    "options": [
+     "A sign on the door. Most people obey it; this must hold every time.",
+     "Correct. A lock on the door, fitted in the building everyone shares.",
+     "A guard checking every bag works, but nobody needs to look inside the bags here.",
+     "Each person fits their own lock. Newcomers arrive without one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a hook is the only real enforcement</b>. Permission rules enforce too: they block named paths and commands every time, with no code. A hook earns its place when the decision depends on <b>what</b> a call contains. Where the rule lives also matters: project settings are shared, user settings are not.",
+    "mapTitle": "How should this limit be enforced?",
+    "map": {
+     "head": [
+      "Kind of rule",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Block certain paths or commands, every time",
+       "Deny rules in <code>.claude/settings.json</code>",
+       "Declarative, shared on clone"
+      ],
+      [
+       "Block based on what a call contains",
+       "<code>PreToolUse</code> hook",
+       "Code can inspect the content"
+      ],
+      [
+       "A preference or convention",
+       "<code>CLAUDE.md</code>",
+       "Context, usually followed"
+      ],
+      [
+       "A limit only for you",
+       "<code>~/.claude/settings.json</code>",
+       "Personal, not shared"
+      ],
+      [
+       "A rare risky step a person should judge",
+       "Ask for approval",
+       "Human in the loop"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It must never change a file under infra/ or run terraform apply",
+      "means": "A must-never rule needs enforcement, not a CLAUDE.md note (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The limits depend only on paths and commands",
+      "means": "The decider. Deny rules cover this without a hook script (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "They must reach every teammate on clone",
+      "means": "So the rules go in the committed project file, not user settings (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "What is the simplest setup that enforces them?",
+      "means": "Committed deny rules: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Must-never limit on paths or commands → committed permission deny rules. Content-dependent → hook.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Programmatic enforcement (hooks, prerequisite gates) vs prompt-based guidance"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-09",
+   "was": "m4-s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode + Explore delegation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The engineer must work out how certificate PDFs flow from course completion to the learner's inbox, then propose a refactor. The team lead wants at least two designs to choose from. The flow spans about thirty files in four engines. Old export jobs and dead feature flags share its method names, so searches return many false hits. Which approach <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Enter plan mode and run the searches and file reads directly in the main session.",
+     "why": "Works, but crowds the context. Plan mode is right, but the many false search hits would fill the session the designs are built in.",
+     "trap": "crowds the context"
+    },
+    {
+     "t": "Have an Explore subagent map the flow, then refactor directly from its summary.",
+     "why": "Works, but skips the design step. Discovery is handled well, but the lead asked for designs to compare first.",
+     "trap": "skips the design"
+    },
+    {
+     "t": "Enter plan mode, have an Explore subagent do discovery, then draft designs.",
+     "why": "Best. Plan mode suits work with several valid designs. The Explore subagent keeps noisy discovery out of the main context and returns a summary."
+    },
+    {
+     "t": "Start direct execution on the PDF step, and switch to plan mode as it grows.",
+     "why": "Works, but too late. The size and the need for designs are known now, so starting by editing risks rework.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Old export jobs and dead feature flags share its method names, so searches return many false hits.",
+   "explanation": "Plan mode is for architectural work with several valid approaches. An Explore subagent isolates verbose discovery and returns a summary.",
+   "eli5": {
+    "question": "Two needs at once: compare designs, and dig through noisy code. The clues are: <b>two designs to choose from</b>, and <b>searches return many false hits</b>.",
+    "answer": "Planning a kitchen rebuild: first you sketch options on paper (<b>plan mode</b>). Someone else measures the room and clears the junk, and hands you a clean floor plan (<b>an Explore subagent</b>). You sketch from that plan, not from a pile of junk. <b>Rule: several designs → plan mode. Noisy discovery → Explore subagent.</b>",
+    "options": [
+     "Sketching in the middle of the junk works, but the junk fills your table.",
+     "A clean floor plan, but you start building without comparing designs.",
+     "Correct. Clean floor plan from a helper, then sketch the options.",
+     "Starting to build and planning later means undoing work."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>plan mode alone handles exploration</b>. Plan mode decides <i>how</i> you work: explore and design before editing. It doesn't keep noisy search output out of the context. An <b>Explore subagent</b> does that, returning only a summary.",
+    "diagram": "main session (plan mode) ── asks ──▶ Explore subagent\n      ▲                                 │ many noisy hits\n      └──────── summary of the flow ◀───┘",
+    "mapTitle": "What does this task need?",
+    "map": {
+     "head": [
+      "Situation",
+      "Approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Several valid designs, many files",
+       "Plan mode",
+       "Design before editing, avoid rework"
+      ],
+      [
+       "Noisy, verbose discovery",
+       "Explore subagent",
+       "Returns a summary, keeps the context clean"
+      ],
+      [
+       "Plan mode with small, clean discovery",
+       "Read directly in the main session",
+       "Little noise to isolate"
+      ],
+      [
+       "Simple, well-scoped change",
+       "Direct execution",
+       "Nothing to design"
+      ],
+      [
+       "Requirements only a person knows",
+       "Interview pattern",
+       "Claude asks first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team lead wants at least two designs to choose from",
+      "means": "Design before editing, so plan mode. Refactoring straight away (<b>[[1]]</b>, <b>[[3]]</b>) skips it."
+     },
+     {
+      "quote": "The flow spans about thirty files in four engines",
+      "means": "A large, multi-file change, which is plan-mode work from the start."
+     },
+     {
+      "quote": "Old export jobs and dead feature flags share its method names, so searches return many false hits",
+      "means": "The decider. Noisy discovery would crowd the main session (<b>[[0]]</b>), so hand it to an Explore subagent."
+     },
+     {
+      "quote": "Which approach fits best?",
+      "means": "Plan mode plus an Explore subagent: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Designs to compare → plan mode. Noisy discovery → Explore subagent, summary back.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Explore subagent isolates verbose discovery output, returns summaries"
+    }
+   }
+  },
+  {
+   "id": "m4p-s4-10",
+   "was": "m4-s4-10",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Sourcing MCP servers",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The team wants Claude to read Sentry issues, comment on them and change their status. An engineer proposes writing their own integration, since only the team knows its process. The process adds two custom tags and a 'needs repro' status step. Sentry's standard API reaches both. Several maintained open-source Sentry MCP servers already cover issues, comments, tags and status. What is the <b>best recommendation</b>?",
+   "options": [
+    {
+     "t": "Adopt a community Sentry MCP server and note the tags and repro step in CLAUDE.md.",
+     "why": "Best. Prefer community servers for standard integrations. The team's process is context, and CLAUDE.md is where shared context lives."
+    },
+    {
+     "t": "Build a small in-house Sentry MCP server whose tools encode the tags and repro step.",
+     "why": "Works, but overbuilt. A custom server fits a system with no existing integration. Here the team's differences are reachable through servers that already exist.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Have Claude call Sentry's API with curl through Bash, endpoints listed in CLAUDE.md.",
+     "why": "Works, but fragile. Raw API calls give up typed tools, clear descriptions and structured errors, and put tokens into shell commands.",
+     "trap": "fragile"
+    },
+    {
+     "t": "Fork a community Sentry server and add tools for the team's tags and repro step.",
+     "why": "Works, but adds upkeep. The team now maintains a fork, for differences the existing tools already reach.",
+     "trap": "extra upkeep"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Several maintained open-source Sentry MCP servers already cover issues, comments, tags and status.",
+   "explanation": "Prefer community MCP servers for standard integrations. Team-specific conventions are context and belong in CLAUDE.md.",
+   "eli5": {
+    "question": "Build or adopt? The clue is: <b>maintained open-source servers already cover issues, comments, tags and status</b>. The team's twist is only a matter of how it uses them.",
+    "answer": "You don't build your own car because your family has its own routes. You buy a good car and write the routes down. A ready-made <b>community MCP server</b> is the car; the team's tags and repro step are the routes, written in <b><code>CLAUDE.md</code></b>. <b>Rule: standard system → community MCP server; team habits → CLAUDE.md.</b>",
+    "options": [
+     "Correct. Use the ready-made car and write the family's routes down.",
+     "Building your own car works, but there are good ones on sale already.",
+     "Driving with a toolkit instead of a car works, but every trip is fiddly.",
+     "Modifying a bought car means maintaining your changes for good."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a custom process needs a custom integration</b>. The process differs only in how the team uses standard features, and the standard API reaches them. That is <b>context</b>, not new tooling. Adopt the community server and write the conventions in <code>CLAUDE.md</code>.",
+    "mapTitle": "Build, adopt, or describe?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Standard system, maintained servers exist",
+       "Adopt a community MCP server",
+       "No code to maintain"
+      ],
+      [
+       "Team conventions on a standard system",
+       "Describe them in <code>CLAUDE.md</code>",
+       "Conventions are context"
+      ],
+      [
+       "In-house system with no integration",
+       "Build a custom MCP server",
+       "Nothing exists to adopt"
+      ],
+      [
+       "Read-only catalogue to browse",
+       "MCP resources",
+       "Content, not actions"
+      ],
+      [
+       "Raw API calls from the shell",
+       "Avoid for regular use",
+       "No typed tools or structured errors"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer proposes writing their own integration, since only the team knows its process",
+      "means": "The tempting idea behind <b>[[1]]</b> and <b>[[3]]</b>."
+     },
+     {
+      "quote": "Sentry's standard API reaches both",
+      "means": "The custom parts need no new tools, only context."
+     },
+     {
+      "quote": "Several maintained open-source Sentry MCP servers already cover issues, comments, tags and status",
+      "means": "The decider. Adopt one instead of building, forking or calling the API by hand (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "What is the best recommendation?",
+      "means": "Community server plus CLAUDE.md: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Standard integration → community MCP server. Team-specific conventions → CLAUDE.md.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "prefer community MCP servers for standard integrations (Jira)"
+    }
+   }
+  }
+ ]
+}

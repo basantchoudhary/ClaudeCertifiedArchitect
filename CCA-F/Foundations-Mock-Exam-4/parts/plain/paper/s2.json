@@ -1,0 +1,1081 @@
+{
+ "scenarios": [
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 · D4 · D5",
+   "brief": "A startup uses Claude Code in one TypeScript repository with <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> folders. The repository commits a <code>.claude/</code> directory and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m4p-s2-01",
+   "was": "s2-01",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1/3.3 Memory hierarchy & path rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The root <code>CLAUDE.md</code> has grown very long. It holds server conventions, mobile conventions, testing conventions and a security checklist. Engineers say Claude quotes mobile conventions while it edits server code. The testing conventions apply to every test file, and test files sit next to their sources in all three folders. The security checklist applies everywhere. How should the team <b>restructure</b> it?",
+   "options": [
+    {
+     "t": "Give <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> each a <code>CLAUDE.md</code>, and keep shared items at the root.",
+     "why": "Works, but tied to folders. Folder files would stop mobile rules leaking into server work, but the testing conventions cover test files in all three folders, so they must be copied three times.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Keep the checklist in the root file, and move area and testing rules into <code>.claude/rules/</code> with globs.",
+     "why": "Best. Universal items stay always loaded. Path-scoped rules load only for matching files, and a glob like <code>**/*.test.ts</code> follows test files into every folder."
+    },
+    {
+     "t": "Split each section into its own file under <code>docs/claude/</code>, and <code>@import</code> every one from the root file.",
+     "why": "Works, but still loads everywhere. Imports make the file tidy and modular, but every imported file still loads in every session, so mobile rules still reach server work.",
+     "trap": "still loads everywhere"
+    },
+    {
+     "t": "Turn each area's conventions into a skill in <code>.claude/skills/</code> that engineers invoke before working there.",
+     "why": "Works, but only when remembered. A skill keeps the conventions out of other work, but it loads only when invoked, and conventions should apply while editing without anyone asking.",
+     "trap": "only when remembered"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The testing conventions apply to every test file, and test files sit next to their sources in all three folders.",
+   "explanation": "Universal standards stay in the root CLAUDE.md. Conventions that apply to some files go in .claude/rules/ with paths: globs, which load only for matching files and can follow a file type across folders.",
+   "eli5": {
+    "question": "One huge rule book loads for everything, so Claude reads mobile rules while doing server work. The clue: the testing rules apply to test files that sit in <i>all three folders</i>.",
+    "answer": "Think of a school with one giant noticeboard at the gate. Everyone reads every notice, even the ones for other classes. Better: keep only school-wide notices at the gate (the root <code>CLAUDE.md</code>), and give other notices a label that says who they are for, wherever those people are (<code>.claude/rules/</code> files with a <code>paths:</code> pattern). <b>Rule: applies everywhere → root CLAUDE.md. Applies to a kind of file → path-scoped rule.</b>",
+    "options": [
+     "A noticeboard in each classroom helps, but the test notice then has to be pinned up three times.",
+     "Correct. School-wide notices at the gate, and labelled notices that find the right readers in any room.",
+     "Stapling the notices into one booklet is tidier, but everyone still reads the whole booklet.",
+     "Notices that people must ask for get skipped by people who forget to ask."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>each folder needs its own CLAUDE.md</b>, since the complaint is about server and mobile rules mixing. That fixes the area rules. But the testing conventions follow a <i>kind of file</i>, and test files sit in every folder. A <code>paths:</code> glob in <code>.claude/rules/</code> matches files by pattern, wherever they are.",
+    "diagram": "CLAUDE.md (root)        security checklist, always\n.claude/rules/server.md paths: server/**\n.claude/rules/mobile.md paths: mobile/**\n.claude/rules/tests.md  paths: **/*.test.ts",
+    "mapTitle": "Who needs this instruction, and when?",
+    "map": {
+     "head": [
+      "Instruction applies to",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every file, every session",
+       "Root <code>CLAUDE.md</code>",
+       "Always loaded, shared through git"
+      ],
+      [
+       "A file pattern spread over folders",
+       "<code>.claude/rules/</code> with a <code>paths:</code> glob",
+       "Loads for matching files anywhere"
+      ],
+      [
+       "Everything in one folder, nothing outside",
+       "That folder's <code>CLAUDE.md</code>",
+       "Loads when working in that folder"
+      ],
+      [
+       "Same as today, just tidier",
+       "<code>@import</code> from the root",
+       "Modular, but still always loaded"
+      ],
+      [
+       "A task someone runs on request",
+       "A skill",
+       "Loads only when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Engineers say Claude quotes mobile conventions while it edits server code",
+      "means": "Everything loads everywhere. An <code>@import</code> split (<b>[[2]]</b>) keeps that."
+     },
+     {
+      "quote": "The testing conventions apply to every test file, and test files sit next to their sources in all three folders",
+      "means": "The decider. Folder files (<b>[[0]]</b>) would need three copies; a glob follows the files."
+     },
+     {
+      "quote": "The security checklist applies everywhere",
+      "means": "One item really is universal, so it stays in the root file."
+     },
+     {
+      "quote": "How should the team restructure it?",
+      "means": "Conventions should load by themselves while editing, not on request (<b>[[3]]</b>). Root for universal, path rules for the rest: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Universal standards in the root CLAUDE.md; conventions for a file pattern across folders in .claude/rules/ with paths globs.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-02",
+   "was": "s2-02",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills vs commands vs memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A long, step-by-step procedure for moving an old endpoint onto the new router sits pasted in the root <code>CLAUDE.md</code>. A few engineers run it each week. One step scans every handler in <code>server/</code> and prints a long list that the rest of the session never needs. The team wants the procedure to run on request, with read, edit and test tools only. Where should it <b>live</b>?",
+   "options": [
+    {
+     "t": "As a project command in <code>.claude/commands/</code>, committed to the repository and run by name.",
+     "why": "Works, but leaves the noise in. A shared command runs on request, but the scan's long list still lands in the main conversation, and nothing limits its tools.",
+     "trap": "leaves the noise in"
+    },
+    {
+     "t": "In a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches handler files in <code>server/</code>.",
+     "why": "Works, but wrong trigger. A path rule would show the steps while handlers are edited, but it loads on every handler edit instead of when someone asks for the procedure.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In a separate markdown file that the root <code>CLAUDE.md</code> pulls in with an <code>@import</code> line.",
+     "why": "Works, but still loads everywhere. The procedure gets its own file, but an imported file loads into every session, so the long text stays always on.",
+     "trap": "still loads everywhere"
+    },
+    {
+     "t": "As a skill in <code>.claude/skills/</code> whose <code>SKILL.md</code> sets <code>context: fork</code> and <code>allowed-tools</code>.",
+     "why": "Best. A skill runs on demand. <code>context: fork</code> keeps the scan output in its own sub-agent context, and <code>allowed-tools</code> limits it to read, edit and test."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "One step scans every handler in server/ and prints a long list that the rest of the session never needs.",
+   "explanation": "An on-demand procedure belongs in a skill, not in always-loaded memory. context: fork isolates its verbose output from the main conversation, and allowed-tools restricts what it may use.",
+   "eli5": {
+    "question": "A long recipe sits in the always-loaded file, and one of its steps prints a huge list nobody needs afterwards. The clue: <i>run on request</i>, <i>keep the long list out</i>, <i>limit the tools</i>.",
+    "answer": "Picture a specialist you call in for one job. They work in their own room, use only the tools you hand them, and come back with the result, not their pile of scrap paper. That is a <b>skill</b> with <code>context: fork</code> (its own room) and <code>allowed-tools</code> (the tools you hand over). <b>Rule: on-demand procedure with noisy steps → skill with context: fork; limit tools with allowed-tools.</b>",
+    "options": [
+     "A shared recipe card runs on request, but the specialist works at your desk and leaves the scrap paper there.",
+     "A note that pops up whenever you touch a handler appears at the wrong moments, not when you ask for the job.",
+     "Moving the recipe to its own page that is stapled into the handbook still means everyone reads it every day.",
+     "Correct. The specialist works in their own room with only the tools you hand over."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a command and a skill are the same thing</b>: both run on request and both are shared through git. The difference here is the noisy scan and the tool limit. A skill's <code>SKILL.md</code> can set <code>context: fork</code>, which runs it in an isolated sub-agent context, and <code>allowed-tools</code>, which restricts what it can use.",
+    "diagram": "main session ──/migrate──▶ skill (context: fork)\n                            scans 100s of handlers\n             ◀── result ── (scan stays in fork)",
+    "mapTitle": "Where does a team procedure live?",
+    "map": {
+     "head": [
+      "What it needs",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "On request, noisy steps, tool limits",
+       "Skill with <code>context: fork</code> + <code>allowed-tools</code>",
+       "Isolated context, restricted tools"
+      ],
+      [
+       "On request, small output, shared",
+       "Command in <code>.claude/commands/</code>",
+       "Simple, invoked by name"
+      ],
+      [
+       "A convention for certain files",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads when matching files are edited"
+      ],
+      [
+       "A standard for every session",
+       "Root <code>CLAUDE.md</code>",
+       "Always loaded"
+      ],
+      [
+       "Tidy a long always-on file",
+       "<code>@import</code>",
+       "Modular, still always loaded"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "sits pasted in the root CLAUDE.md",
+      "means": "Today it loads in every session. An <code>@import</code> (<b>[[2]]</b>) keeps that."
+     },
+     {
+      "quote": "One step scans every handler in server/ and prints a long list that the rest of the session never needs",
+      "means": "The decider. A plain command (<b>[[0]]</b>) would put that list in the main conversation; <code>context: fork</code> keeps it out."
+     },
+     {
+      "quote": "The team wants the procedure to run on request, with read, edit and test tools only",
+      "means": "On request, not on file edits (<b>[[1]]</b>), and a tool limit: <code>allowed-tools</code> in a skill, <b>[[3]]</b>."
+     }
+    ],
+    "rule": "On-demand procedure with verbose steps or tool limits → skill with context: fork and allowed-tools.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-03",
+   "was": "s2-03",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode vs direct execution",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A ticket asks for soft delete on orders: a <code>deleted_at</code> column, plus filtering at dozens of query sites in <code>server/</code>. The ticket thread suggests three designs: filter in the base repository, add a check at each query, or read from a filtered view. The reporting module reads deleted rows on purpose, and each design treats it differently. The engineer wants to avoid redoing the edits. How should they <b>start</b>?",
+   "options": [
+    {
+     "t": "Work in direct execution one module at a time, and run the existing tests after each module.",
+     "why": "Works, but too early. Small tested steps are right once the design is chosen. Here three designs are still open, so the edits may have to be redone.",
+     "trap": "too early"
+    },
+    {
+     "t": "Have Claude write failing soft-delete tests for the query sites first, then edit until they pass.",
+     "why": "Works, but decides too soon. Tests first is a good habit, but what the tests expect depends on which design is picked, and that is still open.",
+     "trap": "decides too soon"
+    },
+    {
+     "t": "Use plan mode: have Claude map the query code, weigh the three designs and get approval first.",
+     "why": "Best. Many files, several valid designs and a trade-off for the reporting module are what plan mode is for: explore and decide before any edit."
+    },
+    {
+     "t": "Send an Explore subagent to list every query site, then apply the base-repository filter to them.",
+     "why": "Works, but skips the decision. The list is useful, but this picks one design without weighing it, and a base filter hides the deleted rows reporting needs.",
+     "trap": "skips the decision"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The ticket thread suggests three designs: filter in the base repository, add a check at each query, or read from a filtered view.",
+   "explanation": "Plan mode fits large changes with several valid approaches and architectural trade-offs. It explores and designs before committing, which prevents rework. Direct execution fits once the approach is settled.",
+   "eli5": {
+    "question": "A change touches dozens of places, and there are three ways to do it. One module needs the deleted rows, and each way treats it differently. The clue: <i>three designs</i> are still on the table.",
+    "answer": "Before re-plumbing a whole building, a plumber walks every floor and agrees the plan with the owner. Starting on one floor with a guess means ripping pipes out later. Walking and agreeing first is <b>plan mode</b>: Claude maps the code, compares the designs and waits for approval before editing. <b>Rule: several valid designs + many files → plan mode first.</b>",
+    "options": [
+     "Floor by floor with checks is good once the plan is agreed. It isn't yet.",
+     "Writing the inspection list first is good, but the list depends on which plan you pick.",
+     "Correct. Walk the building, compare the three plans, agree, then start.",
+     "A helper's map of every pipe is useful, but jumping to one plan unchecked breaks the floor that needs the old water."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>good tests make it safe to just start</b>. Tests catch regressions in an approach you have chosen. They don't choose the approach. Here three designs are open and each treats the reporting module differently, so the first job is a design decision. Plan mode explores and designs before committing, which prevents rework.",
+    "mapTitle": "How should Claude start this change?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best start",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Many files, several valid designs",
+       "Plan mode",
+       "Decide before editing"
+      ],
+      [
+       "Design settled, change across modules",
+       "Direct execution, tests after each step",
+       "Nothing left to design"
+      ],
+      [
+       "Behaviour settled, needs pinning down",
+       "Tests first, then iterate",
+       "Tests state the target"
+      ],
+      [
+       "Discovery output would flood context",
+       "Explore subagent",
+       "Returns a summary"
+      ],
+      [
+       "One small well-scoped fix",
+       "Direct execution",
+       "Planning adds nothing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "plus filtering at dozens of query sites in server/",
+      "means": "A multi-file change, one sign of plan mode."
+     },
+     {
+      "quote": "The ticket thread suggests three designs",
+      "means": "The decider. The approach is open, so module-by-module edits (<b>[[0]]</b>) or tests (<b>[[1]]</b>) would assume an answer."
+     },
+     {
+      "quote": "The reporting module reads deleted rows on purpose, and each design treats it differently",
+      "means": "A real trade-off. Picking the base filter unweighed (<b>[[3]]</b>) would hide those rows."
+     },
+     {
+      "quote": "The engineer wants to avoid redoing the edits",
+      "means": "Decide first, edit once: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Several valid designs across many files → plan mode before any edits.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Plan mode enables safe exploration/design before committing → prevents rework"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-04",
+   "was": "s2-04",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Iterative refinement",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "An engineer has rewritten a prose spec for a log-redaction function four times. Each run, Claude builds it differently. Sometimes it masks the whole object that holds a secret, and sometimes only the value. Nested arrays and values that are already masked come out differently each time. The engineer has a firm answer for every case. They also want later changes checked against those answers. Which <b>TWO</b> changes fit best?",
+   "options": [
+    {
+     "t": "Show Claude two or three before-and-after log records, with a nested array and a masked value.",
+     "why": "Best. Concrete input and output pairs show the transformation directly and settle the cases that prose leaves open."
+    },
+    {
+     "t": "Ask Claude to interview the engineer about the unclear cases before it writes any more code.",
+     "why": "Works, but different problem. Interviewing draws out requirements nobody has settled. The engineer already has every answer; the gap is in showing them to Claude.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Write failing tests for the disputed cases first, share the failures, and iterate until they pass.",
+     "why": "Best. Tests state each answer exactly, give Claude concrete feedback, and keep checking later changes."
+    },
+    {
+     "t": "Expand the prose spec with exact definitions for each disputed case and a glossary of its key terms.",
+     "why": "Works, but more of the same. Sharper prose helps a little, but four prose rewrites have already failed to pin the behaviour down.",
+     "trap": "more of the same"
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The engineer has a firm answer for every case.",
+   "explanation": "Concrete input/output examples communicate a transformation better than prose, and test-driven iteration states the target objectively and keeps checking it. The interview pattern is for requirements that are not yet settled.",
+   "eli5": {
+    "question": "Four rewrites of a written spec, and Claude still builds the function differently each time. The engineer knows every answer. The clue: the answers are <i>known</i> but the <i>prose</i> isn't getting them across, and later changes must be <i>checked</i>.",
+    "answer": "Explaining a haircut in words rarely works; showing a before-and-after photo does. And a checklist you tick at the end tells you whether the cut matches. For code, the photos are <b>input/output examples</b> and the checklist is <b>failing tests</b> that Claude iterates against, which keep checking later changes too. <b>Rule: prose keeps failing → show examples and write tests first.</b>",
+    "options": [
+     "Correct. Before-and-after photos show exactly what you want.",
+     "Asking questions helps when you don't know what you want. Here you already do.",
+     "Correct. A checklist that tells you, now and later, whether the result matches.",
+     "A longer written description is the thing that has already failed four times."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>unclear output means the requirements are unclear</b>, so Claude should ask questions. Here the engineer has every answer; prose is the weak channel. The exam guide's tools for this are concrete input/output examples, which beat prose for transformations, and test-driven iteration, which also keeps checking later changes.",
+    "diagram": "{user:{token:\"abc\"}}  →  {user:{token:\"***\"}}\n[{key:\"x\"},{key:\"y\"}]  →  [{key:\"***\"},{key:\"***\"}]\n\"***\"                  →  \"***\" (not re-masked)",
+    "mapTitle": "Claude keeps building it differently. Which lever?",
+    "map": {
+     "head": [
+      "Situation",
+      "Lever",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Answers known, prose fails to convey them",
+       "Input/output examples",
+       "Shows the transformation"
+      ],
+      [
+       "Answers known, must stay checked later",
+       "Tests first, share failures",
+       "Objective and repeatable"
+      ],
+      [
+       "Answers not yet decided",
+       "Interview pattern",
+       "Claude asks questions first"
+      ],
+      [
+       "Prose is vague on terms",
+       "Sharper definitions",
+       "Helps only if wording is the gap"
+      ],
+      [
+       "Several problems that interact",
+       "One message with all of them",
+       "Fixes depend on each other"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer has rewritten a prose spec for a log-redaction function four times",
+      "means": "More prose (<b>[[3]]</b>) is the lever that has already failed."
+     },
+     {
+      "quote": "Nested arrays and values that are already masked come out differently each time",
+      "means": "Specific cases that a before-and-after example settles directly (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The engineer has a firm answer for every case",
+      "means": "The decider. Nothing is left to discover, so an interview (<b>[[1]]</b>) asks for what is already known."
+     },
+     {
+      "quote": "They also want later changes checked against those answers",
+      "means": "Tests keep checking: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Prose fails to convey a known transformation → input/output examples plus tests written first.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "Concrete input/output examples communicate transformations better than prose"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-05",
+   "was": "s2-05",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Command scoping",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team wants an <code>/rfc</code> command that drafts a design record. It must work in this repository and in a second one the team owns. Many people who open these repositories are contractors on their own laptops. They never run the internal setup script. A few engineers want a personal version that also drafts a Slack announcement. Which arrangement <b>meets every need</b>?",
+   "options": [
+    {
+     "t": "Keep one copy in <code>~/.claude/commands/</code>, installed on each person's laptop by the setup script.",
+     "why": "Works, but misses people. One copy avoids duplication and reaches everyone who runs the script. Contractors never run it, so they don't get the command.",
+     "trap": "misses people"
+    },
+    {
+     "t": "Describe the RFC steps in each repository's root <code>CLAUDE.md</code>, with the Slack step marked optional.",
+     "why": "Works, but wrong kind of file. Claude would follow the steps when asked, but memory loads in every session and there is no <code>/rfc</code> to run.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Commit it to <code>.claude/commands/</code> in both repositories, with the Slack step behind an argument.",
+     "why": "Works, but wrong scope for the extra. Everyone gets the command, but a personal habit ends up in the team's shared file for everyone to maintain.",
+     "trap": "wrong scope"
+    },
+    {
+     "t": "Commit it in each repo's <code>.claude/commands/</code>, plus a renamed variant in <code>~/.claude/commands/</code>.",
+     "why": "Best. Project commands arrive with every clone, contractors included. The personal variant lives at user level under its own name."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "They never run the internal setup script.",
+   "explanation": "Project commands in .claude/commands/ are version-controlled and arrive with every clone. Personal variants belong in ~/.claude/commands/ under a separate name.",
+   "eli5": {
+    "question": "A team command must reach everyone in two repositories, including contractors who skip the setup script. A few people want a personal extra. The clue: contractors <i>never run the setup script</i>.",
+    "answer": "Tools left in the workshop are there for anyone who walks in. Tools handed out at orientation only reach people who come to orientation. The workshop is <code>.claude/commands/</code> in each repository: it arrives with every clone. Your own toolbox is <code>~/.claude/commands/</code>: right for a personal variant. <b>Rule: everyone who clones needs it → project command. Only me → user command.</b>",
+    "options": [
+     "Handing tools out at orientation misses everyone who skips orientation.",
+     "A note describing the steps on the wall is read every day, but it isn't a tool you can pick up.",
+     "Putting your personal gadget on the shared bench works, but now the whole team looks after it.",
+     "Correct. Shared tools in each workshop, your own variant in your own toolbox."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>one central copy is always cleaner</b> than a copy per repository. A user-level copy is central, but it only reaches machines where someone installs it. Committed project commands travel with the code, so they reach anyone who clones, including contractors. Personal extras stay personal at user level.",
+    "diagram": "repo-A/.claude/commands/rfc.md  → everyone who clones A\nrepo-B/.claude/commands/rfc.md  → everyone who clones B\n~/.claude/commands/rfc-slack.md → just me, everywhere",
+    "mapTitle": "Who needs the command, and how does it reach them?",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Best home",
+      "How it arrives"
+     ],
+     "rows": [
+      [
+       "Everyone who clones a repository",
+       "<code>.claude/commands/</code>, committed",
+       "With the code, on clone or pull"
+      ],
+      [
+       "Only me, in every project",
+       "<code>~/.claude/commands/</code>",
+       "Already on my machine"
+      ],
+      [
+       "Everyone, if setup is always run",
+       "User-level copy installed by a script",
+       "Only where the script ran"
+      ],
+      [
+       "A standard to always follow",
+       "<code>CLAUDE.md</code>",
+       "Loaded every session, not invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It must work in this repository and in a second one the team owns",
+      "means": "Two repositories, so it is committed to each."
+     },
+     {
+      "quote": "Many people who open these repositories are contractors on their own laptops",
+      "means": "Reaching people's machines is the hard part."
+     },
+     {
+      "quote": "They never run the internal setup script",
+      "means": "The decider. A script-installed user copy (<b>[[0]]</b>) misses them; a committed command doesn't."
+     },
+     {
+      "quote": "A few engineers want a personal version that also drafts a Slack announcement",
+      "means": "Personal, so user level, not a flag in the team file (<b>[[2]]</b>) or a memory section (<b>[[1]]</b>). Both needs together: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Team command → committed .claude/commands/ in each repo; personal variant → ~/.claude/commands/ under its own name.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Project commands in .claude/commands/ (shared) vs user ~/.claude/commands/ (personal)"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-06",
+   "was": "s2-06",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 Memory precedence & /memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "An engineer prefers a naming style the team has not adopted. They added it to <code>~/.claude/CLAUDE.md</code>, which a dotfiles repository links into place. The root <code>CLAUDE.md</code> states a different style. A rule file for <code>mobile/</code> screens states a third. While editing a mobile screen, Claude ignores the engineer's style. What is the <b>most useful first step</b>?",
+   "options": [
+    {
+     "t": "Move the engineer's style into the root <code>CLAUDE.md</code>, replacing the entry it conflicts with.",
+     "why": "Works, but wrong scope. Claude would follow it, but the team has not adopted this style, and nobody yet knows whether the personal file even loads.",
+     "trap": "wrong scope"
+    },
+    {
+     "t": "Run <code>/memory</code> in that session to see which files loaded, then compare each file's naming style.",
+     "why": "Best. <code>/memory</code> shows which memory files are actually in context. That settles whether the linked user file loads before anyone argues about conflicts."
+    },
+    {
+     "t": "Restate the preferred style in the opening prompt of each session that works on mobile code.",
+     "why": "Works, but skips the diagnosis. Claude will usually follow a fresh instruction, but nobody learns why the memory file had no effect.",
+     "trap": "skips the diagnosis"
+    },
+    {
+     "t": "Replace the dotfiles link with a real copy of the file in <code>~/.claude/</code>, then restart.",
+     "why": "Works, but guesses the cause. It might help, but it changes the setup before checking what loads, and there are two other conflicting files to explain.",
+     "trap": "guesses the cause"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "While editing a mobile screen, Claude ignores the engineer's style.",
+   "explanation": "/memory lists the memory files a session has loaded. Check what is in context before changing files or reasoning about precedence.",
+   "eli5": {
+    "question": "Three files say three different things about naming, and Claude ignores the engineer's personal one. The clue: nobody has checked which files Claude actually <i>has</i>.",
+    "answer": "Before arguing about which note on the fridge wins, look at what is actually on the fridge. Maybe your note never got stuck up. <code>/memory</code> is that look: it lists the memory files loaded in this session. Then you compare what they say. <b>Rule: instructions seem ignored → run /memory first to see what is loaded.</b>",
+    "options": [
+     "Putting your note in the family rules makes everyone follow it, and the family never agreed.",
+     "Correct. Look at the fridge first, then compare the notes.",
+     "Saying it out loud every morning works, but you never find out what happened to your note.",
+     "Re-sticking your note might help, but you haven't checked yet whether it fell off."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to jump to <b>which file wins</b> when three files disagree. That question only matters once you know all three are loaded. The personal file arrives through a link, so it may not be loading at all. The exam guide's tool for this is <code>/memory</code>, which verifies which memory files are loaded.",
+    "diagram": "~/.claude/CLAUDE.md  (dotfiles link)  loaded?  ← check\nroot CLAUDE.md                        style B\n.claude/rules/ mobile screens         style C",
+    "mapTitle": "Claude ignores an instruction. What do you do first?",
+    "map": {
+     "head": [
+      "What you know",
+      "First step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Unsure which memory files load",
+       "Run <code>/memory</code>",
+       "Shows what is in context"
+      ],
+      [
+       "File loads; it is a team standard",
+       "Put it in project <code>CLAUDE.md</code>",
+       "Shared through git"
+      ],
+      [
+       "File loads; it is personal",
+       "Keep it in <code>~/.claude/CLAUDE.md</code>",
+       "Not shared with the team"
+      ],
+      [
+       "File not loading",
+       "Fix the file or its location",
+       "Now the cause is known"
+      ],
+      [
+       "Needed once, right now",
+       "Say it in the prompt",
+       "Quick, but fixes nothing lasting"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer prefers a naming style the team has not adopted",
+      "means": "Personal, so moving it into the shared root file (<b>[[0]]</b>) is the wrong scope."
+     },
+     {
+      "quote": "which a dotfiles repository links into place",
+      "means": "A possible reason it isn't loading, but only a guess until checked (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "The root CLAUDE.md states a different style. A rule file for mobile/ screens states a third",
+      "means": "Three sources. Which of them are in context?"
+     },
+     {
+      "quote": "What is the most useful first step?",
+      "means": "Find out before changing anything. Restating in each prompt (<b>[[2]]</b>) hides the question. Check what loaded: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Instruction seems ignored → /memory first to see which memory files are loaded.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "/memory command verifies which memory files are loaded"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-07",
+   "was": "s2-07",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 Large-codebase exploration",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "An engineer has spent a long session exploring the payments code in <code>server/</code>. Claude now gives different answers about where requests are authenticated. It talks about “typical middleware patterns” instead of the file it named earlier. The exploration will continue over several more sessions this week. Two other engineers will pick up parts of it. What is the <b>best response</b>?",
+   "options": [
+    {
+     "t": "Run <code>/compact</code> now and keep exploring in this session with the condensed history.",
+     "why": "Works, but stays in one session. Compacting frees space today, but it carries nothing to later sessions or to the other engineers, and it can blur exact file names.",
+     "trap": "stays in one session"
+    },
+    {
+     "t": "Have Claude re-read the authentication code end to end so the exact details are fresh again.",
+     "why": "Works, but more of the same. The details return for a while, but more volume goes into an already degraded context, and nothing reaches later sessions.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Resume this session tomorrow with <code>--resume</code> so the full history carries over.",
+     "why": "Works, but carries the problem. Resuming keeps every earlier finding, but it brings back the same degraded context too.",
+     "trap": "carries the problem"
+    },
+    {
+     "t": "Write confirmed findings to a scratchpad file, and give broad searches to subagents.",
+     "why": "Best. A scratchpad file keeps findings across sessions and people, and subagents keep verbose search output out of the main context."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The exploration will continue over several more sessions this week.",
+   "explanation": "Inconsistent answers and talk of “typical patterns” are signs of context degradation. Persist findings in a scratchpad file that later sessions and colleagues can read, and delegate verbose searches to subagents.",
+   "eli5": {
+    "question": "After a long session, Claude is getting vague and contradicting itself. The work goes on for days, and other people will join. The clue: the findings must survive <i>beyond this session</i>.",
+    "answer": "After a long day of detective work, your memory of the morning gets fuzzy. The fix isn't to squeeze your memory harder; it's a case file. Write down what you have confirmed, so tomorrow-you and your colleagues start from it. Send helpers to do the messy searching and report back. That is a <b>scratchpad file</b> plus <b>subagents</b>. <b>Rule: degrading and multi-session → write findings down, delegate the noisy searching.</b>",
+    "options": [
+     "Tidying your desk helps today, but your colleagues can't read your desk tomorrow.",
+     "Rereading everything piles more paper onto a desk that is already overflowing.",
+     "Picking up tomorrow exactly where you left off brings back the same fog.",
+     "Correct. A case file everyone can read, and helpers for the noisy searches."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a full, confused session just needs compacting</b>. <code>/compact</code> frees space inside one session. Here the signs are <i>degradation</i> (inconsistent answers, “typical patterns” instead of the specific file), and the work spans sessions and people. The guide's answer is a scratchpad file for key findings plus subagents for verbose output.",
+    "mapTitle": "Context trouble: what kind, and what fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Vague answers; work spans sessions or people",
+       "Degradation, no saved state",
+       "Scratchpad file + subagents"
+      ],
+      [
+       "Nearly full, answers still specific, ends today",
+       "Space only",
+       "<code>/compact</code>"
+      ],
+      [
+       "Continue the same healthy session later",
+       "Nothing wrong",
+       "<code>--resume</code>"
+      ],
+      [
+       "Search output floods the context",
+       "Verbose discovery",
+       "Subagent returns a summary"
+      ],
+      [
+       "Work must survive a crash",
+       "No saved state",
+       "Manifest of progress"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Claude now gives different answers about where requests are authenticated",
+      "means": "Inconsistent answers: a sign of degradation, not just a full context."
+     },
+     {
+      "quote": "It talks about “typical middleware patterns” instead of the file it named earlier",
+      "means": "The textbook sign. Re-reading (<b>[[1]]</b>) adds volume; resuming (<b>[[2]]</b>) keeps the fog."
+     },
+     {
+      "quote": "The exploration will continue over several more sessions this week",
+      "means": "The decider. <code>/compact</code> (<b>[[0]]</b>) helps only inside this session."
+     },
+     {
+      "quote": "Two other engineers will pick up parts of it",
+      "means": "Findings must live in a file others can read: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Context degrading and work spans sessions or people → scratchpad file for findings, subagents for verbose search.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "Scratchpad files persist key findings across boundaries; subagent delegation isolates verbose output"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-08",
+   "was": "s2-08",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 Subagent isolation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An engineer needs every place the code opens a database connection outside the shared pool. A text search returns thousands of matching lines. Most come from generated clients spread over many folders with no common naming pattern. Once that output entered the conversation, Claude lost track of which sites in the refactor plan were already checked. What is the <b>best way</b> to run this search?",
+   "options": [
+    {
+     "t": "Rerun the search with exclusion globs for the generated-client folders the team knows about.",
+     "why": "Works, but only partly. Excludes cut the noise, but with no common naming pattern a hand-made list will miss some folders or drop real call sites.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Send the search output to a file, and have Claude read that file when it needs the results.",
+     "why": "Works, but delays the problem. The main context stays clear until Claude reads the file, and then the same thousands of lines arrive.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Hand the search to an Explore subagent that reports only real matches by file and line.",
+     "why": "Best. The subagent absorbs the noisy output in its own context and returns only what qualifies, so the main session keeps the plan."
+    },
+    {
+     "t": "Run the search as before, then use <code>/compact</code> once the results have been reviewed.",
+     "why": "Works, but too late. Compacting shrinks the flood after it lands, and it may also condense the record of which sites were already checked.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Once that output entered the conversation, Claude lost track of which sites in the refactor plan were already checked.",
+   "explanation": "An Explore subagent isolates verbose discovery output in its own context and returns a summary, which protects the main session's working state.",
+   "eli5": {
+    "question": "A search dumps thousands of lines into the chat, and Claude loses its place in the plan. The clue: the noise <i>entering the conversation</i> is what broke things.",
+    "answer": "If you ask for every receipt that mentions coffee, you don't want the whole shoebox tipped onto your desk. You send an assistant to sort the shoebox in another room and bring back only the right receipts. That assistant is an <b>Explore subagent</b>: it reads the noisy output in its own context and returns the short list. <b>Rule: discovery that floods the context → Explore subagent returns a summary.</b>",
+    "options": [
+     "Hiding some shoeboxes helps, but you don't know where they all are.",
+     "Putting the shoebox in the hall only delays the moment it lands on your desk.",
+     "Correct. Someone else sorts the shoebox and hands you only what matters.",
+     "Clearing the desk after the shoebox lands may sweep away your own notes too."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the fix is a smarter search</b>. Filters help when the noise sits in predictable places. Here it doesn't, and the damage came from the output entering the main conversation. An <b>Explore subagent</b> takes the noise in its own context and returns only a summary.",
+    "diagram": "main session (refactor plan) ── ask ─▶ Explore subagent\n                                     grep → 1000s lines\n        ◀── 12 call sites by file:line ──",
+    "mapTitle": "Noisy discovery. Where should the noise go?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Noise everywhere, main context must stay clean",
+       "Explore subagent",
+       "Isolates output, returns a summary"
+      ],
+      [
+       "Noise sits in a few known folders",
+       "Exclusion globs",
+       "Cheap and precise"
+      ],
+      [
+       "Session already full but still accurate",
+       "<code>/compact</code>",
+       "Frees space"
+      ],
+      [
+       "Findings must last beyond the session",
+       "Scratchpad file",
+       "Persists key facts"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A text search returns thousands of matching lines",
+      "means": "Far too much to read in the main context, now or later (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "Most come from generated clients spread over many folders with no common naming pattern",
+      "means": "A hand-made exclude list (<b>[[0]]</b>) will miss some."
+     },
+     {
+      "quote": "Once that output entered the conversation, Claude lost track of which sites in the refactor plan were already checked",
+      "means": "The decider. Keep the output out of the main context; compacting afterwards (<b>[[3]]</b>) is too late."
+     },
+     {
+      "quote": "What is the best way to run this search?",
+      "means": "Run it somewhere else and get a summary: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Discovery that would flood the main context → Explore subagent that returns a summary.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Explore subagent isolates verbose discovery output, returns summaries"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-09",
+   "was": "s2-09",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Engineers run a pre-push review with the prompt “review this diff for anything questionable”. Each run returns dozens of comments. Most are about things the team has no rule on, such as variable names or import order. The few findings that matter get buried, and engineers have started skipping the step. The output is well formatted and much the same each run. Which change <b>most improves precision</b>?",
+   "options": [
+    {
+     "t": "Define which findings count, like a comment that contradicts its code, and which to skip.",
+     "why": "Best. Explicit categories tell Claude what qualifies and what to leave out, which removes the preference comments at their source."
+    },
+    {
+     "t": "Add three sample reviews, each showing a diff, the findings worth raising and the points left out.",
+     "why": "Works, but indirect. Examples are strongest when output is inconsistent. Here it is already consistent; the prompt never says what counts.",
+     "trap": "indirect"
+    },
+    {
+     "t": "Add the line “be conservative and report only high-confidence issues” to the end of the prompt.",
+     "why": "Works, but only a little. Fewer comments come out, but “questionable” is still undefined, and confidence wording doesn't sharpen precision like categories do.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Run the review three times per diff and keep only the findings that appear in at least two runs.",
+     "why": "Works, but different problem. Voting removes random noise. This output is the same each run, so the same preference comments survive.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Most are about things the team has no rule on, such as variable names or import order.",
+   "explanation": "Vague review prompts produce false positives that erode trust. Define explicit categories of what to report and what to skip; “be conservative” does not improve precision the way categorical criteria do.",
+   "eli5": {
+    "question": "A review step produces dozens of comments, most about things nobody cares about, so people skip it. The output is consistent. The clue: the prompt never says <i>what counts</i>.",
+    "answer": "Ask a proofreader to mark “anything questionable” and you get red ink everywhere. Tell them “mark wrong facts and broken links, ignore style” and you get the marks that matter. That list is <b>explicit criteria</b>. <b>Rule: too many false flags → say exactly what counts and what to skip.</b>",
+    "options": [
+     "Correct. Give the proofreader the exact list of what to mark and what to ignore.",
+     "Showing marked-up samples works, but you can just tell them the list.",
+     "“Only mark what you're sure about” still leaves “questionable” undefined.",
+     "Asking three proofreaders who all mark the same style points doesn't remove those marks."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to reach for <b>few-shot examples</b> whenever output is disappointing. Examples are the strongest lever when output is <i>inconsistent</i> despite clear instructions. Here output is consistent; the instruction never defines what counts. The exam guide says explicit criteria beat vague instructions, and “be conservative” doesn't help the way categories do.",
+    "mapTitle": "Review output is noisy. What fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Consistent, but flags things nobody cares about",
+       "Vague instruction",
+       "Explicit categories to report and skip"
+      ],
+      [
+       "Instructions clear, output varies run to run",
+       "Prose alone underspecifies",
+       "2–4 targeted examples"
+      ],
+      [
+       "Prompt says “be careful”",
+       "Still vague",
+       "Swap for categories"
+      ],
+      [
+       "Random one-off flags",
+       "Run-to-run noise",
+       "Several runs, keep agreed findings"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "review this diff for anything questionable",
+      "means": "The cause: “questionable” is undefined."
+     },
+     {
+      "quote": "Most are about things the team has no rule on, such as variable names or import order",
+      "means": "The decider. The fix is to say what counts and what to skip: <b>[[0]]</b>."
+     },
+     {
+      "quote": "engineers have started skipping the step",
+      "means": "False positives are eroding trust; “be conservative” (<b>[[2]]</b>) leaves the line undefined."
+     },
+     {
+      "quote": "The output is well formatted and much the same each run",
+      "means": "Consistent already, so examples (<b>[[1]]</b>) and voting (<b>[[3]]</b>) aim at a problem that isn't here."
+     }
+    ],
+    "rule": "Too many false positives from a vague prompt → explicit categories of what to report and what to skip.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "\"Be conservative\" / \"only high-confidence\" don't improve precision like categorical criteria"
+    }
+   }
+  },
+  {
+   "id": "m4p-s2-10",
+   "was": "s2-10",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.6 Independent review instances",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A session generates a billing module in <code>server/</code>. The engineer then asks the same session to review it, and it says the code looks right. A colleague opens a fresh session with the plain prompt “review this for bugs”. It finds an off-by-one at a proration boundary and a rounding error. Both sessions used the same model and settings. What should <b>change</b>?",
+   "options": [
+    {
+     "t": "Give review sessions explicit criteria for boundary conditions and the rounding of money amounts.",
+     "why": "Works, but not the difference. Criteria sharpen reviews, but the colleague found both bugs with an equally plain prompt.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Run reviews in a fresh session that has none of the generating session's history.",
+     "why": "Best. A session that wrote the code keeps its own reasoning and tends to accept it. An independent instance reviews with fresh eyes."
+    },
+    {
+     "t": "Turn on extended thinking for review passes in the generating session before it concludes.",
+     "why": "Works, but same assumptions. Longer reasoning helps a little, but it starts from the same generation reasoning that missed the bugs.",
+     "trap": "same blind spot"
+    },
+    {
+     "t": "Run <code>/compact</code> in the generating session, then repeat the same review in that session.",
+     "why": "Works, but keeps the bias. Compacting frees space, but the generation reasoning stays in summary form, so the review is still a self-review.",
+     "trap": "same blind spot"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "A colleague opens a fresh session with the plain prompt “review this for bugs”.",
+   "explanation": "A session that generated code retains its reasoning and is less effective at reviewing its own changes. Independent review instances catch subtle issues better than self-review or extended thinking.",
+   "eli5": {
+    "question": "The session that wrote the code says it's fine. A fresh session with a plain prompt finds two bugs. The clue: the only real difference is <i>fresh</i>.",
+    "answer": "Proofreading your own essay is hard: you read what you meant, not what you wrote. A friend who never saw your drafts spots the typos at once. For Claude, the friend is an <b>independent instance</b> with none of the generation history. <b>Rule: review code in a fresh instance, not in the session that wrote it.</b>",
+    "options": [
+     "A better checklist helps, but the friend found the typos without one.",
+     "Correct. A fresh reader with no memory of your drafts.",
+     "Thinking longer about your own essay still reads what you meant.",
+     "Shortening your notes still leaves you reading your own essay."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a missed bug means the review prompt was weak</b>. Here the prompts were equally plain, the model and settings were the same, and only one session found the bugs. The difference is history: the generating session keeps its own reasoning and won't question it. An independent instance has none.",
+    "diagram": "session A: write → review (same reasoning) → \"looks right\"\nsession B: fresh  → review                → 2 bugs",
+    "mapTitle": "Review missed bugs. What changes the result?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Same prompt; fresh session finds bugs",
+       "Self-review bias",
+       "Independent review instance"
+      ],
+      [
+       "Fresh session also misses them",
+       "Vague review criteria",
+       "Explicit criteria per category"
+      ],
+      [
+       "Self-review with more thinking",
+       "Same assumptions",
+       "Still a self-review"
+      ],
+      [
+       "Large change, many files",
+       "Attention dilution",
+       "Per-file pass + integration pass"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The engineer then asks the same session to review it, and it says the code looks right",
+      "means": "A self-review: the reviewer holds the generation reasoning."
+     },
+     {
+      "quote": "A colleague opens a fresh session with the plain prompt “review this for bugs”",
+      "means": "The decider. A plain prompt worked when the session was fresh, so criteria (<b>[[0]]</b>) weren't the gap."
+     },
+     {
+      "quote": "Both sessions used the same model and settings",
+      "means": "Only the history differs. More thinking (<b>[[2]]</b>) or compacting (<b>[[3]]</b>) keeps that history. Use a separate instance: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Review generated code in an independent instance; self-review keeps the generation reasoning.",
+    "guide": {
+     "obj": "4.6 Multi-instance and multi-pass review architectures",
+     "quote": "Independent review instances (no prior reasoning) catch subtle issues better than self-review/extended thinking"
+    }
+   }
+  }
+ ]
+}
