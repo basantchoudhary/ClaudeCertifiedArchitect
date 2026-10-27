@@ -1,0 +1,1064 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m5p-s5-01",
+   "was": "s5q-s5-01",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Criteria for test quality",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The test generator writes tests for each new endpoint. Every new test passes, and coverage has gone up a lot. A reviewer read a sample and found the same habit in nearly all of them. Each test calls the endpoint and checks only that the response is not empty. The prompt's only guidance on quality is “write thorough tests”. What is the <b>most effective</b> change?",
+   "options": [
+    {
+     "t": "Add three finished tests from the repository to the prompt, each checking an exact expected response.",
+     "why": "Works, but too early. Good examples would raise the bar, but the model has no stated rule to apply, so it must guess what the examples have in common.",
+     "trap": "too early"
+    },
+    {
+     "t": "Replace “thorough” with checkable rules, such as asserting the exact status and body for each input.",
+     "why": "Best. “Thorough” gives the model nothing to check itself against. Explicit criteria say what a real assertion is."
+    },
+    {
+     "t": "Have a separate Claude instance, without the generator's context, review each test before commit.",
+     "why": "Works, but same vague bar. A fresh reviewer catches some weak tests, but it judges against the same undefined idea of “thorough”.",
+     "trap": "same vague bar"
+    },
+    {
+     "t": "Fail the job when mutation testing shows the new tests miss bugs injected into the endpoint.",
+     "why": "Works, but too late. Mutation testing exposes weak tests after they are written, but the generator still doesn't know what a good test checks.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The prompt's only guidance on quality is “write thorough tests”.",
+   "explanation": "Vague quality words such as “thorough” do not change behaviour; explicit, checkable criteria do. Define what counts first, then add examples where defined criteria are applied unevenly.",
+   "eli5": {
+    "question": "Generated tests pass but check almost nothing. The clue: the only guidance is “write thorough tests”. This is not about the volume of tests; it's about what each one checks.",
+    "answer": "Telling a new cook “make it tasty” gets you anything. A recipe card that says “two teaspoons of salt, bake until golden” gets you the dish. The recipe card is <b>explicit criteria</b>: rules the model can check its own work against. <b>Rule: vague quality word in the prompt → replace it with checkable criteria.</b>",
+    "options": [
+     "Showing finished dishes helps once the recipe exists. Without it, the cook guesses what made them good.",
+     "Correct. Write the recipe: what each test must assert.",
+     "A taster with no recipe judges by the same vague word “tasty”.",
+     "A strict food inspector catches bad dishes afterwards, but the cook still has no recipe."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>weak output means the model needs more help seeing good output</b>, so you add examples or a reviewer. The real gap is that nobody has said <b>what a good test checks</b>. “Thorough” is a vague word, and the exam guide is clear: explicit criteria beat vague instructions.",
+    "mapTitle": "Generated output is weak. What's missing?",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix first",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Only a vague quality word in the prompt",
+       "Explicit, checkable criteria",
+       "Says exactly what counts"
+      ],
+      [
+       "Criteria exist but are applied unevenly",
+       "2–4 finished examples",
+       "Shows how to apply them"
+      ],
+      [
+       "Criteria and examples exist; subtle errors slip",
+       "Independent review instance",
+       "Fresh eyes catch what the author missed"
+      ],
+      [
+       "Need proof that tests catch bugs",
+       "Mutation testing in CI",
+       "Measures test strength after the fact"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every new test passes, and coverage has gone up a lot",
+      "means": "The numbers look good, so the problem is quality, not quantity."
+     },
+     {
+      "quote": "Each test calls the endpoint and checks only that the response is not empty",
+      "means": "The same weak habit everywhere. The model is consistent; it just doesn't know what to assert."
+     },
+     {
+      "quote": "The prompt's only guidance on quality is “write thorough tests”",
+      "means": "The decider. There are no criteria to apply, so define them: <b>[[1]]</b>. Examples (<b>[[0]]</b>) and a reviewer (<b>[[2]]</b>) both lean on a definition that doesn't exist yet."
+     },
+     {
+      "quote": "What is the most effective change?",
+      "means": "Fix the cause in the prompt. Mutation testing (<b>[[3]]</b>) catches the result later."
+     }
+    ],
+    "rule": "Vague words like “thorough” don't steer the model. Replace them with checkable criteria.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-02",
+   "was": "s5q-s5-02",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot examples",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Generated tests now check real values, but their layout changes from run to run. About half use the team's table-driven layout with one shared fixture. The rest write one function per case and rebuild the fixture each time. The project <code>CLAUDE.md</code> describes the table-driven layout in two paragraphs. <code>/memory</code> shows that this file loads in the job. What is the <b>most effective</b> change?",
+   "options": [
+    {
+     "t": "Move the test conventions into a <code>.claude/rules/</code> file with a <code>paths:</code> glob for tests.",
+     "why": "Works, but different problem. Path-scoped rules are a tidy home for test conventions, but the conventions already load; moving them doesn't make them followed.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Rewrite the two paragraphs as a numbered checklist covering case tables, fixtures and names.",
+     "why": "Works, but more of the same. A checklist is a little clearer, but the model already reads a written description and still follows it only half the time.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Add two or three finished tests from the repository to the generation prompt as models.",
+     "why": "Best. When written instructions give inconsistent output, a few concrete examples are the most effective way to show a layout."
+    },
+    {
+     "t": "Add a CI lint check that fails any new test file not written in the table-driven layout.",
+     "why": "Works, but catches, doesn't teach. The check stops bad layouts merging, but the generator keeps producing them and the job keeps failing.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "About half use the team's table-driven layout with one shared fixture.",
+   "explanation": "Few-shot examples are the most effective technique when instructions alone give inconsistent output. They carry structure that prose describes poorly. First check the instructions load (here /memory shows they do), then show, don't tell.",
+   "eli5": {
+    "question": "The test layout is right about half the time. The rules are written down and do load. The clue: <i>half</i> follow the description, so the words are read but not reliably applied.",
+    "answer": "If half your class gets a layout wrong after reading the instructions, you don't rewrite the instructions again. You pin two finished examples on the board. Those are <b>few-shot examples</b>: finished tests in the prompt that show the exact shape. <b>Rule: written rules followed only some of the time → show 2–3 examples.</b>",
+    "options": [
+     "Moving the instructions to a new folder doesn't help; the class already has them.",
+     "Rewriting the instructions as a list is still more instructions, which is what half-works today.",
+     "Correct. Pin finished examples on the board; copying a shape is easy.",
+     "A marker who fails bad layouts catches them, but the class keeps making them."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>inconsistent output means the instructions are missing or unclear</b>. Here they are present (<code>/memory</code> shows them) and followed half the time. That is the exact case the exam guide names for <b>few-shot examples</b>: instructions alone give inconsistent output.",
+    "mapTitle": "The model doesn't follow a convention. Why?",
+    "map": {
+     "head": [
+      "What you see",
+      "Likely cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Convention never followed; not in /memory",
+       "Instructions don't load",
+       "Fix the load (import, rules file)"
+      ],
+      [
+       "Convention followed about half the time",
+       "Prose shows shape poorly",
+       "2–3 finished examples"
+      ],
+      [
+       "Output uniform but vague",
+       "No criteria",
+       "Explicit criteria"
+      ],
+      [
+       "Convention loads for the wrong files",
+       "Wrong scope",
+       "<code>.claude/rules/</code> with <code>paths:</code>"
+      ],
+      [
+       "Must never merge in the wrong shape",
+       "Needs a hard gate",
+       "CI check (on top of the fix)"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Generated tests now check real values, but their layout changes from run to run",
+      "means": "The problem is consistency of shape."
+     },
+     {
+      "quote": "About half use the team's table-driven layout with one shared fixture",
+      "means": "The decider. The description works sometimes, so the words are read; they just don't pin the shape. Examples do: <b>[[2]]</b>."
+     },
+     {
+      "quote": "The project CLAUDE.md describes the table-driven layout in two paragraphs",
+      "means": "Prose already exists. A checklist (<b>[[1]]</b>) is more prose."
+     },
+     {
+      "quote": "/memory shows that this file loads in the job",
+      "means": "Loading is fine, so moving the file (<b>[[0]]</b>) changes nothing."
+     },
+     {
+      "quote": "What is the most effective change?",
+      "means": "Fix the generator. A lint gate (<b>[[3]]</b>) only catches the failures."
+     }
+    ],
+    "rule": "Instructions load but are followed unevenly → add 2–3 finished examples of the shape you want.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-03",
+   "was": "s5q-s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 --json-schema",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A security dashboard reads the review job's findings in a fixed shape: severity, file, line and description. The job runs <code>claude -p</code> with <code>--output-format json</code>. A small adapter maps whatever keys come back onto the dashboard's shape. Every few weeks a key comes back renamed, such as <code>location</code> instead of <code>file</code>. Then the adapter breaks. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Pass the dashboard's schema with <code>--json-schema</code> and remove the key-mapping adapter.",
+     "why": "Best. The keys drift because the output shape is not constrained. A schema on the CLI run makes the output match the dashboard's shape."
+    },
+    {
+     "t": "Check each result against the schema and rerun the review with the errors added on failure.",
+     "why": "Works, but treats the symptom. Retry with error feedback usually fixes a bad run, but each failure costs a second review and the shape is still unconstrained.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "List the exact field names and severity values with the review criteria in <code>CLAUDE.md</code>.",
+     "why": "Works, but only usually. Naming the fields makes drift rarer, but an instruction is a tendency, not a constraint.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a contract test that fails the build when the keys in the review output change.",
+     "why": "Works, but too late. The test turns a silent break into a loud one, but it detects drift after it happens instead of removing it.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "A small adapter maps whatever keys come back onto the dashboard's shape.",
+   "explanation": "--output-format json gives valid JSON; --json-schema gives your JSON. When a consumer needs a fixed shape, constrain the output at generation instead of repairing it afterwards.",
+   "eli5": {
+    "question": "The JSON is valid, but its key names sometimes change, and the code that reads it breaks. The clue: an adapter maps <i>whatever keys come back</i>. Nothing fixes the shape at the source.",
+    "answer": "Asking someone to “fill in a form” without giving them the form means each one looks a bit different. Hand them the printed form and every answer lands in the same box. <code>--output-format json</code> says “answer in JSON”; <code>--json-schema</code> hands over the form. <b>Rule: a consumer needs a fixed shape → give the CLI the schema.</b>",
+    "options": [
+     "Correct. Hand out the printed form, and stop translating answers afterwards.",
+     "Sending back a messy answer to redo usually works, but you pay twice and the form is still missing.",
+     "Describing the form in a note helps, but people still drift now and then.",
+     "An alarm when a box name changes tells you fast, but doesn't stop it changing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>JSON output is already structured</b>, so the fix belongs in the code that reads it. <code>--output-format json</code> makes the reply valid JSON, but it doesn't fix the <b>keys</b>. <code>--json-schema</code> does, at the source.",
+    "diagram": "claude -p --output-format json   → valid JSON, keys may vary\n  + --json-schema dashboard.json  → valid JSON, your keys",
+    "mapTitle": "CI output breaks the consumer. Where does the fix go?",
+    "map": {
+     "head": [
+      "What breaks",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Reply is prose, not JSON",
+       "No output format",
+       "<code>--output-format json</code>"
+      ],
+      [
+       "JSON is valid but keys or enums drift",
+       "No schema",
+       "<code>--json-schema</code>"
+      ],
+      [
+       "Shape is right but a value is wrong",
+       "Semantic error",
+       "Validate and retry with the error"
+      ],
+      [
+       "Job hangs waiting for input",
+       "Interactive mode",
+       "<code>-p</code> / <code>--print</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A security dashboard reads the review job's findings in a fixed shape",
+      "means": "The consumer has a contract."
+     },
+     {
+      "quote": "The job runs claude -p with --output-format json",
+      "means": "Valid JSON is already there; the shape is not."
+     },
+     {
+      "quote": "A small adapter maps whatever keys come back onto the dashboard's shape",
+      "means": "The decider. The shape is repaired afterwards instead of fixed at the source: <b>[[0]]</b>."
+     },
+     {
+      "quote": "Every few weeks a key comes back renamed",
+      "means": "Rare drift: a prompt note (<b>[[2]]</b>) makes it rarer; a retry (<b>[[1]]</b>) or contract test (<b>[[3]]</b>) reacts to it."
+     }
+    ],
+    "rule": "Valid JSON is not your JSON. Pin the shape with --json-schema.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings → inline PR comments."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-04",
+   "was": "s5q-s5-04",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Headless permissions",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A new nightly job runs a technical-debt sweep with <code>claude -p</code>. It finishes in seconds and posts an empty findings list every night. The same prompt in an engineer's local session finds dozens of issues. In the CI log, Claude's last turn asks to run a Bash search across the repository. The next line is the empty result, and the job exits without an error. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Run the sweep in an interactive session each night, with an engineer on call to approve tools.",
+     "why": "Works, but overbuilt. Someone could approve the search, but a nightly job that needs a person awake has lost the point of automation.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Run the sweep with the flag that skips every permission check for the whole session.",
+     "why": "Works, but too broad. The search would run, but so would any other command, with nobody watching.",
+     "trap": "too broad"
+    },
+    {
+     "t": "Run the search in an earlier workflow step and pass its results into the sweep's prompt.",
+     "why": "Works, but works around it. The first search arrives, but the sweep can't run follow-up searches as it investigates.",
+     "trap": "works around it"
+    },
+    {
+     "t": "Allow that search command for the job, with <code>--allowedTools</code> or the committed settings.",
+     "why": "Best. A headless run has nobody to approve a tool, so an unpermitted tool is refused. Allowing exactly that command fixes the cause."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "In the CI log, Claude's last turn asks to run a Bash search across the repository.",
+   "explanation": "A non-interactive (-p) run cannot ask anyone for approval. Every tool a CI job needs must be allowed up front, or the run quietly does nothing. Allow the narrowest set that works.",
+   "eli5": {
+    "question": "The nightly job always finds nothing, but the same prompt finds plenty on a laptop. The clue: the log stops right after Claude <i>asks</i> to run a search.",
+    "answer": "Think of a night guard who must phone the manager before opening a locked room. At night nobody answers, so the room stays shut and the report is empty. Fix it by giving the guard a key to that one room ahead of time: an <b>allow rule</b> for that command. A run with <code>-p</code> is the night shift: nobody is there to say yes. <b>Rule: headless job → allow the tools it needs up front, and only those.</b>",
+    "options": [
+     "Keeping a manager awake every night works, but defeats the point of a night guard.",
+     "A master key to every room opens the right one, and all the others too.",
+     "Bringing the guard one box from the room helps, but they can't go back for more.",
+     "Correct. A key to exactly the room the job needs."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>an empty result with no error means there was nothing to find</b>. In a <code>-p</code> run, a tool that needs approval is simply refused, because nobody is there to approve it. The run then ends quickly and quietly. The fix is to <b>allow the needed tool up front</b>, as narrowly as works.",
+    "mapTitle": "A CI run of Claude Code misbehaves. What's the cause?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Job hangs until timeout",
+       "Interactive mode in CI",
+       "Run with <code>-p</code>"
+      ],
+      [
+       "Fast, empty result right after a tool request",
+       "Tool not permitted; nobody to approve",
+       "Allow that tool for the job"
+      ],
+      [
+       "Results differ from one engineer's laptop",
+       "Criteria in user-level memory",
+       "Move them to project <code>CLAUDE.md</code>"
+      ],
+      [
+       "Output shape varies",
+       "No schema",
+       "<code>--json-schema</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It finishes in seconds and posts an empty findings list every night",
+      "means": "Too fast and too empty for a real sweep."
+     },
+     {
+      "quote": "The same prompt in an engineer's local session finds dozens of issues",
+      "means": "The prompt is fine. Something about the CI run differs."
+     },
+     {
+      "quote": "In the CI log, Claude's last turn asks to run a Bash search across the repository",
+      "means": "The decider. The run stops right at the tool request: a permission refusal. Allow it: <b>[[3]]</b>."
+     },
+     {
+      "quote": "the job exits without an error",
+      "means": "A refused tool is not a crash. A person on call (<b>[[0]]</b>) or skipping all checks (<b>[[1]]</b>) would also get past it, at a cost."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Fix the cause, at the right size. Pre-running the search (<b>[[2]]</b>) leaves the sweep unable to search again."
+     }
+    ],
+    "rule": "A -p run can't ask for approval. Allow the tools a CI job needs up front, and no more.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "-p / --print = non-interactive mode (no input hang)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-05",
+   "was": "s5q-s5-05",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Dismissal pattern tracking",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 2,
+   "question": "Developers dismiss about a fifth of the reviewer's inline comments. The dismiss button stores only a timestamp. Nobody can say which kinds of finding get dismissed most. The team wants a false-positive rate for each kind of finding, updated daily without anyone reading comments. It will use these rates to decide which review criteria to rewrite. Which <b>two changes</b> achieve this?",
+   "options": [
+    {
+     "t": "Add a <code>detected_pattern</code> field to each finding that names the review rule behind it.",
+     "why": "Best. Without a rule label, a dismissal can't be tied to a kind of finding. With it, “which rules are noisy” becomes a query."
+    },
+    {
+     "t": "Each week, sample findings from every category and have an engineer label each one.",
+     "why": "Works, but manual. Labelled samples give good per-category precision, but the team wants daily figures without anyone reading comments.",
+     "trap": "manual"
+    },
+    {
+     "t": "Record each dismissal with the finding's ID in a table that joins to the stored findings.",
+     "why": "Best. The label only helps if the outcome is captured against it. Joined, they give a dismissal rate per rule that updates by itself."
+    },
+    {
+     "t": "Ask a separate Claude instance to label each dismissed finding as a true or false positive.",
+     "why": "Works, but overbuilt. A second model adds an opinion on each dismissal, but it supplies no categories, and dismissals are still not recorded.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The dismiss button stores only a timestamp. Nobody can say which kinds of finding get dismissed most.",
+   "explanation": "To improve precision per category you need to know which rule produced each finding and what happened to it. A detected_pattern field plus dismissals recorded against it turns developer clicks into a per-rule signal.",
+   "eli5": {
+    "question": "The team wants to know which kinds of comment get dismissed most, every day, automatically. The clue: today a dismissal is just a timestamp. It doesn't say <i>which</i> finding, or <i>what kind</i>.",
+    "answer": "Think of a shop's returns desk. To know which products come back most, each sale needs a product label, and each return must be logged against that sale. Label plus log gives a return rate per product. Here the label is <code>detected_pattern</code> and the log is the dismissal joined by finding ID. <b>Rule: label each finding with its rule, record the outcome against it, and the noisy rules show themselves.</b>",
+    "options": [
+     "Correct. The product label on each sale.",
+     "Asking a staff member to inspect a sample works, but it's hand work every week.",
+     "Correct. Logging each return against the sale it came from.",
+     "Hiring a second opinion on each return costs more and still doesn't say which product it was."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>measuring precision needs someone to judge findings</b>, a human or a second model. The developers already judge every finding by dismissing it. What is missing is <b>data plumbing</b>: a category on each finding and the dismissal tied to it.",
+    "diagram": "finding {id, detected_pattern}  ⋈  dismissal {finding_id}\n        → dismissal rate per pattern, refreshed daily",
+    "mapTitle": "We want per-category precision. What do we need?",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Note"
+     ],
+     "rows": [
+      [
+       "Know the kind of each finding",
+       "<code>detected_pattern</code> field",
+       "Set at generation"
+      ],
+      [
+       "Know the outcome of each finding",
+       "Dismissal logged with finding ID",
+       "Join to findings"
+      ],
+      [
+       "Precise figure, hand labelling allowed",
+       "Stratified sample per category",
+       "Weekly, manual"
+      ],
+      [
+       "Second opinion on each finding",
+       "Independent review instance",
+       "Costs a call; no categories by itself"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The dismiss button stores only a timestamp",
+      "means": "The outcome isn't tied to a finding. Log it with the finding ID: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Nobody can say which kinds of finding get dismissed most",
+      "means": "Findings have no category. Add one: <b>[[0]]</b>."
+     },
+     {
+      "quote": "updated daily without anyone reading comments",
+      "means": "Rules out weekly hand labelling (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "Which two changes achieve this?",
+      "means": "A second model (<b>[[3]]</b>) gives opinions but neither the category nor the outcome record."
+     }
+    ],
+    "rule": "Tag each finding with detected_pattern and log its outcome against it. Dismissal patterns become a query.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Track detected_pattern fields to analyze dismissal/false-positive patterns."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-06",
+   "was": "s5q-s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch API & custom_id",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "A nightly technical-debt sweep uses the Message Batches API, with one request per file. A script attaches the first result to the first file sent, the second to the second, and so on. This week a comment about SQL strings appeared on a YAML file. Some requests also come back as errors, and the script then resends the whole batch. What is the <b>best fix</b> for the result handling?",
+   "options": [
+    {
+     "t": "Have the model repeat the file path in each reply, and match results to files by that path.",
+     "why": "Works, but misses errors. It pairs successful replies correctly, but an errored request has no reply, so the script can't tell which files to resend.",
+     "trap": "misses errors"
+    },
+    {
+     "t": "Set each request's <code>custom_id</code> to its file path, then match and resend failures by it.",
+     "why": "Best. Batch results don't come back in order. <code>custom_id</code> is the field built to pair results, and it names exactly which requests to resend."
+    },
+    {
+     "t": "Move the sweep to synchronous calls from a worker pool, saving each reply beside its file.",
+     "why": "Works, but loses the discount. Pairing becomes trivial, but the sweep gives up the 50% batch saving on work nobody waits for.",
+     "trap": "costs more"
+    },
+    {
+     "t": "Add a final step that checks each finding's quoted code against its file and drops mismatches.",
+     "why": "Works, but hides the problem. Some misplaced comments are caught, but the pairing stays wrong and good findings are dropped with it.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "A script attaches the first result to the first file sent, the second to the second, and so on.",
+   "explanation": "Batch results can arrive in any order; correlate them by custom_id, never by position. Resubmit only the failed requests by their custom_id, which keeps the cost saving.",
+   "eli5": {
+    "question": "Comments land on the wrong files, and every error resends everything. The clue: results are matched to files <i>by position</i>.",
+    "answer": "Think of a laundry. If you hand in ten shirts and match them up by the order they come back, someone gets the wrong shirt. Laundries pin a name tag on each item. In a batch, the name tag is <code>custom_id</code>: you set it on each request and it comes back on each result, even an error. <b>Rule: pair batch results by <code>custom_id</code>, and resend only the failed ones.</b>",
+    "options": [
+     "Writing your name inside the shirt works, until a shirt is lost and nothing comes back to read.",
+     "Correct. A name tag on every item, including the ones that go missing.",
+     "Washing each shirt at home while you wait works, but costs twice as much.",
+     "Checking each shirt's size catches some mix-ups, but the system still hands them out wrong."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a batch returns results in the order you sent them</b>. It doesn't promise that. The Batches API gives each request a <b><code>custom_id</code></b> for exactly this pairing, and the same ID tells you which failed requests to resend.",
+    "mapTitle": "Batch results: how do I pair and recover them?",
+    "map": {
+     "head": [
+      "Problem",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Results land on the wrong item",
+       "Pair by <code>custom_id</code>",
+       "Order isn't guaranteed"
+      ],
+      [
+       "Some requests error",
+       "Resend only those, by <code>custom_id</code>",
+       "Keeps cost down"
+      ],
+      [
+       "Pairing by a value in the reply",
+       "Works for successes only",
+       "Errors have no reply"
+      ],
+      [
+       "Someone waits on the result",
+       "Real-time calls, not batch",
+       "Batch has no latency promise"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A nightly technical-debt sweep uses the Message Batches API, with one request per file",
+      "means": "Nobody waits on it, so batch is the right tool; keep it (unlike <b>[[2]]</b>)."
+     },
+     {
+      "quote": "A script attaches the first result to the first file sent, the second to the second, and so on",
+      "means": "The decider. Pairing by position is the bug. Use <code>custom_id</code>: <b>[[1]]</b>."
+     },
+     {
+      "quote": "This week a comment about SQL strings appeared on a YAML file",
+      "means": "The symptom. Filtering mismatches (<b>[[3]]</b>) hides it."
+     },
+     {
+      "quote": "Some requests also come back as errors, and the script then resends the whole batch",
+      "means": "Errors need an ID that exists without a reply. An echoed path (<b>[[0]]</b>) doesn't."
+     }
+    ],
+    "rule": "Pair batch results by custom_id, never by order. Resend only the failures by custom_id.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "custom_id correlates request/response; resubmit only failed docs by custom_id."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-07",
+   "was": "s5q-s5-07",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills for shared procedures",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The review procedure is a long prompt with criteria, severity levels and exclusions. It is pasted into the Actions workflow, a pre-push script and a wiki page, and the copies now disagree. Developers also run the review by hand inside their working Claude Code sessions. Its long file-by-file reasoning then fills the conversation they were using for the change. Where should the procedure <b>live</b>?",
+   "options": [
+    {
+     "t": "A project slash command in <code>.claude/commands/</code>, run by the workflow and the script.",
+     "why": "Works, but only half the fix. One shared, versioned file ends the drift, but run from a working session, its reasoning still fills that session.",
+     "trap": "only half the fix"
+    },
+    {
+     "t": "A Review section in the root <code>CLAUDE.md</code>, loaded in every session and every run.",
+     "why": "Works, but loads everywhere. One copy ends the drift, but a long on-demand procedure would weigh on every unrelated session.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A <code>.claude/rules/</code> file whose <code>paths:</code> glob covers the files it reviews.",
+     "why": "Works, but wrong kind of file. The criteria would load while matching files are edited, but a review is a task you run, not a convention to load.",
+     "trap": "wrong kind of file"
+    },
+    {
+     "t": "A project skill in <code>.claude/skills/</code> with <code>context: fork</code>, run by name.",
+     "why": "Best. One versioned definition ends the drift, and <code>context: fork</code> runs it in an isolated sub-agent context, so the reasoning stays out of the developer's conversation."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Its long file-by-file reasoning then fills the conversation they were using for the change.",
+   "explanation": "Skills are on-demand workflows and can run isolated with context: fork. CLAUDE.md holds always-loaded standards. One versioned definition invoked by name stops copies drifting.",
+   "eli5": {
+    "question": "Two problems: three copies that disagree, and a review that floods the developer's chat. The clue: the long reasoning <i>fills the conversation they were using</i>.",
+    "answer": "Think of a recipe kept in one shared cookbook (no more differing copies). Some recipes are messy, so you cook them in a side kitchen and bring back only the dish. A <b>skill</b> is the shared recipe; <code>context: fork</code> is the side kitchen, so your own counter stays clean. <b>Rule: shared on-demand procedure that is noisy → skill with <code>context: fork</code>.</b>",
+    "options": [
+     "One shared recipe card, but you still cook it on your own counter.",
+     "A recipe stuck on the fridge door is in front of everyone at every meal, even when nobody is cooking it.",
+     "A note that appears when you touch certain pans is for habits, not for a dish you choose to cook.",
+     "Correct. One shared recipe, cooked in a side kitchen."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see only the <b>drift</b> and reach for any shared file. There is a second problem: the review's long reasoning <b>pollutes the developer's session</b>. Only a skill with <code>context: fork</code> fixes both, because it is shared and versioned and also runs in its own isolated context.",
+    "mapTitle": "Where does a shared instruction set live?",
+    "map": {
+     "head": [
+      "What it is",
+      "Home",
+      "Loads when"
+     ],
+     "rows": [
+      [
+       "Always-on team standard",
+       "Project <code>CLAUDE.md</code>",
+       "Every session"
+      ],
+      [
+       "Convention for a file pattern",
+       "<code>.claude/rules/</code> + <code>paths:</code>",
+       "Matching files are edited"
+      ],
+      [
+       "Short on-demand team task",
+       "<code>.claude/commands/</code>",
+       "Invoked; runs in the session"
+      ],
+      [
+       "On-demand task with noisy output",
+       "Skill with <code>context: fork</code>",
+       "Invoked; runs isolated"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The review procedure is a long prompt with criteria, severity levels and exclusions",
+      "means": "A procedure you run, not an always-on standard (<b>[[1]]</b>) or file convention (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "the copies now disagree",
+      "means": "Needs one shared, versioned definition."
+     },
+     {
+      "quote": "Developers also run the review by hand inside their working Claude Code sessions",
+      "means": "It runs inside live sessions, not only in CI."
+     },
+     {
+      "quote": "Its long file-by-file reasoning then fills the conversation they were using for the change",
+      "means": "The decider. A command (<b>[[0]]</b>) runs in that same session; a forked skill doesn't: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "On-demand and noisy → skill with context: fork. Always-on → CLAUDE.md.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-08",
+   "was": "s5q-s5-08",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Workload-appropriate config",
+   "trap": "Non-existent or misunderstood feature",
+   "fam": 9,
+   "select": 1,
+   "question": "All four CI jobs call one wrapper script. It runs <code>claude -p</code> with the same tool list and turn limit for every job. Last month the limit was raised for the autofix job, which follows call chains across many files. Since then the pull-request review often runs past its time budget. Lowering the limit again makes autofix stop halfway. What is the <b>best approach</b>?",
+   "options": [
+    {
+     "t": "Split the review into per-file passes plus one cross-file pass, keeping the shared limit.",
+     "why": "Works, but different problem. Multi-pass review sharpens attention on large diffs, but each pass still runs under the limit set for autofix.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add a timeout to the review step that stops the run and posts whatever findings exist.",
+     "why": "Works, but hides the problem. The review meets its budget, but it posts a partial review and the shared setting stays wrong.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Give each job its own <code>claude -p</code> call, with a turn limit and tool list chosen for that job.",
+     "why": "Best. A quick blocking review and a deep autofix need opposite settings. Separate invocations let each one fit its own job."
+    },
+    {
+     "t": "Have autofix save its progress to a scratchpad file and resume next run at a lower limit.",
+     "why": "Works, but delays the problem. Autofix eventually finishes, but a failing build waits several runs for a fix that one run could make.",
+     "trap": "delays the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "It runs claude -p with the same tool list and turn limit for every job.",
+   "explanation": "A time-bound blocking check and a deep investigation need different settings; one shared configuration puts each at the wrong point. Configure each CI workload on its own.",
+   "eli5": {
+    "question": "Two jobs share one setting, and each needs it set differently. The clue: <i>the same tool list and turn limit for every job</i>.",
+    "answer": "One alarm clock for the whole house doesn't work when one person catches a 6 a.m. train and another works nights. Give each their own alarm. Here that means each CI job gets its own <code>claude -p</code> call with its own limits. <b>Rule: different workloads → different settings, not one shared compromise.</b>",
+    "options": [
+     "Splitting the morning routine into steps doesn't change when the shared alarm rings.",
+     "Pulling the commuter out of bed half-dressed gets them out on time, but not ready.",
+     "Correct. One alarm per person.",
+     "Letting the night worker finish tomorrow works, but the job waits a day longer."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to tune <b>the one shared setting</b> until both jobs are happy. They want opposite things: the review must be quick, and autofix must go deep. No single limit fits both. Give each workload <b>its own configuration</b>, just as the exam guide splits a blocking pre-merge check from an overnight report.",
+    "mapTitle": "CI jobs pull a shared setting in different directions. What now?",
+    "map": {
+     "head": [
+      "Job",
+      "Needs",
+      "Setting"
+     ],
+     "rows": [
+      [
+       "Blocking pull-request review",
+       "Fast, bounded",
+       "Low turn limit, review tools, output schema"
+      ],
+      [
+       "Autofix for failing builds",
+       "Deep investigation",
+       "Higher turn limit, edit tools"
+      ],
+      [
+       "Weekly or nightly report",
+       "Cheap, nobody waits",
+       "Message Batches API (single-turn)"
+      ],
+      [
+       "Very long exploration",
+       "Survives across runs",
+       "Scratchpad file and resume"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It runs claude -p with the same tool list and turn limit for every job",
+      "means": "The decider. One setting for jobs with different needs. Split it: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Last month the limit was raised for the autofix job, which follows call chains across many files",
+      "means": "Autofix needs depth."
+     },
+     {
+      "quote": "Since then the pull-request review often runs past its time budget",
+      "means": "The review needs speed. A timeout (<b>[[1]]</b>) or multi-pass split (<b>[[0]]</b>) works around the shared limit."
+     },
+     {
+      "quote": "Lowering the limit again makes autofix stop halfway",
+      "means": "Resuming over runs (<b>[[3]]</b>) makes the build wait longer for its fix."
+     }
+    ],
+    "rule": "Different CI workloads get different claude -p settings. Don't share one compromise.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Batch for the overnight report only; keep real-time for pre-merge"
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-09",
+   "was": "s5q-s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 tool_choice for structured output",
+   "trap": "Non-existent or misunderstood feature",
+   "fam": 9,
+   "select": 1,
+   "question": "The security team added a second review stage built on the Claude API. It sends the gathered context with three tools attached: <code>get_diff</code>, <code>read_file</code> and <code>report_findings</code>. It then asks for the report. On clean pull requests, some replies are a plain sentence such as “No issues found.” The dashboard's parser rejects these. Which change makes this stage <b>always</b> return a structured report?",
+   "options": [
+    {
+     "t": "Set <code>tool_choice</code> to <code>\"any\"</code> and leave all three tool definitions attached.",
+     "why": "Works, but only usually. <code>\"any\"</code> rules out a plain-text reply, but the model may meet it by calling <code>get_diff</code> or <code>read_file</code> instead.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to force the <code>report_findings</code> tool by name on this stage's request.",
+     "why": "Best. A forced tool makes that call the reply. A clean diff becomes an empty findings list inside the schema."
+    },
+    {
+     "t": "Add a system prompt line requiring a <code>report_findings</code> call even for clean diffs.",
+     "why": "Works, but only a request. The line raises the rate, but an instruction can't make the call mandatory.",
+     "trap": "only a request"
+    },
+    {
+     "t": "Check each reply and retry with the parser's error added when no tool call is present.",
+     "why": "Works, but treats the symptom. The retry usually succeeds, but it costs an extra call and lowers the failure rate rather than removing it.",
+     "trap": "treats the symptom"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "It sends the gathered context with three tools attached: get_diff, read_file and report_findings.",
+   "explanation": "auto allows text, \"any\" requires some tool, and a forced tool requires that tool. When output must be one schema every time, force the tool and express the empty case inside it.",
+   "eli5": {
+    "question": "Sometimes the stage answers in a sentence instead of the report. The fix must make the report happen every time. The clue: <i>three</i> tools are attached, not one.",
+    "answer": "Saying “use a form” to someone holding three different forms means they might fill in the wrong one. Handing them the one form and saying “this one” settles it. In the API, <code>tool_choice</code> <code>\"any\"</code> means “use a form”; forcing <code>report_findings</code> by name means “this one”. <b>Rule: one exact output every time → force that tool by name.</b>",
+    "options": [
+     "“Use a form” rules out a chatty reply, but with three forms on the desk they may pick the wrong one.",
+     "Correct. Hand over the one form and say “this one”.",
+     "A reminder to use the form helps, but it is a request, not a rule.",
+     "Sending back a chatty reply to redo usually works, but costs another round."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b><code>\"any\"</code> already forces structured output</b>. It forces <i>some</i> tool call, and three tools are attached. Only a <b>forced named tool</b> makes the report the reply every time.",
+    "diagram": "tool_choice auto            → text or any tool\ntool_choice any             → some tool (maybe read_file)\ntool_choice report_findings → report_findings",
+    "mapTitle": "Which tool_choice gives the output I need?",
+    "map": {
+     "head": [
+      "Need",
+      "<code>tool_choice</code>",
+      "Note"
+     ],
+     "rows": [
+      [
+       "Model decides whether to use tools",
+       "<code>auto</code>",
+       "May return text"
+      ],
+      [
+       "Must call a tool; only one is attached",
+       "<code>\"any\"</code>",
+       "Same as forcing it"
+      ],
+      [
+       "Must call a tool; several attached; any is fine",
+       "<code>\"any\"</code>",
+       "Model picks which"
+      ],
+      [
+       "Must produce this exact report",
+       "Forced named tool",
+       "Empty case goes inside the schema"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It sends the gathered context with three tools attached: get_diff, read_file and report_findings",
+      "means": "The decider. With three tools, <code>\"any\"</code> (<b>[[0]]</b>) can be met by the wrong one."
+     },
+     {
+      "quote": "On clean pull requests, some replies are a plain sentence such as “No issues found.”",
+      "means": "Text replies are allowed today. A prompt line (<b>[[2]]</b>) asks; it doesn't force."
+     },
+     {
+      "quote": "Which change makes this stage always return a structured report?",
+      "means": "“Always” needs a mechanism: force the tool: <b>[[1]]</b>. A retry (<b>[[3]]</b>) only lowers the rate."
+     }
+    ],
+    "rule": "auto may give text, \"any\" gives some tool, a forced tool gives that tool. Need one schema every time → force it.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_choice: \"auto\" (may return text), \"any\" (must call a tool), forced (specific named tool)."
+    }
+   }
+  },
+  {
+   "id": "m5p-s5-10",
+   "was": "s5q-s5-10",
+   "sid": "s5",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Stratified sampling",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Each week the team labels a random sample of review findings, and precision has held steady for weeks. The security team now wants findings rated critical to open tickets by themselves. Criticals are a small share of findings, so each weekly sample holds only a couple. The security lead will agree only after seeing a measured error rate for critical findings. What should the team do <b>first</b>?",
+   "options": [
+    {
+     "t": "Label a sample drawn heavily from critical findings and measure precision for that rating alone.",
+     "why": "Best. The decision is about one group, so that group's error rate is the number needed. A stratified sample gets enough criticals to measure it."
+    },
+    {
+     "t": "Calibrate each finding's confidence on labelled data and ticket only criticals above a threshold.",
+     "why": "Works, but too early. Calibrated confidence is how you route items once automation runs, but it doesn't give the measured critical error rate asked for first.",
+     "trap": "too early"
+    },
+    {
+     "t": "Grow the random weekly sample several times over and report overall precision with a range.",
+     "why": "Works, but wrong measure. A bigger random sample sharpens the overall figure, which is mostly non-critical findings, and needs far more labelling.",
+     "trap": "wrong measure"
+    },
+    {
+     "t": "Use the developer dismissal rate on critical findings as their measured false-positive rate.",
+     "why": "Works, but a proxy. Dismissals are a useful signal, but developers also dismiss correct findings they don't want to deal with.",
+     "trap": "unreliable proxy"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The security lead will agree only after seeing a measured error rate for critical findings.",
+   "explanation": "Aggregate accuracy can hide poor performance on a subgroup. Before automating one stratum, measure that stratum with a stratified sample; calibrated confidence comes later, for routing.",
+   "eli5": {
+    "question": "A rare kind of finding is about to trigger tickets automatically. The lead wants its error rate measured first. The clue: the random sample holds <i>only a couple</i> of those findings each week.",
+    "answer": "If you want to know how good a school's top-set maths class is, testing random pupils from the whole school gives you two top-set pupils a week. Test mostly top-set pupils instead. That is a <b>stratified sample</b>: draw extra from the group you care about and measure it on its own. <b>Rule: before automating one group, measure that group's error rate directly.</b>",
+    "options": [
+     "Correct. Test the top set on its own.",
+     "Grading pupils' confidence helps decide who to trust later, but first you need the class's real score.",
+     "Testing more random pupils sharpens the school average, not the top-set score.",
+     "Counting complaints is a rough signal; some pupils complain about correct marks."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a steady overall precision covers every kind of finding</b>. An overall number is mostly the common findings. A rare group can be much worse and stay hidden. The exam guide's answer is a <b>stratified sample</b> of the group you are about to automate.",
+    "mapTitle": "We need an error rate. Which measurement?",
+    "map": {
+     "head": [
+      "Question",
+      "Method",
+      "Note"
+     ],
+     "rows": [
+      [
+       "Overall precision",
+       "Random sample",
+       "Mostly common findings"
+      ],
+      [
+       "Error rate of one rare group",
+       "Stratified sample of that group",
+       "Needed before automating it"
+      ],
+      [
+       "Which items to route to humans",
+       "Calibrated confidence threshold",
+       "Once automation is running"
+      ],
+      [
+       "Cheap ongoing signal",
+       "Dismissal rate",
+       "A proxy, not a measurement"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each week the team labels a random sample of review findings, and precision has held steady for weeks",
+      "means": "An overall figure, dominated by common findings."
+     },
+     {
+      "quote": "Criticals are a small share of findings, so each weekly sample holds only a couple",
+      "means": "Too few to measure criticals. A bigger random sample (<b>[[2]]</b>) is a costly way to get a few more."
+     },
+     {
+      "quote": "The security lead will agree only after seeing a measured error rate for critical findings",
+      "means": "The decider. Measure that group directly: <b>[[0]]</b>. Dismissals (<b>[[3]]</b>) are a proxy."
+     },
+     {
+      "quote": "What should the team do first?",
+      "means": "Calibration and thresholds (<b>[[1]]</b>) come after the measurement."
+     }
+    ],
+    "rule": "Before automating one group, measure that group with a stratified sample. Overall precision can hide it.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Stratified random sampling measures high-confidence error rates; field-level confidence calibrated on labeled sets routes review."
+    }
+   }
+  }
+ ]
+}

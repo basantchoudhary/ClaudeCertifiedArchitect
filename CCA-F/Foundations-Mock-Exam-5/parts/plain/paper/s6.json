@@ -1,0 +1,1093 @@
+{
+ "scenarios": [
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m5p-s6-01",
+   "was": "s5q-s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Syntactic vs semantic validity",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The extraction tool now uses a strict schema, and schema failures have dropped to zero. Wrong values still reach the broker's system. In sampled errors, the carrier field holds the name of the agency that issued the certificate. Some per-occurrence limits hold the aggregate amount instead. The validator checks only the schema. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add tighter patterns to the schema for carrier names, policy numbers and every limit amount.",
+     "why": "Works, but on the wrong layer. Patterns catch values with a bad shape. An agency name and an aggregate amount have the same shape as the right values, so they still pass.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add example certificates to the prompt that mark the agency box and the insurer box.",
+     "why": "Works, but only usually. Examples would cut the carrier mix-up, but not the limit error, and nothing would stop the wrong values that still slip through.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add checks on meaning to the validator, such as known carriers and occurrence under aggregate.",
+     "why": "Best. A strict schema removes shape errors, not wrong meanings. Checks on meaning (is this a real carrier, is the occurrence limit at or below the aggregate) stop these before posting."
+    },
+    {
+     "t": "Have a reviewer label a weekly sample of posted certificates and report errors by field.",
+     "why": "Works, but too late. A sample measures how often errors happen. It looks after posting, so each wrong value still reaches the broker's system.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The validator checks only the schema.",
+   "explanation": "Strict schemas eliminate syntax errors but not semantic ones. Once the shape is guaranteed, the remaining errors look correct, so the validator needs checks on meaning.",
+   "eli5": {
+    "question": "The schema is strict, yet wrong values still post. The clue is: <i>the validator checks only the schema</i>. The wrong values have the right shape, so nothing that checks shape can see them.",
+    "answer": "A form can insist that the date box holds a date. It cannot tell whether it is the <i>right</i> date. A strict schema is that form: it checks the <b>shape</b> of each answer, not its <b>meaning</b>. To catch an agency in the carrier box, you need a check that knows what a carrier is. <b>Rule: a schema proves the form is filled in properly, not truthfully. Add checks on meaning.</b>",
+    "options": [
+     "Stricter shape rules still accept an agency name or an aggregate amount. They look right.",
+     "Examples help with one of the two errors, and nothing catches what still slips through.",
+     "Correct. The validator now checks what the values mean, before anything posts.",
+     "A sample tells you the error rate later. It stops nothing today."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a stricter schema would have caught these</b>, as if the schema were just too loose. A strict schema removes <i>syntax</i> errors: broken JSON, missing fields, wrong types. Every error here is well-formed. An agency name is a valid string and an aggregate is a valid number. <b>No rule about shape can detect a wrong meaning.</b>",
+    "diagram": "schema check:   carrier = \"ABC Agency\"   ✓ string\nmeaning check:  is ABC Agency a carrier?  ✗ stop",
+    "mapTitle": "Schema passes but the value is wrong: what catches it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Kind of error",
+      "What catches it"
+     ],
+     "rows": [
+      [
+       "Broken JSON, missing fields",
+       "Syntax or shape",
+       "Strict schema via tool use"
+      ],
+      [
+       "Value has a bad format (letters in a number)",
+       "Format",
+       "Patterns in the schema"
+      ],
+      [
+       "Right format, wrong value",
+       "Semantic",
+       "Checks on meaning in the validator"
+      ],
+      [
+       "Value not printed at all",
+       "Absent information",
+       "Nullable field"
+      ],
+      [
+       "Need to know error rates by field",
+       "Measurement",
+       "Stratified sample of results"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The extraction tool now uses a strict schema, and schema failures have dropped to zero",
+      "means": "Shape is solved. What is left must be something shape cannot see."
+     },
+     {
+      "quote": "the carrier field holds the name of the agency that issued the certificate",
+      "means": "A valid string with the wrong meaning. A tighter pattern (<b>[[0]]</b>) accepts it."
+     },
+     {
+      "quote": "Some per-occurrence limits hold the aggregate amount instead",
+      "means": "A second, different error. Examples about the agency box (<b>[[1]]</b>) do not touch it."
+     },
+     {
+      "quote": "The validator checks only the schema",
+      "means": "The decider. The gap is a missing meaning check before posting: <b>[[2]]</b>. A weekly sample (<b>[[3]]</b>) only measures afterwards."
+     }
+    ],
+    "rule": "Strict schemas remove syntax errors, not semantic ones. After adopting one, add checks on meaning.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Strict schemas eliminate syntax errors but not semantic errors (line items not summing, wrong fields)."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-02",
+   "was": "s5q-s6-02",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retries and absent information",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The schema requires a <code>naic_code</code> for each carrier, and the validator rejects results without one. A failed result is resent with the validator's message. Certificates from surplus-lines carriers print no NAIC code at all. These use every retry, and some end with a code that looks real but is made up. Which change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Check the code against the official five-digit format, and put that rule in the retry message.",
+     "why": "Works, but only partly. A format check catches crude mistakes, but a made-up code usually has the right format, and the field is still demanded from certificates that cannot contain it.",
+     "trap": "only partly"
+    },
+    {
+     "t": "Add example certificates to the prompt that show where carriers usually print their code.",
+     "why": "Works, but for a different problem. Examples help when a value is printed in a hard-to-find spot. These certificates have no code to find.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Allow more retries for these certificates, with the validator's message on every attempt.",
+     "why": "Works, but delays the problem. More attempts mean more pressure to fill a field that has no answer, so more invented codes.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Make <code>naic_code</code> nullable, and stop retrying when the certificate does not print a code.",
+     "why": "Best. Retries fix errors where the value is there. When it is absent, a nullable field lets the model say so instead of inventing a code."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Certificates from surplus-lines carriers print no NAIC code at all.",
+   "explanation": "Retry with feedback works for format and structure errors. It fails when the information is absent from the source. Make such fields nullable instead of pressing for a value.",
+   "eli5": {
+    "question": "Retries keep failing on one field, and some end with an invented code. The clue is: <i>surplus-lines carriers print no NAIC code at all</i>. The value is not on the page, so there is nothing to find.",
+    "answer": "Ask a student for an answer that is not in the book, and keep saying \"try again\". Sooner or later they make one up. The fix is to allow \"not in the book\" as an answer. Here that is a <b>nullable field</b>: the model returns null when no code is printed. <b>Rule: retrying helps when the answer is there. When it is absent, allow \"absent\".</b>",
+    "options": [
+     "A format check stops crude fakes, but a made-up code usually looks right.",
+     "Examples show where a value sits. These certificates have no value to show.",
+     "More tries means more pressure, and more made-up codes.",
+     "Correct. \"Not printed\" becomes a valid answer, and the retries stop."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>failing retries mean the model needs more help finding the value</b>: better examples, stricter checks, more attempts. That holds when the value is on the page. Here the certificates never carry the code. Pressure to fill a required field that cannot be filled is exactly <b>what produces invented codes</b>.",
+    "mapTitle": "Retries keep failing: is the value there to find?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Retry fixes it on the second attempt",
+       "Mis-extraction",
+       "Retry with the specific error"
+      ],
+      [
+       "Value printed in an odd spot on some layouts",
+       "Model does not know where to look",
+       "Examples of those layouts"
+      ],
+      [
+       "Value <b>not on the document</b>",
+       "Absent information",
+       "Nullable field, stop retrying"
+      ],
+      [
+       "Invented values appear after retries",
+       "Pressure to fill a required field",
+       "Allow null"
+      ],
+      [
+       "Wrong but well-formed values",
+       "Semantic error",
+       "Checks on meaning"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The schema requires a naic_code for each carrier, and the validator rejects results without one",
+      "means": "The field is required, so an empty answer always fails."
+     },
+     {
+      "quote": "Certificates from surplus-lines carriers print no NAIC code at all",
+      "means": "The decider. The value is absent from the source. Examples of where it sits (<b>[[1]]</b>) have nothing to point at."
+     },
+     {
+      "quote": "These use every retry, and some end with a code that looks real but is made up",
+      "means": "Fabrication under pressure. A format check (<b>[[0]]</b>) passes a real-looking fake; more retries (<b>[[2]]</b>) add pressure. So <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Retry with feedback fixes format and structure errors, not missing information. Make such fields nullable.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retries are ineffective when info is absent from the source (vs format/structural errors)."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-03",
+   "was": "s5q-s6-03",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Criteria for uncertainty",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Some certificates arrive as faxed scans. On these, a digit in the policy number is often smudged, such as an 8 that might be a 3. The model always picks one reading. A wrong policy number links the certificate to the wrong policy, which takes hours to untangle. The schema has no way to mark a value as unsure. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a <code>needs_review</code> flag, with written rules for setting it, like any unclear digit.",
+     "why": "Best. The model needs a defined way to say \"unsure\", and explicit criteria for when to use it. Flagged certificates go to a quick review instead of a costly wrong link."
+    },
+    {
+     "t": "Add three examples of smudged policy numbers to the prompt, each reasoning through the digits.",
+     "why": "Works, but only usually. Examples can sharpen the guess, but the model still has to commit to one reading, because the schema gives it no other answer.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Extract each faxed certificate twice, and send it for review when the two numbers differ.",
+     "why": "Works, but only usually. Two runs can make the same misreading, so a smudge read wrongly both times still posts.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Send every faxed certificate to the review queue, and keep auto-posting for clean PDFs.",
+     "why": "Works, but overbuilt. It pays for a review on every fax, including the many with clear numbers, to catch a few.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The schema has no way to mark a value as unsure.",
+   "explanation": "Give the model a defined way to say \"unsure\" and explicit criteria for using it. Otherwise every unclear case becomes a confident guess.",
+   "eli5": {
+    "question": "The model must guess between a smudged 8 and 3, and a wrong guess is costly. The clue is: <i>the schema has no way to mark a value as unsure</i>. Whatever you teach it, the model can only commit.",
+    "answer": "A cashier who cannot read a cheque can guess, or ring a bell for the manager. With no bell, they guess. Give them a bell and a rule for when to ring it. Here the bell is a <b>review flag</b> in the schema, and the rule is <b>explicit criteria</b> for setting it. <b>Rule: give the model a defined \"unsure\" answer, and say when to use it.</b>",
+    "options": [
+     "Correct. A bell, plus a written rule for when to ring it.",
+     "Examples make the guess better, but it is still a guess.",
+     "Two runs can misread the same smudge the same way.",
+     "Checking every fax pays for many clean ones to catch a few."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the model needs to get better at reading smudges</b>, with examples or a second run. But no skill makes a smudge readable. The real gap is the output: the schema only lets the model commit. It needs <b>a defined way to say \"unsure\"</b>, with written criteria for when to say it.",
+    "mapTitle": "Model forced to guess: what is missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Model always commits, schema has no \"unsure\"",
+       "No way to express doubt",
+       "Review flag plus criteria"
+      ],
+      [
+       "Flag exists but is used unevenly",
+       "Uneven judgment",
+       "Examples of borderline cases"
+      ],
+      [
+       "Value not printed at all",
+       "Absent information",
+       "Nullable field"
+      ],
+      [
+       "Two runs agree on a wrong value",
+       "Shared blind spot",
+       "Do not treat agreement as proof"
+      ],
+      [
+       "One document type is often unclear",
+       "Whole type is risky",
+       "Route that type, if errors are common"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "a digit in the policy number is often smudged, such as an 8 that might be a 3",
+      "means": "The source is truly ambiguous. A second run (<b>[[2]]</b>) can read it the same wrong way."
+     },
+     {
+      "quote": "The model always picks one reading",
+      "means": "It never says it is unsure."
+     },
+     {
+      "quote": "A wrong policy number links the certificate to the wrong policy, which takes hours to untangle",
+      "means": "A wrong guess costs far more than a quick review, but only the unclear ones need it, not every fax (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "The schema has no way to mark a value as unsure",
+      "means": "The decider. Examples (<b>[[1]]</b>) can only teach a better guess. A flag with criteria (<b>[[0]]</b>) adds the missing answer."
+     }
+    ],
+    "rule": "If the model can only commit, it will guess. Add an \"unsure\" outcome and write criteria for using it.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-04",
+   "was": "s5q-s6-04",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks for normalization",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The agent calls a <code>get_policy</code> tool to confirm dates in each carrier's system. Carriers return dates in different forms: Unix timestamps, ISO strings, or day-first text. The model sometimes reads a day-first date as month-first, and confirms the wrong expiry. Each carrier always uses the same form. Where should the dates be <b>made consistent</b>?",
+   "options": [
+    {
+     "t": "In the system prompt, with a note on each carrier's date form and how to read it.",
+     "why": "Works, but only usually. The notes help the model read the dates, but it still parses them itself, and the slips continue at a lower rate.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "In a <code>PostToolUse</code> hook that turns every date into one form before the model reads it.",
+     "why": "Best. The forms are fixed, so code can convert them exactly. A hook on the tool result does it before the model ever sees a day-first date."
+    },
+    {
+     "t": "In the validator, which rejects confirmed dates that differ from extracted ones and retries.",
+     "why": "Works, but too late. It catches some misreadings after they happen, and spends a retry on each, instead of removing the confusion.",
+     "trap": "too late"
+    },
+    {
+     "t": "In a separate wrapper service for each carrier, which converts its dates before returning.",
+     "why": "Works, but overbuilt. It gives the same result as one hook, with one service to build and run per carrier.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Each carrier always uses the same form.",
+   "explanation": "Fixed formats can be converted exactly in code. A PostToolUse hook normalises tool results before the model reads them, so the model never meets the ambiguity.",
+   "eli5": {
+    "question": "Carriers send dates in different styles, and the model sometimes reads them the wrong way round. The clue is: <i>each carrier always uses the same form</i>. Fixed styles can be converted exactly by code.",
+    "answer": "Think of a post room that rewrites every date on incoming letters into one style before the letters reach your desk. You never see the confusing ones. That post room is a <b><code>PostToolUse</code> hook</b>: code that changes a tool's result before the model reads it. <b>Rule: if code can convert it exactly, convert it before the model sees it.</b>",
+    "options": [
+     "A note on how to read each style helps, but the model still does the reading.",
+     "Correct. Code rewrites every date into one style on the way in.",
+     "Rejecting wrong dates afterwards catches some, late, and costs a retry each.",
+     "A service per carrier does the same job as one hook, with far more to run."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a model that misreads formats needs better instructions about them</b>. That fits when formats are open-ended and unpredictable. These are a few fixed forms, one per carrier. Converting them is <b>deterministic work with one right answer</b>, and a hook can do it on every tool result.",
+    "diagram": "get_policy → \"04/03/2027\" (day-first)\n  PostToolUse hook → \"2027-03-04\"\n  model reads one form only",
+    "mapTitle": "Model misreads data from tools: who should fix it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A few fixed formats in tool results",
+       "<code>PostToolUse</code> hook normalises",
+       "Exact, before the model reads"
+      ],
+      [
+       "Formats vary unpredictably by layout",
+       "Examples in the prompt",
+       "Code cannot list every case"
+      ],
+      [
+       "Wrong value already produced",
+       "Validator plus retry",
+       "Catches after the fact"
+      ],
+      [
+       "Action must be blocked above a limit",
+       "<code>PreToolUse</code> hook on that tool",
+       "Deterministic control"
+      ],
+      [
+       "Value needs outside data",
+       "A tool against a real source",
+       "Correct and traceable"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Carriers return dates in different forms: Unix timestamps, ISO strings, or day-first text",
+      "means": "Heterogeneous formats in tool results: the textbook case for normalising."
+     },
+     {
+      "quote": "The model sometimes reads a day-first date as month-first, and confirms the wrong expiry",
+      "means": "The model is doing a parsing job. A prompt note (<b>[[0]]</b>) leaves it doing that job."
+     },
+     {
+      "quote": "Each carrier always uses the same form",
+      "means": "The decider. Fixed forms convert exactly in code. One hook (<b>[[1]]</b>) covers all carriers; a service each (<b>[[3]]</b>) is more machinery; the validator (<b>[[2]]</b>) acts too late."
+     }
+    ],
+    "rule": "Normalise fixed formats in a PostToolUse hook, before the model reads them.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "PostToolUse hooks intercept results for transformation before the model sees them."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-05",
+   "was": "s5q-s6-05",
+   "sid": "s6",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Forcing a first tool",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "Two lookup tools, <code>get_carrier_rating</code> and <code>check_license</code>, need the <code>carrier_id</code> that <code>read_header</code> returns. All three tools are offered on every request. Each certificate is handled in its own conversation. Sometimes the agent calls a lookup first, gets an error, then calls <code>read_header</code> and tries again. Auditors now require the header to be read first on every certificate. Which change <b>meets this requirement</b>?",
+   "options": [
+    {
+     "t": "Rewrite both lookup descriptions to say they need the <code>carrier_id</code> from <code>read_header</code>.",
+     "why": "Works, but only usually. Clear descriptions are the main lever for tool choice and would cut the slips, but they cannot promise every certificate.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have the lookups return a structured error telling the agent to call <code>read_header</code> first.",
+     "why": "Works, but too late. A clear error helps the agent recover, and it already recovers. The lookup has still run before the header.",
+     "trap": "too late"
+    },
+    {
+     "t": "Force <code>read_header</code> through <code>tool_choice</code> on each first request, then go back to auto.",
+     "why": "Best. A forced tool choice makes that tool the first call. Each certificate starts its own conversation, so forcing the first request covers every certificate."
+    },
+    {
+     "t": "Add a system-prompt rule to read the header first, with two examples showing that order.",
+     "why": "Works, but only usually. A prompt rule with examples raises compliance, but it stays probabilistic, and the auditors want no exceptions.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Auditors now require the header to be read first on every certificate.",
+   "explanation": "A forced tool_choice makes a specific tool run on a specific request, the classic case being a metadata step that later tools depend on. Descriptions and prompt rules improve the odds but cannot promise the order.",
+   "eli5": {
+    "question": "The agent sometimes calls a lookup before reading the header. The clue is: <i>auditors now require the header to be read first on every certificate</i>. That is a guarantee, not an improvement.",
+    "answer": "Telling a builder \"lay the foundation first, please\" mostly works. A site that only lets in the foundation crew on day one always works. Forcing <code>tool_choice</code> to <code>read_header</code> on the first request is that rule at the gate (<b>forced tool choice</b>). After that, the agent picks freely. <b>Rule: when one step must come first every time, force it.</b>",
+    "options": [
+     "Clearer tool descriptions cut the slips, but cannot promise every certificate.",
+     "A helpful error helps recovery, but the wrong call has already happened.",
+     "Correct. The first call has to be <code>read_header</code>.",
+     "A prompt rule with examples is still a request, not a guarantee."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent picks the wrong tool, so improve the tool descriptions</b>. Descriptions are the main signal for tool choice, and they would cut the error rate. But the auditors demand the header first on <i>every</i> certificate. Only a setting that <b>dictates the first call</b> meets that.",
+    "mapTitle": "A tool must run first: which lever controls the order?",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Strength"
+     ],
+     "rows": [
+      [
+       "Better tool picking in general",
+       "Clear descriptions and boundaries",
+       "Strong, not guaranteed"
+      ],
+      [
+       "Some tool call instead of text",
+       "<code>tool_choice: \"any\"</code>",
+       "Does not choose which"
+      ],
+      [
+       "A specific tool first, every time",
+       "Forced <code>tool_choice</code> on the first request",
+       "Guaranteed"
+      ],
+      [
+       "Block a call until a step is done",
+       "Hook or prerequisite gate",
+       "Guaranteed, in code"
+      ],
+      [
+       "Recover after a bad call",
+       "Structured error result",
+       "Recovery, not prevention"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "All three tools are offered on every request",
+      "means": "The agent is free to pick a lookup first."
+     },
+     {
+      "quote": "Each certificate is handled in its own conversation",
+      "means": "So the first request of each conversation is the first step for each certificate."
+     },
+     {
+      "quote": "gets an error, then calls read_header and tries again",
+      "means": "Recovery already works. A better error (<b>[[1]]</b>) does not change the order."
+     },
+     {
+      "quote": "Auditors now require the header to be read first on every certificate",
+      "means": "The decider. A guarantee. Descriptions (<b>[[0]]</b>) and prompt rules (<b>[[3]]</b>) only raise the odds. So <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Forced tool_choice makes a specific tool run first. Descriptions improve picking but cannot promise order.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-06",
+   "was": "s5q-s6-06",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Routing by document type",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "One extraction prompt covers certificates, policy endorsements and carrier schedules. It grows by a paragraph with each new carrier quirk. Accuracy on certificates has slipped as the notes piled up. The prompt also contradicts itself. In the certificate notes, \"effective date\" means the policy's start date. In the endorsement notes, it means the date the change takes effect. Which restructuring is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Reorder the prompt so the certificate notes come first, under clear headings, then the rest.",
+     "why": "Works, but for a different problem. Key content first under headings helps the model find things. Both meanings of \"effective date\" still sit in the same prompt.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Classify each document first, then extract with a prompt holding only that type's notes.",
+     "why": "Best. Classifying first and routing to a focused prompt removes guidance that is noise, or a contradiction, for this document. A new carrier note no longer affects the other types."
+    },
+    {
+     "t": "Split each document into page sections, extract each one, then merge the results at the end.",
+     "why": "Works, but for a different problem. Splitting helps with long documents. Here the prompt has grown, not the documents.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add a worked example for each document type that shows its correct effective date.",
+     "why": "Works, but more of the same. Examples steer each type toward the right date, but they lengthen the prompt and leave the two definitions in place.",
+     "trap": "more of the same"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The prompt also contradicts itself.",
+   "explanation": "One prompt serving several document types collects instructions that are noise or contradictions for most inputs. Classify first, then route to a focused prompt: a chain where step one decides step two.",
+   "eli5": {
+    "question": "One big prompt covers three document types, and accuracy slips as it grows. The clue is: <i>the prompt also contradicts itself</i>. \"Effective date\" means one thing for certificates and another for endorsements.",
+    "answer": "Imagine one rule book for a whole hospital, where \"dose\" means one thing on the children's ward and another on the adult ward. Tidying the chapters does not stop the clash. Give each ward its own book, and check the ward first. That is <b>classify first, then route to a focused prompt</b> (prompt chaining). <b>Rule: if guidance for one case confuses another, split by case before extracting.</b>",
+    "options": [
+     "Headings help with finding things. Both meanings are still in the same book.",
+     "Correct. Each document sees only the notes for its own type.",
+     "Splitting the document helps long documents. Here the rule book grew.",
+     "More examples add pages and leave both meanings in place."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a long prompt is a layout problem</b>: put the important parts first and add headings. That helps when content is merely hard to find. Here two sections define the same term differently, and every certificate still reads the endorsement meaning. <b>Only routing removes guidance that does not belong.</b>",
+    "mapTitle": "One growing prompt: layout problem or fit problem?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Long prompt, key items missed",
+       "Position effects",
+       "Key items first, section headings"
+      ],
+      [
+       "Guidance for one type <b>contradicts</b> another",
+       "Instructions do not fit every input",
+       "Classify, then route to a focused prompt"
+      ],
+      [
+       "Long documents, middle fields missed",
+       "Lost in the middle",
+       "Split the document"
+      ],
+      [
+       "Output uneven under clear rules",
+       "Uneven application",
+       "Worked examples"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "One extraction prompt covers certificates, policy endorsements and carrier schedules",
+      "means": "Three document types share one prompt."
+     },
+     {
+      "quote": "It grows by a paragraph with each new carrier quirk",
+      "means": "It keeps growing. More examples (<b>[[3]]</b>) grow it further."
+     },
+     {
+      "quote": "The prompt also contradicts itself",
+      "means": "The decider. A contradiction, not a findability problem. Reordering (<b>[[0]]</b>) keeps both meanings in context."
+     },
+     {
+      "quote": "In the endorsement notes, it means the date the change takes effect",
+      "means": "The clash is in the instructions, not the documents, so splitting pages (<b>[[2]]</b>) misses it. So <b>[[1]]</b>."
+     }
+    ],
+    "rule": "When one prompt serves several kinds of input and its parts conflict, classify first and route each input to a focused prompt.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-07",
+   "was": "s5q-s6-07",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Gate before side effects",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The agent calls <code>post_certificate</code> once it is satisfied with a result. Policy says a certificate whose liability limit is below the client's contract minimum needs an account manager's approval before posting. The prompt states this rule. Last month a few such certificates posted anyway. In each, the agent's notes said the shortfall looked minor. Which change <b>guarantees the policy</b>?",
+   "options": [
+    {
+     "t": "Add explicit criteria to the prompt, with two examples of small shortfalls sent for approval.",
+     "why": "Works, but only usually. Criteria and examples improve the agent's judgment, but compliance stays probabilistic, and the failures were exactly these small shortfalls.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that marks results below the minimum with an approval flag.",
+     "why": "Works, but the agent still decides. Code computes the flag correctly, but the agent chooses whether to honour it before posting, which is the same weak spot.",
+     "trap": "agent still decides"
+    },
+    {
+     "t": "Have a second Claude instance review each result below the minimum before it is posted.",
+     "why": "Works, but the wrong approver. An independent instance catches extraction errors, but the policy asks for an account manager's approval.",
+     "trap": "wrong approver"
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook on <code>post_certificate</code> that holds shortfalls for approval.",
+     "why": "Best. The limit check is a comparison of two numbers. Code on the posting call itself holds every shortfall for approval, whatever the agent thinks."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The agent calls post_certificate once it is satisfied with a result.",
+   "explanation": "Prompt-based compliance has a non-zero failure rate. Intercept the outgoing call and block it until the condition is met; a correct flag does not help if honouring it is optional.",
+   "eli5": {
+    "question": "Certificates below the contract minimum posted without approval, though the prompt states the rule. The clue is: <i>the agent calls post_certificate once it is satisfied</i>. Anything the agent must choose to obey can be skipped.",
+    "answer": "A sign saying \"manager approval needed below the minimum\" works most days. A till that will not open without the manager's key works every day. A <b><code>PreToolUse</code> hook</b> is that lock: code that checks the posting call before it runs and holds it. <b>Rule: if a rule must hold every time, put it in code at the action.</b>",
+    "options": [
+     "Clearer rules improve judgment, but obeying them is still up to the agent.",
+     "The flag is right, but the agent still decides whether to act on it.",
+     "A second model checks the work, but the policy asks for a person.",
+     "Correct. The posting call itself is held until a manager approves."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>moving the check into code is enough</b>, so a hook that sets a flag looks deterministic. The flag is computed by code, but it is <i>honoured</i> by the agent, which is how the shortfalls slipped through. The guarantee has to sit <b>on the posting call itself</b>.",
+    "mapTitle": "Must-hold rule: where does the code sit?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Rule only nudges behaviour",
+       "Prompt criteria and examples",
+       "Probabilistic"
+      ],
+      [
+       "Code computes a flag the agent reads",
+       "<code>PostToolUse</code> hook on results",
+       "Still relies on the agent"
+      ],
+      [
+       "Action must be held below a limit",
+       "<code>PreToolUse</code> hook on that tool",
+       "Deterministic at the action"
+      ],
+      [
+       "Step B must wait for step A",
+       "Prerequisite gate",
+       "Blocks until A completes"
+      ],
+      [
+       "Need a second view of an extraction",
+       "Independent instance",
+       "Not a human approval"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent calls post_certificate once it is satisfied with a result",
+      "means": "The decider. The agent controls the posting call, so a flag it reads (<b>[[1]]</b>) can be skipped."
+     },
+     {
+      "quote": "needs an account manager's approval before posting",
+      "means": "A person, not a second model (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "The prompt states this rule. Last month a few such certificates posted anyway",
+      "means": "Prompt rules have a non-zero failure rate. More criteria (<b>[[0]]</b>) is more of the same."
+     },
+     {
+      "quote": "Which change guarantees the policy?",
+      "means": "Code on the call itself: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Compliance rules cannot rely on the agent choosing to comply. Hold the outgoing call in code until the condition is met.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "When deterministic compliance is required (e.g., identity verification before financial ops), prompt instructions have a non-zero failure rate."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-08",
+   "was": "s5q-s6-08",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Position in long documents",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Property schedules list many insured locations across many pages. Each schedule goes to the model in one request. The request opens with the list of fields to extract, and each page starts with a page marker. Values for locations on the first and last pages come out right. Values for locations on the middle pages are often missed. Which change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Extract each range of pages in its own request, then merge the results in a final step.",
+     "why": "Best. Strong at both ends and weak in the middle is the lost-in-the-middle pattern. Separate requests put every location near the start or end of its own input."
+    },
+    {
+     "t": "Add a heading for each location, and repeat the field list again at the end of the request.",
+     "why": "Works, but only partly. Headings and key items at the edges are the usual light fixes. The request already has a field list and page markers, and the middle still lags.",
+     "trap": "only partly"
+    },
+    {
+     "t": "Ask the model to list every location first, then fill in the fields for each one.",
+     "why": "Works, but only usually. A list of locations helps the model track them, but it still reads one long input, and the middle pages stay in the middle.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Run the extraction twice, and keep middle-page values only when both runs agree.",
+     "why": "Works, but only usually. Both runs share the same weak spot, so they can miss or misread the same values.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The request opens with the list of fields to extract, and each page starts with a page marker.",
+   "explanation": "Models handle the start and end of a long input most reliably and may under-use the middle. When structure is already in place, split the input so nothing sits in the middle.",
+   "eli5": {
+    "question": "Locations on the middle pages are missed far more often than those at the start or end. The clue is: <i>the request opens with the list of fields, and each page starts with a page marker</i>. The usual light fixes are already there.",
+    "answer": "Read a long letter in one go, and you remember the opening and the ending best. Page dividers help a bit, but the middle still blurs. Read it in short parts, and there is no middle. That is <b>splitting the document</b>: one request per page range, then a merge. <b>Rule: if the middle still lags after headings, make the middle into its own start.</b>",
+    "options": [
+     "Correct. Each page range is the whole input of its own request.",
+     "Headings and a field list are already there, and the middle still lags.",
+     "A list of locations helps tracking, but the middle pages are still in the middle.",
+     "Two runs share the same blind spot."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the middle is missed because the input lacks structure</b>. But the request already lists the fields first and marks every page. Strong ends and a weak middle is the <b>lost-in-the-middle</b> pattern. It is about position, so change the positions.",
+    "mapTitle": "Middle of a long input under-used: what is already in place?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Unstructured text, middle fields missed",
+       "Position and no structure",
+       "Headings, key items first"
+      ],
+      [
+       "Headings already there, middle still lags",
+       "Position itself",
+       "Split: one request per part"
+      ],
+      [
+       "Document does not fit",
+       "Capacity",
+       "Chunk it"
+      ],
+      [
+       "Tool output buries key facts",
+       "Too much context",
+       "Trim output, keep a facts block"
+      ],
+      [
+       "Mixed document types in one prompt",
+       "Instruction fit",
+       "Classify and route"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each schedule goes to the model in one request",
+      "means": "One long input, with the middle pages in the middle."
+     },
+     {
+      "quote": "The request opens with the list of fields to extract, and each page starts with a page marker",
+      "means": "The decider. Headings and a field list (<b>[[1]]</b>) are already present."
+     },
+     {
+      "quote": "Values for locations on the first and last pages come out right",
+      "means": "Strong at the ends."
+     },
+     {
+      "quote": "Values for locations on the middle pages are often missed",
+      "means": "Weak in the middle. A second run (<b>[[3]]</b>) or a location list (<b>[[2]]</b>) keeps the same long input. So <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Strong ends and a weak middle is a position problem. If headings are already there, split the input.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "models reliably process beginning/end but may omit middle sections."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-09",
+   "was": "s5q-s6-09",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Self-checking fields",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The team wants to stop well-formed but wrong values before they post, without a person checking every certificate. Most errors sit in two fields: carrier and policy number. The broker's system already holds each client's known policies, with carrier and policy number. An engineer suggests auto-posting any result whose self-reported confidence is above 0.9. Which <b>two changes</b> catch these errors before posting?",
+   "options": [
+    {
+     "t": "Label a monthly sample of posted certificates, stratified by carrier and by field, to track errors.",
+     "why": "Works, but too late. Stratified sampling is the right way to measure error rates by carrier and field. It looks after posting, so it stops no single wrong value.",
+     "trap": "too late"
+    },
+    {
+     "t": "Score confidence for each field, calibrate it on labelled data, and review fields below threshold.",
+     "why": "Best. Errors cluster in two fields, so field-level scores route them. Calibration on labelled data is what makes the scores mean something."
+    },
+    {
+     "t": "Auto-post results whose self-reported confidence is above 0.9, and send the rest to review.",
+     "why": "Works, but only usually. Self-reported confidence is poorly calibrated: a confidently misread field still scores high.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Compare carrier and policy number with the client's known policies, and review mismatches.",
+     "why": "Best. Well-formed errors are caught against an outside source of truth. The broker's own records check the two error-prone fields with no person involved."
+    },
+    {
+     "t": "Extract each certificate twice with different prompts, and review fields where they disagree.",
+     "why": "Works, but only usually. Two runs can make the same mistake on the same layout and agree.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The team wants to stop well-formed but wrong values before they post.",
+   "explanation": "Self-reported confidence and agreement between runs are proxies, not measures. Catch tidy-but-wrong values with outside records and with field-level confidence calibrated on labelled data.",
+   "eli5": {
+    "question": "The team wants to catch wrong-but-tidy values before they post, without checking every certificate by hand. The clue is: <i>before they post</i>. A method that only measures errors afterwards does not stop any of them.",
+    "answer": "A shop can catch fake notes two ways: a machine that checks each note against known features, and a trained eye on only the doubtful ones. Counting fakes at month end tells you the rate but stops none. Here the machine is the <b>broker's own records</b>, and the trained eye is <b>per-field confidence checked against labelled data</b> (calibration). <b>Rule: catch tidy-but-wrong values with an outside source of truth.</b>",
+    "options": [
+     "A stratified sample measures error rates well, but only after posting.",
+     "Correct. Field scores, checked against labelled data, send only doubtful fields to review.",
+     "The model's own score is unreliable: a confident misread scores high.",
+     "Correct. Records the broker already holds catch a wrong carrier or policy number.",
+     "Two runs can make the same mistake twice."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>measuring errors is the same as catching them</b>. A stratified sample is the right way to learn error rates by field. But it looks at results after the fact. To stop each wrong value before it posts, every certificate needs <b>a check against something outside the extraction</b>.",
+    "mapTitle": "Tidy but wrong values: measure them or stop them?",
+    "map": {
+     "head": [
+      "Goal",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Stop wrong values on each certificate",
+       "Cross-check against own records",
+       "Outside source of truth"
+      ],
+      [
+       "Send only doubtful fields to people",
+       "Per-field confidence, calibrated on labelled data",
+       "Scores that mean something"
+      ],
+      [
+       "Learn error rates by field or carrier",
+       "Stratified sample",
+       "Measures, does not stop"
+      ],
+      [
+       "Is the model sure?",
+       "Not self-reported confidence",
+       "Poorly calibrated"
+      ],
+      [
+       "Do two runs agree?",
+       "Not a correctness check",
+       "Same mistake twice"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team wants to stop well-formed but wrong values before they post",
+      "means": "The decider. Prevention on each certificate. A sample (<b>[[0]]</b>) measures after posting."
+     },
+     {
+      "quote": "Most errors sit in two fields: carrier and policy number",
+      "means": "Field-level scores can route these: <b>[[1]]</b>."
+     },
+     {
+      "quote": "The broker's system already holds each client's known policies, with carrier and policy number",
+      "means": "An outside source of truth for exactly those fields: <b>[[3]]</b>."
+     },
+     {
+      "quote": "auto-posting any result whose self-reported confidence is above 0.9",
+      "means": "Self-reported confidence (<b>[[2]]</b>) is unreliable; so is agreement between runs (<b>[[4]]</b>)."
+     }
+    ],
+    "rule": "Self-reported confidence and run agreement do not measure correctness. Catch tidy-but-wrong values with outside records and calibrated per-field confidence.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "field-level confidence calibrated on labeled sets routes review."
+    }
+   }
+  },
+  {
+   "id": "m5p-s6-10",
+   "was": "s5q-s6-10",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for the long tail",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A large new client sends certificates from dozens of carriers the broker has never seen. Their layouts range from multi-column forms to dense paragraphs to tables with almost no labels. Today, for each new carrier, the team collects samples and writes carrier notes into the prompt. That takes days per carrier, and accuracy is poor until it is done. Which approach <b>scales best</b>?",
+   "options": [
+    {
+     "t": "Add three or four worked certificates with very different layouts, showing where each field is.",
+     "why": "Best. A few examples chosen for structural variety let the model generalise to layouts it has not seen. One set replaces per-carrier notes."
+    },
+    {
+     "t": "Classify certificates by carrier, and route each one to a prompt with that carrier's notes.",
+     "why": "Works, but only for known carriers. Routing helps when each route has notes written for it. A new carrier has none yet, so it falls back to today's problem.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Rewrite each field's description with its label variants and where it tends to appear.",
+     "why": "Works, but only usually. Better descriptions help with what to extract, but prose about position struggles across layouts this different. Examples show it better.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Make the fields nullable, and send certificates with empty fields to a reviewer for now.",
+     "why": "Works, but for a different problem. Nullable fields stop invented values, but this hands new carriers to people instead of extracting them well.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "A large new client sends certificates from dozens of carriers the broker has never seen.",
+   "explanation": "Few-shot examples chosen for structural variety generalise to layouts the system has never seen. Per-carrier guidance grows with every carrier and does nothing for a carrier on day one.",
+   "eli5": {
+    "question": "Dozens of unseen carriers arrive at once, and notes take days per carrier. The clue is: <i>carriers the broker has never seen</i>. The system must cope with layouts nobody has written notes for.",
+    "answer": "Teach a new clerk with three very different sample forms, and they can handle a fourth they have never seen. Give them one cheat sheet per company, and they are stuck on any company without a sheet. Varied samples are <b>few-shot examples</b> chosen for variety. <b>Rule: for a stream of new layouts, teach with varied examples, not per-case notes.</b>",
+    "options": [
+     "Correct. Varied worked examples let the model handle layouts it has not seen.",
+     "Routing works when every carrier has notes. New carriers have none yet.",
+     "Written rules about position struggle across very different layouts.",
+     "This stops made-up values, but sends new carriers to people instead."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>routing to carrier-specific prompts is the scalable design</b>, since it keeps each prompt focused. It is, for known inputs. Here dozens of carriers arrive that nobody has written notes for. Only something that <b>generalises to unseen layouts</b> helps from the first certificate.",
+    "mapTitle": "Many layouts: do you know them in advance?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Few, stable carriers with known quirks",
+       "Route to carrier-specific prompts",
+       "Focused guidance"
+      ],
+      [
+       "Many unseen layouts",
+       "Few-shot examples chosen for variety",
+       "Generalises"
+      ],
+      [
+       "Guidance for types contradicts",
+       "Classify, then route",
+       "Removes conflicts"
+      ],
+      [
+       "Field may be absent",
+       "Nullable field",
+       "Prevents invention"
+      ],
+      [
+       "Unclear what counts as the value",
+       "Explicit criteria",
+       "Defines it"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "certificates from dozens of carriers the broker has never seen",
+      "means": "The decider. No notes exist, so routing by carrier (<b>[[1]]</b>) falls back to the generic prompt."
+     },
+     {
+      "quote": "Their layouts range from multi-column forms to dense paragraphs to tables with almost no labels",
+      "means": "Variety of structure: prose rules (<b>[[2]]</b>) struggle; varied examples (<b>[[0]]</b>) carry it."
+     },
+     {
+      "quote": "That takes days per carrier, and accuracy is poor until it is done",
+      "means": "Per-carrier work does not scale. Sending them to people (<b>[[3]]</b>) does not scale either."
+     }
+    ],
+    "rule": "Few-shot examples chosen for structural variety generalise to unseen layouts. Per-case notes grow with every case.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "enable generalization to novel patterns"
+    }
+   }
+  }
+ ]
+}

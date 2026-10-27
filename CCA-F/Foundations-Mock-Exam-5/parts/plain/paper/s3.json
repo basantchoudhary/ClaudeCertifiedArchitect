@@ -1,0 +1,1079 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m5p-s3-01",
+   "was": "s5q-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Task tool & allowedTools",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "To answer short questions more cheaply, the team built a second coordinator called quick-answer. Its prompt says when to hand work to the document-analysis and citation-checking subagents. Its tool list was written fresh and holds only <code>Read</code> and the journal search tool. In trials, neither subagent ever runs. Quick-answer reads and checks the papers itself. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Copy the original coordinator's whole tool list into quick-answer, in place of its short list.",
+     "why": "Works, but too broad. Delegation comes back, because the original list includes Task, but so does every other tool quick-answer was trimmed to leave out.",
+     "trap": "too broad"
+    },
+    {
+     "t": "Give quick-answer the analysis and citation-checking tools so it can do that work well itself.",
+     "why": "Works, but wrong action. The papers get analysed and checked, but by the coordinator. The subagents the prompt describes still never run.",
+     "trap": "wrong action"
+    },
+    {
+     "t": "Add <code>\"Task\"</code> to quick-answer's <code>allowedTools</code>, next to its two current tools.",
+     "why": "Best. A coordinator can only spawn subagents through the Task tool. Adding it to the short list restores delegation and keeps the list lean."
+    },
+    {
+     "t": "Send short questions back to the original coordinator, with an instruction to keep answers brief.",
+     "why": "Works, but gives up the goal. The subagents run again, but every short question pays for the full coordinator, which is what quick-answer was built to avoid.",
+     "trap": "gives up the goal"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Its tool list was written fresh and holds only Read and the journal search tool.",
+   "explanation": "Delegation has a hard prerequisite: the coordinator can spawn subagents only through the Task tool, so allowedTools must include \"Task\". When no subagent runs at all, check that capability before anything else.",
+   "eli5": {
+    "question": "A new, cheaper coordinator never hands work to its helpers, so it does the work itself. The clue: its tool list was <i>written fresh</i> and holds only two tools.",
+    "answer": "A manager can only hand out jobs if they have the phone that calls the team. Here the new manager's desk was set up from scratch, and nobody put the phone on it. In the Agent SDK that phone is the <b>Task tool</b>: a coordinator spawns subagents only by calling it, so it must be in <code>allowedTools</code>. The fix is to add <code>\"Task\"</code> to the short list. <b>Rule: no subagent runs at all → check that the coordinator can call Task.</b>",
+    "options": [
+     "Copying the old manager's whole desk brings the phone back, but also all the clutter the new desk was meant to leave out.",
+     "Teaching the manager to do the team's jobs gets the work done, but the team still never gets a call.",
+     "Correct. Put the phone on the desk: add Task to the short tool list.",
+     "Sending small jobs back to the old manager works, but it costs what the new desk was built to save."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a coordinator delegates because its prompt tells it to</b>. The prompt decides <i>when</i> to delegate. Whether it <i>can</i> is set by its tools: subagents are spawned through the <b>Task tool</b>, so <code>allowedTools</code> must include <code>\"Task\"</code>. A tool list written from scratch can leave it out.",
+    "diagram": "quick-answer allowedTools: [Read, journal_search]\n  prompt: \"hand analysis to document-analysis\"\n  → no Task tool → does the work itself\nfix: [Read, journal_search, Task]",
+    "mapTitle": "Subagents aren't doing the work. Where is the fault?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "No subagent ever runs, coordinator works alone",
+       "Task missing from <code>allowedTools</code>",
+       "Add <code>\"Task\"</code> to the list"
+      ],
+      [
+       "Coordinator needs a lean tool set",
+       "Too many tools hurt selection",
+       "Keep the short list and add only Task"
+      ],
+      [
+       "Subagents run but return thin work",
+       "Context not passed in the Task prompt",
+       "Put the needed findings in the prompt"
+      ],
+      [
+       "Coordinator picks the wrong subagent",
+       "Vague subagent descriptions",
+       "Sharpen the AgentDefinition descriptions"
+      ],
+      [
+       "Subagent misuses tools outside its role",
+       "Tool set too wide",
+       "Scope its tools to its role"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Its prompt says when to hand work to the document-analysis and citation-checking subagents",
+      "means": "The prompt already asks for delegation, so prompt wording is not the gap."
+     },
+     {
+      "quote": "Its tool list was written fresh and holds only Read and the journal search tool",
+      "means": "The decider. There is no Task tool, so the coordinator has no way to spawn a subagent. Copying the whole old list (<b>[[0]]</b>) fixes this but undoes the trimming."
+     },
+     {
+      "quote": "In trials, neither subagent ever runs",
+      "means": "Not one call reaches a subagent: a capability problem, not a matching problem."
+     },
+     {
+      "quote": "Quick-answer reads and checks the papers itself",
+      "means": "It falls back to the tools it has. Giving it more of them (<b>[[1]]</b>) feeds that fallback; sending work back to the old coordinator (<b>[[3]]</b>) drops the cheap path. Add Task: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "A coordinator delegates only if \"Task\" is in its allowedTools. No subagent runs at all → check that first.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Task tool spawns subagents; allowedTools must include \"Task\""
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-02",
+   "was": "s5q-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Scope partitioning",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "For each request, the coordinator starts both search subagents at once. One Task prompt says “find evidence on the drug”, and the other says “find trial data on the drug”. Traces show the registry subagent often follows a trial's results link and summarises the journal paper. Literature search has usually summarised that same paper already. Committees need both kinds of source. Which change <b>most directly</b> removes the duplicated work?",
+   "options": [
+    {
+     "t": "Have the coordinator judge each request and send narrow ones to one search subagent only.",
+     "why": "Works, but different problem. Skipping a subagent saves cost on narrow requests, but these committees need both kinds of source, so both still run and still overlap.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Give each subagent named sources and exclusions: registry records to one, journals to the other.",
+     "why": "Best. The overlap comes from two vague briefs that both cover journal papers. Partitioning the scope in the delegation stops the second fetch before it happens."
+    },
+    {
+     "t": "Have the coordinator drop papers with a repeated DOI from the two returns before synthesis.",
+     "why": "Works, but too late. The report loses the repeats, but each paper has already been fetched and summarised twice, so the wasted work stays.",
+     "trap": "too late"
+    },
+    {
+     "t": "Run registry search after literature search, and pass it the full list of papers already covered.",
+     "why": "Works, but slower. The registry subagent can skip known papers, but the two searches no longer run side by side, so every request waits longer.",
+     "trap": "slower"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 3,
+   "decider": "One Task prompt says “find evidence on the drug”, and the other says “find trial data on the drug”.",
+   "explanation": "When parallel subagents duplicate work, partition their scope in the delegation: which sources each covers and what each must leave alone. Dynamic selection helps only when a subagent isn't needed.",
+   "eli5": {
+    "question": "Two search helpers keep reading and summarising the same journal papers. The clue: their two instructions are vague and overlap, and both kinds of source are needed.",
+    "answer": "Two people sent to “find out about the drug” and “find the trial data” will both end up in the same library aisle. Tell one “registry records only” and the other “journal papers only”, and they stop bumping into each other. That is <b>partitioning scope</b>: each subagent's Task prompt names its sources and what to leave alone. <b>Rule: parallel helpers doing the same work → split their scope in the brief.</b>",
+    "options": [
+     "Sending only one helper saves money on small jobs, but here both are needed every time.",
+     "Correct. Give each helper its own aisle and tell them which aisle is not theirs.",
+     "Throwing away duplicate notes at the end keeps the report tidy, but both people already did the reading.",
+     "Making the second person wait for the first's list works, but the two can no longer work at the same time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat duplication as a <b>clean-up job</b> at the end, or to stop running one of the subagents. Both treat the symptom. The cause is two <b>overlapping briefs</b>: “evidence on the drug” and “trial data on the drug” both reach journal papers. The coordinator should partition scope when it delegates.",
+    "diagram": "now:   literature → journal papers\n       registry   → registry + journal papers (dup)\nfix:   literature → journal papers only\n       registry   → registry records only",
+    "mapTitle": "Subagents overlap or waste work. What fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Parallel subagents fetch the same sources",
+       "Overlapping briefs",
+       "Named sources and exclusions per subagent"
+      ],
+      [
+       "Later step needs an earlier step's results",
+       "Real dependency",
+       "Run in order, pass findings in the prompt"
+      ],
+      [
+       "Many requests don't need every subagent",
+       "Full pipeline every time",
+       "Coordinator selects subagents by need"
+      ],
+      [
+       "Repeats show up in the final report",
+       "Duplication already happened",
+       "De-duplicate, but fix the briefs too"
+      ],
+      [
+       "Whole topics missing from the report",
+       "Decomposition too narrow",
+       "Broaden the subtasks"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the coordinator starts both search subagents at once",
+      "means": "They run in parallel, which is worth keeping. Running them in order (<b>[[3]]</b>) gives that up."
+     },
+     {
+      "quote": "One Task prompt says “find evidence on the drug”, and the other says “find trial data on the drug”",
+      "means": "The decider. Neither brief says what to leave alone, so both reach journal papers."
+     },
+     {
+      "quote": "Literature search has usually summarised that same paper already",
+      "means": "The waste is the second fetch and summary. Dropping repeated DOIs afterwards (<b>[[2]]</b>) comes after it is paid for."
+     },
+     {
+      "quote": "Committees need both kinds of source",
+      "means": "Both subagents must run, so selecting just one (<b>[[0]]</b>) doesn't apply. Partition the scope: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Parallel subagents duplicating work → give each named sources and exclusions in its Task prompt.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "partition scope to minimize duplication"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-03",
+   "was": "s5q-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Coordinator prompt design",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The coordinator's system prompt is a long step-by-step procedure. It was written for a few request types, such as one drug compared with placebo. One early step says to extract the drug name. A committee asked about a nursing practice that involves no drug, and the coordinator returned an empty summary. New committees keep sending new kinds of question. How should the coordinator prompt be <b>rewritten</b>?",
+   "options": [
+    {
+     "t": "Add a worked example of splitting each request type, including the nursing one, across subagents.",
+     "why": "Works, but only for past cases. Examples help on the types they show, but the next new kind of question has no example yet.",
+     "trap": "only past cases"
+    },
+    {
+     "t": "Keep the procedure, and add a branch for questions that name no drug at all.",
+     "why": "Works, but patches one case. The nursing question would now run, but each new kind of question needs another branch.",
+     "trap": "patches one case"
+    },
+    {
+     "t": "Add a first step that maps each question to the nearest of the known request types.",
+     "why": "Works, but forces a fit. Every question gets a procedure, but a question unlike any type is pushed into one that doesn't suit it.",
+     "trap": "forces a fit"
+    },
+    {
+     "t": "State the research goal, what a finished summary must contain, and when evidence is enough.",
+     "why": "Best. Goals and quality criteria let the coordinator plan for questions nobody wrote steps for, which is what new committees keep sending."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "New committees keep sending new kinds of question.",
+   "explanation": "Write coordinator prompts as goals and quality criteria, not step-by-step procedures. Procedures, branches and type-specific examples encode only the questions someone foresaw.",
+   "eli5": {
+    "question": "The coordinator follows a fixed recipe written for a few kinds of question. A question that doesn't fit the recipe comes back empty. The clue: <i>new kinds of question keep arriving</i>.",
+    "answer": "A cook with only recipes is stuck when a guest asks for something new. A cook who knows what a good meal must be (balanced, hot, enough for everyone) can plan any dish. For the coordinator, that means a prompt that states the <b>goal and quality criteria</b>: what the summary must contain and when the evidence is enough. <b>Rule: write coordinator prompts as goals and criteria, not step-by-step procedures.</b>",
+    "options": [
+     "More example dishes help for those dishes, but the next new request has none.",
+     "A new recipe for today's odd request works today, and you need another one tomorrow.",
+     "Matching every request to the nearest recipe serves something, but often the wrong thing.",
+     "Correct. Tell the cook what a good meal must be, and let them plan."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better procedure</b> fixes a procedure that failed: add a branch, a classifier step or more examples. Each of those still encodes only the questions someone foresaw. The exam guide says to write coordinator prompts as <b>goals and quality criteria</b>, so the coordinator can plan for questions nobody foresaw.",
+    "mapTitle": "How should a coordinator prompt be written?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best prompt shape",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Questions keep changing shape",
+       "Goal plus quality criteria",
+       "Coordinator plans each question itself"
+      ],
+      [
+       "One known case is missing from a stable set",
+       "Add a branch to the procedure",
+       "Small patch for a closed set"
+      ],
+      [
+       "Coordinator splits work inconsistently",
+       "A few worked decompositions",
+       "Examples show the shape"
+      ],
+      [
+       "Fixed, repeated workflow that must be audited",
+       "Fixed pipeline of steps",
+       "Same steps every run"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator's system prompt is a long step-by-step procedure",
+      "means": "The prompt is a procedure, the shape the exam guide warns against for coordinators."
+     },
+     {
+      "quote": "One early step says to extract the drug name",
+      "means": "The steps assume a drug, so a question without one falls through."
+     },
+     {
+      "quote": "A committee asked about a nursing practice that involves no drug, and the coordinator returned an empty summary",
+      "means": "A question outside the foreseen types fails. A branch for it (<b>[[1]]</b>) fixes only this one."
+     },
+     {
+      "quote": "New committees keep sending new kinds of question",
+      "means": "The decider. Examples (<b>[[0]]</b>) and mapping to known types (<b>[[2]]</b>) still rely on foreseen types. Goals and criteria: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Coordinator prompts state the goal and what good output looks like, not a step-by-step procedure.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "write coordinator prompts as goals + quality criteria, not step-by-step procedures"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-04",
+   "was": "s5q-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Iterative refinement loop",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A committee asked how a drug works in adults, children and pregnant women. The summary covered adults and children in depth but gave pregnancy one sentence. The delegation log shows a subtask for each group. The pregnancy subagent returned two brief findings from a thin first search. Today the coordinator passes all returns straight to synthesis. Which addition <b>fixes this most economically</b>?",
+   "options": [
+    {
+     "t": "Have the coordinator check the draft against the request, re-delegate thin parts, re-synthesise.",
+     "why": "Best. The split was right; one subtask came back thin. Checking the draft for gaps and re-delegating only that part fixes it at the cost of one extra subtask."
+    },
+    {
+     "t": "Have the coordinator split every request more finely up front, across a larger number of subagents.",
+     "why": "Works, but different problem. Finer splits help when part of a request was never assigned. Here every group had a subtask, and every run would cost more.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Have synthesis mark sections with few sources, for a committee member to review by hand.",
+     "why": "Works, but passes it on. The thin section is flagged, but a person has to find the missing evidence the system could fetch itself.",
+     "trap": "passes it on"
+    },
+    {
+     "t": "Have every search subagent repeat with broader queries until it holds at least five findings.",
+     "why": "Works, but wrong measure. Thin areas get more searching, but so does every well-covered one, and a count of findings doesn't check the request is answered.",
+     "trap": "wrong measure"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The delegation log shows a subtask for each group.",
+   "explanation": "Coordinators should evaluate the synthesis for gaps, re-delegate targeted subtasks and re-synthesise. Finer decomposition helps only when part of the request was never assigned.",
+   "eli5": {
+    "question": "A summary covered two of three patient groups well and the third barely. The clue: every group <i>was</i> assigned; one helper just came back with little.",
+    "answer": "An editor reads the draft before it goes out. If one section is thin, they send that one reporter back out, then update the piece. They don't re-plan the whole paper. For the coordinator, that is the <b>iterative refinement loop</b>: check the draft against the request, re-delegate the gap, re-synthesise. <b>Rule: the split was right but one part came back thin → check, re-delegate, re-synthesise.</b>",
+    "options": [
+     "Correct. Read the draft, send one reporter back for the thin section, then update it.",
+     "Hiring more reporters for every story helps if a topic was never assigned. Here it was.",
+     "Marking the thin section for a reader to fix leaves the work to a person.",
+     "Making every reporter file five stories wastes effort on sections already done."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to blame <b>the decomposition</b> when a part of the report is thin. Decomposition is the cause only if part of the request was never assigned. Here each group had its own subtask. The missing piece is a <b>check after synthesis</b>: evaluate the draft for gaps, re-delegate the thin part, re-synthesise.",
+    "diagram": "split → 3 subtasks → synthesis → draft\n  check draft vs request → pregnancy thin\n  → re-delegate pregnancy only → re-synthesise",
+    "mapTitle": "Part of the report is thin. Where is the fault?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Every part assigned, one came back thin",
+       "No gap check after synthesis",
+       "Check draft, re-delegate, re-synthesise"
+      ],
+      [
+       "A whole topic never got a subtask",
+       "Decomposition too narrow",
+       "Broaden the split up front"
+      ],
+      [
+       "Two subagents return the same material",
+       "Overlapping scope",
+       "Partition sources in the briefs"
+      ],
+      [
+       "Subagent fails to reach a source",
+       "Access failure",
+       "Structured error to the coordinator"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The summary covered adults and children in depth but gave pregnancy one sentence",
+      "means": "One part is thin; the others are fine."
+     },
+     {
+      "quote": "The delegation log shows a subtask for each group",
+      "means": "The decider. The split was right, so splitting finer (<b>[[1]]</b>) fixes a problem that isn't here."
+     },
+     {
+      "quote": "The pregnancy subagent returned two brief findings from a thin first search",
+      "means": "One subtask needs another try. Making every subagent search more (<b>[[3]]</b>) spends effort where it isn't needed."
+     },
+     {
+      "quote": "Today the coordinator passes all returns straight to synthesis",
+      "means": "Nothing checks the draft. Flagging for a person (<b>[[2]]</b>) leaves the gap open. Add the loop: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Split was right but a part came back thin → evaluate the synthesis for gaps, re-delegate, re-synthesise.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "iterative refinement loops (evaluate synthesis for gaps → re-delegate → re-synthesize)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-05",
+   "was": "s5q-s3-05",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Structured claim-source mapping",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 2,
+   "question": "Spot checks find citations that name a real, relevant paper, but the cited section lacks the claim. Document analysis returns prose paragraphs that mention papers in passing. Synthesis merges and rewrites those paragraphs. The reporting subagent then picks a paper and section for each sentence by matching it against every paper in the run. Runs must not get longer. Which <b>TWO</b> changes together fix attribution?",
+   "options": [
+    {
+     "t": "Have reporting re-open each cited paper and re-match any citation whose cited section lacks the claim.",
+     "why": "Works, but slower. Bad matches get caught, but every run now re-reads its papers, and reporting is still guessing the link.",
+     "trap": "slower"
+    },
+    {
+     "t": "Have document analysis return each finding as fields: claim, DOI, paper title and section.",
+     "why": "Best. The link between claim and source is recorded where it is known, as data, instead of as names buried in prose."
+    },
+    {
+     "t": "Give synthesis examples of merged paragraphs that keep each paper's name beside its sentence.",
+     "why": "Works, but only usually. Names stay nearer their sentences most of the time, but the mapping is still prose that the reporter must parse.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have synthesis pass reporting a claim-to-source list as data, one entry for each claim it keeps.",
+     "why": "Best. The mapping survives the rewrite, so reporting reads the source for each claim instead of matching sentences by guesswork."
+    },
+    {
+     "t": "Have reporting match sentences against only the twenty top-ranked papers of each run.",
+     "why": "Works, but hides the problem. Fewer candidates mean fewer wrong matches, but it is still matching, and claims from lower-ranked papers lose their source.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The reporting subagent then picks a paper and section for each sentence by matching it against every paper in the run.",
+   "explanation": "Source attribution survives only if claim-source mappings are kept as structured data from the analysis step through synthesis to reporting. Fixing one end leaves the other to rebuild the link by guesswork.",
+   "eli5": {
+    "question": "Citations point at the right paper but the wrong section. The clue: the link between claim and source is lost along the way, and reporting has to <i>guess</i> it back.",
+    "answer": "Picture a parcel whose label is torn off at the first depot. The last depot guesses the address from what's inside. The fix is a label that stays on all the way. Here the label is a <b>claim-source mapping</b> kept as data: analysis records each claim with its DOI and section, and synthesis passes that list on to reporting. <b>Rule: keep claim-source links as structured data at every hand-off.</b>",
+    "options": [
+     "Checking every parcel at the last depot catches wrong addresses, but slows every run and still guesses.",
+     "Correct. Print the address on the parcel at the first depot.",
+     "Asking the middle depot to write addresses neatly helps, but it is still handwriting someone must read.",
+     "Correct. Keep the label on through the middle depot and hand it to the last one.",
+     "Guessing from fewer addresses makes fewer mistakes, but it is still a guess."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to fix attribution <b>at the end</b>, where the wrong citations appear. The link was lost earlier: findings arrive as prose and synthesis rewrites them. The exam guide says to keep <b>structured claim-source mappings</b> through synthesis. That needs both ends: structured findings going in, and the mapping passed on coming out.",
+    "diagram": "analysis  → {claim, DOI, title, section}\nsynthesis → keeps list: claim → source\nreporting → cites from the list (no matching)",
+    "mapTitle": "Citations are wrong. Where does the link break?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the link breaks",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Findings arrive as prose with sources in passing",
+       "At the analysis step",
+       "Return claim and source as fields"
+      ],
+      [
+       "Synthesis rewrites and drops the links",
+       "At the synthesis step",
+       "Pass a claim-to-source list on as data"
+      ],
+      [
+       "Reporter matches sentences to sources",
+       "Link rebuilt by guessing",
+       "Read sources from the mapping"
+      ],
+      [
+       "A few wrong citations, time to spare",
+       "Late check is acceptable",
+       "Re-open and verify each citation"
+      ],
+      [
+       "Two sources give different figures",
+       "Real conflict or time gap",
+       "Attribute both, add dates"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Spot checks find citations that name a real, relevant paper, but the cited section lacks the claim",
+      "means": "The link between claim and source is wrong, not the source itself."
+     },
+     {
+      "quote": "Document analysis returns prose paragraphs that mention papers in passing",
+      "means": "The link is never recorded as data. Fix it here: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Synthesis merges and rewrites those paragraphs",
+      "means": "Any link that survives analysis is lost here unless passed on as data: <b>[[3]]</b>. Examples (<b>[[2]]</b>) keep it as prose."
+     },
+     {
+      "quote": "The reporting subagent then picks a paper and section for each sentence by matching it against every paper in the run",
+      "means": "The decider. Reporting rebuilds the link by guessing. A shorter list (<b>[[4]]</b>) still guesses."
+     },
+     {
+      "quote": "Runs must not get longer",
+      "means": "Re-opening every cited paper (<b>[[0]]</b>) adds time to each run."
+     }
+    ],
+    "rule": "Keep claim-source mappings as structured data from analysis through synthesis to reporting.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Preserve structured claim-source mappings through synthesis"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-06",
+   "was": "s5q-s3-06",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Restricting a subagent's tools",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The reporting subagent's AgentDefinition was copied from the literature-search template. It still holds the journal search and fetch tools. While formatting a summary, it sometimes searches for newer papers and adds them. Those papers never go through citation checking. Reporting is meant to format only findings that citation checking has approved. Which change is <b>most effective</b>?",
+   "options": [
+    {
+     "t": "Keep its tools, and require it to send any paper it adds back through citation checking.",
+     "why": "Works, but keeps the cause. New papers get checked, but reporting keeps doing research it shouldn't, and each run grows an extra loop.",
+     "trap": "keeps the cause"
+    },
+    {
+     "t": "Swap its search tools for a scoped <code>verify_reference</code> tool for one-off lookups.",
+     "why": "Works, but wrong need. A scoped cross-role tool suits a frequent, simple lookup a role needs. Reporting needs no lookups at all.",
+     "trap": "wrong need"
+    },
+    {
+     "t": "Take search and fetch out of the reporting AgentDefinition, and have it list any gaps it sees.",
+     "why": "Best. A subagent should hold only the tools its role needs. Without search tools it can't add unchecked papers, and gaps still reach the coordinator."
+    },
+    {
+     "t": "Add a prompt section that forbids new searches, with examples of formatting approved findings only.",
+     "why": "Works, but only usually. The prompt cuts the searches, but the tools are still there, and off-role tools get used.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Reporting is meant to format only findings that citation checking has approved.",
+   "explanation": "Give each subagent only the tools its role needs; agents with off-role tools misuse them. Scoped cross-role tools are for frequent, simple needs the role actually has.",
+   "eli5": {
+    "question": "The reporting helper still has search tools left over from a template, and it uses them to add unchecked papers. The clue: its job is only to <i>format approved findings</i>.",
+    "answer": "If the person who lays out the newspaper also has a press pass, sooner or later they add a story nobody fact-checked. Take back the press pass. In the SDK that means the reporting <b>AgentDefinition</b> lists only the tools reporting needs, and it notes any gap it sees for the coordinator. <b>Rule: give each subagent only the tools its role needs.</b>",
+    "options": [
+     "Sending added stories to the fact-checker catches them, but the layout person is still out reporting.",
+     "A small look-up pass suits someone who often needs one fact. The layout person doesn't.",
+     "Correct. Take back the press pass, and let them note what's missing.",
+     "A sign saying “no reporting” helps, but they still hold the press pass."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to <b>manage</b> an off-role tool: check what it brings back, or tell the agent not to use it. The exam guide's point is that agents with off-specialization tools misuse them. When a role needs none of a tool's use, <b>take the tool out</b> of its AgentDefinition. A scoped cross-role tool is for a frequent, simple need the role really has.",
+    "diagram": "reporting tools now:  read, save, journal_search, fetch\nreporting tools fix:  read, save\n  gap noticed → listed in output → coordinator",
+    "mapTitle": "A subagent misuses a tool. What fixes it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Role needs none of the tool's uses",
+       "Remove it from the AgentDefinition",
+       "Off-role tools get used"
+      ],
+      [
+       "Role often needs one simple lookup",
+       "Scoped cross-role tool",
+       "Limited tool for a real, frequent need"
+      ],
+      [
+       "Role needs bigger research now and then",
+       "Route it through the coordinator",
+       "Hub keeps control of scope"
+      ],
+      [
+       "Right tool held but picked wrongly",
+       "Sharpen tool descriptions",
+       "Descriptions drive selection"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The reporting subagent's AgentDefinition was copied from the literature-search template",
+      "means": "The tool set came with the template, not from reporting's needs."
+     },
+     {
+      "quote": "While formatting a summary, it sometimes searches for newer papers and adds them",
+      "means": "The off-role tools are being used, as the guide predicts. A prompt ban (<b>[[3]]</b>) leaves them in reach."
+     },
+     {
+      "quote": "Those papers never go through citation checking",
+      "means": "The harm is unchecked claims. Routing them back (<b>[[0]]</b>) adds a loop but keeps reporting researching."
+     },
+     {
+      "quote": "Reporting is meant to format only findings that citation checking has approved",
+      "means": "The decider. Reporting needs no lookups, so a scoped lookup tool (<b>[[1]]</b>) answers a need it doesn't have. Remove the tools: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Give each subagent only the tools its role needs; remove off-role tools rather than asking it not to use them.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Agents with off-specialization tools misuse them"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-07",
+   "was": "s5q-s3-07",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Temporal & conflicting sources",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Synthesis flagged a conflict about surgical infections. One paper puts the infection rate at 4%, and another puts it at 9%. Both are reputable, and the committee could not tell which to trust. A reviewer later found the two papers studied patients a decade apart. Each source record holds a title, a DOI and a section, and nothing else. Which change <b>best handles</b> this kind of conflict in future summaries?",
+   "options": [
+    {
+     "t": "Have synthesis show both figures side by side, each with its source, and mark the disagreement.",
+     "why": "Works, but only half. Showing both with attribution is right for a real conflict, but readers still can't see that the figures cover different years.",
+     "trap": "only half"
+    },
+    {
+     "t": "Have citation checking confirm each figure in its paper, and drop any it can't find word for word.",
+     "why": "Works, but different problem. It catches figures the papers don't contain. Both figures here are real, so both pass.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Tell synthesis that when two reputable figures disagree, the more recently published paper wins.",
+     "why": "Works, but picks blindly. Newer is often better, but the rule throws away a valid figure and hides the time difference.",
+     "trap": "picks arbitrarily"
+    },
+    {
+     "t": "Record each source's publication date and study period, and have synthesis compare periods first.",
+     "why": "Best. With dates on every source, synthesis can tell a time difference from a real conflict, and attribute both when periods match."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Each source record holds a title, a DOI and a section, and nothing else.",
+   "explanation": "Require publication and data-collection dates on sources so temporal differences are not read as contradictions. Genuine conflicts over the same period are shown with attribution, not resolved arbitrarily.",
+   "eli5": {
+    "question": "Two good papers give different infection rates. They looked at patients ten years apart, but nothing in the system records dates. The clue: the source record holds <i>nothing else</i> but title, DOI and section.",
+    "answer": "Two weather reports disagree: one says snow, one says sun. If you see one is from January and one from July, there's no conflict. Without dates you can't tell. So add <b>publication date and study period</b> to every source record, and have synthesis compare periods before calling it a conflict. Real conflicts over the same period are then shown side by side. <b>Rule: date every source so a time gap isn't mistaken for a contradiction.</b>",
+    "options": [
+     "Showing both reports with their names is fair, but readers still don't see one is from winter.",
+     "Checking each report says what it claims is good, but both do.",
+     "“Trust the newest report” sometimes picks right, but it hides why they differ.",
+     "Correct. Put a date on every report, then compare."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat two different figures as a <b>contradiction to resolve</b>: show both, verify both, or pick one. Often they measure <i>different periods</i>. The exam guide says to require publication and collection dates so time differences aren't misread as contradictions. Showing both with attribution is the rule for a real conflict over the same period.",
+    "mapTitle": "Two sources disagree. What should synthesis do?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Figures differ; studies cover different years",
+       "Time gap, not conflict",
+       "Record dates, compare periods first"
+      ],
+      [
+       "Figures differ for the same period",
+       "Real conflict",
+       "Show both with attribution"
+      ],
+      [
+       "A figure isn't in the cited paper",
+       "Bad extraction or citation",
+       "Verify against the source"
+      ],
+      [
+       "Pressure to give one number",
+       "Arbitrary choice",
+       "Don't pick one; annotate the conflict"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "One paper puts the infection rate at 4%, and another puts it at 9%",
+      "means": "Two real figures that look like a conflict."
+     },
+     {
+      "quote": "Both are reputable, and the committee could not tell which to trust",
+      "means": "Both pass a check (<b>[[1]]</b>), and choosing one by rule (<b>[[2]]</b>) is arbitrary."
+     },
+     {
+      "quote": "A reviewer later found the two papers studied patients a decade apart",
+      "means": "It is a time difference. Side-by-side figures alone (<b>[[0]]</b>) don't show that."
+     },
+     {
+      "quote": "Each source record holds a title, a DOI and a section, and nothing else",
+      "means": "The decider. No dates, so synthesis can't compare periods. Add them: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Require publication and study-period dates on sources; compare periods before calling figures a conflict.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Require publication/collection dates so temporal differences aren't misread as contradictions"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-08",
+   "was": "s5q-s3-08",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Dynamic subagent selection",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The hospital wants the cost per run brought down. Traces show that over half of requests ask for one fact, such as a drug's approved dose for children. Those runs still pass through all six subagents and produce a full summary. In some other runs, the two search subagents open the same papers. Committees usually need answers the same day. Which change will <b>cut cost the most</b>?",
+   "options": [
+    {
+     "t": "Move requests to the Message Batches API and send each answer when its batch completes.",
+     "why": "Works, but too slow. Batches cut the price per call, but they can take up to a day with no deadline, and committees need answers the same day.",
+     "trap": "too slow"
+    },
+    {
+     "t": "Let the coordinator judge what each request needs and call only those subagents.",
+     "why": "Best. Over half the runs use six subagents for one fact. Selecting subagents by need removes the biggest waste."
+    },
+    {
+     "t": "Give the two search subagents separate source lists, so they stop opening the same papers.",
+     "why": "Works, but smaller lever. It removes real duplication, but only in some runs, while the one-fact runs keep paying for all six.",
+     "trap": "smaller lever"
+    },
+    {
+     "t": "Train a classifier on past requests that picks one of three fixed pipelines before each run.",
+     "why": "Works, but overbuilt. A classifier can route one-fact requests, but the coordinator can already judge each request, without training data or fixed pipelines.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Those runs still pass through all six subagents and produce a full summary.",
+   "explanation": "Coordinators should select which subagents to invoke by query complexity rather than always running the full pipeline. Fix the largest waste first; duplication between subagents is a smaller, separate lever.",
+   "eli5": {
+    "question": "Most requests ask a single fact, yet every run uses all six helpers and writes a full report. The clue: <i>over half</i> the runs do far more work than the question needs.",
+    "answer": "If someone asks the library desk for one phone number, you don't send six researchers and write them a report. You send one person to look it up. The coordinator can do the same: judge what each request needs and <b>call only those subagents</b>. <b>Rule: don't run the full pipeline for every request; pick subagents by what the request needs.</b>",
+    "options": [
+     "Posting answers by slow mail is cheaper, but they arrive after the meeting.",
+     "Correct. Send only the people the question needs.",
+     "Stopping two researchers from reading the same book helps, but most of the waste is sending six people for one fact.",
+     "Building a sorting machine works, but the desk clerk can already decide who to send."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to go after the <b>visible duplication</b> between the two search subagents. It is real, but it happens in only some runs. The bigger waste is the <b>full pipeline</b> running for one-fact requests. The exam guide says coordinators should select which subagents to invoke by query complexity.",
+    "mapTitle": "Runs cost too much. Which lever is biggest?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Simple requests run every subagent",
+       "Full pipeline every time",
+       "Coordinator selects subagents by need"
+      ],
+      [
+       "Two subagents fetch the same sources",
+       "Overlapping scope",
+       "Partition sources per subagent"
+      ],
+      [
+       "Work can wait a day or more",
+       "Paying real-time prices",
+       "Message Batches API (50% off)"
+      ],
+      [
+       "Routing rules seem to need learning",
+       "Coordinator not trusted to judge",
+       "Let the coordinator judge first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Traces show that over half of requests ask for one fact",
+      "means": "Most runs need very little work."
+     },
+     {
+      "quote": "Those runs still pass through all six subagents and produce a full summary",
+      "means": "The decider. The largest waste is the full pipeline. Select by need: <b>[[1]]</b>. A trained classifier (<b>[[3]]</b>) adds machinery for the same job."
+     },
+     {
+      "quote": "In some other runs, the two search subagents open the same papers",
+      "means": "Real but smaller. Partitioning sources (<b>[[2]]</b>) is the second lever."
+     },
+     {
+      "quote": "Committees usually need answers the same day",
+      "means": "Batches have no latency deadline, so <b>[[0]]</b> risks missing the day."
+     }
+    ],
+    "rule": "Cut cost by having the coordinator invoke only the subagents a request needs; fix the biggest waste first.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Dynamically select subagents rather than always routing the full pipeline"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-09",
+   "was": "s5q-s3-09",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Hub-and-spoke communication",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The citation-checking subagent asks the coordinator for more evidence several times per run. Each round trip adds some delay. An engineer proposes letting it call the literature-search subagent directly. Most of its asks are searches for an independent second paper. After about a third of them, the coordinator changes course, for example by dropping a claim. Which response is <b>best</b>?",
+   "options": [
+    {
+     "t": "Keep these asks going through the coordinator, each naming the claim, sources tried and the gap.",
+     "why": "Best. The asks often change the plan, and the coordinator owns the plan. Structured asks make each round trip quicker to act on."
+    },
+    {
+     "t": "Give citation checking a scoped <code>fetch_section</code> tool for re-reading papers it already cites.",
+     "why": "Works, but wrong need. A scoped tool suits frequent simple re-reads. Most asks here are new searches, which still go to the coordinator.",
+     "trap": "wrong need"
+    },
+    {
+     "t": "Allow direct calls between subagents, logging each to a store the coordinator reads before synthesis.",
+     "why": "Works, but too late. Searches get faster, but the coordinator learns about them only at synthesis, after it should have changed course.",
+     "trap": "too late"
+    },
+    {
+     "t": "Give citation checking the literature-search tools, so it finds independent second papers on its own.",
+     "why": "Works, but bypasses the hub. Second papers arrive faster, but the coordinator stops seeing asks that should change the plan.",
+     "trap": "bypasses the hub"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "After about a third of them, the coordinator changes course, for example by dropping a claim.",
+   "explanation": "In hub-and-spoke designs the coordinator manages all inter-subagent communication, so routing, scope and error handling stay in one place. Scoped cross-role tools are for frequent simple needs; requests that change the plan belong with the coordinator.",
+   "eli5": {
+    "question": "A checker keeps asking the coordinator for more evidence, and someone wants it to ask the searcher directly. The clue: those asks often make the coordinator <i>change the plan</i>.",
+    "answer": "On a building site, a worker who needs a design change goes through the site manager, because the change affects other trades. Going straight to another trade is quicker but leaves the manager blind. Here the coordinator is the manager (the <b>hub</b>). Keep the asks going through it, and make them structured so each is quick to act on. <b>Rule: subagents talk through the coordinator, especially when it can change the plan.</b>",
+    "options": [
+     "Correct. Go through the manager, with a clear, short request form.",
+     "A small tool for re-checking your own drawings helps, but most requests are for new material.",
+     "Telling the manager afterwards in a logbook is too late to change the plan.",
+     "Handing the checker the searcher's tools speeds things up, but the manager loses sight of the change."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to see the round trip as <b>pure overhead</b> to cut. In a hub-and-spoke design, the coordinator manages all communication between subagents because it owns routing and scope. Here the asks often <b>change the plan</b>, so they belong with the coordinator. Make them faster to act on with structure, not by bypassing it.",
+    "diagram": "citation check → {claim, sources tried, gap}\n  → coordinator → literature search\n  → coordinator may drop or widen claims",
+    "mapTitle": "A subagent needs more. Who should it go through?",
+    "map": {
+     "head": [
+      "Kind of need",
+      "Best route",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Asks that can change the plan",
+       "Through the coordinator, structured",
+       "Hub owns routing and scope"
+      ],
+      [
+       "Frequent simple re-read of its own sources",
+       "Scoped cross-role tool",
+       "Limited tool for a common need"
+      ],
+      [
+       "Direct calls with a log read later",
+       "Avoid",
+       "Coordinator learns too late"
+      ],
+      [
+       "Full off-role tool set",
+       "Avoid",
+       "Off-role tools get misused"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer proposes letting it call the literature-search subagent directly",
+      "means": "A spoke-to-spoke link, which bypasses the hub."
+     },
+     {
+      "quote": "Most of its asks are searches for an independent second paper",
+      "means": "Not re-reads, so a scoped re-read tool (<b>[[1]]</b>) covers few of them."
+     },
+     {
+      "quote": "After about a third of them, the coordinator changes course, for example by dropping a claim",
+      "means": "The decider. The coordinator must see these asks when they happen. A log read later (<b>[[2]]</b>) or a self-serve search (<b>[[3]]</b>) hides them. Keep the hub: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "In hub-and-spoke, subagents talk through the coordinator; scoped tools only for frequent simple needs.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Hub-and-spoke: coordinator manages all inter-subagent communication, error handling, routing"
+    }
+   }
+  },
+  {
+   "id": "m5p-s3-10",
+   "was": "s5q-s3-10",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tool descriptions vs built-ins",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "An MCP server over past committee summaries offers <code>search_library</code>, which searches by meaning and ranks the hits. Its description reads “Search the library.” The subagents mostly run <code>Grep</code> over a nightly text export instead. They miss summaries that use a brand name where the query used the generic name. They also use <code>Grep</code> on exported dosing tables, where an exact match is right. Which change <b>most reliably</b> redirects library searches?",
+   "options": [
+    {
+     "t": "Expose the library's folder tree as an MCP resource that subagents browse before opening summaries.",
+     "why": "Works, but different problem. A resource saves exploratory calls by showing what exists, but it doesn't make subagents search by meaning.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Remove <code>Grep</code> from the subagents' tools, leaving the MCP tool as their only search.",
+     "why": "Works, but too blunt. Library searches move to the MCP tool, but the exact matches on dosing tables lose the right tool.",
+     "trap": "too blunt"
+    },
+    {
+     "t": "Rewrite the tool's description: what it finds that keyword matching misses, with sample queries.",
+     "why": "Best. Descriptions are how agents choose tools. Saying what it finds that Grep misses, with examples, steers library searches to it."
+    },
+    {
+     "t": "Rename <code>search_library</code> to <code>semantic_summary_search</code> and keep its one-line text.",
+     "why": "Works, but only partly. The name hints at meaning-based search, but the one line still says nothing about when to prefer it over Grep.",
+     "trap": "only partly"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Its description reads “Search the library.”",
+   "explanation": "When agents prefer built-in tools over a more capable MCP tool, improve the MCP tool's description so its advantages and use cases are clear. Removing a tool is a blunt fix that also removes its legitimate uses.",
+   "eli5": {
+    "question": "A smart search tool sits unused while helpers do plain word matching and miss results. The clue: its description is one bare line, “Search the library.”",
+    "answer": "A shop has a clever product, but its label just says “Tool”. Shoppers keep buying the plain one they know. Rewrite the label to say what it does that the plain one can't, with examples, and they pick it. For agents, the label is the <b>tool description</b>, the main thing they use to choose a tool. <b>Rule: if agents pick a built-in over a better MCP tool, improve the MCP tool's description.</b>",
+    "options": [
+     "A store map helps people find aisles, but doesn't tell them which tool is better.",
+     "Taking the plain tool off the shelf works, but some jobs really need it.",
+     "Correct. A clear label saying what it does better, with examples.",
+     "A better name helps a little, but the label still says almost nothing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>agents ignore the MCP tool because Grep is available</b>, so Grep should go. Grep is right for exact matches on the dosing tables. The real cause is a description that says nothing about what the MCP tool does better. The exam guide says to <b>enhance MCP tool descriptions</b> so agents don't prefer built-ins.",
+    "mapTitle": "Agents pick the wrong tool. What fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Built-in used where an MCP tool does better",
+       "Thin MCP description",
+       "Describe its strengths, with examples"
+      ],
+      [
+       "Built-in has no legitimate use for the role",
+       "Off-role tool",
+       "Remove it from the tool list"
+      ],
+      [
+       "Many exploratory calls to find what exists",
+       "No catalog",
+       "Expose an MCP resource"
+      ],
+      [
+       "Generic tool name confuses selection",
+       "Vague name and contract",
+       "Rename or split, plus a description"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "offers search_library, which searches by meaning and ranks the hits",
+      "means": "The MCP tool is the more capable one for finding summaries."
+     },
+     {
+      "quote": "Its description reads “Search the library.”",
+      "means": "The decider. Nothing tells the agent why to prefer it. A rename alone (<b>[[3]]</b>) keeps this line."
+     },
+     {
+      "quote": "They miss summaries that use a brand name where the query used the generic name",
+      "means": "Keyword matching misses meaning. A folder catalog (<b>[[0]]</b>) doesn't change how they search."
+     },
+     {
+      "quote": "They also use Grep on exported dosing tables, where an exact match is right",
+      "means": "Grep has a real use, so removing it (<b>[[1]]</b>) costs that. Fix the description: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Agents prefer a built-in over a better MCP tool → enhance the MCP tool's description, don't remove the built-in.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  }
+ ]
+}

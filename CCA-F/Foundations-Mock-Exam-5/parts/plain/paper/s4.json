@@ -1,0 +1,1078 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m5p-s4-01",
+   "was": "s5q-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Incremental tracing",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Errors spiked after Tuesday's deploy, and the stack trace ends in one method, <code>apply_regional_discount</code>. The engineer needs every path in the app that calls it. In this same session they will then write the fix, with the callers' real code in front of Claude. The session is fresh, and billing code is spread across many folders. How should Claude <b>trace the callers</b>?",
+   "options": [
+    {
+     "t": "Glob for files with price or billing in their names, then Read the ones that look relevant.",
+     "why": "Works, but only usually. File names hint at content, but callers in jobs, controllers or views with other names are missed.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Read every file in the billing folders in turn, noting a short summary of each in a scratchpad file.",
+     "why": "Works, but overbuilt. It finds the callers, but it fills the context with files that don't matter before any tracing starts.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Ask an Explore subagent to map the call paths, and work from the short summary it returns.",
+     "why": "Works, but the code stays in the subagent. The summary lists paths, but the engineer wants the callers' real code in this session for the fix.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Grep for the method's name, Read each match, then trace each caller outward one step at a time.",
+     "why": "Best. Grep finds every call by content, Read brings the real code into this session, and each step out follows what the last read showed."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "In this same session they will then write the fix, with the callers' real code in front of Claude.",
+   "explanation": "Build understanding incrementally: Grep for references, Read the hits, follow the trail outward. An Explore subagent suits verbose discovery when only a summary is needed, not when the code itself must be in the main session.",
+   "eli5": {
+    "question": "Claude must find every place that calls one method, and later fix it with that code in view. The clue: <i>with the callers' real code in front of Claude</i>. It is not about speed.",
+    "answer": "Think of tracing a family tree. You start with one person, find their parents, then their parents' parents, one step at a time. You don't read the whole town register first. In code that means <b>Grep</b> for the method's name (search inside files), <b>Read</b> each hit, then step outward. Everything you read stays in your session, ready for the fix. <b>Rule: trace from a known point with Grep, then Read outward step by step.</b>",
+    "options": [
+     "Picking files by their names is judging a book by its cover. Callers with other names get missed.",
+     "Reading the whole town register finds everyone, but it floods your desk with strangers first.",
+     "A helper's summary would win if a list were enough. Here the real code must be on your desk for the fix.",
+     "Correct. Start from the method and walk outward, keeping every page you read."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>an Explore subagent is always the tidy way to explore</b>. It is right when the main session needs only conclusions. Here the engineer will write the fix in this session and wants the callers' code in view. A subagent's reads stay in its own context, so the main session gets only a summary.",
+    "diagram": "Grep 'apply_regional_discount' -> matches -> Read each\n  who calls those? -> Grep again -> Read\n  (every read stays in this session for the fix)",
+    "mapTitle": "How should Claude explore code for this task?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Known starting point, code needed for the fix",
+       "Grep, Read the hits, trace outward",
+       "Builds the picture step by step in this session"
+      ],
+      [
+       "Only a conclusion needed, discovery is verbose",
+       "Explore subagent",
+       "Keeps noisy output out of the main context"
+      ],
+      [
+       "Looking for files by name or type",
+       "Glob",
+       "Matches file paths, not content"
+      ],
+      [
+       "Small, unfamiliar folder to learn fully",
+       "Read the files",
+       "Fine when the whole set is small"
+      ],
+      [
+       "Long investigation that may lose its place",
+       "Scratchpad file of findings",
+       "Keeps key facts across context limits"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the stack trace ends in one method, apply_regional_discount",
+      "means": "There is a known starting point, which is exactly what Grep searches for by content."
+     },
+     {
+      "quote": "The engineer needs every path in the app that calls it",
+      "means": "Every caller, wherever it lives. Guessing from file names (<b>[[0]]</b>) misses some."
+     },
+     {
+      "quote": "In this same session they will then write the fix, with the callers' real code in front of Claude",
+      "means": "The decider. A subagent summary (<b>[[2]]</b>) leaves the code behind. <b>[[3]]</b> reads it into this session."
+     },
+     {
+      "quote": "billing code is spread across many folders",
+      "means": "Reading everything first (<b>[[1]]</b>) fills the context with files that don't matter."
+     }
+    ],
+    "rule": "Known starting point → Grep for it, Read the hits, trace outward. Use a subagent only when a summary is enough.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Build understanding incrementally: Grep entry points → Read to follow imports/trace flows (not read-all-upfront)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-02",
+   "was": "s5q-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP config & secrets",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team is adding a Sentry MCP server so Claude can read production errors. Sentry gives each person their own token, and its audit log credits every action to the token's owner. Security wants no credential stored in the repository. New joiners should get the server as soon as they clone. How should the server be <b>set up</b>?",
+   "options": [
+    {
+     "t": "Each person adds the server to their own <code>~/.claude.json</code>, with their personal token inline.",
+     "why": "Works, but not shared. Each token stays personal and out of git, but joiners don't get the server on clone and must set it up by hand.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Commit the entry to <code>.mcp.json</code>, reading the token from <code>${SENTRY_TOKEN}</code> in each shell.",
+     "why": "Best. The entry is shared on clone, the file holds no secret, and each person's own token keeps the audit trail personal."
+    },
+    {
+     "t": "Commit the entry to <code>.mcp.json</code>, reading one shared team token from an environment variable.",
+     "why": "Works, but every action is credited to one shared token, so the audit log can no longer say who did what.",
+     "trap": "loses attribution"
+    },
+    {
+     "t": "Commit <code>.mcp.json</code> with an empty token field, and have each person paste in their own token.",
+     "why": "Works, but only usually. A pasted token sits in a tracked file, and one careless commit puts it in the repository.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "New joiners should get the server as soon as they clone.",
+   "explanation": "Shared MCP servers go in the project's .mcp.json, with secrets supplied by environment-variable expansion such as ${SENTRY_TOKEN}. User-level ~/.claude.json is for personal or experimental servers.",
+   "eli5": {
+    "question": "A shared tool needs a personal key for each person, and no keys may sit in the shared code. The clue: <i>New joiners should get the server as soon as they clone</i>, and the audit wants each action tied to a person.",
+    "answer": "Think of an office door. The lock (the server entry) is the same for everyone and comes with the building. Each person carries their own key card (their token), and the log records whose card opened the door. In Claude Code the shared lock is <code>.mcp.json</code> in the repo, and <code>${SENTRY_TOKEN}</code> tells it to read each person's own key from their shell. <b>Rule: shared server in .mcp.json, secret through an environment variable.</b>",
+    "options": [
+     "Everyone fits their own lock at home. Keys stay private, but new people arrive to find no lock at all.",
+     "Correct. One shared lock, each person's own key card, and no key left in the building.",
+     "One shared card opens the door, but the log can no longer say who came in.",
+     "A blank slot for the key works until someone tapes their key into it and the copy gets shared."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a personal token means a personal config</b>. The token is personal, but the server is shared. Claude Code splits the two: the server entry is committed in <code>.mcp.json</code>, and the token is filled in from each person's environment with <code>${VAR}</code> expansion.",
+    "diagram": ".mcp.json (in git)\n  sentry: token = ${SENTRY_TOKEN}\neach person's shell: export SENTRY_TOKEN=<own token>",
+    "mapTitle": "Where does this MCP setting belong?",
+    "map": {
+     "head": [
+      "What you need",
+      "Where it goes",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Server everyone uses, from clone",
+       "Project <code>.mcp.json</code>",
+       "Version-controlled and shared"
+      ],
+      [
+       "A secret in that config",
+       "<code>${VAR}</code> expansion from each shell",
+       "No credential in the repository"
+      ],
+      [
+       "A server only you are trying out",
+       "User-level <code>~/.claude.json</code>",
+       "Personal, not shared on clone"
+      ],
+      [
+       "Each action tied to a person",
+       "One token per person",
+       "A shared token hides who acted"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Sentry gives each person their own token, and its audit log credits every action to the token's owner",
+      "means": "Each person must use their own token. One team token (<b>[[2]]</b>) blurs the audit."
+     },
+     {
+      "quote": "Security wants no credential stored in the repository",
+      "means": "The committed file may name a variable, not hold a value. A token pasted into a tracked file (<b>[[3]]</b>) is one commit away from breaking this."
+     },
+     {
+      "quote": "New joiners should get the server as soon as they clone",
+      "means": "The decider. The entry must be in the repo, which rules out <code>~/.claude.json</code> (<b>[[0]]</b>). <b>[[1]]</b> meets all three needs."
+     }
+    ],
+    "rule": "Shared server → .mcp.json in the repo. Secret → ${VAR} from each person's environment.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Env var expansion in .mcp.json (e.g., ${GITHUB_TOKEN}) — no committed secrets"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-03",
+   "was": "s5q-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Connection-time discovery",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Twenty minutes into a session, an engineer adds a Sentry server to the project's <code>.mcp.json</code>. They ask Claude for the latest events in an error group. Claude says none of its tools reach Sentry and offers to call Sentry's API with curl. The same entry works on a teammate's machine, and the engineer's token is set in their shell. What should the engineer <b>do</b>?",
+   "options": [
+    {
+     "t": "Exit, then start Claude Code again with <code>--resume</code> on this session, and ask once more.",
+     "why": "Best. Claude Code finds MCP servers and their tools when it connects. A restart connects to the new server, and --resume keeps the work so far."
+    },
+    {
+     "t": "Expand the Sentry tools' descriptions, and ask Claude to prefer them over Bash and curl.",
+     "why": "Works, but for a different problem. Better descriptions help Claude choose a tool it has. Here the tools were never loaded.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Accept Claude's offer, and let it fetch the events with curl through Bash for now.",
+     "why": "Works, but a workaround. Claude gets the events this time, but the Sentry tools stay missing for the rest of the session.",
+     "trap": "works around it"
+    },
+    {
+     "t": "Open a new terminal, start a fresh session there, and ask about the error group again.",
+     "why": "Works, but loses the work. A new session connects to the server, but the findings so far stay behind in the old one.",
+     "trap": "loses the context"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Twenty minutes into a session, an engineer adds a Sentry server to the project's .mcp.json.",
+   "explanation": "Claude Code discovers MCP servers and their tools at connection time, so a server added mid-session needs a reconnect. Tell 'tool missing' apart from 'tool present but not chosen'.",
+   "eli5": {
+    "question": "Claude can't see a tool that was added while it was running. The clue: <i>Twenty minutes into a session, an engineer adds a Sentry server</i>. The entry itself is fine; it works elsewhere.",
+    "answer": "Think of a TV that scans for channels only when you switch it on. Add a new channel while it is on, and it won't appear until you switch off and on again. Claude Code finds MCP tools when it connects (at <b>connection time</b>). Restarting with <code>--resume</code> rescans and keeps your place in the show. <b>Rule: tool missing after a mid-session config change → reconnect. Tool present but not chosen → fix its description.</b>",
+    "options": [
+     "Correct. Switch off and on to rescan, and pick up where you left off.",
+     "A better channel guide helps you choose among channels you have. This channel isn't in the list yet.",
+     "Watching on your phone gets you tonight's show, but the TV still lacks the channel.",
+     "A second TV scans fresh, but you lose your place in what you were watching."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude ignored the Sentry tools</b>, so their descriptions need work. But Claude says no tool reaches Sentry: the tools are not there at all. Claude Code discovers MCP servers and their tools when it connects. A server added mid-session appears only after a reconnect.",
+    "diagram": "start -> connect to servers in config -> tools loaded\nadd Sentry to .mcp.json    -> no new tools yet\nrestart with --resume      -> connect again -> Sentry",
+    "mapTitle": "Is the tool missing, or present but not chosen?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Server added mid-session, no tools",
+       "Tools load at connection time",
+       "Restart, with <code>--resume</code> to keep the work"
+      ],
+      [
+       "Tools loaded, but Claude picks Bash or Grep",
+       "Thin tool descriptions",
+       "Expand the descriptions"
+      ],
+      [
+       "Works for a teammate, fails after a fresh start",
+       "Token variable not set",
+       "Set the variable in your shell"
+      ],
+      [
+       "Too many tools, wrong one chosen",
+       "Selection gets unreliable",
+       "Scope tools to the role"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Twenty minutes into a session, an engineer adds a Sentry server to the project's .mcp.json",
+      "means": "The decider. The server was added after the session had connected."
+     },
+     {
+      "quote": "Claude says none of its tools reach Sentry",
+      "means": "The tools are missing, not ignored. Better descriptions (<b>[[1]]</b>) fix a different problem."
+     },
+     {
+      "quote": "The same entry works on a teammate's machine, and the engineer's token is set in their shell",
+      "means": "The config and the token are fine. Only the connection is stale."
+     },
+     {
+      "quote": "What should the engineer do?",
+      "means": "Reconnect and keep the work: <b>[[0]]</b>. curl (<b>[[2]]</b>) works around it; a fresh session (<b>[[3]]</b>) leaves the findings behind."
+     }
+    ],
+    "rule": "Tool missing after adding a server mid-session → reconnect. MCP tools are discovered at connection time.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "All configured MCP servers' tools discovered at connection time, available simultaneously"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-04",
+   "was": "s5q-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit vs Write",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A long pricing data file holds rate blocks for each region. The same eight-line default block appears four times, and the lines around each copy are identical too. The blocks are told apart only by their order in the file. Claude must change one rate in the third copy. Its Edit failed because the match text appears in all four places. What should Claude <b>do next</b>?",
+   "options": [
+    {
+     "t": "Run Edit with replace-all on the rate line, then change the other three copies back.",
+     "why": "Works, but the wrong action first. It changes three copies that should stay, then needs three more edits to undo them, each as ambiguous as the first.",
+     "trap": "wrong action"
+    },
+    {
+     "t": "Read the whole file, then Write it back with the one rate changed in the third copy.",
+     "why": "Best. With no unique text to match, Edit can't target one copy. Read plus Write is the fallback, and a diff review shows the single change."
+    },
+    {
+     "t": "Change the rate with sed through Bash, anchored on that copy's current line number.",
+     "why": "Works, but fragile. A line number goes stale with any change above it, and the change skips any check that the line is the right one.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a comment naming the region above each copy, then Edit using that comment as the match.",
+     "why": "Works, but overbuilt, and the first step hits the same problem. Adding four comments needs unique anchors too, all to make one edit possible.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 3,
+   "decider": "The blocks are told apart only by their order in the file.",
+   "explanation": "Edit makes a targeted change by unique text match. When the match is not unique and no unique anchor exists, fall back to Read plus Write.",
+   "eli5": {
+    "question": "Claude must change one of four identical copies, and nothing nearby tells them apart. The clue: <i>The blocks are told apart only by their order in the file</i>.",
+    "answer": "Think of a form with four identical boxes, and you must correct the third one. Saying 'change the box that reads Default rate' fails, because four boxes read that. With nothing unique to point at, you take the whole form, fix the third box, and hand back the whole form. In Claude Code that is <b>Read</b> the file, then <b>Write</b> it back with the one change. <b>Rule: Edit match not unique and no unique text to anchor on → Read plus Write.</b>",
+    "options": [
+     "Correcting all four boxes and then undoing three is more work, and each undo has the same problem.",
+     "Correct. Take the whole form, fix the third box, hand it back.",
+     "'Change line 212' works until someone adds a line above it.",
+     "Labelling every box first would help, but labelling them runs into the same problem and is a big job for one fix."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Edit can always be made to work</b> with a cleverer match or a few prep steps. Edit needs match text that appears exactly once. Here the copies and the lines around them are identical, so no such text exists. The exam guide's answer is the fallback: Read the file and Write it back with the change.",
+    "diagram": "Edit match: default block -> 4 places -> fails\nno unique text near copy 3 -> Read file\n  -> change rate in copy 3 -> Write file -> diff",
+    "mapTitle": "Which tool makes this change?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "One small change, match text unique",
+       "Edit",
+       "Targeted and easy to review"
+      ],
+      [
+       "Edit match not unique, but unique text sits nearby",
+       "Edit with a wider match",
+       "Keeps the change targeted"
+      ],
+      [
+       "Edit match not unique, nothing nearby is unique",
+       "Read, then Write the file",
+       "The fallback for non-unique matches"
+      ],
+      [
+       "Every copy should change the same way",
+       "Edit with replace-all",
+       "One change applied everywhere"
+      ],
+      [
+       "Finding where a change belongs",
+       "Grep",
+       "Searches file contents"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the lines around each copy are identical too",
+      "means": "Widening the match won't help: there is no unique text near the copy."
+     },
+     {
+      "quote": "The blocks are told apart only by their order in the file",
+      "means": "The decider. Edit matches text, not position, so it can't pick the third copy. <b>[[1]]</b> is the fallback."
+     },
+     {
+      "quote": "Claude must change one rate in the third copy",
+      "means": "Only one copy should change. Replace-all (<b>[[0]]</b>) changes four and needs undoing."
+     },
+     {
+      "quote": "Its Edit failed because the match text appears in all four places",
+      "means": "The guide's case: Edit failed on a non-unique match. Line numbers (<b>[[2]]</b>) are fragile, and adding comments (<b>[[3]]</b>) hits the same problem first."
+     }
+    ],
+    "rule": "Edit fails on a non-unique match and no unique text exists → Read plus Write.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "When Edit fails on non-unique match → Read + Write fallback"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-05",
+   "was": "s5q-s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Adaptive investigation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "For error spikes, the engineer gives Claude a fixed plan: read the stack trace, the failing method and its callers, check the deploy diff, then propose a fix. Last time the method was fine. The bad value came from an upstream API client after another team's change. Claude still finished the plan and proposed a guard in the method. How should such investigations be <b>run</b>?",
+   "options": [
+    {
+     "t": "Hand each step of the plan to its own subagent, and have a coordinator merge the results.",
+     "why": "Works, but the steps are still fixed. Subagents split the work, but none of them can follow a lead the plan didn't foresee.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Begin in plan mode, and have Claude write the full step list before it reads any code.",
+     "why": "Works, but the list is fixed before any evidence. Plan mode suits designing a change, not an investigation whose next step depends on findings.",
+     "trap": "too early"
+    },
+    {
+     "t": "Keep the fixed plan, and add steps for upstream API clients and other teams' recent changes.",
+     "why": "Works, but only for causes you foresaw. The next surprise will sit somewhere the longer list doesn't cover.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Give Claude the goal and the evidence so far, and let it pick each next step as it goes.",
+     "why": "Best. When the method proves fine, Claude can turn upstream at once instead of finishing steps that no longer fit."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "Last time the method was fine.",
+   "explanation": "Fixed sequential pipelines suit predictable work. Open-ended investigations need adaptive decomposition, where each next step comes from what the last one found.",
+   "eli5": {
+    "question": "Claude followed a checklist even after the evidence pointed elsewhere. The clue: <i>Last time the method was fine</i>, yet the plan carried on as if it weren't.",
+    "answer": "Think of a doctor with a fixed checklist: check the knee, x-ray the knee, operate on the knee. If the knee is fine and the pain comes from the back, the checklist still ends in knee surgery. A good doctor picks each next test from the last result. For Claude, give the goal and the evidence, and let it choose each next step (<b>adaptive investigation</b>). <b>Rule: steps known in advance → fixed plan. Next step depends on findings → let Claude adapt.</b>",
+    "options": [
+     "Four doctors each doing one knee step still all look at the knee.",
+     "Writing a fuller checklist before seeing the patient is still a checklist written blind.",
+     "Adding a back check helps this time, but the next pain may come from somewhere else again.",
+     "Correct. Each test is chosen from the last result."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the plan just missed a step</b>, so a longer plan will fix it. The real fault is that the steps were <b>fixed before anything was found</b>. An investigation is open-ended: each next step depends on what the last one showed. That calls for adaptive decomposition, not a better fixed list.",
+    "diagram": "fixed:    trace -> method -> callers -> diff -> fix\n          (method fine, plan carries on)\nadaptive: trace -> method fine -> look upstream -> ...",
+    "mapTitle": "Fixed plan or adaptive investigation?",
+    "map": {
+     "head": [
+      "Kind of work",
+      "Structure",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Open-ended investigation",
+       "Goal plus evidence; Claude picks each next step",
+       "Next step depends on findings"
+      ],
+      [
+       "Same steps every time, such as per-file review",
+       "Fixed sequence (prompt chaining)",
+       "Predictable and easy to check"
+      ],
+      [
+       "Known extra causes to check every time",
+       "Longer fixed checklist",
+       "Covers only what was foreseen"
+      ],
+      [
+       "Independent parts to cover in parallel",
+       "Subagents with a coordinator",
+       "Splits the work, not the choice of steps"
+      ],
+      [
+       "Designing a large code change",
+       "Plan mode",
+       "Explore and decide before editing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the engineer gives Claude a fixed plan",
+      "means": "The steps are set before anything is read."
+     },
+     {
+      "quote": "Last time the method was fine",
+      "means": "The decider. The findings changed direction, but the plan could not."
+     },
+     {
+      "quote": "The bad value came from an upstream API client after another team's change",
+      "means": "The cause sat outside every step. Adding this step (<b>[[2]]</b>) covers this case, not the next one."
+     },
+     {
+      "quote": "Claude still finished the plan and proposed a guard in the method",
+      "means": "The plan overrode the evidence. Only <b>[[3]]</b> lets the evidence choose the next step; <b>[[0]]</b> and <b>[[1]]</b> still fix the steps up front."
+     }
+    ],
+    "rule": "Open-ended investigation → give the goal and let Claude adapt each step. Predictable work → fixed sequence.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Adaptive investigation plans generate subtasks from what's discovered"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-06",
+   "was": "s5q-s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit subagent context",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 2,
+   "question": "It is late in a long incident session, and the context window is nearly full. The engineer spawns an Explore subagent. Its prompt says: 'Investigate the issue we've been discussing and report the call paths involved.' It returns a broad tour of the serializer code. It never mentions the failing frame, the changed field or the other team's change. Which <b>TWO</b> changes would most improve the next attempt?",
+   "options": [
+    {
+     "t": "Write the failing frame, the changed field and the suspect serializer into its prompt.",
+     "why": "Best. A subagent starts with none of the session's history, so the findings must be in its prompt."
+    },
+    {
+     "t": "Fork the session and do the mapping in the branch, which already holds the incident history.",
+     "why": "Works, but the branch starts nearly full. It has the history, but little room is left for the mapping work.",
+     "trap": "carries the clutter"
+    },
+    {
+     "t": "Give the subagent the main session's full tool list, including the Sentry and Linear tools.",
+     "why": "Works, but for a different problem. More tools don't tell the subagent what to look for.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Say what to send back: each path from entry point to serializer, with its files and lines.",
+     "why": "Best. A stated deliverable tells the subagent what done looks like, instead of leaving it to tour."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Its prompt says: 'Investigate the issue we've been discussing and report the call paths involved.'",
+   "explanation": "Subagents start with isolated context: pass the relevant findings explicitly and state the deliverable and its quality criteria. Forking carries the history along, which helps only when there is room for it.",
+   "eli5": {
+    "question": "A helper was sent off with 'look into what we discussed', but the helper wasn't in the discussion. The clue: <i>Investigate the issue we've been discussing</i>.",
+    "answer": "Think of sending a courier with a note that says 'fetch the thing we talked about'. The courier wasn't there, so they bring back a bit of everything. Fix the note two ways: say what you already know (the frame, the field, the suspect), and say exactly what to bring back (each path, with files and lines). A <b>subagent</b> starts with an empty memory (<b>isolated context</b>); only its prompt tells it anything. <b>Rule: a subagent knows only its prompt, so give it the findings and the deliverable.</b>",
+    "options": [
+     "Correct. Tell the courier what you already know.",
+     "Cloning yourself works, but your clone arrives with a full desk and no room to work.",
+     "A bigger toolbox doesn't tell the courier what to fetch.",
+     "Correct. Tell the courier exactly what to bring back."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a subagent knows what the session knows</b>. It doesn't. A subagent starts with isolated context: no history, only its prompt. 'The issue we've been discussing' points at nothing. The fix is to put the findings in the prompt and to state the deliverable.",
+    "diagram": "main session (nearly full): frame, field, suspect\n   | prompt: 'the issue we've been discussing'\n   v\nsubagent: empty context -> broad tour",
+    "mapTitle": "What does the subagent need from you?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Subagent needs earlier findings",
+       "Write them into its prompt",
+       "No automatic inheritance"
+      ],
+      [
+       "Subagent returns a vague tour",
+       "State the deliverable and when it is complete",
+       "Goal plus quality criteria"
+      ],
+      [
+       "Try another approach from a shared baseline, with room to spare",
+       "Fork the session",
+       "The branch keeps the shared history"
+      ],
+      [
+       "Main context nearly full",
+       "Delegate with a short, explicit prompt",
+       "Keeps verbose work out of the main session"
+      ],
+      [
+       "Subagent lacks a needed capability",
+       "Add that tool to its list",
+       "Tools fix ability, not direction"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the context window is nearly full",
+      "means": "A fork (<b>[[1]]</b>) would start with that same nearly full history."
+     },
+     {
+      "quote": "Investigate the issue we've been discussing and report the call paths involved",
+      "means": "The decider. The subagent wasn't there, and 'report the call paths' doesn't say what complete looks like."
+     },
+     {
+      "quote": "It returns a broad tour of the serializer code",
+      "means": "No stated deliverable, so it toured. Name the output: <b>[[3]]</b>."
+     },
+     {
+      "quote": "It never mentions the failing frame, the changed field or the other team's change",
+      "means": "It lacked the findings, not the tools (<b>[[2]]</b>). Give it the findings: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "A subagent knows only its prompt: pass the findings and state the deliverable.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-07",
+   "was": "s5q-s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Tool results in history",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Early in a session, Claude reads the pricing service file. The engineer then changes <code>apply_regional_discount</code> in their own editor and saves. Later, Claude explains that method by quoting the old version, line numbers and all. The session is still short, and the work so far is useful. What should the engineer <b>do</b>?",
+   "options": [
+    {
+     "t": "Tell Claude the file changed, and ask it to Read the file again before going on.",
+     "why": "Best. The old Read result stays in the history Claude sees each turn. A fresh Read puts the current version there."
+    },
+    {
+     "t": "Run <code>/compact</code>, then ask Claude to explain the method again from its summary.",
+     "why": "Works, but the summary still comes from the old read. It shrinks the history without bringing in the new code.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Start a new session with a summary of the findings, and have it read the file fresh.",
+     "why": "Works, but overbuilt. It drops a short, useful session to fix one stale read that a single Read fixes.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add a note to <code>CLAUDE.md</code> asking Claude to re-read files before it quotes them.",
+     "why": "Works, but only usually, and it costs a re-read every time. Claude still can't know the file changed unless told.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The engineer then changes apply_regional_discount in their own editor and saves.",
+   "explanation": "Tool results are appended to the conversation history, and Claude reasons over them on every later turn. When a file changes outside the session, tell Claude and have it read again.",
+   "eli5": {
+    "question": "Claude is quoting a file from memory after someone changed it. The clue: <i>changes apply_regional_discount in their own editor</i>, outside Claude's view.",
+    "answer": "Think of a photo you took of a whiteboard. Someone rubs out a line and writes a new one, but your photo still shows the old line. Claude's earlier Read is that photo: it sits in the conversation history (<b>tool results</b>), and Claude uses it every turn. Tell Claude the board changed and take a new photo (Read again). <b>Rule: file changed outside Claude → tell it, and have it read again.</b>",
+    "options": [
+     "Correct. Say the board changed, and take a new photo.",
+     "Shrinking your photo album still leaves the old photo, just smaller.",
+     "A new notebook with a fresh photo works, but you throw away good notes to fix one picture.",
+     "A standing reminder to re-photograph everything is slow, and Claude still doesn't know which board changed."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude has a memory that should refresh</b> when files change. There is no separate memory. The earlier Read result is part of the conversation history, sent with every turn. It stays as it was until Claude is told about the change or reads the file again.",
+    "diagram": "turn 3: Read pricing file -> result added to history\n(engineer edits the file in their own editor)\nturn 9: Claude reasons over history -> old version",
+    "mapTitle": "Why is Claude working from old information?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Claude quotes a file changed outside the session",
+       "Old Read result in the history",
+       "Tell Claude and Read again"
+      ],
+      [
+       "Long session, answers drift to generic patterns",
+       "Context degradation",
+       "<code>/compact</code> or a scratchpad of findings"
+      ],
+      [
+       "Resuming days later after much code changed",
+       "Many stale tool results",
+       "New session with a structured summary"
+      ],
+      [
+       "Resuming after small, known changes",
+       "A few stale results",
+       "Resume and tell Claude what changed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Early in a session, Claude reads the pricing service file",
+      "means": "That Read result is now part of the history Claude sees each turn."
+     },
+     {
+      "quote": "The engineer then changes apply_regional_discount in their own editor and saves",
+      "means": "The decider. The change happened outside the session, so nothing tells Claude. <b>[[0]]</b> tells it and reads again."
+     },
+     {
+      "quote": "The session is still short, and the work so far is useful",
+      "means": "Nothing is degrading. <code>/compact</code> (<b>[[1]]</b>) and a new session (<b>[[2]]</b>) solve problems this session doesn't have."
+     }
+    ],
+    "rule": "Tool results live in the conversation history. When a file changes outside the session, tell Claude and read again.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Tool results are appended to conversation history so the model reasons about the next action"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-08",
+   "was": "s5q-s4-08",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Scoped tool access",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The Sentry MCP server brings read tools for errors and stack traces. It also brings tools that resolve, assign and delete issues. Last week Claude resolved an issue it judged fixed, without asking anyone. Team policy says issue state changes only in Sentry's own interface, where each change is credited to a person. Which control best <b>fits the policy</b>?",
+   "options": [
+    {
+     "t": "A <code>PreToolUse</code> hook that asks the engineer to approve any Sentry call that changes issue state.",
+     "why": "Works, but it still lets a session change issue state after one click. The policy says those changes happen only in Sentry.",
+     "trap": "allows too much"
+    },
+    {
+     "t": "A rule in the project <code>CLAUDE.md</code> saying issue state changes only in Sentry's interface.",
+     "why": "Works, but only usually. An instruction is followed most of the time, and the tools stay within reach.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Deny the Sentry tools that resolve, assign or delete issues in the committed project settings.",
+     "why": "Best. The tools that change issue state are gone for everyone on clone, and the read tools stay."
+    },
+    {
+     "t": "Disconnect the server, and have engineers paste stack traces into the conversation.",
+     "why": "Works, but it removes the read tools too, which the team uses for every incident.",
+     "trap": "takes too much away"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Team policy says issue state changes only in Sentry's own interface, where each change is credited to a person.",
+   "explanation": "Give an agent only the tools its role needs. When an action must not happen from the agent at all, remove access to it; approval steps fit actions that are allowed with a sign-off.",
+   "eli5": {
+    "question": "Claude has buttons it is never supposed to press. The clue: <i>issue state changes only in Sentry's own interface</i>. Not 'with approval'; only there.",
+    "answer": "Think of a shop assistant who may look at the stock but must never change prices. You don't ask them to check with you each time, and you don't just put up a sign. You give them a badge that doesn't open the pricing room. In Claude Code that badge is a <b>deny list</b> in the committed project settings: the read tools stay, the state-changing tools are gone. <b>Rule: an action that must never happen from the agent → take the tool away. Allowed with sign-off → approval hook.</b>",
+    "options": [
+     "Asking you before each price change still lets prices change from the shop floor.",
+     "A sign saying 'don't change prices' is usually obeyed, not always.",
+     "Correct. The badge opens the stockroom, not the pricing room.",
+     "Sending the assistant home stops price changes, but nobody can check the stock either."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a human approval step</b> is the safe answer to an agent that acted alone. Approval fits actions that are allowed with a sign-off. This policy says the action never happens from a session at all. The fitting control removes those tools and keeps the read tools the team needs.",
+    "mapTitle": "What does the policy say about this action?",
+    "map": {
+     "head": [
+      "Policy for the action",
+      "Control",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Never from the agent",
+       "Deny the tool in project settings",
+       "Access removed for everyone on clone"
+      ],
+      [
+       "Allowed with a person's sign-off",
+       "Approval hook or permission prompt",
+       "A person checks each call"
+      ],
+      [
+       "Allowed within limits",
+       "Hook that blocks calls past the limit",
+       "A deterministic check on each call"
+      ],
+      [
+       "A preference, not a rule",
+       "<code>CLAUDE.md</code> instruction",
+       "Guidance, not enforcement"
+      ],
+      [
+       "Whole server not needed",
+       "Remove the server",
+       "No tools at all"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The Sentry MCP server brings read tools for errors and stack traces",
+      "means": "The read tools are wanted. Disconnecting (<b>[[3]]</b>) loses them; a deny list (<b>[[2]]</b>) keeps them."
+     },
+     {
+      "quote": "It also brings tools that resolve, assign and delete issues",
+      "means": "The state-changing tools arrived with the server; nobody chose them."
+     },
+     {
+      "quote": "Last week Claude resolved an issue it judged fixed, without asking anyone",
+      "means": "The tool was in reach, and Claude used it."
+     },
+     {
+      "quote": "Team policy says issue state changes only in Sentry's own interface",
+      "means": "The decider. Never from a session, so an approval hook (<b>[[0]]</b>) still allows too much, and a CLAUDE.md rule (<b>[[1]]</b>) is only guidance."
+     }
+    ],
+    "rule": "An action that must never happen from the agent → remove the tool. Allowed with sign-off → approval step.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Agents with off-specialization tools misuse them"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-09",
+   "was": "s5q-s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Direct execution",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The fix is agreed with the code owner: a two-line guard at the top of <code>apply_regional_discount</code> plus one unit test. The guard returns the full price when the region is missing. The error spike is still live. The pricing file is shared by several teams, and last month a large refactor of it went well in plan mode. How should the engineer <b>make this change</b>?",
+   "options": [
+    {
+     "t": "Start with the interview pattern, so Claude asks about regional pricing edge cases first.",
+     "why": "Works, but the design is already agreed. Questions about edge cases slow a fix the owner has signed off.",
+     "trap": "delays the fix"
+    },
+    {
+     "t": "Enter plan mode, so Claude explores the shared file and proposes an approach before editing.",
+     "why": "Works, but overbuilt. Plan mode suits large changes with several valid approaches; this one is two agreed lines.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Ask Claude for the guard and its test directly, then review the diff before committing.",
+     "why": "Best. The change is small and its approach is settled, so direct execution with a diff review is the right size."
+    },
+    {
+     "t": "Have an Explore subagent map the method's callers, then make the change once it reports.",
+     "why": "Works, but the callers don't change the fix. Mapping them adds time during a live incident without changing the two agreed lines.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The fix is agreed with the code owner: a two-line guard at the top of apply_regional_discount plus one unit test.",
+   "explanation": "Plan mode suits large, multi-file or architectural changes with several valid approaches. Direct execution suits simple, well-scoped changes whose approach is settled.",
+   "eli5": {
+    "question": "A tiny, already-agreed fix must go in during a live incident. The clue: <i>The fix is agreed with the code owner: a two-line guard</i>. The shared file and last month's refactor are not about this change.",
+    "answer": "Think of a builder told exactly which loose tile to glue back. They don't redraw the house plans first; they glue the tile and you check it. Plan mode is for redrawing plans, when there are several ways to build. A small change with a settled approach goes straight in (<b>direct execution</b>), and the diff review is your check. <b>Rule: small and settled → direct, then review. Big or several valid approaches → plan mode.</b>",
+    "options": [
+     "Asking about every tile in the house slows a repair that's already agreed.",
+     "Redrawing the plans suited last month's rebuild, not one tile.",
+     "Correct. Glue the tile, then check the work.",
+     "Surveying the neighbours doesn't change how you glue one tile."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a shared, important file needs plan mode</b>, especially when plan mode helped there before. Plan mode fits the <i>change</i>, not the file. Last month's refactor was large, with several approaches. This fix is two agreed lines, so direct execution and a diff review fit.",
+    "mapTitle": "How big and how settled is the change?",
+    "map": {
+     "head": [
+      "The change",
+      "Way of working",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Small, approach agreed",
+       "Direct execution, then review the diff",
+       "Nothing left to design"
+      ],
+      [
+       "Large, many files, several valid approaches",
+       "Plan mode",
+       "Explore and design before editing"
+      ],
+      [
+       "Unclear requirements or edge cases",
+       "Interview pattern",
+       "Claude asks questions first"
+      ],
+      [
+       "Need a summary of a big code area",
+       "Explore subagent",
+       "Keeps verbose discovery out of context"
+      ],
+      [
+       "Behaviour defined by examples or tests",
+       "Test-driven iteration",
+       "Failures guide each change"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The fix is agreed with the code owner: a two-line guard at the top of apply_regional_discount plus one unit test",
+      "means": "The decider. Small and settled: <b>[[2]]</b>. Nothing is left for an interview (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The error spike is still live",
+      "means": "Extra steps such as mapping callers (<b>[[3]]</b>) cost time now."
+     },
+     {
+      "quote": "last month a large refactor of it went well in plan mode",
+      "means": "That was a large change. Plan mode (<b>[[1]]</b>) fits the size of the change, not the file."
+     }
+    ],
+    "rule": "Small, settled change → direct execution and a review. Large, or several valid approaches → plan mode.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Direct execution: simple well-scoped changes (single validation check)"
+    }
+   }
+  },
+  {
+   "id": "m5p-s4-10",
+   "was": "s5q-s4-10",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Command arguments",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The engineer wants <code>/triage &lt;group-id&gt;</code> to run the team's first-response checklist. It pulls the group's latest events, finds the frames in the code and lists recent commits that touched them. Every joiner should get it on clone, and it must not be able to edit files. People usually carry on in the same conversation, asking about what it found. Which setup <b>fits best</b>?",
+   "options": [
+    {
+     "t": "A Triage section in the project <code>CLAUDE.md</code> with the checklist and a rule against edits.",
+     "why": "Works, but it loads in every session and the no-edits line is only a request. CLAUDE.md is for standards every session needs.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A committed skill with <code>context: fork</code>, an argument-hint and read-only allowed-tools.",
+     "why": "Works, but the findings stay in a forked context. People who want to ask about them in the same conversation lose them.",
+     "trap": "wrong context"
+    },
+    {
+     "t": "A committed <code>.claude/commands/triage.md</code> with argument-hint and read-only allowed-tools.",
+     "why": "Best. It is shared on clone, takes the group ID, can't edit files, and its findings stay in the conversation for follow-up."
+    },
+    {
+     "t": "A committed <code>.claude/commands/triage.md</code> whose body tells Claude not to modify files.",
+     "why": "Works, but only usually. The no-edits rule is an instruction; allowed-tools would make it a limit.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "People usually carry on in the same conversation, asking about what it found.",
+   "explanation": "Project commands and skills under .claude/ are shared on clone; argument-hint documents the input and allowed-tools limits capability. context: fork keeps a workflow's detail out of the main conversation, which is wrong when people want to follow up on it.",
+   "eli5": {
+    "question": "A shared shortcut must take an ID, never edit files, and leave its findings where people can ask about them. The clue: <i>People usually carry on in the same conversation, asking about what it found</i>.",
+    "answer": "Think of a recipe card in the team kitchen drawer. Everyone who joins finds it there (<b>.claude/commands/</b> in the repo). The card says what to bring (<b>argument-hint</b>) and which tools you may use, knives excluded (<b>allowed-tools</b>). The dish is served at your own table, so you can ask about it. A <code>context: fork</code> skill cooks in a separate kitchen and sends back only a note. <b>Rule: findings needed in the conversation → no fork. Tool limits → allowed-tools, not a written request.</b>",
+    "options": [
+     "A note on the fridge that everyone reads every day, saying please don't use knives.",
+     "Cooked in another kitchen: you get a note about the dish, not the dish to ask about.",
+     "Correct. Shared card, set ingredients, no knives, served at your table.",
+     "The card says please don't use knives, but the knives are still in reach."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>context: fork is the cleaner choice</b> for any workflow. It keeps a workflow's detail out of the main conversation, which is right when nobody needs it afterwards. Here people carry on asking about the findings, so they must stay in the conversation. The no-edits need is a capability limit, which is allowed-tools, not a sentence in the prompt.",
+    "mapTitle": "Which mechanism meets each need?",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Shared on clone",
+       "<code>.claude/commands/</code> or <code>.claude/skills/</code> in the repo",
+       "Version-controlled"
+      ],
+      [
+       "Takes an input",
+       "<code>argument-hint</code>",
+       "Shows what to pass"
+      ],
+      [
+       "Must not edit files",
+       "<code>allowed-tools</code> without write tools",
+       "A limit, not a request"
+      ],
+      [
+       "Detail should stay out of the main chat",
+       "Skill with <code>context: fork</code>",
+       "Isolated sub-agent context"
+      ],
+      [
+       "Standard every session needs",
+       "<code>CLAUDE.md</code>",
+       "Always loaded"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every joiner should get it on clone",
+      "means": "It must be committed under <code>.claude/</code>."
+     },
+     {
+      "quote": "it must not be able to edit files",
+      "means": "A capability limit: allowed-tools. A written rule (<b>[[3]]</b>, <b>[[0]]</b>) is only a request."
+     },
+     {
+      "quote": "People usually carry on in the same conversation, asking about what it found",
+      "means": "The decider. A forked skill (<b>[[1]]</b>) keeps the findings out of the conversation. <b>[[2]]</b> keeps them in."
+     }
+    ],
+    "rule": "Shared workflow with an input and limits → committed command with argument-hint and allowed-tools. Use context: fork only when the detail isn't needed afterwards.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)"
+    }
+   }
+  }
+ ]
+}
