@@ -57,7 +57,11 @@ def echo(q, i):
 
 
 # Clarity rules (REVISION-2): on for papers that have been through the clarity pass.
-CLARITY = "--clarity" in sys.argv
+CLARITY = "--clarity" in sys.argv or "--plain" in sys.argv
+# Plain mode (parts/plain/SPEC-PLAIN.md): official-sample style. No "wins if one fact changed" runner-up;
+# every wrong option names its trap instead. Evidence may quote the scenario brief too.
+PLAIN = "--plain" in sys.argv
+BRIEFS = {}
 STEM_MIN, STEM_MAX = (45, 90) if CLARITY else (55, 135)
 MAX_AVG = 16
 for _a in sys.argv:
@@ -85,9 +89,11 @@ def check(qs, errors, warns):
             if len(m.get("head", [])) != 3 or len(m.get("rows", [])) < 4 or any(len(r) != 3 for r in m.get("rows", [])):
                 e("deep.map needs 3 headers and >=4 rows of 3 cells")
             ev = dp.get("evidence") or []
-            if not 3 <= len(ev) <= 6:
+            if not (2 if PLAIN else 3) <= len(ev) <= 6:
                 e(f"deep.evidence has {len(ev)} entries (want 3–6)")
             stem = norm(plain(q.get("question", ""))).lower()
+            if PLAIN:
+                stem += " " + norm(plain(BRIEFS.get(q.get("sid"), ""))).lower()
             for j, x in enumerate(ev):
                 qt = norm(plain(x.get("quote", ""))).rstrip(".;:?! ").lower()
                 if not qt or qt not in stem:
@@ -121,7 +127,15 @@ def check(qs, errors, warns):
         if q.get("runnerUp") in ans:
             e("runnerUp is an answer")
         ru = q.get("runnerUp")
-        if isinstance(ru, int) and not opts[ru]["why"].startswith("Runner-up."):
+        if PLAIN:
+            for i, o in enumerate(opts):
+                if i in ans and not o["why"].startswith("Correct."):
+                    e(f"option {i}: correct why must start with 'Correct.'")
+                if i not in ans and (not o.get("trap") or not o["why"].startswith("Wrong:")):
+                    e(f"option {i}: wrong option needs a 'trap' label and a why starting 'Wrong:'")
+            if re.search(r"\bif\b[^.]*\b(would|could)\b", plain(q.get("question", "")), re.I):
+                e("plain stem reads like a planted what-if clue")
+        elif isinstance(ru, int) and not opts[ru]["why"].startswith("Runner-up."):
             e("runner-up why must start with 'Runner-up.'")
         w = words(q.get("question", ""))
         if not STEM_MIN <= w <= STEM_MAX:
@@ -193,6 +207,7 @@ def main(paths):
         d = json.load(open(p))
         scen += d["scenarios"]
         allq += d["questions"]
+        BRIEFS.update({x["id"]: x["brief"] for x in d["scenarios"]})
         for s in d["scenarios"]:
             bw = words(s["brief"])
             if not 35 <= bw <= 90:
@@ -202,7 +217,7 @@ def main(paths):
             mr = sum(1 for q in d["questions"] if q["sid"] == sid and q["select"] == 2)
             if mr > 2:
                 errors.append(f"{sid}: {mr} multiple-response items (max 2)")
-            if c != 10:
+            if c != 10 and "--sample" not in sys.argv:
                 errors.append(f"{sid}: {c} items (want 10)")
     ids = Counter(q["id"] for q in allq)
     for k, v in ids.items():

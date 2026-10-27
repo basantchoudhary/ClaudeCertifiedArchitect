@@ -1,0 +1,231 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s1-04",
+   "was": "m7-s1-04",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 PostToolUse hooks for transformation",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "<code>get_customer</code> returns the full card number on file, and the team that owns that server will not change it. Twice, the agent read a card number to a customer. Security says this must never happen. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a system-prompt rule to mention cards by their last four digits only, with two examples.",
+     "why": "Wrong: only usually works. A prompt rule lowers the chance, but prompts have a non-zero failure rate, and this is a must-never.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Register a <code>PostToolUse</code> hook that masks the card number in each <code>get_customer</code> result.",
+     "why": "Correct. The hook changes the result before Claude reads it, so the agent can't repeat a number it never saw. The server stays as it is."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks <code>get_customer</code> calls during customer chats.",
+     "why": "Wrong: wrong action. The agent needs <code>get_customer</code> to do its job. Blocking the call breaks support instead of hiding one field.",
+     "trap": "wrong action"
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that logs any card number in a tool result for security to review.",
+     "why": "Wrong: records the leak, doesn't stop it. By the time the log is written, Claude already has the number.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Security says this must never happen.",
+   "explanation": "When a tool returns data the model must never use, change the result with a PostToolUse hook before the model sees it. Prompt rules only make misuse less likely.",
+   "eli5": {
+    "question": "The agent sometimes reads a customer's card number out loud. The clue: security says this must <i>never</i> happen.",
+    "answer": "If a receptionist must never read out card numbers, don't hand them the number: black it out on the paper first. A <b>PostToolUse hook</b> is that black marker. It edits each tool result before Claude reads it, and Claude can't repeat what it never saw. <b>Rule: if the model must never use some data, remove it before the model sees it.</b>",
+    "options": [
+     "A written rule usually works, but “usually” isn't enough for a must-never.",
+     "Correct. Black out the number before Claude ever sees it.",
+     "Blocking the whole lookup means the agent can't help anyone.",
+     "A log notices the number but still hands it to Claude."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a firm instruction stops the model saying something</b>. It lowers the chance, but prompt compliance is probabilistic. For data that must never reach a customer, the reliable place to act is the tool result itself: change it before the model reads it.",
+    "diagram": "get_customer → [PostToolUse: mask card] → Claude\nserver unchanged        model never sees the number",
+    "mapTitle": "Which hook, and where does it act?",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Where it acts"
+     ],
+     "rows": [
+      [
+       "Model must never see or repeat a field",
+       "<code>PostToolUse</code> hook masks it",
+       "On the result, before Claude reads it"
+      ],
+      [
+       "An action must never run in some case",
+       "<code>PreToolUse</code> hook denies the call",
+       "On the call, before the tool runs"
+      ],
+      [
+       "Messy result formats (dates, codes)",
+       "<code>PostToolUse</code> hook normalises them",
+       "On the result"
+      ],
+      [
+       "A wording or tone preference",
+       "Prompt instruction + examples",
+       "In Claude's instructions"
+      ],
+      [
+       "You own the tool and nobody needs the field",
+       "Stop returning it",
+       "In the tool itself"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "get_customer returns the full card number on file, and the team that owns that server will not change it",
+      "means": "The fix has to happen on the agent's side, between the tool and Claude."
+     },
+     {
+      "quote": "Twice, the agent read a card number to a customer",
+      "means": "The number reaches Claude in ordinary chats. Logging it (<b>[[3]]</b>) records that without stopping it."
+     },
+     {
+      "quote": "Security says this must never happen",
+      "means": "The decider: a must-never. A prompt rule (<b>[[0]]</b>) is probabilistic, and blocking the tool (<b>[[2]]</b>) breaks the agent."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Change the result before Claude sees it: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Model must never use some data? Strip it from the tool result with a PostToolUse hook.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "PostToolUse hooks intercept results for transformation before the model sees them."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-11",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks that block outgoing tool calls",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "Refunds above $150 must go to a human. The system prompt says so, yet a monthly review found a few larger refunds that the agent made itself. Finance wants this to stop completely. What should the team <b>do</b>?",
+   "options": [
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks <code>process_refund</code> over $150 and hands the case to a human.",
+     "why": "Correct. The hook checks every refund call before it runs. Code enforces the limit every time, which a prompt can't promise."
+    },
+    {
+     "t": "Move the limit to the top of the system prompt and add three examples of refusing larger refunds.",
+     "why": "Wrong: only usually works. Clearer prompting cuts the misses but can't remove them, and finance wants zero.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that flags any refund above the limit in <code>process_refund</code> results for finance.",
+     "why": "Wrong: too late. A PostToolUse hook sees the result after the money has gone.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Have a second Claude instance review each refund decision before the agent replies to the customer.",
+     "why": "Wrong: still a model's judgement. A reviewer catches some cases but is probabilistic too, and it adds a model call to every refund.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Finance wants this to stop completely.",
+   "explanation": "Business rules that must hold every time are enforced in code. A PreToolUse hook can inspect each outgoing tool call and block the ones that break the rule.",
+   "eli5": {
+    "question": "The agent was told “no refunds over $150”, and still made a few. The clue: finance wants <i>zero</i>.",
+    "answer": "Telling a cashier “never give more than $150 back” works most days. A till that won't open above $150 without a manager's key works every day. A <b>PreToolUse hook</b> is that till: it checks the refund before it happens. <b>Rule: must hold every time → check it in code, before the action runs.</b>",
+    "options": [
+     "Correct. The till won't open above the limit.",
+     "A bigger sign by the till still relies on the cashier remembering.",
+     "Checking the receipt afterwards doesn't bring the money back.",
+     "A second cashier watching helps, but can also miss things, and costs more."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>clearer instructions will finish the job</b>. They reduce the misses, but a prompt is followed most of the time, not every time. When the requirement is “never”, put a check in code on the tool call itself, before the action runs.",
+    "diagram": "Claude → process_refund($180)\n          → [PreToolUse: over $150? deny + escalate]\n          → tool never runs",
+    "mapTitle": "Before, after, or in the prompt?",
+    "map": {
+     "head": [
+      "Requirement",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "An action must never run in some case",
+       "<code>PreToolUse</code> hook denies the call",
+       "Checks before anything happens"
+      ],
+      [
+       "A step must come first (verify, then refund)",
+       "Prerequisite gate in code",
+       "Blocks the later tool until the first succeeds"
+      ],
+      [
+       "Data in a result must not reach Claude",
+       "<code>PostToolUse</code> hook masks it",
+       "Acts on the result"
+      ],
+      [
+       "Behaviour should usually follow a style",
+       "Prompt + examples",
+       "Probabilistic is fine"
+      ],
+      [
+       "Output needs a second opinion on quality",
+       "Independent review instance",
+       "Fresh eyes, still probabilistic"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Refunds above $150 must go to a human",
+      "means": "A hard business rule tied to one tool call, which a hook can check."
+     },
+     {
+      "quote": "The system prompt says so, yet a monthly review found a few larger refunds",
+      "means": "The prompt already tried. Moving or repeating it (<b>[[1]]</b>) only lowers the rate."
+     },
+     {
+      "quote": "Finance wants this to stop completely",
+      "means": "The decider: zero misses means code. A reviewer model (<b>[[3]]</b>) is probabilistic, and a PostToolUse flag (<b>[[2]]</b>) comes after the refund."
+     },
+     {
+      "quote": "What should the team do?",
+      "means": "Check every refund call before it runs: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Must never happen? Block the tool call in a PreToolUse hook, before the action runs.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "Hooks intercept outgoing tool calls to enforce compliance (e.g., block refunds above a threshold)."
+    }
+   }
+  }
+ ]
+}

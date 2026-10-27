@@ -1,0 +1,565 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  },
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 · D4 · D5",
+   "brief": "A startup uses Claude Code in one TypeScript repository with <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> folders. The repository commits a <code>.claude/</code> directory and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets."
+  },
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s1-03",
+   "was": "m7-s1-03",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Prompt guidance vs programmatic enforcement",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Product wants the agent to suggest a pause before it escalates a cancellation request. The suggestion is a retention idea, not a business rule. What is the <b>most appropriate</b> way to add it?",
+   "options": [
+    {
+     "t": "Add a system-prompt instruction to suggest a pause, plus two short example chats.",
+     "why": "Correct. A soft behaviour, where an occasional miss does no harm, is what prompt guidance is for. One instruction and two examples are easy to maintain."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks <code>escalate_to_human</code> until a pause has been offered.",
+     "why": "Wrong: overbuilt. Hooks give guarantees, which business rules need. A retention idea doesn't need code that detects cancellations and tracks what was said.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to force a <code>pause_subscription</code> call when a customer asks to cancel.",
+     "why": "Wrong: wrong action. Forcing the tool pauses the subscription without asking. The goal is to suggest a pause, not apply one.",
+     "trap": "wrong action"
+    },
+    {
+     "t": "Route every cancellation request to a new retention subagent before it reaches a human.",
+     "why": "Wrong: overbuilt. A new subagent adds a handoff and another prompt to maintain, all for one sentence of behaviour.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The suggestion is a retention idea, not a business rule.",
+   "explanation": "Programmatic enforcement is for steps that must happen every time. A best-effort suggestion is shaped with a clear instruction plus a few examples.",
+   "eli5": {
+    "question": "Product wants the agent to ask “would you like to pause instead?” before it hands a cancellation to a person. The clue: it's a retention idea, not a business rule.",
+    "answer": "A shop asks staff to mention the loyalty card at the till. A note and a quick demo do the job; nobody installs a till that locks until the card is mentioned. Here the note is a <b>system-prompt instruction</b> and the demo is <b>example chats</b>. <b>Rule: must happen every time → code. Nice to have → prompt and examples.</b>",
+    "options": [
+     "Correct. A plain instruction plus examples sets the nudge.",
+     "A lock in code (a <b>hook</b>) is for things that must never be skipped. Here skipping is allowed.",
+     "Forcing the pause tool would pause people who only wanted to talk about cancelling.",
+     "A whole new helper agent for one friendly sentence is too much."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the most reliable option is always the best one</b>. The question asks for the most <i>appropriate</i> one. Code-level enforcement (a hook) is right when a step must happen every time, such as checking identity before a refund. For a nice-to-have it is extra machinery: something has to detect cancellations and remember what was said.",
+    "diagram": "Must it happen every time?\n  yes → hook or prerequisite gate (code)\n  no  → prompt instruction + examples",
+    "mapTitle": "How firmly must this behaviour hold?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A suggestion or tone; an occasional miss is harmless",
+       "System-prompt instruction + a few examples",
+       "Cheap and easy to change"
+      ],
+      [
+       "A business rule; a miss costs money or breaks policy",
+       "Hook or prerequisite gate in code",
+       "Prompts have a non-zero failure rate"
+      ],
+      [
+       "Sensitive data must never reach the model",
+       "<code>PostToolUse</code> hook that strips it",
+       "The model can't repeat what it never saw"
+      ],
+      [
+       "The model must call one specific tool right now",
+       "<code>tool_choice</code> forced to that tool",
+       "Runs the tool without asking"
+      ],
+      [
+       "Instructions are clear but output still varies",
+       "Few-shot examples",
+       "Shows the pattern"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Product wants the agent to suggest a pause before it escalates a cancellation request",
+      "means": "The goal is to <i>suggest</i>, not to pause. Forcing <code>pause_subscription</code> (<b>[[2]]</b>) pauses without asking."
+     },
+     {
+      "quote": "The suggestion is a retention idea, not a business rule",
+      "means": "The decider. Missing it now and then is harmless, so a hook (<b>[[1]]</b>) or a new subagent (<b>[[3]]</b>) is more than the goal needs."
+     },
+     {
+      "quote": "What is the most appropriate way to add it?",
+      "means": "“Most appropriate” means the right size: an instruction with examples, <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Business rule → enforce it in code. Suggestion or style → prompt instruction plus examples.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Programmatic enforcement (hooks, prerequisite gates) vs prompt-based guidance."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-06",
+   "was": "m7-s1-06",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions: input formats",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Customers often name a box by its delivery date, such as “last Tuesday's box”. The agent passes that date to <code>lookup_order</code> as the box ID, and the call fails. The tool's description reads only “Looks up a box.” What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add few-shot examples to the system prompt that turn a delivery date into a box ID first.",
+     "why": "Wrong: leaves the cause in place. Examples add tokens to every request while the one-line description stays unclear. They are a later step if clear descriptions aren't enough.",
+     "trap": "works around the cause"
+    },
+    {
+     "t": "Add a routing layer that detects dates and calls <code>get_customer</code> before <code>lookup_order</code>.",
+     "why": "Wrong: overbuilt for a first step. Code that hunts for dates in messages is fragile and far more work than fixing a one-line description.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Expand the <code>lookup_order</code> description with the ID format, an example, and where IDs come from.",
+     "why": "Correct. Claude learns how to call a tool mainly from its description. This one gives no ID format and no route from a date to an ID, and fixing that is cheap."
+    },
+    {
+     "t": "Add a <code>lookup_order_by_date</code> tool that takes a delivery date and returns the box.",
+     "why": "Wrong: more than a first step, and a new tool with an equally thin description can be misused too.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The tool's description reads only “Looks up a box.”",
+   "explanation": "Tool descriptions are the main signal for how to call a tool. A minimal description should first be expanded with input format, examples, edge cases and boundaries.",
+   "eli5": {
+    "question": "The agent keeps putting a date where a box ID should go. The clue: the tool's instructions are four words long.",
+    "answer": "If a form field just says “Box”, people write all sorts of things in it. Write “Box ID, like BX-20431, found on the customer record” and most mistakes stop. For Claude, the <b>tool description</b> is that label. <b>Rule: tool misused and its description is thin → fix the description first.</b>",
+    "options": [
+     "Examples help later, but the label itself is still unclear.",
+     "A program that hunts for dates in messages is a lot of work for a first step.",
+     "Correct. Fix the label: say what an ID looks like and where to find it.",
+     "A second tool with an equally vague label can go wrong the same way."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent needs more examples or smarter routing</b>. But Claude decides how to call a tool mainly from the tool's description. “Looks up a box” gives no ID format and no hint that IDs come from <code>get_customer</code>. Fix that first: it is cheap and it fixes the cause.",
+    "diagram": "\"Looks up a box\" → Claude guesses → date as ID → fail\n+ ID format, example, where IDs come from → right call",
+    "mapTitle": "A tool is called wrongly. What do you fix first?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "First fix"
+     ],
+     "rows": [
+      [
+       "Wrong input passed; the description is one line",
+       "Description lacks format and examples",
+       "Expand the description"
+      ],
+      [
+       "Two similar tools get mixed up",
+       "Overlapping descriptions",
+       "Sharpen each description's boundaries"
+      ],
+      [
+       "Descriptions are detailed; behaviour still varies",
+       "Ambiguous cases",
+       "Add few-shot examples"
+      ],
+      [
+       "Agent prefers Grep over a better MCP tool",
+       "The MCP description undersells it",
+       "Improve the MCP tool's description"
+      ],
+      [
+       "Bad calls happen and the agent can't recover",
+       "Error says only “failed”",
+       "Structured error naming the expected format"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Customers often name a box by its delivery date",
+      "means": "The agent gets a date, so the tool must explain how to get from a date to an ID."
+     },
+     {
+      "quote": "The agent passes that date to lookup_order as the box ID, and the call fails",
+      "means": "The agent doesn't know what a box ID looks like. That is a description problem, not a routing problem (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "The tool's description reads only “Looks up a box.”",
+      "means": "The decider. The cause is a thin description, so examples (<b>[[0]]</b>) and a new tool (<b>[[3]]</b>) work around it."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "First step = the cheapest change that fixes the cause: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "A tool gets the wrong input and its description is thin? Expand the description first.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Tool descriptions are the primary mechanism LLMs use for selection"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-02",
+   "was": "m7-s2-02",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-scoped rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team's accessibility conventions apply to every screen file. Screen files are named <code>*.screen.tsx</code> and live in <code>mobile/</code> and <code>packages/shared/ui/</code>. The conventions sit in the root <code>CLAUDE.md</code>, so they also load during server work. Where should they <b>go</b>?",
+   "options": [
+    {
+     "t": "A <code>CLAUDE.md</code> in <code>mobile/</code>, and one in <code>packages/shared/ui/</code> that imports it.",
+     "why": "Wrong: tied to folders. The convention follows a file name pattern, so folder files need one copy per tree and also load for non-screen files there.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "An <code>/a11y</code> skill that engineers invoke when they work on a screen.",
+     "why": "Wrong: loads only on request. It depends on someone remembering to invoke it.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A file in <code>.claude/rules/</code> whose <code>paths:</code> frontmatter is <code>**/*.screen.tsx</code>.",
+     "why": "Correct. A path-scoped rule loads whenever Claude edits a matching file, in any folder, and stays out of server work."
+    },
+    {
+     "t": "A separate markdown file pulled into the root <code>CLAUDE.md</code> with an <code>@import</code> line.",
+     "why": "Wrong: still loads in every session. @import splits memory into files; it doesn't make loading conditional.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Screen files … live in mobile/ and packages/shared/ui/.",
+   "explanation": "Conventions tied to a file type that spans folders belong in .claude/rules/ with a paths glob. They load only for matching files, wherever those files are.",
+   "eli5": {
+    "question": "Some rules apply only to screen files, which sit in two different folders. Right now Claude reads those rules even when it works on the server.",
+    "answer": "Picture a sticky note that pops up only when you open a certain kind of file, wherever it is. That's a <b>rule file with a path pattern</b> in <code>.claude/rules/</code>. A folder <code>CLAUDE.md</code> is a note stuck on a folder: fine when everything is in one folder, clumsy when the files are spread out. <b>Rule: convention follows a file pattern → path-scoped rule. Convention follows a folder → folder CLAUDE.md.</b>",
+    "options": [
+     "Notes stuck on two folders: copies to keep in sync, and they show up for other files in those folders too.",
+     "A skill waits until someone asks for it. People forget.",
+     "Correct. The note appears for screen files only, in any folder.",
+     "Importing into the root file still loads it for everyone, every time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>conventions belong in a CLAUDE.md near the code</b>. That works when the code sits in one folder. These conventions follow a <i>file name pattern</i> across two trees. Claude Code can load a rule file only when the file being edited matches a glob, wherever it lives.",
+    "diagram": ".claude/rules/a11y.md   paths: **/*.screen.tsx\n  mobile/home.screen.tsx          → loaded\n  packages/shared/ui/x.screen.tsx → loaded\n  server/api.ts                   → not loaded",
+    "mapTitle": "Where does this instruction live?",
+    "map": {
+     "head": [
+      "Where it applies",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Files matching a pattern, in many folders",
+       "<code>.claude/rules/</code> with a <code>paths:</code> glob",
+       "Loads by file, in any folder"
+      ],
+      [
+       "Everything inside one folder",
+       "That folder's <code>CLAUDE.md</code>",
+       "Loads when working there"
+      ],
+      [
+       "The whole project, always",
+       "Root <code>CLAUDE.md</code> (or an @import from it)",
+       "Shared with the team through git"
+      ],
+      [
+       "Only you, in every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not in git"
+      ],
+      [
+       "A task someone runs on request",
+       "A skill or slash command",
+       "Loads only when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team's accessibility conventions apply to every screen file",
+      "means": "The convention follows a kind of file, which is what a <code>paths:</code> glob matches."
+     },
+     {
+      "quote": "Screen files are named *.screen.tsx and live in mobile/ and packages/shared/ui/",
+      "means": "The decider. Two trees, so folder <code>CLAUDE.md</code> files (<b>[[0]]</b>) need a copy per tree."
+     },
+     {
+      "quote": "The conventions sit in the root CLAUDE.md, so they also load during server work",
+      "means": "The goal is to stop loading them everywhere. An @import from the root (<b>[[3]]</b>) still loads everywhere."
+     },
+     {
+      "quote": "Where should they go?",
+      "means": "A rule that loads by itself for matching files: <b>[[2]]</b>. A skill (<b>[[1]]</b>) needs someone to invoke it."
+     }
+    ],
+    "rule": "Convention follows a file pattern across folders → .claude/rules/ with a paths glob.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-01",
+   "was": "m7-s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Nullable fields against fabrication",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "Many certificates print no deductible. For these, the extraction returns 0 or repeats the coverage limit, and reviewers cannot tell these values from printed ones. The schema marks deductible as a required number. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add two example certificates with no deductible to the prompt, each with its expected output.",
+     "why": "Wrong: a prompt fix for a schema problem. While the schema demands a number, there is no honest output for the examples to show.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Make deductible nullable in the schema, and state in its description when to return null.",
+     "why": "Correct. A required number forces the model to invent one. A nullable field gives it an honest way to say “not printed”."
+    },
+    {
+     "t": "Keep deductible required and have the model enter -1 whenever no deductible is printed.",
+     "why": "Wrong: -1 is still a number. Every system downstream must know the convention, or -1 posts as a real value.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Add a validator that rejects a deductible equal to the limit, then retry the extraction.",
+     "why": "Wrong: a retry can't produce a value the document doesn't contain, and the invented 0s still get through.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The schema marks deductible as a required number.",
+   "explanation": "Required fields push the model to invent values when the source lacks them. Optional or nullable fields, with a description of when to leave them empty, prevent that.",
+   "eli5": {
+    "question": "When a certificate has no deductible, the extraction makes one up (0, or the limit). The clue: the schema says the field must always hold a number.",
+    "answer": "A form with a box that must contain a number, and no “not applicable” option, makes people write something, anything. Add “leave blank if not printed” and the made-up values stop. In a JSON schema that's a <b>nullable field</b>. <b>Rule: the model invents values when the schema leaves it no honest answer. Make missing values nullable.</b>",
+    "options": [
+     "Showing examples doesn't help while the form still has no blank option.",
+     "Correct. Let the field be empty when nothing is printed.",
+     "-1 is still a number someone can mistake for a real one.",
+     "Asking again can't find a number that isn't on the page."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>made-up values are a prompting problem</b>. Here the schema causes them: a required number has no valid way to say “not printed”, so the model fills it. Fix the schema first; examples help only once the schema allows an honest answer.",
+    "diagram": "required number + nothing printed → model invents 0\nnullable number + nothing printed → null (honest)",
+    "mapTitle": "Extraction output is wrong. Schema, prompt or retry?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Values invented when the source lacks them",
+       "The field is required",
+       "Make it optional or nullable"
+      ],
+      [
+       "Categories forced into the nearest option",
+       "Closed enum",
+       "Add <code>other</code> plus a detail field"
+      ],
+      [
+       "Field allows null but the model still guesses",
+       "Unclear when to leave it empty",
+       "Describe the rule and add examples"
+      ],
+      [
+       "Accuracy drops on unusual layouts",
+       "Too few patterns shown",
+       "Few-shot examples of each layout"
+      ],
+      [
+       "A value fails a validation check",
+       "The model misread the document",
+       "Retry with the specific error"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many certificates print no deductible",
+      "means": "Missing is a normal case, so the output needs a way to say so."
+     },
+     {
+      "quote": "the extraction returns 0 or repeats the coverage limit, and reviewers cannot tell these values from printed ones",
+      "means": "Invented values look real. A marker like -1 (<b>[[2]]</b>) has the same problem."
+     },
+     {
+      "quote": "The schema marks deductible as a required number",
+      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) and retries (<b>[[3]]</b>) can't fix a schema with no honest answer."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Change the schema: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Model inventing values for missing data? Make the field nullable and say when to use null.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication"
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-10",
+   "was": "m7-s1-10",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Case facts across summarisation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "In long chats, the SDK summarises older turns to save context. After that, the agent sometimes offers a smaller refund than it promised earlier. It also forgets which items the customer said were missing. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Trim each tool result to the fields the agent needs before it enters the conversation history.",
+     "why": "Wrong: a fix for a different problem. Trimming slows how fast the context fills, but the promises still pass through summaries.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Raise the threshold for summarising older turns, so more of each chat stays word for word.",
+     "why": "Wrong: delays the loss. Long chats still cross the threshold, and the same facts get blurred.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Tell the summariser to quote every amount and item mentioned in the earlier turns.",
+     "why": "Wrong: still lossy. The facts go through a summary on every pass, and each pass can drop or change them.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Keep a case-facts block of promised amounts, missing items and order IDs in every request.",
+     "why": "Correct. Facts kept outside the summarised history survive every summary, and the agent sees them on every turn."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "After that, the agent sometimes offers a smaller refund than it promised earlier.",
+   "explanation": "Summarising blurs numbers, dates and promises. Pull them into a persistent case-facts block that is sent with every request instead of being summarised.",
+   "eli5": {
+    "question": "To save space, old parts of the chat get squeezed into a summary. After that, the agent forgets what it promised. The clue: the facts get lost <i>in the summary</i>.",
+    "answer": "When a long meeting is summarised, exact numbers get rounded off. A good assistant keeps a separate card with the key facts: “promised $40 credit; salmon and rice missing”. The summary can be rough; the card stays exact. That card is a <b>case-facts block</b> sent with every request. <b>Rule: numbers and promises that must survive go in a facts block, not the summary.</b>",
+    "options": [
+     "Making tool output smaller saves space, but the promises still get squeezed.",
+     "Summarising later only moves the problem further down the chat.",
+     "A better summary is still a summary; numbers can still slip.",
+     "Correct. Keep the key facts on a separate card that never gets summarised."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better summary</b> will keep the facts. But every summary is a lossy step, and a long chat gets summarised again and again. Exact facts such as amounts, items and promises should not depend on a summary at all. Keep them in a separate block that goes with every request.",
+    "diagram": "older turns   → summary (blurry)     ┐\ncase facts: $40 credit, salmon      ├→ every request\nrecent turns  (word for word)       ┘",
+    "mapTitle": "Facts go missing in a long session. Where are they lost?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Promised amounts or items drift after summarising",
+       "Facts blurred by summaries",
+       "Persistent case-facts block"
+      ],
+      [
+       "Context fills fast with long tool output",
+       "Verbose tool results",
+       "Trim results to the needed fields"
+      ],
+      [
+       "Details in the middle of a long input are missed",
+       "Lost in the middle",
+       "Key facts first, clear section headers"
+      ],
+      [
+       "Claims lose their sources after summarising",
+       "No claim-to-source mapping",
+       "Keep the source with each claim"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "In long chats, the SDK summarises older turns to save context",
+      "means": "Facts from early turns now exist only inside summaries."
+     },
+     {
+      "quote": "After that, the agent sometimes offers a smaller refund than it promised earlier",
+      "means": "The decider. The loss starts after summarising, so the summary is the cause. Trimming tool results (<b>[[0]]</b>) doesn't touch it."
+     },
+     {
+      "quote": "It also forgets which items the customer said were missing",
+      "means": "More than one kind of fact is lost, so a better summary prompt (<b>[[2]]</b>) or a later threshold (<b>[[1]]</b>) only reduces or delays it."
+     },
+     {
+      "quote": "Which change best fixes this?",
+      "means": "Take the facts out of the summarised history: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Exact facts that must survive a long chat go into a case-facts block, not into summaries.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Extract transactional facts into a persistent \"case facts\" block"
+    }
+   }
+  }
+ ]
+}
