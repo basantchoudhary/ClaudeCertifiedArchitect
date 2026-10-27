@@ -29,7 +29,7 @@
    "trap": "Disproportionate fix",
    "fam": 2,
    "select": 1,
-   "question": "Product wants the agent to suggest a pause before it escalates a cancellation request. The suggestion is a retention idea, not a business rule. What is the <b>most appropriate</b> way to add it?",
+   "question": "Customers who want to cancel are handed to a person through <code>escalate_to_human</code>. Product would like the agent to suggest pausing the subscription first, before it hands the customer over. This is a retention idea, not a business rule, so the agent does not have to do it in every chat. What is the <b>most appropriate</b> way to add it?",
    "options": [
     {
      "t": "Add a system-prompt instruction to suggest a pause, plus two short example chats.",
@@ -55,7 +55,7 @@
     0
    ],
    "runnerUp": 1,
-   "decider": "The suggestion is a retention idea, not a business rule.",
+   "decider": "This is a retention idea, not a business rule, so the agent does not have to do it in every chat.",
    "explanation": "Programmatic enforcement is for steps that must happen every time. A best-effort suggestion is shaped with a clear instruction plus a few examples.",
    "eli5": {
     "question": "Product wants the agent to ask “would you like to pause instead?” before it hands a cancellation to a person. The clue: it's a retention idea, not a business rule.",
@@ -107,11 +107,11 @@
     },
     "evidence": [
      {
-      "quote": "Product wants the agent to suggest a pause before it escalates a cancellation request",
+      "quote": "Product would like the agent to suggest pausing the subscription first, before it hands the customer over",
       "means": "The goal is to <i>suggest</i>, not to pause. Forcing <code>pause_subscription</code> (<b>[[2]]</b>) pauses without asking."
      },
      {
-      "quote": "The suggestion is a retention idea, not a business rule",
+      "quote": "This is a retention idea, not a business rule, so the agent does not have to do it in every chat",
       "means": "The decider. Missing it now and then is harmless, so a hook (<b>[[1]]</b>) or a new subagent (<b>[[3]]</b>) is more than the goal needs."
      },
      {
@@ -135,7 +135,7 @@
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "Customers often name a box by its delivery date, such as “last Tuesday's box”. The agent passes that date to <code>lookup_order</code> as the box ID, and the call fails. The tool's description reads only “Looks up a box.” What is the <b>most effective first step</b>?",
+   "question": "Customers usually describe a box by when it arrived, for example “last Tuesday's box”. The agent passes that date to <code>lookup_order</code> as the box ID, and the call fails. Each customer's box IDs are listed in their <code>get_customer</code> record. The description of <code>lookup_order</code> is one line: “Looks up a box.” What is the <b>most effective first step</b>?",
    "options": [
     {
      "t": "Add few-shot examples to the system prompt that turn a delivery date into a box ID first.",
@@ -161,7 +161,7 @@
     2
    ],
    "runnerUp": 0,
-   "decider": "The tool's description reads only “Looks up a box.”",
+   "decider": "The description of lookup_order is one line: “Looks up a box.”",
    "explanation": "Tool descriptions are the main signal for how to call a tool. A minimal description should first be expanded with input format, examples, edge cases and boundaries.",
    "eli5": {
     "question": "The agent keeps putting a date where a box ID should go. The clue: the tool's instructions are four words long.",
@@ -213,7 +213,7 @@
     },
     "evidence": [
      {
-      "quote": "Customers often name a box by its delivery date",
+      "quote": "Customers usually describe a box by when it arrived",
       "means": "The agent gets a date, so the tool must explain how to get from a date to an ID."
      },
      {
@@ -221,7 +221,11 @@
       "means": "The agent doesn't know what a box ID looks like. That is a description problem, not a routing problem (<b>[[1]]</b>)."
      },
      {
-      "quote": "The tool's description reads only “Looks up a box.”",
+      "quote": "Each customer's box IDs are listed in their get_customer record",
+      "means": "The data to fix it already exists. The agent just isn't told where to look, which a description can say."
+     },
+     {
+      "quote": "The description of lookup_order is one line: “Looks up a box.”",
       "means": "The decider. The cause is a thin description, so examples (<b>[[0]]</b>) and a new tool (<b>[[3]]</b>) work around it."
      },
      {
@@ -355,7 +359,7 @@
    "trap": "Prompt where enforcement was required",
    "fam": 1,
    "select": 1,
-   "question": "Many certificates print no deductible. For these, the extraction returns 0 or repeats the coverage limit, and reviewers cannot tell these values from printed ones. The schema marks deductible as a required number. What is the <b>best fix</b>?",
+   "question": "Many certificates do not show a deductible at all. In the schema, deductible is a required number. For these certificates, the extraction returns 0 or copies the coverage limit into the field. Those values are posted as if they were printed, and reviewers cannot tell them apart from real ones. What is the <b>best fix</b>?",
    "options": [
     {
      "t": "Add two example certificates with no deductible to the prompt, each with its expected output.",
@@ -381,7 +385,7 @@
     1
    ],
    "runnerUp": 0,
-   "decider": "The schema marks deductible as a required number.",
+   "decider": "In the schema, deductible is a required number.",
    "explanation": "Required fields push the model to invent values when the source lacks them. Optional or nullable fields, with a description of when to leave them empty, prevent that.",
    "eli5": {
     "question": "When a certificate has no deductible, the extraction makes one up (0, or the limit). The clue: the schema says the field must always hold a number.",
@@ -433,16 +437,16 @@
     },
     "evidence": [
      {
-      "quote": "Many certificates print no deductible",
+      "quote": "Many certificates do not show a deductible at all",
       "means": "Missing is a normal case, so the output needs a way to say so."
      },
      {
-      "quote": "the extraction returns 0 or repeats the coverage limit, and reviewers cannot tell these values from printed ones",
-      "means": "Invented values look real. A marker like -1 (<b>[[2]]</b>) has the same problem."
+      "quote": "In the schema, deductible is a required number",
+      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) and retries (<b>[[3]]</b>) can't fix a schema with no honest answer."
      },
      {
-      "quote": "The schema marks deductible as a required number",
-      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) and retries (<b>[[3]]</b>) can't fix a schema with no honest answer."
+      "quote": "Those values are posted as if they were printed, and reviewers cannot tell them apart from real ones",
+      "means": "Invented values look real. A marker like -1 (<b>[[2]]</b>) has the same problem."
      },
      {
       "quote": "What is the best fix?",
@@ -465,7 +469,7 @@
    "trap": "Treating the symptom",
    "fam": 3,
    "select": 1,
-   "question": "In long chats, the SDK summarises older turns to save context. After that, the agent sometimes offers a smaller refund than it promised earlier. It also forgets which items the customer said were missing. Which change <b>best fixes this</b>?",
+   "question": "Some refund disputes go on for a long time. When a chat gets close to the context limit, the SDK replaces older turns with a summary. After that, the agent sometimes offers a smaller refund than it promised earlier. It also forgets which items the customer said were missing. Which change <b>best fixes this</b>?",
    "options": [
     {
      "t": "Trim each tool result to the fields the agent needs before it enters the conversation history.",
@@ -538,7 +542,7 @@
     },
     "evidence": [
      {
-      "quote": "In long chats, the SDK summarises older turns to save context",
+      "quote": "When a chat gets close to the context limit, the SDK replaces older turns with a summary",
       "means": "Facts from early turns now exist only inside summaries."
      },
      {

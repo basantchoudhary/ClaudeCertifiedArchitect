@@ -12,8 +12,11 @@ The official sample questions in `CCAR-F-Exam-Guide.md` section 9 are the style 
 "Best fix?", "Where?" or "Most effective first step?".
 
 ## Stem rules
-- **20–50 words**, short sentences (average ≤ 15 words), at most 2 numbers.
-- Shape: **what is happening** (a symptom, often with its consequence) or **what is wanted**, then the question.
+- **Tell the whole situation in plain words; don't compress it.** Calibration (28 Oct): the candidate found the
+  short 33–40 word rewrites *more* cryptic. The model item is m7p-s2-02: what applies, where things are, what is
+  set up today and what goes wrong with it, then the question. Typical length 35–70 words.
+- Plain everyday words and short sentences (average ≤ 16 words), at most 2 numbers.
+- Shape: **what happens today**, **what goes wrong** (or what is wanted), any **fact the fix depends on**, then the question.
 - The deciding fact is a **natural part of the problem**: a consequence ("refunds go to the wrong account"), a
   requirement ("must not reach a customer"), or a fact about the system ("the description is one line").
 - **No planted sentences** whose only job is to rule out an option ("The tool results are short.") and no
@@ -41,5 +44,5 @@ The official sample questions in `CCAR-F-Exam-Guide.md` section 9 are the style 
 
 ## Check
 From `CCA-F/Foundations-Mock-Exam-7/`:
-`python3 validate.py --plain --sample --stem=20-50 --avg=15 parts/plain/sample.json`
+`python3 validate.py --plain --sample --stem=35-70 --avg=16 parts/plain/sample.json`
 (`--sample` skips the 10-items-per-scenario count while we calibrate.)

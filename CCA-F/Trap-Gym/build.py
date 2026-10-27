@@ -10,7 +10,7 @@ here = pathlib.Path(__file__).parent
 mock7 = here.parent / "Foundations-Mock-Exam-7"
 files = sorted((mock7 / "parts" / "plain").glob("*.json"))
 for f in files:
-    if subprocess.call([sys.executable, str(mock7 / "validate.py"), "--plain", "--sample", "--stem=20-50", "--avg=15", str(f)],
+    if subprocess.call([sys.executable, str(mock7 / "validate.py"), "--plain", "--sample", "--stem=35-70", "--avg=16", str(f)],
                        cwd=mock7, stdout=subprocess.DEVNULL):
         sys.exit(f"validation failed for {f.name}; run validate.py on it to see why")
 
