@@ -1,0 +1,1100 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s4-01",
+   "was": "m7-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Grep for content search",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An engineer wants to remove an old helper method called <code>legacy_price_round</code>. First they need to find every place that calls it. The calls could be in models, background jobs, views or library code. The file names don't say which files use the helper. How should Claude <b>find the calls</b>?",
+   "options": [
+    {
+     "t": "Glob for every Ruby and view file in the app, then Read each one and note any calls.",
+     "why": "Works, but overbuilt. Reading every file would find the calls, but it fills the context with thousands of files that never mention the helper.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Grep for the helper's name across the repository, then Read the lines around each match.",
+     "why": "Best. Grep searches inside files, so it finds every call wherever it lives, and Claude reads only the places that matter."
+    },
+    {
+     "t": "Make the helper raise an error, run the whole test suite with Bash, and list the failures.",
+     "why": "Works, but only for tested code. Failing tests point to real calls, but any call the tests don't reach stays hidden.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Ask an Explore subagent to search the codebase for callers and send back a short list.",
+     "why": "Works, but overbuilt. The subagent would run the same name search; a separate agent is for long, noisy discovery, not one search.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 3,
+   "decider": "The file names don't say which files use the helper.",
+   "explanation": "Finding where a name is used is a question about file contents, so Grep is the direct tool. Glob matches file names and paths, and reading everything up front wastes context.",
+   "eli5": {
+    "question": "Someone needs a list of every place one helper is used. The clue: <i>the file names don't say</i> which files use it, so you have to look inside the files.",
+    "answer": "If you want every page in a library that mentions one word, you use the index, not the shelf labels and not by reading every book. <b>Grep</b> is that index: it searches the text inside files. <b>Glob</b> is the shelf label: it matches file names. Here the names give no hint, so search the text and then read only the hits. <b>Rule: looking for words inside files → Grep. Looking for files by name → Glob.</b>",
+    "options": [
+     "Reading every book finds the word, but takes ages and buries you in pages you didn't need.",
+     "Correct. Search the text for the name, then look only at the matches.",
+     "Breaking the helper and running tests finds calls the tests touch. Untested calls stay hidden.",
+     "Sending a helper off to search works, but they would just run the same search for you."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the safest way to find every call is to read everything</b>, or to let the tests tell you. Both find calls, but neither is direct. Finding where a name appears is a question about <b>file contents</b>, and that is exactly what Grep answers. Glob only looks at file names.",
+    "diagram": "Grep \"legacy_price_round\"  → 7 matches, file + line\n  Read those 7 spots            → confirm each call\nGlob **/*.rb → 2,000 files     → names say nothing",
+    "mapTitle": "Which built-in tool answers this question?",
+    "map": {
+     "head": [
+      "What you need",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every place a name or text appears",
+       "Grep",
+       "Searches inside files"
+      ],
+      [
+       "Files whose name or path matches a pattern",
+       "Glob",
+       "Matches paths, not contents"
+      ],
+      [
+       "Understand one file or trace a flow",
+       "Read, following imports",
+       "Build understanding step by step"
+      ],
+      [
+       "Long, noisy discovery across a big area",
+       "Explore subagent",
+       "Keeps the noise out of the main context"
+      ],
+      [
+       "Behaviour at run time",
+       "Bash running tests",
+       "Shows only what tests reach"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "First they need to find every place that calls it",
+      "means": "The task is a full list of uses: a search inside file contents."
+     },
+     {
+      "quote": "The calls could be in models, background jobs, views or library code",
+      "means": "The calls are spread everywhere, so the search must cover the whole repository. Tests (<b>[[2]]</b>) only reach covered code."
+     },
+     {
+      "quote": "The file names don't say which files use the helper",
+      "means": "The decider. A file-name search can't narrow it, so reading every file (<b>[[0]]</b>) is the only Glob route, and it is heavy."
+     },
+     {
+      "quote": "How should Claude find the calls?",
+      "means": "The direct answer is one content search: <b>[[1]]</b>. A subagent (<b>[[3]]</b>) would run the same search with extra machinery."
+     }
+    ],
+    "rule": "Words inside files → Grep, then Read only the matches. File names or paths → Glob.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Grep = content search; Glob = file path patterns"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-02",
+   "was": "m7-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Structured MCP error responses",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team's Linear MCP server has a <code>move_issue</code> tool. It fails for two reasons. Sometimes the Linear API times out. Other times the team's workflow forbids the move, such as closing an issue with no reviewer. Both failures return the text <code>Operation failed</code>. Claude retries every failure several times. What should the tool <b>return instead</b>?",
+   "options": [
+    {
+     "t": "An <code>isError</code> result with an error category, a retryable flag and a plain reason.",
+     "why": "Best. Claude can see which failures are worth retrying and which break a workflow rule, and it can explain the rule to the engineer."
+    },
+    {
+     "t": "Retry timeouts in the server with backoff, then return the same error if they still fail.",
+     "why": "Works, but fixes only the timeouts. Most timeouts clear up inside the server, but a refused move still comes back as the same bare message.",
+     "trap": "only half the problem"
+    },
+    {
+     "t": "An <code>isError</code> result whose text holds the HTTP status code from Linear.",
+     "why": "Works, but leaves Claude guessing. A status code hints at the kind of failure, but it doesn't say whether to retry or which rule blocked the move.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "The same error, with the workflow rules spelled out in the tool's description.",
+     "why": "Works, but a different problem. Claude may avoid some moves that break the rules, but failures still look identical and timeouts still get mixed up with refusals.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Both failures return the text Operation failed.",
+   "explanation": "Return isError with an error category, a retryable flag and a readable reason. Then Claude retries timeouts and stops to explain business-rule refusals instead of retrying them.",
+   "eli5": {
+    "question": "A tool fails for two very different reasons but says the same thing both times. The clue: <i>both failures return the text Operation failed</i>, so Claude can't tell them apart.",
+    "answer": "Imagine a shop till that beeps the same way for “network down, try again” and “card refused”. The cashier keeps swiping the refused card. A good till says which one it is and whether trying again could help. For a tool, that is an <b>isError</b> result with an <b>error category</b>, a <b>retryable flag</b> and a plain reason. <b>Rule: tell the agent what kind of failure it was and whether a retry can help.</b>",
+    "options": [
+     "Correct. The tool says what went wrong and whether trying again can help.",
+     "Retrying inside the server fixes most network blips, but a refused move still beeps the same way.",
+     "A code number is a hint, but Claude still has to guess what to do.",
+     "Listing the rules may prevent some refusals, but the failures still look the same."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the retries are the bug</b>, so fewer or smarter retries fix it. The real fault is that <b>two different failures look identical</b>. A timeout is transient and worth retrying; a workflow refusal is a business rule and will fail every time. Claude can only choose well if the tool tells it which is which.",
+    "diagram": "timeout  → isError, category: transient, retryable: true\nrefused  → isError, category: business,  retryable: false\n           reason: \"needs a reviewer before closing\"",
+    "mapTitle": "What does the agent need from a failed tool call?",
+    "map": {
+     "head": [
+      "Failure",
+      "What to return",
+      "What Claude can then do"
+     ],
+     "rows": [
+      [
+       "Timeout or brief outage",
+       "<code>isError</code>, transient, retryable",
+       "Retry"
+      ],
+      [
+       "Business rule refuses the action",
+       "<code>isError</code>, business, not retryable, plain reason",
+       "Stop and explain"
+      ],
+      [
+       "Bad input",
+       "<code>isError</code>, validation, what was wrong",
+       "Fix the input and call again"
+      ],
+      [
+       "Only some failures, all transient",
+       "Retry inside the server, report what is left",
+       "See only failures that remain"
+      ],
+      [
+       "Search found nothing",
+       "A normal result that says it is empty",
+       "Treat as an answer, not a failure"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Sometimes the Linear API times out",
+      "means": "One failure is transient: retrying helps. Retrying inside the server (<b>[[1]]</b>) handles this half."
+     },
+     {
+      "quote": "Other times the team's workflow forbids the move",
+      "means": "The other failure is a business rule: retrying never helps, and the engineer needs the reason."
+     },
+     {
+      "quote": "Both failures return the text Operation failed",
+      "means": "The decider. The fault is identical messages, so the fix is in what the tool returns. A status code (<b>[[2]]</b>) is only a hint, and rules in the description (<b>[[3]]</b>) don't change the message."
+     },
+     {
+      "quote": "What should the tool return instead?",
+      "means": "A result that names the category and retryability: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Uniform errors cause blind retries. Return isError with a category, a retryable flag and a readable reason.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "Return structured metadata: errorCategory, isRetryable, human-readable description"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-03",
+   "was": "m7-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit for a targeted change",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Claude often changes one value in large YAML config files. Today it reads the whole file and writes the whole file back. Reviewers find these full rewrites hard to check. One rewrite also quietly changed the file's formatting. The line being changed appears only once in each file. Which tool use should the team <b>ask for</b>?",
+   "options": [
+    {
+     "t": "Bash running <code>sed</code>, with the old line as the pattern and the new line as the replacement.",
+     "why": "Works, but the wrong tool. The shell command changes the line, but it skips the editing tool's match check and is harder to read in the session.",
+     "trap": "wrong tool"
+    },
+    {
+     "t": "Read and Write as today, with a note in <code>CLAUDE.md</code> to keep the original formatting.",
+     "why": "Works, but only usually. Claude will mostly keep the formatting, but every change is still a full rewrite for reviewers to check.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Read and Write as today, then a hook that runs the YAML formatter after each write.",
+     "why": "Works, but treats a symptom. The formatter tidies the file, but the change is still a whole-file rewrite.",
+     "trap": "treats a symptom"
+    },
+    {
+     "t": "Edit, with the line's full current text as the match and the updated line as the replacement.",
+     "why": "Best. Edit changes only the matched line and leaves the rest of the file untouched, which is what reviewers want."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The line being changed appears only once in each file.",
+   "explanation": "Edit makes a targeted change through a unique text match. Read plus Write is the fallback only when the match text isn't unique.",
+   "eli5": {
+    "question": "Claude rewrites a whole file to change one value. The clue: <i>the line being changed appears only once</i>, so Claude can point at exactly that line.",
+    "answer": "To fix one typo in a long letter, you use correction tape on that word. You don't retype the whole letter. <b>Edit</b> is the correction tape: it finds one unique piece of text and swaps it. <b>Read + Write</b> is retyping the letter, which is only needed when the word appears in many places and you can't point at one. <b>Rule: one unique spot → Edit. Text not unique → Read + Write.</b>",
+    "options": [
+     "A shell command works too, but it is a workaround for a job the editing tool already does.",
+     "A note asking for care helps, but the whole letter is still retyped.",
+     "Tidying after retyping fixes the look, not the size of the change.",
+     "Correct. Correction tape on the one line."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to treat this as <b>a formatting problem</b> and add a rule or a formatter. The real issue is the <b>size of the change</b>: rewriting a whole file to change one value. Claude Code has a tool for small changes, and the deciding fact is that the line is unique, which is what that tool needs.",
+    "diagram": "Edit  old: \"  timeout: 30\"\n      new: \"  timeout: 45\"\n→ one line changes, the rest of the file is untouched",
+    "mapTitle": "Which tool for changing a file?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Change text that is unique in the file",
+       "Edit",
+       "Targeted change by unique match"
+      ],
+      [
+       "Match text appears several times",
+       "Read, then Write",
+       "Fallback when Edit's match isn't unique"
+      ],
+      [
+       "Create a new file",
+       "Write",
+       "Whole-file operation"
+      ],
+      [
+       "Run a project formatter or script",
+       "Bash",
+       "Runs commands"
+      ],
+      [
+       "Find which files contain the text",
+       "Grep",
+       "Content search"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Today it reads the whole file and writes the whole file back",
+      "means": "The cause: a whole-file write for a one-value change. Keeping Read and Write (<b>[[1]]</b>, <b>[[2]]</b>) keeps the cause."
+     },
+     {
+      "quote": "Reviewers find these full rewrites hard to check",
+      "means": "The goal is a small diff, not just tidy formatting."
+     },
+     {
+      "quote": "The line being changed appears only once in each file",
+      "means": "The decider. A unique match is what Edit needs, so <b>[[3]]</b> works directly."
+     },
+     {
+      "quote": "Which tool use should the team ask for?",
+      "means": "The built-in editing tool beats a shell workaround (<b>[[0]]</b>) for the same change."
+     }
+    ],
+    "rule": "Small change, unique text → Edit. Read + Write only when the text isn't unique.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Edit = targeted change via unique text match"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-04",
+   "was": "m7-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 tool_choice any",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An Agent SDK script sends each merged pull request to Claude in one request. It offers two tools: <code>record_changelog</code> and <code>request_clarification</code>. Either tool call is a good result. A plain text reply is not, because the script reads only tool input. Today some replies come back as prose. What should the script <b>change</b>?",
+   "options": [
+    {
+     "t": "Force <code>tool_choice</code> to <code>record_changelog</code>, and handle unclear ones in a second request.",
+     "why": "Works, but takes away a choice. Every reply becomes a changelog call, but Claude can no longer ask for clarification, so a second request has to make up for it.",
+     "trap": "takes away a choice"
+    },
+    {
+     "t": "Keep <code>tool_choice</code> at auto, and add examples that each end in one of the two tools.",
+     "why": "Works, but only usually. Examples make tool calls more likely, but auto still allows a text reply.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to any, and let Claude pick which of the two tools to call.",
+     "why": "Best. any means Claude must call a tool, and it still chooses between a changelog entry and a clarification."
+    },
+    {
+     "t": "Keep <code>tool_choice</code> at auto, and resend any reply with no tool call plus a reminder.",
+     "why": "Works, but fixes it after the fact. Most resends will come back as a tool call, but each prose reply costs an extra request.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Either tool call is a good result. A plain text reply is not.",
+   "explanation": "tool_choice auto may return text, any must call some tool, and a forced tool must call that one tool. When several tools are valid and text is not, use any.",
+   "eli5": {
+    "question": "A script needs Claude to answer with a tool, never with plain text, but either of two tools is fine. The clue: <i>either tool call is a good result</i>.",
+    "answer": "Think of a form with two boxes: “add to changelog” or “I need more info”. You want people to tick one of the boxes, not write a note in the margin. <b>tool_choice any</b> says “tick a box, any box”. Forcing one named tool says “tick this box”, which removes the other good choice. <b>Rule: text not allowed, several tools fine → any. Exactly one tool fine → force it.</b>",
+    "options": [
+     "Forcing one box stops margin notes, but also stops the useful “I need more info” answer.",
+     "Showing filled-in examples helps, but people can still write in the margin.",
+     "Correct. Must tick a box, and Claude picks which one.",
+     "Sending the form back when it has a margin note works, but costs a second round each time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>you either trust auto or force a tool</b>. There is a middle setting. <code>any</code> requires a tool call but leaves the choice of tool to Claude. It fits exactly when several tools are good answers and text is not.",
+    "mapTitle": "Which tool_choice fits the need?",
+    "map": {
+     "head": [
+      "What is acceptable",
+      "Setting",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Text or any tool call",
+       "auto",
+       "Claude decides, may answer in text"
+      ],
+      [
+       "Any of several tools, never text",
+       "any",
+       "Must call a tool, picks which"
+      ],
+      [
+       "Exactly one named tool",
+       "Forced tool by name",
+       "Must call that tool"
+      ],
+      [
+       "One tool must run before the others",
+       "Forced tool on the first step",
+       "Sets the order, then relax"
+      ],
+      [
+       "Tool input must match a schema",
+       "Strict schema",
+       "Shapes the input, not the choice"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It offers two tools: record_changelog and request_clarification",
+      "means": "There are two valid outcomes. Forcing one (<b>[[0]]</b>) removes the other."
+     },
+     {
+      "quote": "Either tool call is a good result",
+      "means": "The decider. Any tool is fine, so the setting should require a tool without choosing it."
+     },
+     {
+      "quote": "A plain text reply is not, because the script reads only tool input",
+      "means": "Text must not happen at all. Examples (<b>[[1]]</b>) and resending (<b>[[3]]</b>) keep auto, which still allows text."
+     },
+     {
+      "quote": "What should the script change?",
+      "means": "One setting fixes the cause: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Tool call required, any tool fine → tool_choice any. One specific tool required → force it by name.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_choice: \"auto\" (may return text), \"any\" (must call a tool), forced (specific named tool)"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-05",
+   "was": "m7-s4-05",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode for multi-approach changes",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team must move the app from one background-job library to another. Job classes, retry settings and tests in many folders will change. Engineers disagree on whether to move job by job or switch everything at once. Nobody has yet mapped which jobs use features found only in the old library. How should the engineer <b>start</b> with Claude?",
+   "options": [
+    {
+     "t": "Use an Explore subagent to list jobs that use old-library features, then convert them directly.",
+     "why": "Works, but skips the design step. The list answers the mapping question, but converting straight away settles the job-by-job debate by default.",
+     "trap": "skips the design"
+    },
+    {
+     "t": "Enter plan mode, have Claude map the job code and compare both paths, then approve a plan.",
+     "why": "Best. Plan mode lets Claude explore and weigh both strategies before any file changes, so the team agrees a design first."
+    },
+    {
+     "t": "Convert the simplest job directly, review its diff, then repeat for each job in turn.",
+     "why": "Works, but picks a path without deciding. Direct execution suits small, clear changes; here it quietly chooses job by job and finds the hard jobs late.",
+     "trap": "decides by default"
+    },
+    {
+     "t": "Have Claude write tests for each job first, then convert the jobs until all the tests pass.",
+     "why": "Works, but in the wrong order. Tests make each conversion safer, but they don't choose the strategy or map the old-library features.",
+     "trap": "wrong order"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Engineers disagree on whether to move job by job or switch everything at once.",
+   "explanation": "Use plan mode for large changes across many files with several valid approaches: explore and design before editing. Direct execution suits simple, well-scoped changes.",
+   "eli5": {
+    "question": "A big change touches many folders, the team hasn't picked a strategy, and nobody knows the risky jobs yet. The clue: <i>engineers disagree</i> on how to do it.",
+    "answer": "Before moving house, you walk through every room and agree a plan: move it all in one day, or room by room? You don't start carrying boxes while still arguing. <b>Plan mode</b> is that walk-through: Claude explores and proposes a design, and nothing changes until you approve. <b>Rule: big change, several valid ways, unknowns → plan mode first. Small clear change → just do it.</b>",
+    "options": [
+     "Making a list of tricky rooms helps, but then you start carrying boxes without agreeing the plan.",
+     "Correct. Walk through, compare the two ways, agree, then move.",
+     "Moving one small box at a time works for small moves. Here it picks a plan without deciding.",
+     "Checking each box is safe is good, but it doesn't settle how to move."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>careful step-by-step work is always safe</b>. Small reviewed steps are safe for well-scoped changes. This change has an <b>open strategy question</b> and <b>unknown dependencies</b>. Any approach that starts editing quietly answers the strategy question by default. Plan mode explores and designs first.",
+    "mapTitle": "Plan mode or direct execution?",
+    "map": {
+     "head": [
+      "Situation",
+      "Approach",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Many files, several valid strategies",
+       "Plan mode",
+       "Explore and design before edits"
+      ],
+      [
+       "Architectural decision still open",
+       "Plan mode",
+       "Avoids rework"
+      ],
+      [
+       "Simple, well-scoped change",
+       "Direct execution",
+       "No design needed"
+      ],
+      [
+       "Big discovery job with noisy output",
+       "Explore subagent",
+       "Returns a summary to the main session"
+      ],
+      [
+       "Behaviour must be pinned down while changing",
+       "Tests first, then iterate",
+       "Refinement, after the plan"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Job classes, retry settings and tests in many folders will change",
+      "means": "A large, multi-file change: plan-mode territory, not single direct steps (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Engineers disagree on whether to move job by job or switch everything at once",
+      "means": "The decider. There are two valid strategies, and a design must choose. Converting directly after a list (<b>[[0]]</b>) skips that choice."
+     },
+     {
+      "quote": "Nobody has yet mapped which jobs use features found only in the old library",
+      "means": "Exploration is needed before editing. Writing tests first (<b>[[3]]</b>) doesn't map these features."
+     },
+     {
+      "quote": "How should the engineer start with Claude?",
+      "means": "The first move is to explore and design: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Large change + several valid approaches + unknowns → plan mode first. Simple, scoped change → direct execution.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Plan mode: large-scale changes, multiple valid approaches, architectural decisions, multi-file mods"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-06",
+   "was": "m7-s4-06",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-specific rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Background job classes follow strict team conventions, such as safe-to-repeat perform methods and set retry limits. Job files all end in <code>_job.rb</code>, but they sit in many folders across the app's engines. The conventions are long and matter only for job files. Today they live in the root <code>CLAUDE.md</code> and load in every session. Where should they <b>go</b>?",
+   "options": [
+    {
+     "t": "A <code>CLAUDE.md</code> in <code>app/jobs/</code>, the folder where new job classes are created.",
+     "why": "Works, but tied to one folder. It loads for jobs in that folder, but the jobs in the engines' folders miss it.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A conventions file that the root <code>CLAUDE.md</code> pulls in with an <code>@import</code> line.",
+     "why": "Works, but still loads everywhere. The import keeps the conventions in their own file, but they still load in every session.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A <code>/job-conventions</code> skill that engineers invoke before they edit a job class.",
+     "why": "Works, but only when someone remembers. A skill loads when invoked, so a job edited without it misses the conventions.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "A <code>.claude/rules/</code> file whose <code>paths:</code> frontmatter is <code>**/*_job.rb</code>.",
+     "why": "Best. A path-scoped rule loads whenever Claude works on a matching file, in any folder, and stays out of other work."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Job files all end in _job.rb, but they sit in many folders across the app's engines.",
+   "explanation": "Rules in .claude/rules/ with a paths glob load only for matching files, whatever folder they are in. They beat folder CLAUDE.md files for conventions that span folders.",
+   "eli5": {
+    "question": "Long rules apply only to job files, which share a name ending but sit in many folders. The clue: <i>they sit in many folders</i>.",
+    "answer": "Picture a sticky note that pops up whenever you open a file ending in <code>_job.rb</code>, wherever that file is. That's a <b>rule file with a path pattern</b> in <code>.claude/rules/</code>. A folder <code>CLAUDE.md</code> is a note stuck on one folder: fine if every job lived there, but these don't. <b>Rule: convention follows a file pattern → path-scoped rule. Convention follows a folder → folder CLAUDE.md.</b>",
+    "options": [
+     "A note on one folder misses the job files in the other folders.",
+     "Importing into the root file still loads it for everyone, every time.",
+     "A skill waits until someone asks for it. People forget.",
+     "Correct. The note appears for job files only, in any folder."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>conventions belong in a CLAUDE.md near the code</b>. That works when the code sits in one folder. Job files follow a <i>file name pattern</i> across many folders. Claude Code can load a rule file only when the file being edited matches a glob, wherever it lives.",
+    "diagram": ".claude/rules/jobs.md   paths: **/*_job.rb\n  app/jobs/send_email_job.rb        → loaded\n  engines/billing/.../invoice_job.rb → loaded\n  app/models/user.rb                 → not loaded",
+    "mapTitle": "Where does this instruction live?",
+    "map": {
+     "head": [
+      "Where it applies",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Files matching a pattern, in many folders",
+       "<code>.claude/rules/</code> with a <code>paths:</code> glob",
+       "Loads by file, in any folder"
+      ],
+      [
+       "Everything inside one folder",
+       "That folder's <code>CLAUDE.md</code>",
+       "Loads when working there"
+      ],
+      [
+       "The whole project, always",
+       "Root <code>CLAUDE.md</code> (or an @import from it)",
+       "Shared and always loaded"
+      ],
+      [
+       "A task someone runs on request",
+       "A skill or slash command",
+       "Loads only when invoked"
+      ],
+      [
+       "Only you, in every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not in git"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Job files all end in _job.rb, but they sit in many folders across the app's engines",
+      "means": "The decider. A shared name pattern across many folders is what a <code>paths:</code> glob matches. One folder <code>CLAUDE.md</code> (<b>[[0]]</b>) misses the engines."
+     },
+     {
+      "quote": "The conventions are long and matter only for job files",
+      "means": "They should load only for job files, and by themselves. A skill (<b>[[2]]</b>) needs someone to invoke it."
+     },
+     {
+      "quote": "Today they live in the root CLAUDE.md and load in every session",
+      "means": "The goal is to stop loading them everywhere. An @import from the root (<b>[[1]]</b>) still loads everywhere."
+     },
+     {
+      "quote": "Where should they go?",
+      "means": "A rule that loads by itself for matching files: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Convention follows a file pattern across folders → .claude/rules/ with a paths glob.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-07",
+   "was": "m7-s4-07",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills vs always-loaded memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The root <code>CLAUDE.md</code> holds a long runbook for restoring the staging database from a snapshot. Engineers run a restore about once a month, when they ask Claude for one. The runbook isn't tied to any file being edited. Even so, it loads into every session and fills the context. Where should the runbook <b>go</b>?",
+   "options": [
+    {
+     "t": "Into <code>.claude/skills/</code> as a <code>SKILL.md</code> that engineers invoke for a restore.",
+     "why": "Best. A project skill is an on-demand workflow: it is shared through the repository and loads only when someone asks for a restore."
+    },
+    {
+     "t": "Into a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches the database config files.",
+     "why": "Works, but the wrong trigger. It loads when someone edits those files, which has nothing to do with when a restore is asked for.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Into a separate runbook file that the root <code>CLAUDE.md</code> pulls in with <code>@import</code>.",
+     "why": "Works, but still loads everywhere. The import tidies the root file, but the runbook still loads in every session.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Into a <code>CLAUDE.md</code> inside <code>db/</code>, next to the snapshot scripts it uses.",
+     "why": "Works, but the wrong trigger. It loads whenever Claude works in db/, and a restore asked from elsewhere may not see it.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Engineers run a restore about once a month, when they ask Claude for one.",
+   "explanation": "CLAUDE.md is for standards that should always load. Skills are on-demand task workflows. Path-scoped rules load guidance when matching files are edited.",
+   "eli5": {
+    "question": "A long how-to for a monthly task loads every single time. The clue: engineers use it <i>when they ask Claude for one</i>, not while editing any file.",
+    "answer": "A fire-drill manual doesn't belong on every desk every day. It sits on a shelf and you take it down when you need it. A <b>skill</b> is that shelf: shared with the team, loaded only when someone calls for it. <code>CLAUDE.md</code> is the noticeboard everyone reads every day. <b>Rule: a task run on request → skill. A standard that always applies → CLAUDE.md. Guidance for certain files → path rule.</b>",
+    "options": [
+     "Correct. On the shelf, taken down when someone asks for a restore.",
+     "A rule for config files pops up when editing them, which is not when people ask for a restore.",
+     "Moving the manual into a binder that's still on every desk saves nothing.",
+     "A note on the db folder shows up while working there, not when someone asks for a restore."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>long content just needs a smaller, nearer home</b>, like a folder file or a path rule. The real question is <b>what should trigger loading</b>. This runbook is needed when someone asks for a restore, not when certain files are edited. That trigger is a request, which is what skills are for.",
+    "mapTitle": "What should make this content load?",
+    "map": {
+     "head": [
+      "Trigger",
+      "Home",
+      "Loads when"
+     ],
+     "rows": [
+      [
+       "Someone asks for a task",
+       "Skill in <code>.claude/skills/</code>",
+       "Invoked"
+      ],
+      [
+       "Editing files that match a pattern",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "A matching file is edited"
+      ],
+      [
+       "Working in one folder",
+       "Folder <code>CLAUDE.md</code>",
+       "Claude works in that folder"
+      ],
+      [
+       "Always, for everyone",
+       "Root <code>CLAUDE.md</code> or an @import",
+       "Every session"
+      ],
+      [
+       "Only you, every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Your sessions only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Engineers run a restore about once a month, when they ask Claude for one",
+      "means": "The decider. The trigger is a request, which is a skill: <b>[[0]]</b>."
+     },
+     {
+      "quote": "The runbook isn't tied to any file being edited",
+      "means": "File-based triggers miss the point: a path rule (<b>[[1]]</b>) or a db/ CLAUDE.md (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "it loads into every session and fills the context",
+      "means": "The goal is to stop always-loading. An @import (<b>[[2]]</b>) still loads every session."
+     }
+    ],
+    "rule": "On-request task → skill. Always-true standard → CLAUDE.md. File-pattern guidance → path rule.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Skills = on-demand task workflows; CLAUDE.md = always-loaded universal standards"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-08",
+   "was": "m7-s4-08",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resuming a named session",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "An engineer keeps several named Claude Code sessions. Last week, a session called <code>billing-audit</code> traced how invoices are rounded. Today they want to carry on that same investigation. Nobody has changed the billing code since then. Their most recent session was about something else. How should they <b>pick up the work</b>?",
+   "options": [
+    {
+     "t": "Start a new session and paste a structured summary of the billing-audit findings.",
+     "why": "Works, but loses detail. A summary is the safer start when files have changed; here nothing changed, so it only drops what Claude already saw.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "Start a new session and have Claude trace the invoice rounding code again from the start.",
+     "why": "Works, but redoes the work. Claude would reach the same findings, after repeating last week's reads.",
+     "trap": "redoes the work"
+    },
+    {
+     "t": "Start Claude Code with <code>--resume billing-audit</code> and carry on where it stopped.",
+     "why": "Best. Resuming by name reopens that exact conversation, and its earlier tool results are still accurate."
+    },
+    {
+     "t": "Resume billing-audit, then branch it with <code>fork_session</code> before going further.",
+     "why": "Works, but overbuilt. A fork is for trying a different approach from a shared starting point; this is one line of work.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Nobody has changed the billing code since then.",
+   "explanation": "--resume with a session name continues a specific prior conversation. When files have changed since, a new session with a structured summary is more reliable than resuming with stale results.",
+   "eli5": {
+    "question": "Someone wants to continue last week's investigation. The clues: they know its name, and <i>nobody has changed the billing code</i>, so last week's notes are still true.",
+    "answer": "If you left a puzzle half done and nobody touched the table, you sit back down and carry on. You don't start again, or copy it onto a new table. <b>--resume &lt;name&gt;</b> is sitting back down at that table. If someone had moved pieces, a fresh table with a clear note would be safer. <b>Rule: nothing changed → resume by name. Files changed → new session with a structured summary.</b>",
+    "options": [
+     "Copying notes to a new table works, but you lose detail you could have kept.",
+     "Starting the puzzle over gets there, but wastes last week's work.",
+     "Correct. Sit back down at the same table.",
+     "Making a copy of the table is for trying two ways at once. There's only one way here."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a fresh start with a summary is always safer</b>. It is safer when the files have changed and old tool results are stale. Here the code is unchanged, so the old results are still accurate, and resuming keeps all of them. The name matters too: the most recent session is a different one.",
+    "mapTitle": "Resume, fork or start fresh?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Continue a named past session, files unchanged",
+       "<code>--resume &lt;name&gt;</code>",
+       "Keeps every earlier finding"
+      ],
+      [
+       "Continue, but files have changed since",
+       "New session + structured summary",
+       "Old tool results are stale"
+      ],
+      [
+       "Resume after a few known changes",
+       "Resume and tell Claude what changed",
+       "Keeps context, corrects it"
+      ],
+      [
+       "Try two approaches from one point",
+       "<code>fork_session</code>",
+       "Independent branches"
+      ],
+      [
+       "Continue the most recent session",
+       "<code>--continue</code>",
+       "Opens the latest one"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "a session called billing-audit traced how invoices are rounded",
+      "means": "There is a named session holding the findings. Tracing it again (<b>[[1]]</b>) repeats them."
+     },
+     {
+      "quote": "Nobody has changed the billing code since then",
+      "means": "The decider. The old tool results are still true, so resuming is safe and a summary (<b>[[0]]</b>) only loses detail."
+     },
+     {
+      "quote": "Their most recent session was about something else",
+      "means": "The session must be picked by name, not by recency."
+     },
+     {
+      "quote": "How should they pick up the work?",
+      "means": "One line of work, continued as is: <b>[[2]]</b>. A fork (<b>[[3]]</b>) is for two approaches."
+     }
+    ],
+    "rule": "Files unchanged → --resume by name. Files changed → new session with a structured summary.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "--resume &lt;session-name&gt; continues a specific prior conversation"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-09",
+   "was": "m7-s4-09",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 Hooks that block outgoing tool calls",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An Agent SDK script lets Claude look into data bugs on the staging database through the MCP tool <code>run_sql</code>. Each investigation needs many read queries. Statements that change data must not run from this script. Last week Claude ran a DELETE that wiped a tester's data. Which control should the team <b>add</b>?",
+   "options": [
+    {
+     "t": "A system prompt rule listing the allowed statement types, with examples of writes to refuse.",
+     "why": "Works, but only usually. A clear rule makes writes rarer, but prompt compliance has a non-zero failure rate, and this must not happen.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "A permission rule that asks an engineer to approve each <code>run_sql</code> call before it runs.",
+     "why": "Works, but too much friction. A person can stop every write, but they must also approve each of the many read queries.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "A <code>PostToolUse</code> hook on <code>run_sql</code> that checks the changed rows and stops the script.",
+     "why": "Works, but too late. It stops the script after a write, but by then the data has already changed.",
+     "trap": "too late"
+    },
+    {
+     "t": "A hook on outgoing <code>run_sql</code> calls that blocks any non-read statement and tells Claude why.",
+     "why": "Best. The hook checks each call before it runs, so writes are refused every time and Claude can adjust its query."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "Statements that change data must not run from this script.",
+   "explanation": "Hooks give deterministic guarantees. Intercept outgoing tool calls to block actions that break a policy; PostToolUse hooks act on results after the call has already run.",
+   "eli5": {
+    "question": "Claude may only read from the database, but it once deleted data. The clue: writes <i>must not run</i>, and there are <i>many</i> read queries.",
+    "answer": "A guard at the vault door checks every request before anyone goes in: “reading the ledger, fine; taking money out, no”. That guard is a <b>hook on outgoing tool calls</b>. A guard who checks the vault afterwards notices the loss but can't undo it. A written rule is a sign on the door, which most people obey. <b>Rule: if an action must not happen, block it before the call runs, in code.</b>",
+    "options": [
+     "A sign on the door works most of the time. Most of the time isn't enough here.",
+     "A person approving every visit stops the bad ones, but also slows down every harmless read.",
+     "Checking the vault afterwards notices the loss. The money is already gone.",
+     "Correct. The guard stops writes at the door and says why."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>any hook is a guarantee</b>. Where the hook runs matters. A hook on outgoing calls acts <b>before</b> the statement runs; a <code>PostToolUse</code> hook acts <b>after</b>, when the data is already changed. A prompt rule only makes writes less likely.",
+    "diagram": "Claude → run_sql(\"DELETE ...\")\n          ↓ hook on outgoing call: not a read → blocked\n          ↓ hook on outgoing call: SELECT → runs",
+    "mapTitle": "Where should the control act?",
+    "map": {
+     "head": [
+      "Need",
+      "Control",
+      "When it acts"
+     ],
+     "rows": [
+      [
+       "An action must not happen",
+       "Hook on outgoing tool calls",
+       "Before the call runs"
+      ],
+      [
+       "Change or clean up a tool result",
+       "<code>PostToolUse</code> hook",
+       "After the call, before Claude reads it"
+      ],
+      [
+       "A rare, high-stakes action needs a person",
+       "Ask for approval",
+       "Before the call, by a human"
+      ],
+      [
+       "A style or wording preference",
+       "Prompt instruction + examples",
+       "In Claude's instructions"
+      ],
+      [
+       "Spot problems for later review",
+       "Logging",
+       "After the fact"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each investigation needs many read queries",
+      "means": "Reads are frequent and harmless. Approving each call (<b>[[1]]</b>) would slow all of them."
+     },
+     {
+      "quote": "Statements that change data must not run from this script",
+      "means": "The decider. A must-not rule needs code, not a prompt (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Last week Claude ran a DELETE that wiped a tester's data",
+      "means": "The harm happens when the statement runs. A check after the call (<b>[[2]]</b>) comes too late."
+     },
+     {
+      "quote": "Which control should the team add?",
+      "means": "Block non-read statements before they run: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Must not happen → block the outgoing tool call in a hook. PostToolUse is for changing results, not stopping actions.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "Hooks intercept outgoing tool calls to enforce compliance"
+    }
+   }
+  },
+  {
+   "id": "m7p-s4-10",
+   "was": "m7-s4-10",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Model-driven tool use vs fixed sequence",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "An internal Agent SDK tool answers engineers' questions about the codebase. Its code runs fixed steps: Grep for the question's keywords, Read the top three hits, then ask Claude to answer. Answers go wrong when the real logic sits in files those hits call into. Which file matters next depends on what each Read shows. Which <b>TWO</b> changes should the redesign include?",
+   "options": [
+    {
+     "t": "Give Claude the Grep and Read tools, and let it pick each next call from earlier results.",
+     "why": "Best. Claude chooses the next file from what it just read, which suits a trail that unfolds as you follow it."
+    },
+    {
+     "t": "Append each tool result to the conversation, and keep looping while stop_reason is tool_use.",
+     "why": "Best. Each result goes back to Claude, and the loop runs until Claude ends its turn, so Claude decides when it has enough."
+    },
+    {
+     "t": "Keep the fixed steps, but add a step that follows the top hits' imports two levels deep.",
+     "why": "Works, but only usually. Many answers sit two levels down, but any fixed depth is a guess when the next file depends on each read.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Run the fixed steps once per keyword in parallel subagents, and merge their reads at the end.",
+     "why": "Works, but a different problem. It widens the search, but each subagent still stops after the same fixed steps.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0,
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Which file matters next depends on what each Read shows.",
+   "explanation": "In an agentic loop the model picks the next tool call from results added to its history, continuing on tool_use and stopping on end_turn. Fixed sequences suit work whose steps are known in advance.",
+   "eli5": {
+    "question": "A question-answering tool always reads the same three files and stops. The clue: <i>which file matters next depends on what each Read shows</i>.",
+    "answer": "A detective doesn't decide in advance to visit three houses and stop. Each clue tells them where to go next, and they stop when the case is solved. Here that means two things: let Claude choose its own next search or read (<b>model-driven tool use</b>), and keep feeding results back in a loop until Claude says it's done (<b>stop_reason</b> <code>end_turn</code>). <b>Rule: next step depends on what you find → let the model drive the loop. Steps known in advance → a fixed sequence.</b>",
+    "options": [
+     "Correct. The detective chooses where to go next from each clue.",
+     "Correct. Keep going while the detective asks for more, stop when they say done.",
+     "Visiting two more houses on a fixed route helps sometimes, but the right house may be three away.",
+     "More detectives on the same fixed route cover more ground, but all stop at the same point."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better fixed recipe</b> (more steps, more parallel runs) will catch the missing files. The fault is that <b>the steps are decided before anything is read</b>. When the next file depends on what the last read showed, Claude has to choose the calls, inside a loop that keeps going until Claude ends its turn.",
+    "diagram": "loop:\n  response = Claude(history)\n  if stop_reason == \"tool_use\": run tool, append result\n  if stop_reason == \"end_turn\": answer",
+    "mapTitle": "Fixed steps or model-driven loop?",
+    "map": {
+     "head": [
+      "Shape of the work",
+      "Design",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Next step depends on what was found",
+       "Model-driven tool calls in a loop",
+       "Claude picks each next call"
+      ],
+      [
+       "Loop control",
+       "Continue on <code>tool_use</code>, stop on <code>end_turn</code>",
+       "Claude says when it has enough"
+      ],
+      [
+       "Steps are the same every time",
+       "Fixed sequence (prompt chaining)",
+       "Predictable and cheap"
+      ],
+      [
+       "Many independent areas to cover",
+       "Parallel subagents",
+       "Wider coverage, not deeper"
+      ],
+      [
+       "Answers are usually a fixed depth away",
+       "Longer fixed chain",
+       "Works only when the depth is known"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Its code runs fixed steps: Grep for the question's keywords, Read the top three hits, then ask Claude to answer",
+      "means": "The steps are chosen before anything is read. Adding steps (<b>[[2]]</b>) or copies (<b>[[3]]</b>) keeps that."
+     },
+     {
+      "quote": "Answers go wrong when the real logic sits in files those hits call into",
+      "means": "The answer lies further along a trail of calls than the fixed steps reach."
+     },
+     {
+      "quote": "Which file matters next depends on what each Read shows",
+      "means": "The decider. Claude must pick each next call (<b>[[0]]</b>) and see each result in a loop that runs until it is done (<b>[[1]]</b>)."
+     }
+    ],
+    "rule": "Next step depends on findings → model-driven tool calls in a stop_reason loop. Known steps → fixed sequence.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Model-driven decision-making vs pre-configured decision trees / tool sequences"
+    }
+   }
+  }
+ ]
+}

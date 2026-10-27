@@ -1,0 +1,1052 @@
+{
+ "scenarios": [
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 · D4 · D5",
+   "brief": "A startup uses Claude Code in one TypeScript repository with <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> folders. The repository commits a <code>.claude/</code> directory and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s2-01",
+   "was": "m7-s2-01",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Personal vs project commands",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "An engineer wrote a <code>/standup</code> command. It summarises their own commits and reads notes from their home folder. They want to use it in every repository they open, not only this one. Teammates have their own standup habits. They have asked not to see this command in their lists. Where should the command file <b>live</b>?",
+   "options": [
+    {
+     "t": "In this repository's <code>.claude/commands/</code>, committed, with a README note that it is optional.",
+     "why": "Works, but wrong scope. The engineer gets the command here, but only in this repository, and every teammate sees it after their next pull.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In <code>~/.claude/commands/</code> in the engineer's home folder, outside every repository.",
+     "why": "Best. User-level commands are personal. They follow the engineer into every project, and nobody else sees them."
+    },
+    {
+     "t": "In <code>.claude/commands/</code> of each repository, with the file listed in each <code>.gitignore</code>.",
+     "why": "Works, but copies to maintain. It stays private, but the file must be copied and ignored in every repository, and the copies drift apart.",
+     "trap": "copies to maintain"
+    },
+    {
+     "t": "As a section in the engineer's <code>~/.claude/CLAUDE.md</code> that describes the standup steps.",
+     "why": "Works, but wrong kind of file. Claude would follow the steps when asked, but memory loads into every session and there is no <code>/standup</code> to invoke.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "They want to use it in every repository they open, not only this one.",
+   "explanation": "Project commands in .claude/commands/ are shared through git. User commands in ~/.claude/commands/ are personal and follow the user across projects.",
+   "eli5": {
+    "question": "One engineer has a personal <code>/standup</code> command. They want it everywhere they work, and teammates don't want to see it. The clue: <i>every repository</i>, and <i>only for them</i>.",
+    "answer": "Think of a personal toolbox you carry from job to job, versus the shared tools left on site. The site tools are <code>.claude/commands/</code> in the repository: everyone who clones gets them. Your own toolbox is <code>~/.claude/commands/</code> in your home folder: it comes with you to every project and nobody else sees it. <b>Rule: shared with the team → project commands. Just for me, everywhere → user commands.</b>",
+    "options": [
+     "Leaving your tool on site means it stays at this one site, and everyone else trips over it.",
+     "Correct. Your own toolbox goes with you to every repository, and only you see it.",
+     "A hidden copy at every site works, but you have to make and update every copy yourself.",
+     "A note describing the steps is not a tool you can pick up; there is no <code>/standup</code> to run."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a command belongs with the code it is used on</b>. That is true for team workflows. This command is personal: it reads the engineer's own notes and is wanted in every repository. Claude Code has a <b>user-level</b> commands folder exactly for this.",
+    "diagram": "~/.claude/commands/standup.md  → this engineer, every repo\nrepo/.claude/commands/*.md     → everyone, this repo only",
+    "mapTitle": "Who needs the command, and where?",
+    "map": {
+     "head": [
+      "Who and where",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Whole team, this repository",
+       "<code>.claude/commands/</code>, committed",
+       "Arrives for everyone on clone or pull"
+      ],
+      [
+       "Only me, every repository",
+       "<code>~/.claude/commands/</code>",
+       "Personal; follows me across projects"
+      ],
+      [
+       "Only me, only this repository",
+       "Repo command file ignored by git",
+       "Private, but one copy per repo"
+      ],
+      [
+       "A standard Claude must always follow",
+       "<code>CLAUDE.md</code>",
+       "Always loaded, not invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It summarises their own commits and reads notes from their home folder",
+      "means": "The command is personal to one engineer."
+     },
+     {
+      "quote": "They want to use it in every repository they open, not only this one",
+      "means": "The decider. A file in one repository (<b>[[0]]</b>) or copied into each (<b>[[2]]</b>) doesn't follow the engineer by itself."
+     },
+     {
+      "quote": "They have asked not to see this command in their lists",
+      "means": "A committed project command (<b>[[0]]</b>) shows up for everyone."
+     },
+     {
+      "quote": "Where should the command file live?",
+      "means": "It is a command, so it lives in a commands folder, not in memory (<b>[[3]]</b>). The user-level one: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Team command → .claude/commands/ in the repo. Personal command for every project → ~/.claude/commands/.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Project commands in .claude/commands/ (shared) vs user ~/.claude/commands/ (personal)"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-02",
+   "was": "m7-s2-02",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-scoped rules",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team's accessibility conventions apply to every screen file. Screen files are named <code>*.screen.tsx</code> and live in <code>mobile/</code> and <code>packages/shared/ui/</code>. The conventions sit in the root <code>CLAUDE.md</code>, so they also load during server work. Where should they <b>go</b>?",
+   "options": [
+    {
+     "t": "A <code>CLAUDE.md</code> in <code>mobile/</code>, and one in <code>packages/shared/ui/</code> that imports it.",
+     "why": "Works, but tied to folders. Folder CLAUDE.md files would load the conventions for screens, but they need one per tree and also load for every other file in those folders.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "An <code>/a11y</code> skill that engineers invoke when they work on a screen.",
+     "why": "Works, but only when someone remembers. A skill loads when it is invoked, so screens edited without it miss the conventions.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A file in <code>.claude/rules/</code> whose <code>paths:</code> frontmatter is <code>**/*.screen.tsx</code>.",
+     "why": "Best. A path-scoped rule loads whenever Claude edits a matching file, in any folder, and stays out of server work."
+    },
+    {
+     "t": "A separate markdown file pulled into the root <code>CLAUDE.md</code> with an <code>@import</code> line.",
+     "why": "Works, but still loads everywhere. @import keeps the conventions in their own file, which is tidier, but they still load in every session, including server work.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Screen files … live in mobile/ and packages/shared/ui/.",
+   "explanation": "Conventions tied to a file type that spans folders belong in .claude/rules/ with a paths glob. They load only for matching files, wherever those files are.",
+   "eli5": {
+    "question": "Some rules apply only to screen files, which sit in two different folders. Right now Claude reads those rules even when it works on the server.",
+    "answer": "Picture a sticky note that pops up only when you open a certain kind of file, wherever it is. That's a <b>rule file with a path pattern</b> in <code>.claude/rules/</code>. A folder <code>CLAUDE.md</code> is a note stuck on a folder: fine when everything is in one folder, clumsy when the files are spread out. <b>Rule: convention follows a file pattern → path-scoped rule. Convention follows a folder → folder CLAUDE.md.</b>",
+    "options": [
+     "Notes stuck on two folders: copies to keep in sync, and they show up for other files in those folders too.",
+     "A skill waits until someone asks for it. People forget.",
+     "Correct. The note appears for screen files only, in any folder.",
+     "Importing into the root file still loads it for everyone, every time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>conventions belong in a CLAUDE.md near the code</b>. That works when the code sits in one folder. These conventions follow a <i>file name pattern</i> across two trees. Claude Code can load a rule file only when the file being edited matches a glob, wherever it lives.",
+    "diagram": ".claude/rules/a11y.md   paths: **/*.screen.tsx\n  mobile/home.screen.tsx          → loaded\n  packages/shared/ui/x.screen.tsx → loaded\n  server/api.ts                   → not loaded",
+    "mapTitle": "Where does this instruction live?",
+    "map": {
+     "head": [
+      "Where it applies",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Files matching a pattern, in many folders",
+       "<code>.claude/rules/</code> with a <code>paths:</code> glob",
+       "Loads by file, in any folder"
+      ],
+      [
+       "Everything inside one folder",
+       "That folder's <code>CLAUDE.md</code>",
+       "Loads when working there"
+      ],
+      [
+       "The whole project, always",
+       "Root <code>CLAUDE.md</code> (or an @import from it)",
+       "Shared with the team through git"
+      ],
+      [
+       "Only you, in every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not in git"
+      ],
+      [
+       "A task someone runs on request",
+       "A skill or slash command",
+       "Loads only when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team's accessibility conventions apply to every screen file",
+      "means": "The convention follows a kind of file, which is what a <code>paths:</code> glob matches."
+     },
+     {
+      "quote": "Screen files are named *.screen.tsx and live in mobile/ and packages/shared/ui/",
+      "means": "The decider. Two trees, so folder <code>CLAUDE.md</code> files (<b>[[0]]</b>) need a copy per tree."
+     },
+     {
+      "quote": "The conventions sit in the root CLAUDE.md, so they also load during server work",
+      "means": "The goal is to stop loading them everywhere. An @import from the root (<b>[[3]]</b>) still loads everywhere."
+     },
+     {
+      "quote": "Where should they go?",
+      "means": "A rule that loads by itself for matching files: <b>[[2]]</b>. A skill (<b>[[1]]</b>) needs someone to invoke it."
+     }
+    ],
+    "rule": "Convention follows a file pattern across folders → .claude/rules/ with a paths glob.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-03",
+   "was": "m7-s2-03",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Plan mode for open design choices",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A ticket asks to replace the hand-written API client in <code>mobile/</code> with one generated from the server's OpenAPI spec. Many screens call the old client. The team has not yet chosen between two generator libraries. Each library shapes the calls differently, so the choice changes every screen. How should the engineer <b>start</b>?",
+   "options": [
+    {
+     "t": "Use plan mode: have Claude survey call sites, compare both libraries and agree a design first.",
+     "why": "Best. An open design choice that touches many files is what plan mode is for: explore and decide first, then edit once."
+    },
+    {
+     "t": "Start editing one feature folder with the likelier library, run its tests, then roll the pattern out.",
+     "why": "Works, but too early. A small tested spike is good once the library is chosen. Here it bakes in a guess, and the other folders copy it.",
+     "trap": "too early"
+    },
+    {
+     "t": "Send an Explore subagent to map the call sites and how each library would change them, then edit.",
+     "why": "Works, but stops halfway. The subagent gathers the facts without filling the main context, but nobody agrees a design before the edits start.",
+     "trap": "only half the job"
+    },
+    {
+     "t": "Have Claude interview the engineer about the old client's edge cases, then make the change directly.",
+     "why": "Works, but different problem. Interviewing collects requirements. The open question here is which library, and that needs the code surveyed.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The team has not yet chosen between two generator libraries.",
+   "explanation": "Plan mode fits large changes with several valid approaches or an architectural decision. Direct execution fits well-scoped changes whose approach is settled.",
+   "eli5": {
+    "question": "A big change touches many screens, and the team hasn't picked which of two libraries to use. The clue: the choice is still open, and it changes every screen.",
+    "answer": "Before rewiring a whole house, an electrician walks every room and agrees the plan with you. Rewiring one room first and copying it everywhere is risky if you later pick a different fuse box. Walking the house and agreeing first is <b>plan mode</b>: Claude explores and proposes a design, and nothing is edited until it is agreed. <b>Rule: open choice + many files → plan mode first. Settled approach + small change → edit directly.</b>",
+    "options": [
+     "Correct. Look at every screen, compare both libraries, agree the design, then edit.",
+     "A tested trial room is a good habit, but only after the fuse box is chosen.",
+     "A helper who walks the rooms brings back a good map, but nobody agrees the plan before work starts.",
+     "Asking about the old wiring's quirks is useful, but it doesn't pick the library."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a small tested spike is always the safe start</b>. It is, once the approach is settled. Here the approach is the open question, and whatever the spike picks gets copied into every screen. Plan mode lets Claude explore and design <i>before</i> committing to edits, which avoids rework.",
+    "diagram": "plan mode:  survey call sites → compare libs → agree\n            → then edit all screens once\ndirect:     edit → test → copy pattern (guess baked in)",
+    "mapTitle": "How should Claude start this change?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best start",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Many files, approach not yet chosen",
+       "Plan mode",
+       "Explore and decide before edits"
+      ],
+      [
+       "Approach chosen, change across folders",
+       "Direct edits, one folder at a time with tests",
+       "Nothing left to design"
+      ],
+      [
+       "One small, well-scoped fix",
+       "Direct execution",
+       "Planning adds nothing"
+      ],
+      [
+       "Discovery would flood the context",
+       "Explore subagent",
+       "Returns a summary, keeps context clean"
+      ],
+      [
+       "Requirements unclear to Claude",
+       "Interview pattern",
+       "Claude asks questions first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many screens call the old client",
+      "means": "A multi-file change, one of plan mode's signs."
+     },
+     {
+      "quote": "The team has not yet chosen between two generator libraries",
+      "means": "The decider. A spike with the likelier library (<b>[[1]]</b>) bakes in a guess."
+     },
+     {
+      "quote": "Each library shapes the calls differently, so the choice changes every screen",
+      "means": "This is a design decision, not missing requirements (<b>[[3]]</b>). Mapping alone (<b>[[2]]</b>) doesn't make the decision."
+     },
+     {
+      "quote": "How should the engineer start?",
+      "means": "Start by exploring and agreeing a design: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Several valid approaches across many files → plan mode before any edits.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Plan mode: large-scale changes, multiple valid approaches, architectural decisions, multi-file mods"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-04",
+   "was": "m7-s2-04",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skills vs always-loaded memory",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team stores money as whole cents in server, mobile and shared code. That rule lives inside a <code>/money</code> skill, so Claude sees it only when someone invokes the skill. Generated code often uses decimal numbers for prices instead. The team wants every engineer to get the rule in every session. Where should the rule <b>live</b>?",
+   "options": [
+    {
+     "t": "In a <code>.claude/rules/</code> file with <code>paths:</code> globs for the server, mobile and shared price modules.",
+     "why": "Works, but too narrow. The rule would load for price modules, but prices turn up in new code anywhere, and the team wants it in every session.",
+     "trap": "too narrow"
+    },
+    {
+     "t": "In each engineer's <code>~/.claude/CLAUDE.md</code>, copied from a snippet kept in the team wiki.",
+     "why": "Works, but wrong home. Each person who copies it gets the rule, but user-level memory is not shared through git, so copies drift and new joiners miss it.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In the <code>/money</code> skill, with a description telling Claude to use it for any pricing work.",
+     "why": "Works, but only usually. Claude may pick the skill up from its description, but a skill is still on demand, and price code often doesn't look like pricing work.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "In the committed root <code>CLAUDE.md</code>, as a short rule next to the team's other conventions.",
+     "why": "Best. A standard for all code and all sessions belongs in always-loaded project memory, which every engineer gets from the repository."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The team wants every engineer to get the rule in every session.",
+   "explanation": "Skills are on-demand workflows. CLAUDE.md holds always-loaded standards. A rule every session needs belongs in the project CLAUDE.md.",
+   "eli5": {
+    "question": "A money rule (store prices as whole cents) only reaches Claude when someone opens a skill, so Claude often forgets it. The clue: the team wants it in <i>every session</i>, for <i>everyone</i>.",
+    "answer": "A recipe card you pull out for one dish is a skill. The house rules on the kitchen wall are <code>CLAUDE.md</code>: everyone sees them every time they cook. “Prices are whole cents” is a house rule, so it goes on the wall: the committed root <code>CLAUDE.md</code>. <b>Rule: always applies, for everyone → project CLAUDE.md. A task you run on request → skill.</b>",
+    "options": [
+     "A note that appears only at certain stations misses prices cooked anywhere else.",
+     "Personal copies of the house rules drift, and new staff never get one.",
+     "Hoping the cook pulls out the right recipe card works some of the time, not every time.",
+     "Correct. House rules on the wall, seen by everyone in every session."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a narrower home is always tidier</b>. Path rules and skills keep context small, which is good when a convention applies to some files or some tasks. This rule applies to any code that touches a price, and the team wants it in every session. That is the job of always-loaded <b>project memory</b>.",
+    "mapTitle": "When should Claude see this instruction?",
+    "map": {
+     "head": [
+      "When it applies",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Every session, every engineer",
+       "Committed root <code>CLAUDE.md</code>",
+       "Always loaded; shared through git"
+      ],
+      [
+       "Only when editing certain files",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads for matching files only"
+      ],
+      [
+       "A task someone runs on request",
+       "Skill in <code>.claude/skills/</code>",
+       "Loads when invoked"
+      ],
+      [
+       "Only me, every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal; not in git"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team stores money as whole cents in server, mobile and shared code",
+      "means": "A team-wide standard across the whole repository."
+     },
+     {
+      "quote": "so Claude sees it only when someone invokes the skill",
+      "means": "The cause: an on-demand home. A better skill description (<b>[[2]]</b>) is still on demand."
+     },
+     {
+      "quote": "Generated code often uses decimal numbers for prices instead",
+      "means": "Prices appear in new code anywhere, not only in known price modules (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The team wants every engineer to get the rule in every session",
+      "means": "The decider. Shared and always loaded: <b>[[3]]</b>. Personal memory (<b>[[1]]</b>) isn't shared."
+     }
+    ],
+    "rule": "A standard every session needs goes in the committed project CLAUDE.md, not in a skill.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Skills = on-demand task workflows; CLAUDE.md = always-loaded universal standards"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-05",
+   "was": "m7-s2-05",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 User-level memory is not shared",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A new engineer's Claude ignores the team's test-naming conventions, while a senior engineer's Claude follows them. The senior looks and finds the conventions in their own <code>~/.claude/CLAUDE.md</code>. They are not anywhere in the repository. The team wants every engineer, including future hires, to get them. What should the team <b>do</b>?",
+   "options": [
+    {
+     "t": "Make the conventions a <code>/test-names</code> command in <code>.claude/commands/</code> to run on tests.",
+     "why": "Works, but only when someone remembers. Everyone gets the command, but the conventions apply only when it is run, not while tests are written.",
+     "trap": "only when remembered"
+    },
+    {
+     "t": "Move the conventions into the committed root <code>CLAUDE.md</code> and delete the senior's copy.",
+     "why": "Best. Project memory reaches everyone on clone, including future hires. Deleting the personal copy leaves one version to maintain."
+    },
+    {
+     "t": "Put the conventions in a shared file and <code>@import</code> it from each engineer's <code>~/.claude/CLAUDE.md</code>.",
+     "why": "Works, but wrong home. There is one source file, but each engineer must add the import by hand, and new hires start without it.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Have the senior paste the conventions into the new engineer's <code>~/.claude/CLAUDE.md</code> as well.",
+     "why": "Works, but for one person. The new engineer is fixed today, but the next hire has the same gap, and two personal copies drift.",
+     "trap": "fixes one person"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "They are not anywhere in the repository.",
+   "explanation": "User-level CLAUDE.md is personal and not shared through version control. Team conventions belong in project-level memory.",
+   "eli5": {
+    "question": "One engineer's Claude follows the test-naming rules and another's doesn't. The rules turn out to live in the senior's personal file. The clue: <i>not anywhere in the repository</i>.",
+    "answer": "The senior kept the team's rules in their own notebook, so only they had them. The fix is to pin the rules on the team noticeboard, the committed project <code>CLAUDE.md</code>, and throw away the private copy so there is only one version. <b>Rule: if the whole team needs it, it goes in the repository, not in someone's home folder.</b>",
+    "options": [
+     "A tool people must remember to use helps, but the rules should apply while tests are written.",
+     "Correct. Put the rules on the team board everyone gets with the code.",
+     "Everyone pointing their own notebook at one page still needs every person, and every new hire, to set it up.",
+     "Copying the notebook for one newcomer fixes them, not the next one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a team convention reaches the team once someone writes it down</b>. Where it is written matters. <code>~/.claude/CLAUDE.md</code> lives in one person's home folder and is not in git. Only files committed to the repository reach every clone.",
+    "diagram": "~/.claude/CLAUDE.md (senior only)   ✗ not in git\nrepo/CLAUDE.md (committed)          ✓ every clone",
+    "mapTitle": "Who gets this instruction?",
+    "map": {
+     "head": [
+      "Where it is written",
+      "Who gets it",
+      "Use it for"
+     ],
+     "rows": [
+      [
+       "Committed root <code>CLAUDE.md</code>",
+       "Everyone who clones",
+       "Team conventions"
+      ],
+      [
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Only that person",
+       "Personal preferences"
+      ],
+      [
+       "@import from each user file",
+       "Only those who add the line",
+       "Personal setups sharing a source"
+      ],
+      [
+       "A command in <code>.claude/commands/</code>",
+       "Everyone, when they run it",
+       "Workflows run on request"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The senior looks and finds the conventions in their own ~/.claude/CLAUDE.md",
+      "means": "The cause is found: user-level memory, which only the senior loads."
+     },
+     {
+      "quote": "They are not anywhere in the repository",
+      "means": "The decider. Nothing reaches the team through git. Fixes that stay in home folders (<b>[[2]]</b>, <b>[[3]]</b>) keep that gap."
+     },
+     {
+      "quote": "The team wants every engineer, including future hires, to get them",
+      "means": "It must arrive on clone and apply without anyone remembering a command (<b>[[0]]</b>). That is project memory: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Team conventions go in committed project memory; user-level CLAUDE.md is never shared.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-06",
+   "was": "m7-s2-06",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-readable CLI output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 2,
+   "question": "A script runs <code>claude -p</code> to generate tests for each new endpoint. It then reads Claude's reply to learn which files were created and whether the tests passed. The wording of the reply changes from run to run, and the parser keeps breaking. The script needs named fields it can rely on. Which <b>TWO</b> changes fit best?",
+   "options": [
+    {
+     "t": "Add <code>--output-format json</code> to the command and read the result from the JSON it prints.",
+     "why": "Best. The CLI prints a machine-readable JSON envelope instead of free text, so the script no longer parses prose."
+    },
+    {
+     "t": "Put a sample JSON reply in the prompt and ask Claude to answer with only that JSON object.",
+     "why": "Works, but only usually. A format example gets the shape right most runs, but the structure is requested, not enforced, and one stray line breaks the parser.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Send each reply to a second <code>claude -p</code> call that rewrites it as the JSON the script expects.",
+     "why": "Works, but overbuilt. A second call can tidy the reply, but it doubles the calls and is still a prompt asking for a format.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Pass a <code>--json-schema</code> that defines a list of new files and a pass or fail field.",
+     "why": "Best. The schema fixes which named fields the result contains. With JSON output, the script reads exactly those fields."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The script needs named fields it can rely on.",
+   "explanation": "For scripts, use the CLI's structured output: --output-format json for a machine-readable envelope and --json-schema for the fields. Prompt-level format requests stay probabilistic.",
+   "eli5": {
+    "question": "A script reads Claude's reply, but the wording changes each run and the script breaks. The clue: a <i>script</i> needs <i>named fields it can rely on</i>.",
+    "answer": "Asking someone to “please write it neatly” is not the same as handing them a form with labelled boxes. The CLI can hand Claude the form: <code>--output-format json</code> makes the output JSON, and <code>--json-schema</code> says which boxes must be filled (files created, pass or fail). <b>Rule: a program reads it → structured output from the CLI. A person reads it → a format example is enough.</b>",
+    "options": [
+     "Correct. The output comes back as JSON a script can read.",
+     "Asking nicely for neat writing works most of the time, but a script needs it every time.",
+     "Paying a second person to copy out the first one's notes neatly works, but it is a long way round.",
+     "Correct. The schema is the form with labelled boxes: the fields are fixed."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a clear format example in the prompt is enough</b> to get parseable output. For a person reading it, it is. A parser breaks on the one run that drifts. The Claude Code CLI has flags that make the output structured instead of hoping the prose is.",
+    "diagram": "claude -p \"...\" --output-format json --json-schema s.json\n  → {\"files\": [...], \"testsPassed\": true}  → script",
+    "mapTitle": "Who reads the output, and what do they need?",
+    "map": {
+     "head": [
+      "Reader and need",
+      "Mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Script needs a machine-readable reply",
+       "<code>--output-format json</code>",
+       "JSON envelope, not prose"
+      ],
+      [
+       "Script needs specific named fields",
+       "<code>--json-schema</code>",
+       "Fixes which fields appear"
+      ],
+      [
+       "A person reads the reply",
+       "Format example in the prompt",
+       "Usually right is good enough"
+      ],
+      [
+       "Run hangs waiting for input in CI",
+       "<code>-p</code> / <code>--print</code>",
+       "Non-interactive mode"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It then reads Claude's reply to learn which files were created and whether the tests passed",
+      "means": "A program, not a person, reads the output, and it wants two specific facts."
+     },
+     {
+      "quote": "The wording of the reply changes from run to run, and the parser keeps breaking",
+      "means": "The output is free text. A prompt example (<b>[[1]]</b>) or a rewrite call (<b>[[2]]</b>) still asks rather than enforces."
+     },
+     {
+      "quote": "The script needs named fields it can rely on",
+      "means": "The decider. JSON output (<b>[[0]]</b>) plus a schema for the fields (<b>[[3]]</b>)."
+     }
+    ],
+    "rule": "A script parsing Claude Code output → --output-format json plus --json-schema, not prompt wording.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-07",
+   "was": "m7-s2-07",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for consistent output",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The <code>/new-endpoint</code> command describes the team's error-response format in prose. On simple endpoints Claude follows it. On endpoints with several failure cases, the error shapes differ from run to run. Asked about the format, Claude repeats the rules correctly. What is the <b>most effective</b> change?",
+   "options": [
+    {
+     "t": "Rewrite the prose as a numbered checklist, one rule per failure case, with the exact error JSON.",
+     "why": "Works, but more of the same. Sharper rules help when rules are vague, but Claude already knows these rules, and complex cases still drift.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Move the error rules into a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches route handlers.",
+     "why": "Works, but different problem. A path rule fixes rules that don't load for some files. These rules load: Claude can repeat them.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Have a fresh Claude session review each new endpoint against the error rules before it merges.",
+     "why": "Works, but too late. An independent review catches wrong shapes after the code is written; it doesn't make the output consistent.",
+     "trap": "too late"
+    },
+    {
+     "t": "Add two or three complete handlers from the repo showing the error format for varied failures.",
+     "why": "Best. When rules are loaded but output still varies, a few concrete examples are the most effective fix, especially for the hard cases."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Asked about the format, Claude repeats the rules correctly.",
+   "explanation": "Few-shot examples are the most effective technique for consistent output when instructions alone are inconsistent. Pick examples that cover the hard cases.",
+   "eli5": {
+    "question": "Claude knows the error-format rules and can repeat them, but on complex endpoints its error shapes still vary. The clue: the rules are <i>known</i>, yet the output is <i>inconsistent</i>.",
+    "answer": "A new cook can recite the plating rules but still plates complex dishes differently every time. Showing them two or three finished plates fixes it faster than rewriting the rules. Those finished plates are <b>few-shot examples</b>: real handlers that show the error format across different failures. <b>Rule: rules understood but output inconsistent → show examples.</b>",
+    "options": [
+     "Neater rules don't help a cook who already knows the rules.",
+     "Putting the rules where the cook stands helps only if they couldn't see them. They can.",
+     "A taster at the pass catches bad plates, but the kitchen keeps making them.",
+     "Correct. Show finished plates for the tricky dishes."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>inconsistent output means the instructions are unclear or not loading</b>. Here they are clear enough to repeat and they load. When instructions alone give inconsistent output, the exam guide's answer is <b>few-shot examples</b>, chosen to cover the hard cases.",
+    "mapTitle": "Why is the output wrong, and what fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Rules known, output varies on hard cases",
+       "Prose alone underspecifies the shape",
+       "2–3 examples covering varied cases"
+      ],
+      [
+       "Rules missing when editing some files",
+       "Not loading for those paths",
+       "<code>.claude/rules/</code> with <code>paths:</code>"
+      ],
+      [
+       "Too many false flags",
+       "Vague criteria",
+       "Explicit categorical criteria"
+      ],
+      [
+       "Mistakes slip into merged code",
+       "No independent check",
+       "Review by a fresh instance"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "On simple endpoints Claude follows it",
+      "means": "The rules are not wrong; they work on easy cases."
+     },
+     {
+      "quote": "On endpoints with several failure cases, the error shapes differ from run to run",
+      "means": "Inconsistency on the hard cases, which examples address. A reviewer (<b>[[2]]</b>) catches it later rather than fixing it."
+     },
+     {
+      "quote": "Asked about the format, Claude repeats the rules correctly",
+      "means": "The decider. The rules load and are understood, so moving them (<b>[[1]]</b>) or rewording them (<b>[[0]]</b>) adds little."
+     },
+     {
+      "quote": "What is the most effective change?",
+      "means": "Show, don't tell: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Instructions loaded and understood but output inconsistent → add 2–3 examples covering the hard cases.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-08",
+   "was": "m7-s2-08",
+   "sid": "s2",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria for precision",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "A <code>/check-migration</code> command asks Claude to “flag risky Prisma migrations”. It flags almost every migration, so engineers have started to skip its output. The team counts only three changes as risky: dropping a column, changing a column's type, or adding a required column with no default. Which change <b>best improves precision</b>?",
+   "options": [
+    {
+     "t": "Name those three changes as the flag criteria, each with a snippet, and say all else passes.",
+     "why": "Best. The team can state exactly what counts. Explicit categories with concrete snippets replace the vague word “risky” and cut false flags."
+    },
+    {
+     "t": "Add several past migrations labelled risky or safe, each with a line on why.",
+     "why": "Works, but indirect. Labelled examples teach the line by showing it. Here the team can state the line outright, which is clearer and shorter.",
+     "trap": "indirect"
+    },
+    {
+     "t": "Tell Claude to be conservative and to flag a migration only when it is highly confident of risk.",
+     "why": "Works, but only a little. Fewer flags come out, but “risky” is still undefined, and confidence wording doesn't sharpen precision like categories do.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have Claude give each finding a severity score, and show engineers only the high-scoring ones.",
+     "why": "Works, but hides the problem. Fewer flags reach engineers, but scores without criteria are as vague as the flags they rank.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The team counts only three changes as risky: dropping a column, changing a column's type, or adding a required column with no default.",
+   "explanation": "Vague instructions like “risky” produce false positives that erode trust. Replace them with explicit categorical criteria, ideally with a concrete example of each.",
+   "eli5": {
+    "question": "A migration checker flags almost everything, so people ignore it. The clue: the team can name the <i>exact three</i> changes that count as risky.",
+    "answer": "Telling a guard “stop anyone suspicious” gets everyone stopped. Handing them a list (“no bags, no drinks, no pets”) gets the right people stopped. The list is <b>explicit criteria</b>: the three risky changes, each with a small snippet, and everything else passes. <b>Rule: if you can name what counts, name it. Vague words make false alarms.</b>",
+    "options": [
+     "Correct. Give the guard the exact list, with a picture of each item.",
+     "Showing the guard past cases works, but you can just give them the list.",
+     "“Only stop people you're really sure about” still leaves “suspicious” undefined.",
+     "Ranking the alarms hides most of them, but the guard still doesn't know what counts."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>examples or a confidence threshold</b> are the way to cut false positives. Examples are the right tool when the line is hard to put in words. Here the team can state the line in one sentence. The exam guide says explicit categorical criteria beat vague instructions, and “be conservative” doesn't improve precision the way categories do.",
+    "mapTitle": "Too many false flags. What sharpens the line?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Team can list exactly what counts",
+       "Explicit criteria with a snippet each",
+       "Replaces the vague word"
+      ],
+      [
+       "Line is real but hard to put in words",
+       "Labelled examples with reasons",
+       "Shows ambiguous cases"
+      ],
+      [
+       "Prompt says “be careful” or “high confidence”",
+       "Swap for categories",
+       "Confidence wording barely helps"
+      ],
+      [
+       "Flags right but noisy in one category",
+       "Drop or tighten that category",
+       "Protects trust in the rest"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "asks Claude to “flag risky Prisma migrations”",
+      "means": "The cause: “risky” is undefined, so Claude flags anything that might be."
+     },
+     {
+      "quote": "so engineers have started to skip its output",
+      "means": "False positives are costing trust. Hiding low scores (<b>[[3]]</b>) treats the symptom."
+     },
+     {
+      "quote": "The team counts only three changes as risky",
+      "means": "The decider. The line can be stated outright, so labelled examples (<b>[[1]]</b>) are the long way round and confidence wording (<b>[[2]]</b>) stays vague. Name them: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "If the team can name what counts, write it as explicit criteria; don't say “be conservative”.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-09",
+   "was": "m7-s2-09",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 /compact for context pressure",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An engineer is midway through generating a set of screens in one long session. The context is nearly full. Most of it is long test output from earlier runs. Claude's recent answers are still accurate and refer to the right files. Several screens are still left to build. What should the engineer <b>do next</b>?",
+   "options": [
+    {
+     "t": "Have Claude write its decisions to a notes file, then start a new session that reads it first.",
+     "why": "Works, but overbuilt for now. A notes file and a fresh session are the fix when answers have turned vague or work spans sessions. This session is still healthy.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Route future test runs through a subagent that returns only the failing tests and their causes.",
+     "why": "Works, but for later. It keeps future test output small, but it doesn't free the space that is already full.",
+     "trap": "too late"
+    },
+    {
+     "t": "Run <code>/compact</code> to condense the conversation so far, then carry on with the screens.",
+     "why": "Best. The session is accurate; only space is short. Compacting frees context and keeps the work in the same session."
+    },
+    {
+     "t": "Run <code>/clear</code>, then give Claude a short list of the screens still to build and continue.",
+     "why": "Works, but throws away good work. Space is freed, but the decisions and file details Claude is using correctly are gone.",
+     "trap": "loses the work"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Claude's recent answers are still accurate and refer to the right files.",
+   "explanation": "/compact reduces context use within a healthy session. Scratchpad files and fresh sessions are for degraded sessions or work across sessions; subagents prevent future bloat.",
+   "eli5": {
+    "question": "The session is almost out of space, mostly from old test output. Claude is still giving good, specific answers. The clue: the session is <i>healthy</i>; it is only <i>full</i>.",
+    "answer": "Your desk is covered in old printouts, but you are working well. You don't move to a new desk; you clear the clutter into a short pile of notes and keep going. That is <code>/compact</code>: it condenses the conversation so far and keeps the session. <b>Rule: healthy but full → /compact. Confused and drifting → notes file and a fresh session.</b>",
+    "options": [
+     "Moving to a new desk with a notes file is the fix when you've lost the thread. You haven't.",
+     "A rule to print less from now on is good, but the desk is already covered.",
+     "Correct. Tidy the desk and keep working.",
+     "Sweeping the desk clean frees space, but throws away work you still need."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a full context means starting again</b>. A fresh session with a notes file is the fix for <i>degradation</i>: vague answers, “typical patterns” instead of specific files. Here Claude's answers are still specific, so only space is short. <code>/compact</code> reduces context use inside the same session.",
+    "mapTitle": "Context trouble: what kind, and what fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Nearly full, answers still specific",
+       "Space only",
+       "<code>/compact</code>"
+      ],
+      [
+       "Answers vague or inconsistent",
+       "Context degradation",
+       "Notes file, then a fresh session"
+      ],
+      [
+       "Verbose output will keep piling up",
+       "Discovery in the main context",
+       "Subagent returns summaries"
+      ],
+      [
+       "Work must survive a crash or a new day",
+       "No saved state",
+       "Scratchpad or manifest file"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most of it is long test output from earlier runs",
+      "means": "Old output already fills the space. Routing future runs (<b>[[1]]</b>) doesn't remove it."
+     },
+     {
+      "quote": "Claude's recent answers are still accurate and refer to the right files",
+      "means": "The decider. No degradation, so a fresh session (<b>[[0]]</b>) or a full clear (<b>[[3]]</b>) gives up working context for nothing."
+     },
+     {
+      "quote": "What should the engineer do next?",
+      "means": "Free space, keep the session: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Session still accurate but full → /compact. Session degraded → scratchpad notes and a fresh session.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "/compact to reduce context usage"
+    }
+   }
+  },
+  {
+   "id": "m7p-s2-10",
+   "was": "m7-s2-10",
+   "sid": "s2",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Lost in the middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "An engineer pastes a long product spec into Claude to build a booking endpoint. The spec opens with an overview and ends with acceptance criteria. The generated code meets both. It misses rules from the middle sections, such as the late-cancellation window. The whole spec fits easily in the context. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Split the spec by section, have Claude build each part in its own pass, then run an integration pass.",
+     "why": "Works, but overbuilt. Separate passes give each section full attention, but they suit input too big for one context. This spec fits, and the miss is about position.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Put a short list of the key rules at the top of the prompt, with the full spec below under clear headings.",
+     "why": "Best. Models read the start and end of long input reliably and can miss the middle. Key rules first, with headings, counters that directly."
+    },
+    {
+     "t": "Ask Claude to list every rule in the spec first, then check its code against that list.",
+     "why": "Works, but only usually. A rule list helps, but Claude builds it from the same long input, so middle rules can be missed in the list too.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have Claude summarise the spec first, then build the endpoint from that summary instead.",
+     "why": "Works, but loses detail. A summary is shorter, but summaries tend to drop exact details like time windows, the very rules being missed.",
+     "trap": "loses detail"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "It misses rules from the middle sections, such as the late-cancellation window.",
+   "explanation": "Long inputs suffer from “lost in the middle”: beginnings and ends are processed reliably, middles less so. Put key facts first and use explicit section headings.",
+   "eli5": {
+    "question": "Claude follows the start and end of a long spec but misses rules in the middle. The clue: the misses are about <i>where</i> the rules sit, not how long the spec is.",
+    "answer": "In a long briefing, people remember the opening and the closing, and the middle blurs. A good briefing starts with “the five things you must remember” and uses clear headings. For Claude, that means a short list of key rules at the top, with the full spec below under headings. <b>Rule: lost in the middle → key points first, clear section headings.</b>",
+    "options": [
+     "Splitting the briefing into separate meetings works, but it's for briefings too long for one sitting.",
+     "Correct. Lead with the must-remember rules, then the full spec with headings.",
+     "Asking the listener to write their own list helps, but they can miss the same middle parts.",
+     "A summary is shorter, but it's where small details like time limits get dropped."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>missed details mean the input is too long</b>, so it should be split or shortened. Here it fits easily. The problem is position: models reliably use the beginning and end of long input and can skip the middle. Move the key rules to where attention is strong and add <b>clear section headers</b>.",
+    "diagram": "KEY RULES (late-cancel window, ...)   ← read reliably\n## Overview\n## Booking rules ...  (middle, easy to miss)\n## Acceptance criteria                 ← read reliably",
+    "mapTitle": "Details go missing from long input. Why?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Start and end used, middle missed; input fits",
+       "Lost in the middle",
+       "Key points first, clear headers"
+      ],
+      [
+       "Input too large for one context",
+       "Size",
+       "Per-section passes plus an integration pass"
+      ],
+      [
+       "Numbers and dates blurred after summarising",
+       "Lossy summary",
+       "Keep exact facts in a facts block"
+      ],
+      [
+       "Context fills with long tool output",
+       "Verbose results",
+       "Trim to the needed fields"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The spec opens with an overview and ends with acceptance criteria. The generated code meets both",
+      "means": "The start and the end are used correctly."
+     },
+     {
+      "quote": "It misses rules from the middle sections, such as the late-cancellation window",
+      "means": "The decider: a position problem. A summary (<b>[[3]]</b>) tends to drop exactly this kind of detail, and a self-made list (<b>[[2]]</b>) reads the same middle."
+     },
+     {
+      "quote": "The whole spec fits easily in the context",
+      "means": "Size is not the problem, so splitting into passes (<b>[[0]]</b>) is more than needed."
+     },
+     {
+      "quote": "Which change best fixes this?",
+      "means": "Put the key rules where attention is strong: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Lost in the middle → key points at the start and explicit section headers.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "place key summaries at the beginning + explicit section headers"
+    }
+   }
+  }
+ ]
+}

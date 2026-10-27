@@ -1,0 +1,1079 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s1-01",
+   "was": "m7-s1-01",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Agentic loop and stop_reason",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The agent's loop ends the turn whenever Claude's response contains a text block. Claude often writes a short line, such as “Let me check that box,” in the same response where it asks to call <code>lookup_order</code>. In those chats the lookup never runs. The customer waits for an answer that never comes. Which change to the loop <b>fixes this</b>?",
+   "options": [
+    {
+     "t": "Tell Claude in the system prompt not to write any text in a response that calls a tool.",
+     "why": "Works, but only usually. Claude would write fewer of those lines, but the loop still ends on text, so any line that slips through stops the lookup again.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>any</code> on the first request after each customer message.",
+     "why": "Works, but wrong lever. A forced tool call carries no text, so this case stops, but Claude must now call a tool even when it should just answer.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Branch on <code>stop_reason</code>: run the tools and loop on <code>tool_use</code>, stop on <code>end_turn</code>.",
+     "why": "Best. A response can hold text and a tool request together. stop_reason says what comes next: tool_use means run the tools and continue, end_turn means the turn is over."
+    },
+    {
+     "t": "When a turn ends without an answer, send Claude a short “please continue” message.",
+     "why": "Works, but hides the problem. The nudge restarts the stalled chat, but the loop still ends early, and every stall costs an extra request.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The agent's loop ends the turn whenever Claude's response contains a text block.",
+   "explanation": "The loop should be driven by stop_reason: continue on tool_use, stop on end_turn. Checking for text in the response is an anti-pattern, because text and tool calls can arrive together.",
+   "eli5": {
+    "question": "Claude says “Let me check that box” and asks for a lookup in the same breath. The loop hears the words and hangs up before the lookup runs. The clue: the loop decides by looking for text.",
+    "answer": "Imagine a waiter who walks away as soon as you start talking, even when you were in the middle of ordering. The fix is to wait for a clear signal: “that's all”. Each Claude response carries that signal, called <b>stop_reason</b>. <b>Rule: <code>tool_use</code> → run the tool and keep going. <code>end_turn</code> → stop.</b>",
+    "options": [
+     "Asking Claude to stay quiet helps, but the waiter still walks off at the first word.",
+     "Forcing a tool call stops the chatter, but now Claude must call a tool even when it should just reply.",
+     "Correct. Listen for the real “that's all” signal.",
+     "Calling the waiter back each time works, but he keeps walking off."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude talks too much</b> and should be told to be quiet. But the text is harmless. The bug is in the loop: it treats any text as the end of the turn. The API already says whether the turn is over, in <code>stop_reason</code>.",
+    "diagram": "response = text + tool_use\n  stop_reason = tool_use → run tool, send result, loop\n  stop_reason = end_turn → turn over, reply to customer",
+    "mapTitle": "What should end an agent's turn?",
+    "map": {
+     "head": [
+      "Signal",
+      "Use it to stop?",
+      "Why"
+     ],
+     "rows": [
+      [
+       "<code>stop_reason == \"end_turn\"</code>",
+       "Yes",
+       "The API's own signal that Claude is done"
+      ],
+      [
+       "<code>stop_reason == \"tool_use\"</code>",
+       "No: run tools and continue",
+       "Claude is waiting for results"
+      ],
+      [
+       "Response contains text",
+       "No",
+       "Text and tool calls can come together"
+      ],
+      [
+       "Fixed number of rounds",
+       "Only as a safety cap",
+       "It cuts off work that is not finished"
+      ],
+      [
+       "Phrases like “done” in the reply",
+       "No",
+       "Parsing words is fragile"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The agent's loop ends the turn whenever Claude's response contains a text block",
+      "means": "The decider. The stop rule looks at content, not at the signal. A prompt rule (<b>[[0]]</b>) and a nudge (<b>[[3]]</b>) leave that rule in place."
+     },
+     {
+      "quote": "Claude often writes a short line, such as “Let me check that box,” in the same response where it asks to call lookup_order",
+      "means": "Text and a tool request arrive together. That is normal, so the loop must handle it."
+     },
+     {
+      "quote": "In those chats the lookup never runs",
+      "means": "Claude did ask for the tool. Forcing tool calls (<b>[[1]]</b>) answers a different problem: Claude not asking."
+     },
+     {
+      "quote": "Which change to the loop fixes this?",
+      "means": "Change the stop rule to stop_reason: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Loop on stop_reason: tool_use → run tools and continue; end_turn → stop. Never stop because text appeared.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops",
+     "quote": "Continue the loop when stop_reason == \"tool_use\"; terminate when \"end_turn\"."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-02",
+   "was": "m7-s1-02",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit context passing to subagents",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The coordinator sends refund eligibility questions to a policy subagent with the Task tool. The prompt it sends reads: “Check whether this customer's claim is eligible.” The subagent's verdicts are vague and often hedge. The facts it needs came up earlier in the chat: which items spoiled, when the box arrived, and what the customer wants. Which change <b>best improves the verdicts</b>?",
+   "options": [
+    {
+     "t": "Spell out the spoiled items, the arrival day and the remedy wanted in each Task call.",
+     "why": "Best. A subagent does not see the coordinator's chat. Whatever it needs must be written into the prompt it receives, and the coordinator already has these facts."
+    },
+    {
+     "t": "Give the policy subagent read-only <code>get_customer</code> and <code>lookup_order</code> tools.",
+     "why": "Works, but only in part. The tools would return the order and its arrival day, but which items spoiled and what the customer wants exist only in the chat.",
+     "trap": "only part of the facts"
+    },
+    {
+     "t": "Add the refund policy and two worked verdicts to the policy subagent's system prompt.",
+     "why": "Works, but different problem. Policy text and examples improve how the subagent reasons, but it still does not know this customer's case.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Forward the whole chat transcript to the policy subagent with each Task call.",
+     "why": "Works, but overbuilt. The facts would be in there, but buried among greetings and side talk. A short, chosen summary of the case is cheaper and clearer.",
+     "trap": "too much context"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "The facts it needs came up earlier in the chat",
+   "explanation": "Subagents do not inherit the coordinator's conversation. The coordinator must pass the facts the subagent needs, explicitly and in a focused form, in the Task prompt.",
+   "eli5": {
+    "question": "A manager asks a specialist “Is this claim OK?” without saying what the claim is. The clue: the facts are only in the manager's head (the chat).",
+    "answer": "A specialist you phone has not heard your earlier conversation with the customer. You have to tell them: “two salmon packs spoiled, box came Tuesday, customer wants a refund.” A <b>subagent</b> is that specialist, and the <b>Task prompt</b> is the phone call. <b>Rule: a subagent knows only what you put in its prompt.</b>",
+    "options": [
+     "Correct. Tell the specialist the facts of the case.",
+     "Letting the specialist look things up finds the order, but not what the customer said.",
+     "A better rulebook helps the specialist judge, but they still don't know the case.",
+     "Forwarding the whole call recording works, but they must dig through it to find the facts."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the subagent knows what the coordinator knows</b>. It does not. Each subagent starts with only its own system prompt and the prompt it is sent. Facts that came up in the chat reach it only if the coordinator writes them in.",
+    "diagram": "chat: spoiled salmon, Tuesday, wants refund\n  coordinator ─ Task prompt ─→ policy subagent\n  (facts must be IN the prompt; nothing is inherited)",
+    "mapTitle": "A subagent gives weak answers. What is missing?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Vague, hedged verdicts; facts were in the chat",
+       "Facts not passed",
+       "Write the facts into the Task prompt"
+      ],
+      [
+       "Facts live in backend records",
+       "Subagent can't reach them",
+       "Give it scoped read-only tools"
+      ],
+      [
+       "Facts are present but the reasoning is off",
+       "Weak instructions",
+       "Policy text and examples in its system prompt"
+      ],
+      [
+       "Prompt is huge and the answer misses key points",
+       "Too much raw context",
+       "Pass a focused summary of the case"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The prompt it sends reads: “Check whether this customer's claim is eligible.”",
+      "means": "The prompt names no facts. The subagent has nothing to judge."
+     },
+     {
+      "quote": "The subagent's verdicts are vague and often hedge",
+      "means": "That is what a reasoner does with no facts. Better policy text (<b>[[2]]</b>) doesn't add any."
+     },
+     {
+      "quote": "The facts it needs came up earlier in the chat",
+      "means": "The decider. Only the coordinator has them, so tools (<b>[[1]]</b>) can't fetch the customer's words."
+     },
+     {
+      "quote": "Which change best improves the verdicts?",
+      "means": "Pass the chosen facts, not the whole transcript (<b>[[3]]</b>): <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Subagents inherit nothing. Put the facts they need into the Task prompt, in a focused form.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-03",
+   "was": "m7-s1-03",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Prompt guidance vs programmatic enforcement",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Customers who want to cancel are handed to a person through <code>escalate_to_human</code>. Product would like the agent to suggest pausing the subscription first, before it hands the customer over. This is a retention idea, not a business rule, so the agent does not have to do it in every chat. What is the <b>most appropriate</b> way to add it?",
+   "options": [
+    {
+     "t": "Add a system-prompt instruction to suggest a pause, plus two short example chats.",
+     "why": "Best. A soft behaviour, where an occasional miss does no harm, is what prompt guidance is for. One instruction and two examples are easy to maintain."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks <code>escalate_to_human</code> until a pause has been offered.",
+     "why": "Works, but overbuilt. The hook would make the offer happen every time, but it needs code to spot cancellations and track what was said. Guarantees are for business rules.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add the pause offer to the <code>escalate_to_human</code> description, so Claude offers it before calling the tool.",
+     "why": "Works, but wrong home. Claude does read tool descriptions, but they explain when and how to call a tool. How to talk to the customer belongs in the system prompt, where it is easy to find and change.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Route every cancellation request to a new retention subagent before it reaches a human.",
+     "why": "Works, but overbuilt. A retention subagent could make the offer well, but it adds a handoff and another prompt to maintain, for one sentence of behaviour.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "This is a retention idea, not a business rule, so the agent does not have to do it in every chat.",
+   "explanation": "Programmatic enforcement is for steps that must happen every time. A best-effort suggestion is shaped with a clear instruction plus a few examples.",
+   "eli5": {
+    "question": "Product wants the agent to ask “would you like to pause instead?” before it hands a cancellation to a person. The clue: it's a retention idea, not a business rule.",
+    "answer": "A shop asks staff to mention the loyalty card at the till. A note and a quick demo do the job; nobody installs a till that locks until the card is mentioned. Here the note is a <b>system-prompt instruction</b> and the demo is <b>example chats</b>. <b>Rule: must happen every time → code. Nice to have → prompt and examples.</b>",
+    "options": [
+     "Correct. A plain instruction plus examples sets the nudge.",
+     "A lock in code (a <b>hook</b>) is for things that must never be skipped. Here skipping is allowed.",
+     "Tool instructions would work, but they're the wrong place for how to talk to customers.",
+     "A whole new helper agent for one friendly sentence is too much."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the most reliable option is always the best one</b>. The question asks for the most <i>appropriate</i> one. Code-level enforcement (a hook) is right when a step must happen every time, such as checking identity before a refund. For a nice-to-have it is extra machinery: something has to detect cancellations and remember what was said.",
+    "diagram": "Must it happen every time?\n  yes → hook or prerequisite gate (code)\n  no  → prompt instruction + examples",
+    "mapTitle": "How firmly must this behaviour hold?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A suggestion or tone; an occasional miss is harmless",
+       "System-prompt instruction + a few examples",
+       "Cheap and easy to change"
+      ],
+      [
+       "A business rule; a miss costs money or breaks policy",
+       "Hook or prerequisite gate in code",
+       "Prompts have a non-zero failure rate"
+      ],
+      [
+       "Sensitive data must never reach the model",
+       "<code>PostToolUse</code> hook that strips it",
+       "The model can't repeat what it never saw"
+      ],
+      [
+       "Guidance on when and how to call a tool",
+       "The tool's description",
+       "Claude reads it when choosing tools"
+      ],
+      [
+       "Instructions are clear but output still varies",
+       "Few-shot examples",
+       "Shows the pattern"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Product would like the agent to suggest pausing the subscription first, before it hands the customer over",
+      "means": "The goal is a suggestion in the conversation. That belongs in Claude's instructions, not in a tool's description (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "This is a retention idea, not a business rule, so the agent does not have to do it in every chat",
+      "means": "The decider. Missing it now and then is harmless, so a hook (<b>[[1]]</b>) or a new subagent (<b>[[3]]</b>) is more than the goal needs."
+     },
+     {
+      "quote": "What is the most appropriate way to add it?",
+      "means": "“Most appropriate” means the right size: an instruction with examples, <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Business rule → enforce it in code. Suggestion or style → prompt instruction plus examples.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Programmatic enforcement (hooks, prerequisite gates) vs prompt-based guidance."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-04",
+   "was": "m7-s1-04",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 PostToolUse hooks for transformation",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "<code>get_customer</code> returns the full card number on file, and the team that owns that server will not change it. Twice, the agent read a card number to a customer. Security says this must never happen. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a system-prompt rule to mention cards by their last four digits only, with two examples.",
+     "why": "Works, but only usually. A clear rule with examples cuts the leaks, but prompts have a non-zero failure rate, and this is a must-never.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that masks the card field in results before Claude reads them.",
+     "why": "Best. The hook changes the result before Claude reads it, so the agent can't repeat a number it never saw. The server stays as it is."
+    },
+    {
+     "t": "Route <code>get_customer</code> through a subagent told to pass on only the name, plan and box IDs.",
+     "why": "Works, but still a model choosing. The subagent sees the full number and decides what to pass on; its instructions are not a filter.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Scan each reply for card-number patterns and block the reply before it reaches the customer.",
+     "why": "Works, but only for the formats it knows. A number read out with spaces or in parts slips past, and Claude still has the number.",
+     "trap": "catches only some cases"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Security says this must never happen.",
+   "explanation": "When a tool returns data the model must never use, change the result with a PostToolUse hook before the model sees it. Prompt rules only make misuse less likely.",
+   "eli5": {
+    "question": "The agent sometimes reads a customer's card number out loud. The clue: security says this must <i>never</i> happen.",
+    "answer": "If a receptionist must never read out card numbers, don't hand them the number: black it out on the paper first. A <b>PostToolUse hook</b> is that black marker. It edits each tool result before Claude reads it, and Claude can't repeat what it never saw. <b>Rule: if the model must never use some data, remove it before the model sees it.</b>",
+    "options": [
+     "A written rule usually works, but “usually” isn't enough for a must-never.",
+     "Correct. Black out the number before Claude ever sees it.",
+     "A helper told to pass on only some fields still sees the number, and might pass it on.",
+     "Checking each reply catches the obvious cases, but Claude still knows the number."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a firm instruction stops the model saying something</b>. It lowers the chance, but prompt compliance is probabilistic. For data that must never reach a customer, the reliable place to act is the tool result itself: change it before the model reads it.",
+    "diagram": "get_customer → [PostToolUse: mask card] → Claude\nserver unchanged        model never sees the number",
+    "mapTitle": "Which hook, and where does it act?",
+    "map": {
+     "head": [
+      "Need",
+      "Mechanism",
+      "Where it acts"
+     ],
+     "rows": [
+      [
+       "Model must never see or repeat a field",
+       "<code>PostToolUse</code> hook masks it",
+       "On the result, before Claude reads it"
+      ],
+      [
+       "An action must never run in some case",
+       "<code>PreToolUse</code> hook denies the call",
+       "On the call, before the tool runs"
+      ],
+      [
+       "Messy result formats (dates, codes)",
+       "<code>PostToolUse</code> hook normalises them",
+       "On the result"
+      ],
+      [
+       "A wording or tone preference",
+       "Prompt instruction + examples",
+       "In Claude's instructions"
+      ],
+      [
+       "You own the tool and nobody needs the field",
+       "Stop returning it",
+       "In the tool itself"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "get_customer returns the full card number on file, and the team that owns that server will not change it",
+      "means": "The fix has to happen on the agent's side, between the tool and Claude."
+     },
+     {
+      "quote": "Twice, the agent read a card number to a customer",
+      "means": "The number reaches Claude in ordinary chats. Scanning replies (<b>[[3]]</b>) catches only the patterns it knows."
+     },
+     {
+      "quote": "Security says this must never happen",
+      "means": "The decider: a must-never. A prompt rule (<b>[[0]]</b>) and a subagent told what to pass on (<b>[[2]]</b>) both still rely on the model choosing."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Change the result before Claude sees it: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Model must never use some data? Strip it from the tool result with a PostToolUse hook.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "PostToolUse hooks intercept results for transformation before the model sees them."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-05",
+   "was": "m7-s1-05",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 tool_choice any vs forced",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After each chat, a wrap-up request asks Claude to log the outcome. It should call one of three tools: <code>record_resolved</code>, <code>record_escalated</code> or <code>record_abandoned</code>. When Claude calls one, it picks the right tool. But sometimes it replies with a text summary instead, and that chat is never logged. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Ask Claude for the outcome first, then force that record tool by name in <code>tool_choice</code>.",
+     "why": "Works, but overbuilt. Forcing by name does make the call happen, but it needs an extra request per chat and code to read the outcome first.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add a line to the wrap-up prompt saying a record tool must be called every time.",
+     "why": "Works, but only usually. A firm line reduces text replies, but with tool_choice on auto Claude can still answer in text.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Check <code>stop_reason</code> on the wrap-up reply and resend it with a reminder if it is <code>end_turn</code>.",
+     "why": "Works, but too late. Catching the miss and resending gets the chat logged, but it costs extra calls when the API can require a tool call up front.",
+     "trap": "too late"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>any</code> for that final wrap-up step, and leave <code>auto</code> elsewhere.",
+     "why": "Best. any requires a tool call but still lets Claude choose which one, and its choices are already right."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "When Claude calls one, it picks the right tool.",
+   "explanation": "tool_choice any guarantees a tool call while leaving the choice of tool to Claude. Use it when a call must happen and selection already works.",
+   "eli5": {
+    "question": "At the end of each chat Claude should fill in one of three forms. It picks the right form, but sometimes writes a note instead. The clue: the choice is fine; the problem is skipping the form.",
+    "answer": "Think of a clerk who must stamp one of three boxes before leaving. You don't tell them which box; you just say “you can't leave without stamping one.” In the API that rule is <b><code>tool_choice: any</code></b>. <b>Rule: must call some tool, Claude picks which → any. Must call one specific tool → force it by name.</b>",
+    "options": [
+     "Asking first, then forcing the box, works but takes two trips.",
+     "A sign saying “please stamp” usually works, not every time.",
+     "Checking after and sending them back works, but costs a second trip.",
+     "Correct. Make stamping a box required, and let the clerk pick which."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a firmer instruction</b> will stop the text replies. But with <code>tool_choice</code> on <code>auto</code>, a text reply is always allowed. The API has a setting that requires a tool call while still letting Claude choose the tool.",
+    "diagram": "auto → Claude may reply in text (logs missed)\nany  → must call a tool, Claude picks which one\ntool → must call this one named tool",
+    "mapTitle": "Which tool_choice setting fits?",
+    "map": {
+     "head": [
+      "Need",
+      "Setting",
+      "Effect"
+     ],
+     "rows": [
+      [
+       "Normal chat; tools are optional",
+       "<code>auto</code>",
+       "Claude may answer in text"
+      ],
+      [
+       "Some tool must be called; Claude chooses",
+       "<code>any</code>",
+       "A tool call, never text"
+      ],
+      [
+       "One specific tool must run",
+       "Forced by name",
+       "That tool is called"
+      ],
+      [
+       "No tools for this request",
+       "<code>none</code>",
+       "Text only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When Claude calls one, it picks the right tool",
+      "means": "The decider. Selection works, so Claude should keep choosing. Forcing one tool by name (<b>[[0]]</b>) needs an extra step to pick it."
+     },
+     {
+      "quote": "But sometimes it replies with a text summary instead, and that chat is never logged",
+      "means": "The call must happen every time. A prompt line (<b>[[1]]</b>) only makes it more likely."
+     },
+     {
+      "quote": "Which change fits best?",
+      "means": "Prevent the miss rather than catch it (<b>[[2]]</b>): <b>[[3]]</b>."
+     }
+    ],
+    "rule": "A tool call must happen and Claude picks the right tool? Set tool_choice to any.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "\"any\" guarantees a tool call rather than text"
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-06",
+   "was": "m7-s1-06",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions: input formats",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Customers usually describe a box by when it arrived, for example “last Tuesday's box”. The agent passes that date to <code>lookup_order</code> as the box ID, and the call fails. Each customer's box IDs are listed in their <code>get_customer</code> record. The description of <code>lookup_order</code> is one line: “Looks up a box.” What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add few-shot examples to the system prompt that turn a delivery date into a box ID first.",
+     "why": "Works, but leaves the cause in place. Examples would teach the date-to-ID step, but they add tokens to every request while the one-line description stays unclear. They are a later step.",
+     "trap": "works around the cause"
+    },
+    {
+     "t": "Add a routing layer that detects dates and calls <code>get_customer</code> before <code>lookup_order</code>.",
+     "why": "Works, but overbuilt for a first step. Code that spots dates and calls get_customer first would fix this case, but it is fragile and far more work than a better description.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Expand the <code>lookup_order</code> description with the ID format, an example, and where IDs come from.",
+     "why": "Best. Claude learns how to call a tool mainly from its description. This one gives no ID format and no route from a date to an ID, and fixing that is cheap."
+    },
+    {
+     "t": "Add a <code>lookup_order_by_date</code> tool that takes a delivery date and returns the box.",
+     "why": "Works, but more than a first step. A date-based tool would handle this request, but it is new code, and with equally thin descriptions the agent can misuse it too.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The description of lookup_order is one line: “Looks up a box.”",
+   "explanation": "Tool descriptions are the main signal for how to call a tool. A minimal description should first be expanded with input format, examples, edge cases and boundaries.",
+   "eli5": {
+    "question": "The agent keeps putting a date where a box ID should go. The clue: the tool's instructions are four words long.",
+    "answer": "If a form field just says “Box”, people write all sorts of things in it. Write “Box ID, like BX-20431, found on the customer record” and most mistakes stop. For Claude, the <b>tool description</b> is that label. <b>Rule: tool misused and its description is thin → fix the description first.</b>",
+    "options": [
+     "Examples help later, but the label itself is still unclear.",
+     "A program that hunts for dates in messages is a lot of work for a first step.",
+     "Correct. Fix the label: say what an ID looks like and where to find it.",
+     "A second tool with an equally vague label can go wrong the same way."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent needs more examples or smarter routing</b>. But Claude decides how to call a tool mainly from the tool's description. “Looks up a box” gives no ID format and no hint that IDs come from <code>get_customer</code>. Fix that first: it is cheap and it fixes the cause.",
+    "diagram": "\"Looks up a box\" → Claude guesses → date as ID → fail\n+ ID format, example, where IDs come from → right call",
+    "mapTitle": "A tool is called wrongly. What do you fix first?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Where the fault is",
+      "First fix"
+     ],
+     "rows": [
+      [
+       "Wrong input passed; the description is one line",
+       "Description lacks format and examples",
+       "Expand the description"
+      ],
+      [
+       "Two similar tools get mixed up",
+       "Overlapping descriptions",
+       "Sharpen each description's boundaries"
+      ],
+      [
+       "Descriptions are detailed; behaviour still varies",
+       "Ambiguous cases",
+       "Add few-shot examples"
+      ],
+      [
+       "Agent prefers Grep over a better MCP tool",
+       "The MCP description undersells it",
+       "Improve the MCP tool's description"
+      ],
+      [
+       "Bad calls happen and the agent can't recover",
+       "Error says only “failed”",
+       "Structured error naming the expected format"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Customers usually describe a box by when it arrived",
+      "means": "The agent gets a date, so the tool must explain how to get from a date to an ID."
+     },
+     {
+      "quote": "The agent passes that date to lookup_order as the box ID, and the call fails",
+      "means": "The agent doesn't know what a box ID looks like. That is a description problem, not a routing problem (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "Each customer's box IDs are listed in their get_customer record",
+      "means": "The data to fix it already exists. The agent just isn't told where to look, which a description can say."
+     },
+     {
+      "quote": "The description of lookup_order is one line: “Looks up a box.”",
+      "means": "The decider. The cause is a thin description, so examples (<b>[[0]]</b>) and a new tool (<b>[[3]]</b>) work around it."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "First step = the cheapest change that fixes the cause: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "A tool gets the wrong input and its description is thin? Expand the description first.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Tool descriptions are the primary mechanism LLMs use for selection"
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-07",
+   "was": "m7-s1-07",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Structured business errors",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "<code>pause_subscription</code> fails when the next box is already past its packing cut-off. The cut-off depends on the delivery region, and only the backend knows it. Today the tool returns <code>isError</code> with the text “Request failed.” The agent retries several times, then tells the customer the system is down. Which change is <b>best</b>?",
+   "options": [
+    {
+     "t": "Add a <code>check_pause_window</code> tool that the agent calls before every pause attempt.",
+     "why": "Works, but overbuilt. A new tool would show the cut-off in advance, but it is new code and an extra call, while the real fault is an error that says nothing.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Return a business error with <code>isRetryable</code> false, the cut-off and next pausable box.",
+     "why": "Best. The failure is a policy outcome, not an outage. A business category with isRetryable false stops the retries, and the details give the agent something true to tell the customer."
+    },
+    {
+     "t": "Return <code>isError</code> with the text “Too late to pause this box. Try the next one.”",
+     "why": "Works, but only usually. A clear message helps the agent explain, but without a category or retry flag it must guess whether retrying could help.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a hook that blocks a second <code>pause_subscription</code> call and tells the agent to escalate.",
+     "why": "Works, but wrong action. The retries stop, but a human gets a case the agent could have explained itself, and still with no reason.",
+     "trap": "wrong action"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Today the tool returns isError with the text “Request failed.”",
+   "explanation": "MCP tools should return structured errors: a category (transient, validation, business, permission), whether a retry can help, and a human-readable explanation. Business-rule failures are not retryable.",
+   "eli5": {
+    "question": "The pause tool fails because it's too late for this box, but it only says “Request failed.” So the agent keeps retrying and then blames an outage. The clue: the error message tells the agent nothing.",
+    "answer": "If a shop till just beeps “error”, the cashier tries again and again. If it says “Sale item: no returns”, the cashier stops and explains. A <b>structured error</b> is that clear message: what kind of failure, whether trying again can help, and what to tell the customer. <b>Rule: a business-rule failure → category business, not retryable, plus a plain reason.</b>",
+    "options": [
+     "A “check first” button helps, but it's a new button to build while the till still beeps “error”.",
+     "Correct. Say what kind of failure it is, that retrying won't help, and what to offer instead.",
+     "A clearer message helps, but the agent still has to guess whether to try again.",
+     "Stopping the retries works, but the case goes to a person who didn't need to see it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent should know the rule in advance</b>. But the cut-off depends on the region and only the backend knows it. The backend already knows why the call failed. The fix is to let the error say so, in a form the agent can act on.",
+    "diagram": "now:   \"Request failed\" → retry, retry → \"system down\"\nfixed: business, isRetryable=false, cut-off, next box\n       → \"Too late for this box; I can pause the next\"",
+    "mapTitle": "What should a tool error tell the agent?",
+    "map": {
+     "head": [
+      "Failure",
+      "Category / retry",
+      "What the agent does"
+     ],
+     "rows": [
+      [
+       "Timeout or outage",
+       "transient · retry",
+       "Try again, then report"
+      ],
+      [
+       "Bad input",
+       "validation · fix and retry",
+       "Correct the input"
+      ],
+      [
+       "Policy says no (cut-off passed)",
+       "business · no retry",
+       "Explain and offer the alternative"
+      ],
+      [
+       "Not allowed for this user",
+       "permission · no retry",
+       "Explain or escalate"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The cut-off depends on the delivery region, and only the backend knows it",
+      "means": "The backend has the answer. Its error should carry it, instead of a new lookup tool (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Today the tool returns isError with the text “Request failed.”",
+      "means": "The decider: the error carries no category, no retry hint and no reason. Better text alone (<b>[[2]]</b>) still leaves the retry question open."
+     },
+     {
+      "quote": "The agent retries several times, then tells the customer the system is down",
+      "means": "The agent treats a policy outcome as an outage. Blocking retries (<b>[[3]]</b>) stops the loop but sends the case to a person."
+     },
+     {
+      "quote": "Which change is best?",
+      "means": "A structured business error with a reason and an alternative: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Business-rule failure? Return a structured error: category business, not retryable, with a reason the agent can tell the customer.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "retriable: false + customer-friendly explanation for business violations"
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-08",
+   "was": "m7-s1-08",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Explicit request for a human",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A customer writes: “My salmon was missing again. I want to speak to a real person.” The refund is well inside the agent's limit, so the agent could settle the case alone. The customer sounds calm, and the request for a person is clear. How should the agent <b>respond</b>?",
+   "options": [
+    {
+     "t": "Say sorry, offer the refund it can issue now, and escalate if the customer asks for a person again.",
+     "why": "Works, but wrong action. Many customers would take the refund, but this one asked for a person and now has to ask twice.",
+     "trap": "wrong action"
+    },
+    {
+     "t": "Run <code>lookup_order</code> to confirm the missing salmon, then escalate with what it found.",
+     "why": "Works, but delays the request. The check adds a detail to the handoff, but the customer waits for a decision that is already made.",
+     "trap": "delays the request"
+    },
+    {
+     "t": "Call <code>escalate_to_human</code> at once, with a note that the customer asked for a person.",
+     "why": "Works, but thin handoff. The customer reaches a person quickly, but the person must ask again which box and item it was about.",
+     "trap": "thin handoff"
+    },
+    {
+     "t": "Call <code>escalate_to_human</code> at once, passing the customer ID, the box and the missing item.",
+     "why": "Best. An explicit request for a person is a reason to escalate on its own. Passing the facts lets the person pick up without asking again."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "I want to speak to a real person.",
+   "explanation": "When a customer explicitly asks for a human, escalate immediately, even if the agent could resolve the case. Hand over the key facts in a structured way so the human does not need to re-ask.",
+   "eli5": {
+    "question": "A customer says “I want a real person.” The agent could fix the problem itself. The clue: the customer asked directly.",
+    "answer": "If you ask a shop assistant for the manager, you don't want to hear “but I can help you!” first. A good assistant fetches the manager and says “this customer's salmon was missing from box 3.” That's <b>escalate at once, with a handoff that has the facts</b>. <b>Rule: explicit request for a human → escalate now, and pass the case details.</b>",
+    "options": [
+     "Offering a fix first is kind, but the customer already said what they want.",
+     "Checking the order first makes them wait for something they didn't ask for.",
+     "Fetching the manager is right, but the manager has to ask everything again.",
+     "Correct. Fetch the manager now and tell them what happened."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the agent should resolve what it can</b>, because the refund is within its limit. That is right when a customer is unhappy but hasn't asked for a person. An explicit request for a human is its own trigger: honour it straight away.",
+    "diagram": "\"I want a real person\" → escalate now\n  handoff: customer ID, box, missing item\n  person picks up without asking again",
+    "mapTitle": "When should the agent hand over to a person?",
+    "map": {
+     "head": [
+      "Situation",
+      "Agent's move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Customer explicitly asks for a person",
+       "Escalate at once, with the facts",
+       "The request is the trigger"
+      ],
+      [
+       "Frustrated, simple case, no request for a person",
+       "Offer the fix it can make",
+       "Resolve when it's straightforward"
+      ],
+      [
+       "Refund above the agent's limit",
+       "Escalate",
+       "Policy limit"
+      ],
+      [
+       "Policy doesn't cover the case",
+       "Escalate",
+       "A gap needs a human call"
+      ],
+      [
+       "Request is unclear",
+       "Ask a clarifying question",
+       "Don't guess"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "I want to speak to a real person",
+      "means": "The decider: an explicit request. Offering a refund first (<b>[[0]]</b>) makes the customer ask twice."
+     },
+     {
+      "quote": "The refund is well inside the agent's limit, so the agent could settle the case alone",
+      "means": "Being able to resolve it is not a reason to override the request, or to stop for a lookup (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "How should the agent respond?",
+      "means": "Escalate now, with the facts so the person doesn't re-ask (unlike <b>[[2]]</b>): <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Customer asks for a human? Escalate immediately and pass the case facts in the handoff.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Escalate immediately on explicit demand; offer resolution when straightforward."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-09",
+   "was": "m7-s1-09",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Access failure vs valid empty result",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The policy subagent checks a customer's past refunds through a payments API. When that API times out, the subagent tells the coordinator “No previous refunds found.” The coordinator then approves refunds that repeat earlier ones. The API's outages usually last about an hour. How should the subagent <b>report this case</b>?",
+   "options": [
+    {
+     "t": "As a failed lookup, naming the query it tried and any past refunds it did get back.",
+     "why": "Best. A failed lookup must look different from a real empty result. With the failure, the query and any partial results, the coordinator can hold the refund, escalate or try later."
+    },
+    {
+     "t": "Retry with backoff first, then report “history unavailable” if every retry fails.",
+     "why": "Works, but delays the problem. Retries help with short blips, but hour-long outages outlast them, and a bare status drops what was tried and found.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "As an error marked “transient”, so the coordinator reruns the subagent later.",
+     "why": "Works, but loses detail. It separates failure from empty, which is half the fix, but drops the query and any partial results the coordinator could use now.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "As before, but the coordinator escalates every refund where no past refunds come back.",
+     "why": "Works, but overbuilt. No repeat refunds slip through, but every genuine first-time claim goes to a person too, and the timeout still looks like “none”.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "When that API times out, the subagent tells the coordinator “No previous refunds found.”",
+   "explanation": "Subagents must distinguish access failures from valid empty results, and report failures with context: what was attempted, the error type and any partial results, so the coordinator can decide what to do.",
+   "eli5": {
+    "question": "The refund-history check sometimes can't reach the payments system, and then reports “no past refunds.” So the boss approves repeat refunds. The clue: “couldn't check” is reported as “nothing there.”",
+    "answer": "If you can't open a filing cabinet, you don't tell your boss “the folder is empty.” You say “the cabinet was locked; I looked for Jo's refunds; I found two in the other drawer.” That's reporting an <b>access failure</b> with its <b>context</b>. <b>Rule: “couldn't check” must never look like “checked, found nothing.”</b>",
+    "options": [
+     "Correct. Say the check failed, what you tried, and what you did find.",
+     "Trying the locked cabinet a few more times doesn't help when it stays locked for an hour.",
+     "Saying “try again later” is better than “empty”, but leaves out what you already found.",
+     "Sending every “empty” folder to a person catches repeats, but buries them in real first-timers."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the answer is to retry harder</b>. But the bug is in the report: a timeout comes back looking like a real empty result, so the coordinator trusts it. The subagent must say the lookup failed, and pass on what it tried and found.",
+    "diagram": "timeout → \"no refunds\"      → coordinator approves (wrong)\ntimeout → failed + query + partial → hold, escalate or retry",
+    "mapTitle": "How should a subagent report a lookup?",
+    "map": {
+     "head": [
+      "What happened",
+      "Report as",
+      "Coordinator can"
+     ],
+     "rows": [
+      [
+       "Lookup worked, nothing found",
+       "Valid empty result",
+       "Trust it and proceed"
+      ],
+      [
+       "Lookup timed out, nothing retrieved",
+       "Failure, with the query tried",
+       "Hold, retry later or escalate"
+      ],
+      [
+       "Lookup failed partway",
+       "Failure, plus the partial results",
+       "Use what's there and decide"
+      ],
+      [
+       "Short blip, retry worked",
+       "Normal result",
+       "Proceed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When that API times out, the subagent tells the coordinator “No previous refunds found.”",
+      "means": "The decider: a failure reported as an empty result. Escalating every empty result (<b>[[3]]</b>) works around this without fixing it."
+     },
+     {
+      "quote": "The coordinator then approves refunds that repeat earlier ones",
+      "means": "The coordinator trusted a result that wasn't real. It needs to know the check failed."
+     },
+     {
+      "quote": "The API's outages usually last about an hour",
+      "means": "Local retries (<b>[[1]]</b>) won't outlast the outage, so the report itself must change."
+     },
+     {
+      "quote": "How should the subagent report this case?",
+      "means": "A failure with the query and partial results, not a bare transient flag (<b>[[2]]</b>): <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Never report “couldn't check” as “found nothing.” Report the failure with what was tried and any partial results.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Distinguish access failures (retry) from valid empty results."
+    }
+   }
+  },
+  {
+   "id": "m7p-s1-10",
+   "was": "m7-s1-10",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Case facts across summarisation",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Some refund disputes go on for a long time. When a chat gets close to the context limit, the SDK replaces older turns with a summary. After that, the agent sometimes offers a smaller refund than it promised earlier. It also forgets which items the customer said were missing. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Before each refund offer, have the agent call <code>lookup_order</code> again to reload the order and its items.",
+     "why": "Works, but only for what the order system knows. It reloads the order, but the promised amount and the items the customer reported missing were said in the chat, not stored there.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Raise the threshold for summarising older turns, so more of each chat stays word for word.",
+     "why": "Works, but only delays it. More of each chat stays word for word, but long disputes still cross the threshold and the same facts get blurred.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Tell the summariser to quote every amount and item mentioned in the earlier turns.",
+     "why": "Works, but still lossy. A careful summary keeps most amounts, but the facts go through a summary on every pass, and each pass can drop or change them.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Keep a case-facts block of promised amounts, missing items and order IDs in every request.",
+     "why": "Best. Facts kept outside the summarised history survive every summary, and the agent sees them on every turn."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "After that, the agent sometimes offers a smaller refund than it promised earlier.",
+   "explanation": "Summarising blurs numbers, dates and promises. Pull them into a persistent case-facts block that is sent with every request instead of being summarised.",
+   "eli5": {
+    "question": "To save space, old parts of the chat get squeezed into a summary. After that, the agent forgets what it promised. The clue: the facts get lost <i>in the summary</i>.",
+    "answer": "When a long meeting is summarised, exact numbers get rounded off. A good assistant keeps a separate card with the key facts: “promised $40 credit; salmon and rice missing”. The summary can be rough; the card stays exact. That card is a <b>case-facts block</b> sent with every request. <b>Rule: numbers and promises that must survive go in a facts block, not the summary.</b>",
+    "options": [
+     "Re-reading the order helps, but the promises were made in the chat, not in the order.",
+     "Summarising later only moves the problem further down the chat.",
+     "A better summary is still a summary; numbers can still slip.",
+     "Correct. Keep the key facts on a separate card that never gets summarised."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better summary</b> will keep the facts. But every summary is a lossy step, and a long chat gets summarised again and again. Exact facts such as amounts, items and promises should not depend on a summary at all. Keep them in a separate block that goes with every request.",
+    "diagram": "older turns   → summary (blurry)     ┐\ncase facts: $40 credit, salmon      ├→ every request\nrecent turns  (word for word)       ┘",
+    "mapTitle": "Facts go missing in a long session. Where are they lost?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Promised amounts or items drift after summarising",
+       "Facts blurred by summaries",
+       "Persistent case-facts block"
+      ],
+      [
+       "Context fills fast with long tool output",
+       "Verbose tool results",
+       "Trim results to the needed fields"
+      ],
+      [
+       "Details in the middle of a long input are missed",
+       "Lost in the middle",
+       "Key facts first, clear section headers"
+      ],
+      [
+       "Claims lose their sources after summarising",
+       "No claim-to-source mapping",
+       "Keep the source with each claim"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When a chat gets close to the context limit, the SDK replaces older turns with a summary",
+      "means": "Facts from early turns now exist only inside summaries."
+     },
+     {
+      "quote": "After that, the agent sometimes offers a smaller refund than it promised earlier",
+      "means": "The decider. The loss starts after summarising, so the summary is the cause. Reloading the order (<b>[[0]]</b>) doesn't bring back what was promised in the chat."
+     },
+     {
+      "quote": "It also forgets which items the customer said were missing",
+      "means": "More than one kind of fact is lost, so a better summary prompt (<b>[[2]]</b>) or a later threshold (<b>[[1]]</b>) only reduces or delays it."
+     },
+     {
+      "quote": "Which change best fixes this?",
+      "means": "Take the facts out of the summarised history: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Exact facts that must survive a long chat go into a case-facts block, not into summaries.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Extract transactional facts into a persistent \"case facts\" block"
+    }
+   }
+  }
+ ]
+}

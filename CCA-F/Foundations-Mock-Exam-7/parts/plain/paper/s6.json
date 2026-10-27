@@ -1,0 +1,1101 @@
+{
+ "scenarios": [
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s6-01",
+   "was": "m7-s6-01",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Nullable fields against fabrication",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "Many certificates do not show a deductible at all. In the schema, deductible is a required number. For these certificates, the extraction returns 0 or copies the coverage limit into the field. Those values are posted as if they were printed, and reviewers cannot tell them apart from real ones. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add two example certificates with no deductible to the prompt, each with its expected output.",
+     "why": "Works, but only partly. Examples show what to do when no deductible is printed, but while the schema demands a number the model has no honest value to return.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Make deductible nullable in the schema, and state in its description when to return null.",
+     "why": "Best. A required number forces the model to invent one. A nullable field gives it an honest way to say “not printed”."
+    },
+    {
+     "t": "Keep deductible required and have the model enter -1 whenever no deductible is printed.",
+     "why": "Works, but fragile. -1 marks the gap, but it is still a number: every system downstream must know the convention, or -1 posts as a real value.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Add a <code>deductible_printed</code> flag beside the number, and have reviewers ignore the number when it is false.",
+     "why": "Works, but the invented number stays. The flag tells reviewers to ignore it, but the required field still puts a made-up value in the record, where other systems can use it.",
+     "trap": "hides the problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "In the schema, deductible is a required number.",
+   "explanation": "Required fields push the model to invent values when the source lacks them. Optional or nullable fields, with a description of when to leave them empty, prevent that.",
+   "eli5": {
+    "question": "When a certificate has no deductible, the extraction makes one up (0, or the limit). The clue: the schema says the field must always hold a number.",
+    "answer": "A form with a box that must contain a number, and no “not applicable” option, makes people write something, anything. Add “leave blank if not printed” and the made-up values stop. In a JSON schema that's a <b>nullable field</b>. <b>Rule: the model invents values when the schema leaves it no honest answer. Make missing values nullable.</b>",
+    "options": [
+     "Showing examples doesn't help while the form still has no blank option.",
+     "Correct. Let the field be empty when nothing is printed.",
+     "-1 is still a number someone can mistake for a real one.",
+     "A “please ignore” sticker helps, but the made-up number is still on the form."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>made-up values are a prompting problem</b>. Here the schema causes them: a required number has no valid way to say “not printed”, so the model fills it. Fix the schema first; examples help only once the schema allows an honest answer.",
+    "diagram": "required number + nothing printed → model invents 0\nnullable number + nothing printed → null (honest)",
+    "mapTitle": "Extraction output is wrong. Schema, prompt or retry?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Values invented when the source lacks them",
+       "The field is required",
+       "Make it optional or nullable"
+      ],
+      [
+       "Categories forced into the nearest option",
+       "Closed enum",
+       "Add <code>other</code> plus a detail field"
+      ],
+      [
+       "Field allows null but the model still guesses",
+       "Unclear when to leave it empty",
+       "Describe the rule and add examples"
+      ],
+      [
+       "Accuracy drops on unusual layouts",
+       "Too few patterns shown",
+       "Few-shot examples of each layout"
+      ],
+      [
+       "A value fails a validation check",
+       "The model misread the document",
+       "Retry with the specific error"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many certificates do not show a deductible at all",
+      "means": "Missing is a normal case, so the output needs a way to say so."
+     },
+     {
+      "quote": "In the schema, deductible is a required number",
+      "means": "The decider: the schema forces a number. Examples (<b>[[0]]</b>) can't fix a schema with no honest answer, and a flag (<b>[[3]]</b>) leaves the invented number in the record."
+     },
+     {
+      "quote": "Those values are posted as if they were printed, and reviewers cannot tell them apart from real ones",
+      "means": "Invented values look real. A marker like -1 (<b>[[2]]</b>) has the same problem."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Change the schema: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Model inventing values for missing data? Make the field nullable and say when to use null.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-02",
+   "was": "m7-s6-02",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Extensible enums with other + detail",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "Each coverage line has a <code>line_type</code> enum with five values, such as general liability, auto and umbrella. Certificates now often list other lines, such as cyber or professional liability. The extraction forces these into the nearest listed value, so cyber often posts as general liability. Brokers need to know what each of these lines really is. Which schema change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add cyber and professional liability to the enum, and add more values as carriers bring new lines.",
+     "why": "Works, but delays the problem. The two new values fix today's lines, but the next new line type is forced into the nearest value again until someone changes the schema.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Make <code>line_type</code> nullable, and leave it empty when a line matches none of the listed values.",
+     "why": "Works, but loses the answer. An empty value stops the wrong label, but brokers still cannot see what the line is, and the type was printed on the certificate.",
+     "trap": "loses information"
+    },
+    {
+     "t": "Change <code>line_type</code> to a free-text string that holds the carrier's own wording.",
+     "why": "Works, but drops the structure. Every line keeps its real name, but the common types now arrive spelled many ways, and reports that group by type break.",
+     "trap": "overcorrects"
+    },
+    {
+     "t": "Add <code>other</code> to the enum, with a <code>line_type_detail</code> field for the carrier's wording.",
+     "why": "Best. Known types stay clean enum values, and any new type lands in <code>other</code> with its real name kept beside it."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Brokers need to know what each of these lines really is.",
+   "explanation": "A closed enum forces unknown values into the nearest option. Add an other value plus a detail field so new categories are captured without losing the known ones.",
+   "eli5": {
+    "question": "A list of insurance types has five choices. New types like cyber get squeezed into the closest choice, so they post wrong. The clue: brokers need to know what each line really is.",
+    "answer": "Think of a form with tick boxes for five fruits. Someone brings a mango and ticks “apple”. The usual fix is a sixth box, “other”, with a line to write “mango”. In a schema that's an <b>enum with <code>other</code> plus a detail field</b>. <b>Rule: a list that keeps growing gets an “other” value and a field for the real name.</b>",
+    "options": [
+     "Adding boxes for today's new fruits works until next week's new fruit arrives.",
+     "Leaving the box blank stops the wrong tick, but nobody knows it was a mango.",
+     "Letting people write anything loses the neat tick boxes everyone counts by.",
+     "Correct. Keep the boxes, add “other”, and write the real name next to it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a wrong category means the list is missing a value</b>, so you add the value. That fixes today, but carriers keep inventing new lines. The schema needs a <b>place for values nobody listed yet</b>, while known values stay clean for reporting.",
+    "diagram": "enum: gl | auto | wc | umbrella | property | other\n  “Cyber Liability” → other + detail: “Cyber Liability”\n  “Auto”            → auto",
+    "mapTitle": "A category field gets the wrong value. What does the schema need?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "New, printed types forced into the nearest value",
+       "Closed enum with no escape",
+       "Add <code>other</code> plus a detail field"
+      ],
+      [
+       "The same one or two missing values, and the list is stable",
+       "A gap in a fixed list",
+       "Add those values to the enum"
+      ],
+      [
+       "The type is not printed at all",
+       "Nothing to extract",
+       "Make the field nullable"
+      ],
+      [
+       "The document itself is unclear about the type",
+       "Real ambiguity",
+       "Add <code>unclear</code> and route for review"
+      ],
+      [
+       "Values chosen inconsistently between similar documents",
+       "Unclear boundaries",
+       "Describe each value and add examples"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Certificates now often list other lines, such as cyber or professional liability",
+      "means": "New types keep appearing, so adding two values (<b>[[0]]</b>) only fixes today's list."
+     },
+     {
+      "quote": "The extraction forces these into the nearest listed value",
+      "means": "The cause is a closed list with no place for unknown values."
+     },
+     {
+      "quote": "Brokers need to know what each of these lines really is",
+      "means": "The decider. Null (<b>[[1]]</b>) would hide the real type."
+     },
+     {
+      "quote": "Which schema change is the best fix?",
+      "means": "Keep the known values clean, which free text (<b>[[2]]</b>) gives up, and add an escape with detail: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "A category list that keeps growing gets an other value plus a detail field.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "enum \"unclear\"/\"other\" + detail for extensible categories"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-03",
+   "was": "m7-s6-03",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific validation errors",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A validator rejects any policy whose expiry date is earlier than its effective date. On failure, the pipeline resends the certificate with the message “Validation failed, please retry.” Most retries fail the same way. In sampled failures, both dates are printed clearly, but the model has put each date in the other's field. Which change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Resend with the specific error: the two fields, the values returned and the rule they broke.",
+     "why": "Best. Both dates are on the page, so the model can fix the mix-up once it is told exactly what went wrong."
+    },
+    {
+     "t": "Swap the two dates in code whenever the expiry date comes out earlier than the effective date.",
+     "why": "Works, but hides the cause. It fixes this exact swap, but a date that was misread, not swapped, would also be flipped and posted as if correct.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Send each certificate that fails the date check to a person in the review queue.",
+     "why": "Works, but gives up too early. A person will fix it, but the information is on the page and a clear retry fixes most of these without anyone's time.",
+     "trap": "gives up too early"
+    },
+    {
+     "t": "Add example certificates to the prompt that show where several carriers print the two dates.",
+     "why": "Works, but only usually. Examples may cut the first-pass swaps, but the retry still sends a vague message, so the failures that remain still repeat.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "On failure, the pipeline resends the certificate with the message “Validation failed, please retry.”",
+   "explanation": "When the information is in the document, a retry works if it carries the specific validation error. A generic retry message gives the model nothing to correct.",
+   "eli5": {
+    "question": "When the dates come back swapped, the system just says “try again”, and the model makes the same mistake. The clue: the retry message says nothing about what was wrong.",
+    "answer": "A teacher hands back homework marked only “wrong, redo it”. The pupil guesses and gets it wrong again. Write “you swapped the start and end dates” and it's fixed in one go. That is <b>retry with the specific validation error</b>. <b>Rule: when the answer is on the page, retry with the exact error. When it isn't on the page, retrying won't help.</b>",
+    "options": [
+     "Correct. Tell the model exactly which fields broke which rule.",
+     "Quietly swapping in code fixes this case, but also “fixes” dates that were simply misread.",
+     "A person can fix it, but the model could have fixed it with a clear note.",
+     "Better examples help the first try, but the retry note is still useless."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>retries don't work</b>, because most of them fail. They fail here because the message is vague. The guide's line is about <i>where</i> the information is: if it is in the document, a retry with the <b>specific error</b> fixes it; if it is absent, no retry can.",
+    "diagram": "extract → validator: expiry < effective\n  vague:    “Validation failed” → same swap again\n  specific: “expiry 2026-01-01 < effective 2027-01-01,\n             fields may be swapped” → fixed",
+    "mapTitle": "An extraction fails validation. Retry, fix in code, or send to a person?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Value is on the page but in the wrong field or format",
+       "Mapping or format slip",
+       "Retry with the specific error"
+      ],
+      [
+       "Value is missing or unreadable in the source",
+       "Information absent",
+       "Don't retry; null or human review"
+      ],
+      [
+       "Same mistake across many first passes",
+       "Unclear layouts",
+       "Few-shot examples of those layouts"
+      ],
+      [
+       "A fixed, harmless format difference",
+       "Known variation",
+       "Normalise in code"
+      ],
+      [
+       "Totals don't add up",
+       "Semantic error",
+       "Extract a calculated total beside the stated one"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the pipeline resends the certificate with the message “Validation failed, please retry.”",
+      "means": "The decider. The retry gives no detail, so the model has nothing to correct."
+     },
+     {
+      "quote": "Most retries fail the same way",
+      "means": "Retrying itself is not the problem; the content of the retry is."
+     },
+     {
+      "quote": "both dates are printed clearly, but the model has put each date in the other's field",
+      "means": "The information is on the page, so a retry can work. A person (<b>[[2]]</b>) isn't needed, and a code swap (<b>[[1]]</b>) would also flip misread dates."
+     },
+     {
+      "quote": "Which change is the best fix?",
+      "means": "Fix the failing step, the retry: <b>[[0]]</b>. Examples (<b>[[3]]</b>) help the first pass only."
+     }
+    ],
+    "rule": "Information on the page but extracted wrong? Retry with the specific validation error.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retry-with-error-feedback: append specific validation errors on retry"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-04",
+   "was": "m7-s6-04",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for varied document layouts",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Each schema field has a detailed description of what to extract. Accuracy is high on certificates that use the standard industry form. It drops on carriers' own policy schedules, which put limits in paragraphs, footnotes or tables with several columns. The prompt has instructions only, with no complete document worked through. What is the <b>most effective</b> way to raise accuracy on these schedules?",
+   "options": [
+    {
+     "t": "Add notes to each field description on where values sit in non-standard layouts.",
+     "why": "Works, but more of the same. The descriptions are already detailed, and prose about layouts teaches less than seeing a few documents worked through.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Classify each document first, and send schedules to a separate prompt written only for them.",
+     "why": "Works, but overbuilt. A second prompt adds a classifier and another prompt to maintain, and it still has no worked examples.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add three or four worked schedules in different layouts, showing where each limit is.",
+     "why": "Best. Worked examples are the strongest way to show how to handle varied layouts, and the prompt has none yet."
+    },
+    {
+     "t": "Make the limit fields nullable and send schedules with empty limits to a reviewer.",
+     "why": "Works, but different problem. It stops guessed limits from posting, but accuracy on schedules stays where it is and reviewers do the work.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The prompt has instructions only, with no complete document worked through.",
+   "explanation": "When detailed instructions still give uneven results across document layouts, a few worked examples covering those layouts are the most effective next step.",
+   "eli5": {
+    "question": "Claude does well on the standard form but badly on carriers' own layouts. The clue: the instructions are already detailed, and there are no worked examples at all.",
+    "answer": "A new clerk reads a thick manual and still gets lost in an unusual invoice. Sit with them through three odd invoices, pointing at where each number is, and they get it. That's <b>few-shot examples</b>: a few documents worked through in the prompt. <b>Rule: instructions already detailed but layouts vary? Add 2–4 worked examples of those layouts.</b>",
+    "options": [
+     "Adding more pages to the manual helps a little; the clerk already has plenty of words.",
+     "A separate manual for odd invoices is more work, and it still has no worked examples.",
+     "Correct. Show a few odd layouts worked through, step by step.",
+     "Leaving hard numbers blank for a person stops guesses, but doesn't make the clerk better."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>better instructions</b> fix accuracy. Here the descriptions are already detailed. What is missing is <b>examples</b>: showing a few varied documents and where each value was found teaches layouts that prose cannot describe well.",
+    "mapTitle": "Accuracy is uneven. What is missing from the prompt?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Detailed instructions, accuracy drops on unusual layouts",
+       "No worked examples",
+       "2–4 examples across the layouts"
+      ],
+      [
+       "Field descriptions are thin or vague",
+       "Unclear instructions",
+       "Expand the descriptions first"
+      ],
+      [
+       "Values invented when absent",
+       "Required field",
+       "Make it nullable"
+      ],
+      [
+       "Very different document families need different fields",
+       "One schema for unlike jobs",
+       "Classify, then route to separate prompts"
+      ],
+      [
+       "Values fail a validation check",
+       "Misread or swapped values",
+       "Retry with the specific error"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each schema field has a detailed description of what to extract",
+      "means": "Instructions are already detailed, so more notes (<b>[[0]]</b>) add little."
+     },
+     {
+      "quote": "It drops on carriers' own policy schedules, which put limits in paragraphs, footnotes or tables with several columns",
+      "means": "Same fields, varied layouts. The schema is fine, so a separate prompt (<b>[[1]]</b>) is more than needed."
+     },
+     {
+      "quote": "The prompt has instructions only, with no complete document worked through",
+      "means": "The decider: the strongest tool for varied layouts is unused."
+     },
+     {
+      "quote": "What is the most effective way to raise accuracy on these schedules?",
+      "means": "Raise accuracy, not route around it as <b>[[3]]</b> does: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Detailed instructions but uneven results across layouts? Add a few worked examples of those layouts.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-05",
+   "was": "m7-s6-05",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch for latency-tolerant volume",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A schema change means the archive of past certificates must be extracted again, about 40,000 documents. The results are due at the end of next week. Each certificate needs one extraction call and no other tools. Brokers keep using the live pipeline for new certificates in the meantime. Which approach <b>best fits</b> this re-extraction?",
+   "options": [
+    {
+     "t": "Run the archive through the live pipeline at night, in chunks that leave room for daytime traffic.",
+     "why": "Works, but full price. It finishes in time, but every call costs the normal rate and someone has to schedule and watch the chunks.",
+     "trap": "full price"
+    },
+    {
+     "t": "Submit the archive with the Message Batches API, one certificate per request, keyed by <code>custom_id</code>.",
+     "why": "Best. Results are needed in days, not seconds, and each request is one call with no tools. Batches cost half as much, and <code>custom_id</code> matches each result to its certificate."
+    },
+    {
+     "t": "Have a coordinator spawn parallel extraction subagents across the archive, several per response.",
+     "why": "Works, but overbuilt. It is fast, but it adds an orchestration layer and pays full price for speed nobody needs this week.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Send the archive to the live API with ten certificates in each request to cut the number of calls.",
+     "why": "Works, but crowds each request. Fewer calls, but full price, attention spread across ten documents, and one bad file spoils the rest of its request.",
+     "trap": "crowds each request"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The results are due at the end of next week.",
+   "explanation": "Large, latency-tolerant jobs of single-call requests belong on the Message Batches API: half the cost, up to a 24-hour window, results matched by custom_id.",
+   "eli5": {
+    "question": "A big pile of old certificates must be redone, and the deadline is next week. The clue: nobody needs the answers right now, and each one is a single call.",
+    "answer": "Posting 40,000 letters by express courier is fast and expensive. Bulk mail costs half and arrives within a day, which is fine when the deadline is next week. That bulk service is the <b>Message Batches API</b>, and the label on each envelope is the <b><code>custom_id</code></b>. <b>Rule: not urgent and one call each → batch. Someone waiting → live.</b>",
+    "options": [
+     "Express courier at night works, but you still pay express prices.",
+     "Correct. Bulk mail: half the price, done within a day, each letter labelled.",
+     "A team of couriers running in parallel is quick, but costly and not needed this week.",
+     "Stuffing ten letters in one envelope saves stamps, but they get mixed up."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a big job needs the fastest setup</b>. The deadline is a week away, so speed is worth nothing here and cost is what matters. The Batches API gives <b>half the cost</b> and returns within a day. Its limit, no multi-turn tool calls, does not bite: each certificate is one call.",
+    "diagram": "40,000 requests, each custom_id = certificate ID\n  → Message Batches API (≤ 24 h, 50% cost)\n  → results matched back by custom_id",
+    "mapTitle": "Live API or Batches API?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Large job, results needed in days, one call each",
+       "Message Batches API",
+       "Half price, latency doesn't matter"
+      ],
+      [
+       "Someone is waiting, such as a broker uploading now",
+       "Live API",
+       "Batches have no latency promise"
+      ],
+      [
+       "Each document needs several tool-call turns",
+       "Live API agent loop",
+       "Batches don't support multi-turn tool calls"
+      ],
+      [
+       "Large job due within the hour",
+       "Live API in parallel",
+       "Speed is worth the price"
+      ],
+      [
+       "Some batch requests fail",
+       "Resubmit only those, by <code>custom_id</code>",
+       "No need to redo the rest"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "about 40,000 documents",
+      "means": "Large volume, so cost per call matters."
+     },
+     {
+      "quote": "The results are due at the end of next week",
+      "means": "The decider. Days of slack, so paying full price for speed (<b>[[2]]</b>, <b>[[0]]</b>) buys nothing."
+     },
+     {
+      "quote": "Each certificate needs one extraction call and no other tools",
+      "means": "The Batches limit on multi-turn tool calls does not apply."
+     },
+     {
+      "quote": "Which approach best fits this re-extraction?",
+      "means": "One document per request, matched by ID: <b>[[1]]</b>. Packing ten into one request (<b>[[3]]</b>) mixes documents."
+     }
+    ],
+    "rule": "Big, not urgent, one call per document → Message Batches API with custom_id.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits)"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-06",
+   "was": "m7-s6-06",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 stop_reason-driven loop",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "The extraction agent runs in a loop with two lookup tools. The loop ends when Claude's reply contains the phrase “EXTRACTION COMPLETE”. Sometimes Claude writes that phrase while also asking for a tool call, and the loop exits before the tool runs. Other runs never write the phrase and stop at the iteration cap. How should the loop <b>decide when to stop</b>?",
+   "options": [
+    {
+     "t": "Continue while <code>stop_reason</code> is <code>tool_use</code>, and end the loop when it is <code>end_turn</code>.",
+     "why": "Best. The API reports on every response whether Claude wants a tool or has finished. That is the signal the loop is built on."
+    },
+    {
+     "t": "Keep the phrase, but run any requested tools first and stop on the next turn without a tool call.",
+     "why": "Works, but still reads text. It fixes the early exit, but runs that never write the phrase still stop at the cap.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have Claude return a <code>status</code> field, and stop when it says complete with no tool call pending.",
+     "why": "Works, but reinvents the signal. A structured flag is sturdier than a phrase, but Claude can still forget it, and the API already reports this.",
+     "trap": "reinvents the signal"
+    },
+    {
+     "t": "End the loop from a hook once every required schema field has a value.",
+     "why": "Works, but wrong signal. It ends many runs on time, but fields can fill before the lookups are done, and runs with a missing field still hit the cap.",
+     "trap": "wrong signal"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "Sometimes Claude writes that phrase while also asking for a tool call, and the loop exits before the tool runs.",
+   "explanation": "An agent loop continues while stop_reason is tool_use and ends on end_turn. Parsing the reply text or using an iteration cap as the main stop are anti-patterns.",
+   "eli5": {
+    "question": "The loop stops when Claude writes a magic phrase. Sometimes it writes it too early, sometimes not at all. The clue: the loop is reading Claude's words to decide when the job is done.",
+    "answer": "A waiter who waits for you to say “that's all” sometimes leaves while you're still ordering. Most restaurants just watch whether you've closed the menu. The API gives that closed menu on every reply: <b><code>stop_reason</code></b>. <code>tool_use</code> means “still ordering”; <code>end_turn</code> means “done”. <b>Rule: stop the loop on stop_reason, not on words.</b>",
+    "options": [
+     "Correct. Watch the menu, not the words.",
+     "Better, but people who never say “that's all” still keep the waiter there all night.",
+     "A “done” card on the table is better than words, but the menu already tells you.",
+     "Leaving when the plates are full can be too early, or never happen."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the loop needs a clearer “done” message</b> from Claude. But the API already says, on every response, whether Claude wants a tool (<code>tool_use</code>) or has finished (<code>end_turn</code>). Any signal Claude writes itself, a phrase or a flag, can be missing or early.",
+    "diagram": "response → stop_reason?\n  tool_use → run tool, append result, loop\n  end_turn → stop",
+    "mapTitle": "How should an agent loop know it is done?",
+    "map": {
+     "head": [
+      "Approach",
+      "Problem",
+      "Verdict"
+     ],
+     "rows": [
+      [
+       "<code>stop_reason</code>: continue on <code>tool_use</code>, stop on <code>end_turn</code>",
+       "None",
+       "Use this"
+      ],
+      [
+       "A phrase in the reply text",
+       "Early, missing or misread",
+       "Anti-pattern"
+      ],
+      [
+       "A status field Claude writes",
+       "Claude can forget or misjudge it",
+       "Weaker copy of stop_reason"
+      ],
+      [
+       "Iteration cap as the main stop",
+       "Cuts off real work or runs long",
+       "Safety net only"
+      ],
+      [
+       "All fields filled",
+       "Not the same as all work done",
+       "Validation, not termination"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The loop ends when Claude's reply contains the phrase",
+      "means": "The loop reads text to decide termination, an anti-pattern."
+     },
+     {
+      "quote": "Sometimes Claude writes that phrase while also asking for a tool call, and the loop exits before the tool runs",
+      "means": "The decider. The response was really <code>tool_use</code>; the loop ignored it."
+     },
+     {
+      "quote": "Other runs never write the phrase and stop at the iteration cap",
+      "means": "Any self-written signal (<b>[[1]]</b>, <b>[[2]]</b>) can go missing, and filled fields (<b>[[3]]</b>) can come before the work is done."
+     },
+     {
+      "quote": "How should the loop decide when to stop?",
+      "means": "Use the API's own signal: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Continue on tool_use, stop on end_turn. Never parse text or rely on a cap to stop.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Continue the loop when stop_reason == \"tool_use\"; terminate when \"end_turn\""
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-07",
+   "was": "m7-s6-07",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit context in subagent prompts",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Some submissions hold a broker's cover email plus several certificates. The coordinator reads the email, which names the client and the location each certificate covers. It then spawns one subagent per certificate with the task “Extract this certificate.” Subagents often assign certificates to the wrong location. Each subagent receives only its certificate. Which change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Give subagents a scoped <code>get_cover_email</code> tool, and tell them to call it before extracting.",
+     "why": "Works, but overbuilt. Each subagent can read the email itself, but that adds a tool and a call per certificate for facts the coordinator already has.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Have subagents return a location guess, and let the coordinator correct it against the email.",
+     "why": "Works, but too late. The coordinator can catch wrong guesses, but it redoes the matching after the fact instead of giving subagents the answer up front.",
+     "trap": "too late"
+    },
+    {
+     "t": "Run one agent over the whole submission, email and certificates together, with no subagents.",
+     "why": "Works, but gives up the split. One agent sees everything, but long submissions crowd one context and lose the parallel, focused extraction.",
+     "trap": "gives up the split"
+    },
+    {
+     "t": "Add the client name and the location list from the email to each subagent's task prompt.",
+     "why": "Best. Subagents see only what their prompt gives them. The coordinator already has these facts, so it passes them on."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Each subagent receives only its certificate.",
+   "explanation": "Subagents do not inherit the coordinator's context. Facts they need, which the coordinator already holds, must be written into each subagent's prompt.",
+   "eli5": {
+    "question": "The coordinator read the cover email, but the helpers it sends out only get one certificate each, so they guess the location wrong. The clue: each helper receives only its certificate.",
+    "answer": "A manager reads the client's letter, then hands each temp a single page saying “file this”. The temps don't know which site each page belongs to. Write the client and site list on each handout and they file it right. That handout is the <b>subagent's task prompt</b>. <b>Rule: subagents know only what you put in their prompt.</b>",
+    "options": [
+     "Letting each temp fetch the letter works, but it's extra trips for facts the manager already has.",
+     "Fixing the filing afterwards works, but it's checking work that could have been right first time.",
+     "One person doing everything works, but a big pile slows them down and mistakes creep in.",
+     "Correct. Write the facts on each handout."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>subagents know what the coordinator knows</b>. They don't: a subagent starts with an empty context and sees only the prompt it is given. The coordinator <b>already holds the facts</b>, so the simplest fix is to pass them in.",
+    "diagram": "coordinator: email → client, locations\n  ├→ subagent 1: cert 1 + client + locations\n  └→ subagent 2: cert 2 + client + locations",
+    "mapTitle": "A subagent lacks facts it needs. How should it get them?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Coordinator already has the facts",
+       "Put them in the subagent's prompt",
+       "No inheritance; explicit is cheapest"
+      ],
+      [
+       "Subagent needs varied lookups nobody can predict",
+       "A scoped tool for that lookup",
+       "It can fetch what it finds it needs"
+      ],
+      [
+       "Later subagent needs an earlier one's findings",
+       "Pass the complete findings in its prompt",
+       "Context doesn't flow by itself"
+      ],
+      [
+       "Findings must keep their sources",
+       "Structured format separating content and metadata",
+       "Attribution survives the handoff"
+      ],
+      [
+       "Checking subagent output against known facts",
+       "Coordinator review",
+       "A safety net, not the main fix"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator reads the email, which names the client and the location each certificate covers",
+      "means": "The facts are already in the coordinator's hands, so a lookup tool (<b>[[0]]</b>) is extra machinery."
+     },
+     {
+      "quote": "It then spawns one subagent per certificate with the task “Extract this certificate.”",
+      "means": "The task prompt carries no context."
+     },
+     {
+      "quote": "Each subagent receives only its certificate",
+      "means": "The decider: the subagent has no way to know the locations."
+     },
+     {
+      "quote": "Which change is the best fix?",
+      "means": "Pass the facts in: <b>[[3]]</b>. Correcting afterwards (<b>[[1]]</b>) is too late; dropping subagents (<b>[[2]]</b>) changes the design."
+     }
+    ],
+    "rule": "Subagents inherit nothing. Put the facts they need into their prompt.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-08",
+   "was": "m7-s6-08",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Programmatic prerequisite gate",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The agent calls <code>verify_carrier</code> to check a carrier against the licensing registry, then <code>post_certificate</code> to send the result on. One session handles several certificates in turn. Sometimes the agent posts a certificate without verifying its carrier first. Compliance requires that no certificate from an unverified carrier is ever posted. Which change <b>meets this requirement</b>?",
+   "options": [
+    {
+     "t": "Make a verification ID from <code>verify_carrier</code> a required input of <code>post_certificate</code>.",
+     "why": "Works, but checks shape, not fact. A required field makes skipping harder, but nothing confirms the ID belongs to this carrier or came from a real check.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to force <code>verify_carrier</code> on each session's first request.",
+     "why": "Works, but only once. It verifies the first carrier, but a session handles several certificates, and later ones can still skip the check.",
+     "trap": "covers only the first"
+    },
+    {
+     "t": "Add a hook that blocks <code>post_certificate</code> until <code>verify_carrier</code> has passed for that carrier.",
+     "why": "Best. Code checks every post, for every certificate in the session, and refuses any carrier that has not passed."
+    },
+    {
+     "t": "Add a system-prompt rule to verify each carrier first, with two examples of verify-then-post.",
+     "why": "Works, but only usually. The rule and examples cut the skips, but prompt instructions still fail now and then, and compliance allows no misses.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "Compliance requires that no certificate from an unverified carrier is ever posted.",
+   "explanation": "When a step must happen every time, enforce it in code: a hook or prerequisite gate that blocks the downstream tool until the check has passed for that item.",
+   "eli5": {
+    "question": "The agent should check each carrier before posting, but sometimes it skips the check. The clue: compliance says an unchecked carrier must not get through, not even once.",
+    "answer": "A sign saying “show your ticket” stops most people. A turnstile that opens only for a valid ticket stops everyone. Here the turnstile is a <b>hook</b> on <code>post_certificate</code> that looks up whether this carrier passed. <b>Rule: must happen every time → code gate. Usually is good enough → prompt.</b>",
+    "options": [
+     "Asking for a ticket number helps, but nobody checks the number is real.",
+     "Checking only the first person in a group lets the rest walk through.",
+     "Correct. A turnstile on every post, for every carrier.",
+     "A sign works most of the time, and the rule says most is not enough."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>forcing the tool</b> or a <b>required field</b> is as strong as a hook. <code>tool_choice</code> forces one call on one request, and a session here posts several certificates. A required field checks that something was passed, not that the check happened for this carrier. Only code that runs on <b>every post</b> meets an absolute rule.",
+    "diagram": "post_certificate(cert, carrier)\n  → hook: verified[carrier]?\n       yes → allow\n       no  → block, tell agent to verify first",
+    "mapTitle": "A step must come before another. How strong must the control be?",
+    "map": {
+     "head": [
+      "Requirement",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Must hold every time, many items per session",
+       "Hook or prerequisite gate in code",
+       "Checks every call"
+      ],
+      [
+       "One call must come first in a single-item run",
+       "Forced <code>tool_choice</code> on the first request",
+       "Forces exactly one call"
+      ],
+      [
+       "Nice to have, misses do no harm",
+       "System prompt plus examples",
+       "Cheap; probabilistic"
+      ],
+      [
+       "Tool needs data from an earlier step",
+       "Required input field",
+       "Shapes the call, doesn't prove the check"
+      ],
+      [
+       "Must call some tool rather than reply in text",
+       "<code>tool_choice: any</code>",
+       "Forces a tool, not which one"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "One session handles several certificates in turn",
+      "means": "Forcing the first request (<b>[[1]]</b>) covers only the first certificate."
+     },
+     {
+      "quote": "Sometimes the agent posts a certificate without verifying its carrier first",
+      "means": "The prompt-led order already fails sometimes; a stronger prompt (<b>[[3]]</b>) lowers the rate, not to zero."
+     },
+     {
+      "quote": "Compliance requires that no certificate from an unverified carrier is ever posted",
+      "means": "The decider: zero misses, so enforcement must be in code."
+     },
+     {
+      "quote": "Which change meets this requirement?",
+      "means": "A gate that checks this carrier on every post: <b>[[2]]</b>. A required ID (<b>[[0]]</b>) can be reused or made up."
+     }
+    ],
+    "rule": "Must happen every time → a hook or prerequisite gate in code, checked on every call.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Block downstream tool calls until prerequisites complete"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-09",
+   "was": "m7-s6-09",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Stratified sampling and field-level routing",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The team wants to send only doubtful fields to reviewers and post the rest directly. Accuracy was measured on a uniform random sample and is high overall. Scans from small carriers are rare in that sample. Compliance wants error rates measured for each document type before any field skips review. Which <b>two steps</b> together achieve this?",
+   "options": [
+    {
+     "t": "Label a new sample with a quota for each document type, including enough small-carrier scans.",
+     "why": "Best. A quota per type gives enough examples of each, including the rare scans, to measure each type's error rate."
+    },
+    {
+     "t": "Label a larger uniform random sample, and report accuracy for each field across all documents.",
+     "why": "Works, but rare types stay rare. A bigger sample and per-field numbers help, but small-carrier scans are still too few to measure, and results are not split by type.",
+     "trap": "only partly"
+    },
+    {
+     "t": "Have the model report a confidence for each field, and send any field below a fixed cutoff to a reviewer.",
+     "why": "Works, but unchecked. Field-level routing is the right shape, but self-reported confidence is not matched against real errors, so the cutoff is a guess.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Calibrate each field's confidence on the labelled set, and send fields below its threshold to review.",
+     "why": "Best. Thresholds set from labelled results route each field by its measured error rate, which is the routing the team wants."
+    }
+   ],
+   "answer": [
+    0,
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "Compliance wants error rates measured for each document type before any field skips review.",
+   "explanation": "High overall accuracy can hide weak document types. Measure with a stratified sample, then route fields by confidence calibrated on that labelled set.",
+   "eli5": {
+    "question": "The team wants to skip review for fields the model is sure about. The clue: compliance wants each type of document measured, and rare scans barely appear in the sample.",
+    "answer": "A school says “95% passed”, but only two pupils from the small village took the test. To know how the village does, you test a set number from each place. That's a <b>stratified sample</b>. Then you only trust a pupil's “I'm sure” once you've checked how often “sure” was right. That's <b>calibrated confidence</b>. <b>Rule: measure each type on purpose, then route by confidence checked against real answers.</b>",
+    "options": [
+     "Correct. Test a set number from each type, rare ones included.",
+     "A bigger random test still has hardly any village pupils.",
+     "Trusting “I'm sure” without checking how often it's right is a guess.",
+     "Correct. Set each cut-off from how often “sure” was really right."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>high overall accuracy</b> means it is safe to skip review. An average can hide a weak document type, and rare types barely show up in a uniform sample. Two things are needed: <b>measure each type</b> on purpose, and <b>route each field</b> by confidence that has been checked against labelled answers.",
+    "diagram": "stratified sample (quota per type) → labels\n  → error rate per type and field\n  → calibrated thresholds → route doubtful fields",
+    "mapTitle": "Is it safe to let some extractions skip human review?",
+    "map": {
+     "head": [
+      "Need",
+      "Right step",
+      "Why not the alternative"
+     ],
+     "rows": [
+      [
+       "Error rate for each document type, rare ones too",
+       "Stratified sample with a quota per type",
+       "Uniform samples barely include rare types"
+      ],
+      [
+       "Route individual fields, not whole documents",
+       "Field-level confidence calibrated on labels",
+       "Raw self-reported confidence is uncalibrated"
+      ],
+      [
+       "Check high-confidence results stay accurate",
+       "Ongoing stratified random sampling",
+       "Errors drift without a check"
+      ],
+      [
+       "A single headline accuracy number",
+       "Not enough on its own",
+       "Masks weak types and fields"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team wants to send only doubtful fields to reviewers and post the rest directly",
+      "means": "Routing is per field, so the confidence must be per field and trustworthy: <b>[[3]]</b>, not a raw score (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Accuracy was measured on a uniform random sample and is high overall",
+      "means": "An overall number can hide weak types."
+     },
+     {
+      "quote": "Scans from small carriers are rare in that sample",
+      "means": "A larger uniform sample (<b>[[1]]</b>) still holds few of them."
+     },
+     {
+      "quote": "Compliance wants error rates measured for each document type before any field skips review",
+      "means": "The decider: sample by type with a quota, <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Measure by type with a stratified sample, then route fields by confidence calibrated on labels.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Stratified random sampling measures high-confidence error rates; field-level confidence calibrated on labeled sets routes review"
+    }
+   }
+  },
+  {
+   "id": "m7p-s6-10",
+   "was": "m7-s6-10",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Provenance for human review",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Reviewers check flagged certificates against the source PDF. Policy schedules can run to dozens of pages. Most of each review is spent hunting for where a value was printed. The extraction output holds the values and nothing else. Which change <b>most speeds up</b> these reviews?",
+   "options": [
+    {
+     "t": "Return a calibrated confidence for each field, and open each review on the lowest-scoring ones.",
+     "why": "Works, but different problem. It tells reviewers which fields to check first, but not where on the dozens of pages each value is.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Highlight every place in the PDF where each extracted value's text appears.",
+     "why": "Works, but noisy. Exact matches help, but a date or limit can appear many times, and a misread value appears nowhere.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Return each value with the page number and the exact text span it was read from.",
+     "why": "Best. Reviewers jump straight to the source of each value, which removes the hunting."
+    },
+    {
+     "t": "Return the values grouped under the schedule's own section headings, in document order.",
+     "why": "Works, but only narrows it. Section headings point to the right area, but reviewers still search within each section.",
+     "trap": "only narrows it"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Most of each review is spent hunting for where a value was printed.",
+   "explanation": "Keep the source with each extracted value: page and exact span. Reviewers then verify instead of search.",
+   "eli5": {
+    "question": "Reviewers spend most of their time looking for where each number came from in a long document. The clue: the output gives values but no sources.",
+    "answer": "A student's essay quotes facts with no page numbers, so the teacher hunts through the book to check each one. Ask for “page 12, line 4” beside each fact and checking takes seconds. That's <b>source provenance</b>: each value carries the page and exact text it came from. <b>Rule: if people check values against a document, return the location with each value.</b>",
+    "options": [
+     "Saying which facts are shaky helps choose what to check, not find it.",
+     "Highlighting every match helps, but common numbers light up everywhere, and misread ones nowhere.",
+     "Correct. Give the page and the exact words for each value.",
+     "Chapter titles narrow the search, but you still read the chapter."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>reviews are slow because there are too many fields</b>, so you prioritise them. The stem says the time goes into <i>finding</i> each value. The fix is to keep the <b>source with each value</b>, the same way a research report keeps a source with each claim.",
+    "diagram": "limit: 1,000,000\n  source: page 14, “Each Occurrence $1,000,000”\n  → reviewer opens page 14, checks, done",
+    "mapTitle": "Human review is slow. Where does the time go?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Time spent finding where each value is",
+       "No source kept with values",
+       "Page and exact span per value"
+      ],
+      [
+       "Time spent checking fields that were fine",
+       "No way to pick which fields to check",
+       "Calibrated field confidence"
+      ],
+      [
+       "Reviewers unsure what a value means",
+       "Values lack context",
+       "Field descriptions in the review screen"
+      ],
+      [
+       "Errors cluster in some document types",
+       "Uneven accuracy",
+       "Stratified sampling by type"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Policy schedules can run to dozens of pages",
+      "means": "Searching by eye is slow, and a section grouping (<b>[[3]]</b>) still leaves pages to read."
+     },
+     {
+      "quote": "Most of each review is spent hunting for where a value was printed",
+      "means": "The decider: the cost is finding, not choosing what to check (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The extraction output holds the values and nothing else",
+      "means": "The source is thrown away at extraction. Searching for the text afterwards (<b>[[1]]</b>) misses misread values."
+     },
+     {
+      "quote": "Which change most speeds up these reviews?",
+      "means": "Keep the source with each value: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "If people check values against a document, return the page and exact span with each value.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Preserve structured claim-source mappings through synthesis"
+    }
+   }
+  }
+ ]
+}

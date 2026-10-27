@@ -1,0 +1,1084 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s5-01",
+   "was": "m7-s5-01",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 CLAUDE.md hierarchy and scope",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A senior engineer wrote the team's review criteria into her own <code>~/.claude/CLAUDE.md</code>. Her local reviews follow them well. The CI review job and her teammates' sessions do not pick them up. The criteria apply to every file in the repository, in both languages. Where should the criteria <b>live</b>?",
+   "options": [
+    {
+     "t": "A <code>.claude/rules/</code> file whose <code>paths:</code> globs match the Kotlin and TypeScript files.",
+     "why": "Works, but wrong home. It is committed and shared, and the globs would match most files. Path rules are for conventions tied to certain files; criteria for every file belong in the file that loads every time.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "A new section in the committed project <code>CLAUDE.md</code> at the repo root.",
+     "why": "Best. The project CLAUDE.md is committed, so every clone and the CI job get it, and it loads in every session, local or headless."
+    },
+    {
+     "t": "A committed <code>docs/review-criteria.md</code> that the CI job's <code>-p</code> prompt names.",
+     "why": "Works, but only for CI. The CI job would read it, but developers' own sessions never see a file that only the CI prompt mentions.",
+     "trap": "covers only CI"
+    },
+    {
+     "t": "A project skill in <code>.claude/skills/review/</code> that CI and developers invoke.",
+     "why": "Works, but only when invoked. Skills load on demand, so any session that doesn't call it reviews without the criteria.",
+     "trap": "only when invoked"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The criteria apply to every file in the repository, in both languages.",
+   "explanation": "User-level CLAUDE.md is personal and never reaches teammates or CI. Standards for the whole repository go in the committed project CLAUDE.md, which every session loads.",
+   "eli5": {
+    "question": "Good review rules are stuck in one person's private notes, so CI and her teammates never see them. The clue: the rules apply to <i>every</i> file.",
+    "answer": "Her <code>~/.claude/CLAUDE.md</code> is like a note in her own pocket. The team needs a poster on the office wall that everyone sees every day: the <b>project CLAUDE.md</b>, committed to the repository. Other homes work too, but each has a catch: a note that only appears for some files, a note only the robot reads, or a manual someone has to open. <b>Rule: rules for everyone and every file → project CLAUDE.md.</b>",
+    "options": [
+     "A note that pops up for matching files. Fine for file-type rules; for rules that cover everything, the wall poster is simpler.",
+     "Correct. Committed, shared, and loaded in every session, including CI.",
+     "Only the CI job is told about this file. Developers' sessions never read it.",
+     "A manual on the shelf: it helps only when someone opens it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>any committed file will reach everyone</b>. Committing only shares the file. What matters next is <b>when it loads</b>: the project CLAUDE.md loads in every session, a path rule loads for matching files, a skill loads when invoked, and a plain doc loads only when a prompt points at it.",
+    "diagram": "~/.claude/CLAUDE.md   → only her sessions\nCLAUDE.md (project)   → every session, local and CI\n.claude/rules/ paths: → only for matching files\n.claude/skills/       → only when invoked",
+    "mapTitle": "Who needs it, and when should it load?",
+    "map": {
+     "head": [
+      "Need",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Whole team, every file, every session",
+       "Project <code>CLAUDE.md</code>",
+       "Committed and loaded every time"
+      ],
+      [
+       "Whole team, only certain file types",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads only for matching files"
+      ],
+      [
+       "Only me, every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not in git"
+      ],
+      [
+       "A task run on request",
+       "Skill or slash command",
+       "Loads only when invoked"
+      ],
+      [
+       "Only one CI job",
+       "That job's <code>-p</code> prompt",
+       "Other sessions never see it"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A senior engineer wrote the team's review criteria into her own ~/.claude/CLAUDE.md",
+      "means": "User-level memory is personal and is not in git. That is why nobody else gets it."
+     },
+     {
+      "quote": "The CI review job and her teammates' sessions do not pick them up",
+      "means": "Both CI and developers need them. A file named only in the CI prompt (<b>[[2]]</b>) reaches CI alone."
+     },
+     {
+      "quote": "The criteria apply to every file in the repository, in both languages",
+      "means": "The decider. This is a universal standard, not a file-type convention (<b>[[0]]</b>), and it should not wait for someone to invoke a skill (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "Where should the criteria live?",
+      "means": "In the committed project CLAUDE.md: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Team-wide standards for every file go in the committed project CLAUDE.md. User-level CLAUDE.md is personal.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-02",
+   "was": "m7-s5-02",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 Verifying loaded memory",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The project <code>CLAUDE.md</code> holds one line, <code>@docs/testing-standards.md</code>, which should pull in the team's testing rules. The CI test generator keeps writing tests that break those rules. A developer can reproduce this in a local session. Nobody has checked yet whether the imported file loads at all. What should the developer do <b>first</b>?",
+   "options": [
+    {
+     "t": "Run <code>/memory</code> in that session and see whether the standards file is listed.",
+     "why": "Best. /memory is the built-in way to see which memory files loaded. It tells “not loaded” apart from “loaded but not followed”, and each needs a different fix."
+    },
+    {
+     "t": "Add two finished tests that follow the rules to the generator's prompt as examples.",
+     "why": "Works, but too early. Examples help once the rules are known to be loaded. If the import is broken, they cover it up instead of fixing it.",
+     "trap": "too early"
+    },
+    {
+     "t": "Ask Claude in that session to quote the testing rules it was given, then compare.",
+     "why": "Works, but unreliable. It may give a hint, but the model's account of its own context can paraphrase or invent rules. /memory shows the real list.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Paste the rules inline in place of the <code>@import</code> line and rerun the generator.",
+     "why": "Works, but guesses the cause. If the import was broken this fixes it, but the rules lose their own file and nobody learns what went wrong.",
+     "trap": "skips the check"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Nobody has checked yet whether the imported file loads at all.",
+   "explanation": "When Claude Code seems to ignore guidance, first confirm what it actually loaded. /memory lists the loaded memory files; only then choose between fixing the import and improving the prompt.",
+   "eli5": {
+    "question": "Tests keep breaking the team's rules. The rules sit in a file that CLAUDE.md pulls in with one line. The clue: nobody knows yet whether that file is even being read.",
+    "answer": "If a cook ignores a recipe, first check the recipe is actually on the kitchen wall. Only then teach the cook. <code>/memory</code> is that look at the wall: it lists every memory file Claude Code loaded. <b>Rule: guidance looks ignored → check it loaded (/memory) before changing the prompt.</b>",
+    "options": [
+     "Correct. It shows whether the rules file was loaded at all.",
+     "A good next step, but only once you know the rules are loaded.",
+     "Asking the cook what's on the wall: they might misremember. Look yourself.",
+     "Rewriting the recipe before checking it was on the wall. It may help, but you learn nothing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>rules that are ignored need a stronger prompt</b>. There are two different faults: the rules never loaded, or they loaded and were not followed. They need different fixes, so the first step is to <b>find out which</b>.",
+    "diagram": "rules ignored\n  /memory → file missing → fix the @import\n  /memory → file listed → examples, clearer rules",
+    "mapTitle": "Claude Code seems to ignore guidance. Which fault is it?",
+    "map": {
+     "head": [
+      "What you see",
+      "Likely fault",
+      "Next step"
+     ],
+     "rows": [
+      [
+       "Not sure the file loads",
+       "Unknown",
+       "Run <code>/memory</code>"
+      ],
+      [
+       "<code>/memory</code> does not list it",
+       "Broken import or wrong location",
+       "Fix the path or move the file"
+      ],
+      [
+       "Listed, but output still drifts",
+       "Rules unclear or not shown",
+       "Add examples or clearer criteria"
+      ],
+      [
+       "Listed only in some folders",
+       "Directory-level CLAUDE.md",
+       "Move to project level or <code>.claude/rules/</code>"
+      ],
+      [
+       "Works for you, not for teammates",
+       "User-level CLAUDE.md",
+       "Move to the committed project file"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The project CLAUDE.md holds one line, @docs/testing-standards.md",
+      "means": "The rules arrive through an import. If the import fails, nothing else in the prompt matters."
+     },
+     {
+      "quote": "A developer can reproduce this in a local session",
+      "means": "So the developer can run <code>/memory</code> right there and see the loaded files."
+     },
+     {
+      "quote": "Nobody has checked yet whether the imported file loads at all",
+      "means": "The decider. Examples (<b>[[1]]</b>) and inlining (<b>[[3]]</b>) are fixes for a cause nobody has found. Asking the model (<b>[[2]]</b>) is a weaker check than the real list."
+     },
+     {
+      "quote": "What should the developer do first?",
+      "means": "Check what loaded: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Before tuning a prompt, confirm the guidance loaded. /memory shows which memory files Claude Code loaded.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "/memory command verifies which memory files are loaded."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-03",
+   "was": "m7-s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.6 Machine-parseable CLI output",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The review job runs <code>claude -p</code> and asks Claude to end its reply with a JSON block of findings. A script cuts out that block and posts each finding as an inline comment. On some runs Claude adds a sentence after the block, and the script posts nothing. The script needs a file, line, severity and message for every finding. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add two complete sample replies to the prompt, each ending in a well-placed findings block.",
+     "why": "Works, but only usually. Examples make the layout more consistent, but a script needs a format it can count on every run.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Have the script rerun the job with the parse error added whenever it finds no block.",
+     "why": "Works, but treats the symptom. Many reruns would succeed, but each one pays for a second review, and the fragile text format stays.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Make the script search the whole reply for the last JSON block, not only the end.",
+     "why": "Works, but hides the problem. A looser parser rescues these runs, but nothing checks that each finding has a file, line, severity and message.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Run the CLI with <code>--output-format json</code> and a <code>--json-schema</code> for the findings.",
+     "why": "Best. The CLI then returns machine-parseable output that matches the schema, with the fields each inline comment needs."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The script needs a file, line, severity and message for every finding.",
+   "explanation": "In CI, claude -p with --output-format json and --json-schema gives findings a script can parse. Asking for JSON in prose, even with examples, leaves the format to chance.",
+   "eli5": {
+    "question": "A script reads Claude's reply and posts comments. Sometimes Claude adds a chatty sentence and the script chokes. The clue: a <i>script</i>, not a person, reads the reply.",
+    "answer": "A person can read a letter with a P.S. at the bottom. A sorting machine needs a form with fixed boxes. <code>--output-format json</code> with <code>--json-schema</code> is that form: Claude Code returns JSON in the shape you defined. <b>Rule: a program reads the output → ask the CLI for schema-shaped JSON, don't ask nicely in the prompt.</b>",
+    "options": [
+     "Showing a sample letter makes the P.S. rarer, not impossible.",
+     "Sending the letter back when the machine chokes: it often works, but you pay twice.",
+     "A smarter machine that hunts for the form: it copes, but nobody checks the boxes are filled in.",
+     "Correct. The CLI hands over a filled-in form, every time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a clear request plus examples is enough to get JSON</b>. For a person reading the reply, it is. A script needs a <b>contract</b>: output that always parses and always has the required fields. Claude Code's CLI has flags for exactly that.",
+    "diagram": "claude -p \"review\" --output-format json \\\n  --json-schema findings.json\n→ [{file, line, severity, message}, …]\n→ script posts inline comments",
+    "mapTitle": "Who reads the output, and how sure must the format be?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Script parses Claude Code CLI output in CI",
+       "<code>--output-format json</code> + <code>--json-schema</code>",
+       "Machine-parseable, schema-shaped"
+      ],
+      [
+       "Messages API call must return fixed fields",
+       "Tool with JSON schema + forced <code>tool_choice</code>",
+       "Most reliable schema output"
+      ],
+      [
+       "People read it; layout varies",
+       "Few-shot examples of the format",
+       "Shows the pattern"
+      ],
+      [
+       "Output parses but values are wrong",
+       "Validate, retry with the specific error",
+       "Schema can't catch meaning errors"
+      ],
+      [
+       "CI job hangs waiting for input",
+       "<code>-p</code> / <code>--print</code>",
+       "Non-interactive mode"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The review job runs claude -p and asks Claude to end its reply with a JSON block of findings",
+      "means": "The format is only a request in the prompt. Examples (<b>[[0]]</b>) make it likelier, not certain."
+     },
+     {
+      "quote": "On some runs Claude adds a sentence after the block, and the script posts nothing",
+      "means": "A format fault. Reruns (<b>[[1]]</b>) and a looser parser (<b>[[2]]</b>) cope with it after the fact."
+     },
+     {
+      "quote": "The script needs a file, line, severity and message for every finding",
+      "means": "The decider. Required fields for a program: a schema the CLI enforces, <b>[[3]]</b>."
+     }
+    ],
+    "rule": "When a script consumes Claude Code output in CI, use --output-format json with --json-schema.",
+    "guide": {
+     "obj": "3.6 Integrate Claude Code into CI/CD",
+     "quote": "--output-format json + --json-schema for machine-parseable findings → inline PR comments."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-04",
+   "was": "m7-s5-04",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resources for content catalogs",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job's MCP server has a <code>search_docs</code> tool over the team's API guidelines. Before judging a diff, the reviewer calls it many times with broad queries. It is trying to learn which guideline documents exist and how they are organised. Most of these calls return nothing useful. What is the <b>best way</b> to cut these calls?",
+   "options": [
+    {
+     "t": "Expand the <code>search_docs</code> description with its input format and sample queries.",
+     "why": "Works, but different problem. A fuller description helps the reviewer write better queries, but it still has to search to find out what documents exist.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Move the guideline lookups into an Explore subagent that returns a short summary.",
+     "why": "Works, but hides the problem. The subagent keeps the noisy results out of the reviewer's context, but it makes the same blind calls.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Publish an MCP resource that lists the guideline documents and their sections.",
+     "why": "Best. A resource shows the catalog directly, so the reviewer knows what exists before it searches."
+    },
+    {
+     "t": "Split <code>search_docs</code> into one tool per guideline area, each with its own description.",
+     "why": "Works, but overbuilt. Tool names would hint at the areas, but each still has to be searched to see what is inside, and the tool list grows.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "It is trying to learn which guideline documents exist and how they are organised.",
+   "explanation": "MCP resources expose content catalogs such as document outlines, so an agent can see what exists without exploratory tool calls. Tool descriptions fix how a tool is called, not what content exists.",
+   "eli5": {
+    "question": "The reviewer keeps firing vague searches just to find out what guideline documents there are. The clue: the searches are for <i>finding out what exists</i>, not for answers.",
+    "answer": "In a library you don't search the shelves at random to learn what books exist. You read the catalog at the door. An <b>MCP resource</b> is that catalog: the server publishes the list of documents and sections, and the reviewer reads it before searching. <b>Rule: the agent is probing to learn what exists → publish a resource with the catalog.</b>",
+    "options": [
+     "A better search-box label helps you search well, but you still don't know which books exist.",
+     "Sending an assistant to do the random searching: tidier for you, same wasted trips.",
+     "Correct. Hand over the catalog first.",
+     "More search boxes, one per shelf: a hint, but you still have to look inside each one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>wasted tool calls mean the tool is badly described</b>. Here the tool is called correctly. The calls are wasted because the reviewer is using a search tool to learn <b>what content exists</b>. That is a catalog question, and MCP has a separate feature for it: resources.",
+    "diagram": "now:   search_docs(\"api\") × many → mostly empty\nfix:   read resource guidelines://index\n       → titles + sections → targeted search_docs",
+    "mapTitle": "Why is the agent making so many calls?",
+    "map": {
+     "head": [
+      "Cause",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "It doesn't know what content exists",
+       "MCP resource with the catalog",
+       "Shows the map without probing"
+      ],
+      [
+       "It calls the tool wrongly or vaguely",
+       "Fuller tool description",
+       "Primary signal for tool use"
+      ],
+      [
+       "It picks the wrong one of similar tools",
+       "Rename or split into purpose-specific tools",
+       "Clear boundaries"
+      ],
+      [
+       "Its results flood the main context",
+       "Explore subagent returns a summary",
+       "Isolates verbose output"
+      ],
+      [
+       "It prefers a built-in over a better MCP tool",
+       "Enhance the MCP tool's description",
+       "Gives it a reason to switch"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Before judging a diff, the reviewer calls it many times with broad queries",
+      "means": "The waste is in the number of calls, not in their results flooding the context (<b>[[1]]</b> only moves them)."
+     },
+     {
+      "quote": "It is trying to learn which guideline documents exist and how they are organised",
+      "means": "The decider. This is a catalog question, which a resource answers: <b>[[2]]</b>."
+     },
+     {
+      "quote": "Most of these calls return nothing useful",
+      "means": "Better-phrased queries (<b>[[0]]</b>) or more tools to probe (<b>[[3]]</b>) still leave the reviewer guessing what exists."
+     }
+    ],
+    "rule": "When an agent probes a tool to learn what content exists, expose a catalog as an MCP resource.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "MCP resources expose content catalogs (issue summaries, doc hierarchies, schemas) to reduce exploratory tool calls."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-05",
+   "was": "m7-s5-05",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP tool descriptions vs built-ins",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job's MCP server offers <code>find_usages</code>. It finds every caller of a function across modules, including calls made through interfaces. The reviewer still uses Grep on function names, so it misses the interface calls. When it does call <code>find_usages</code>, the results are right. The tool's description reads only “Find usages.” What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add a project <code>CLAUDE.md</code> line: to find callers, use <code>find_usages</code>, not Grep.",
+     "why": "Works, but leaves the cause. The instruction would nudge the reviewer, but the two-word description, the main thing Claude reads when picking a tool, stays empty.",
+     "trap": "leaves the cause"
+    },
+    {
+     "t": "Rewrite the <code>find_usages</code> description: what it covers, inputs, when to use it.",
+     "why": "Best. Descriptions are how Claude chooses tools. A two-word description gives it no reason to prefer the MCP tool over Grep."
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that turns Grep calls on symbol names into <code>find_usages</code>.",
+     "why": "Works, but overbuilt. It forces the switch, but deciding which Grep calls are symbol lookups is guesswork, and it gets in the way of real text searches.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Rename <code>find_usages</code> to <code>find_all_callers</code>, which says what it finds.",
+     "why": "Works, but only part of the fix. A clearer name helps, but it can't say that interface calls are covered or when to prefer it over Grep.",
+     "trap": "only part of the fix"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The tool's description reads only “Find usages.”",
+   "explanation": "Tool descriptions are the main signal for tool selection. When an agent prefers a built-in like Grep over a more capable MCP tool, enhance the MCP tool's description first.",
+   "eli5": {
+    "question": "The reviewer has a great tool for finding callers but keeps using plain text search instead. The clue: the tool's description is two words.",
+    "answer": "If a workshop has a laser measure labelled only “Measure”, people keep grabbing the tape measure they know. Put a proper label on it: what it does better and when to use it. A <b>tool description</b> is that label, and it is the main thing Claude reads when choosing tools. <b>Rule: a better MCP tool is ignored → improve its description first.</b>",
+    "options": [
+     "A sign on the wall saying “use the laser”: it helps, but the label on the tool is still blank.",
+     "Correct. A full label tells Claude what the tool does and when to pick it.",
+     "Locking the tape measure away: forceful, and it blocks real text searches too.",
+     "A better name on the box helps, but a name can't explain everything a label can."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>an ignored tool needs an order to use it</b>. Claude picks tools mainly from their descriptions. A two-word description gives it no reason to prefer the MCP tool over a familiar built-in. Fix the signal first; add orders or code only if that is not enough.",
+    "mapTitle": "Claude uses the wrong tool. What do you change first?",
+    "map": {
+     "head": [
+      "Situation",
+      "First fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Better MCP tool ignored; its description is thin",
+       "Rewrite the description",
+       "Main selection signal"
+      ],
+      [
+       "Description is full, built-in still chosen",
+       "Add guidance in CLAUDE.md or the prompt",
+       "Extra nudge"
+      ],
+      [
+       "Two tools overlap and get confused",
+       "Rename or split with clear boundaries",
+       "Removes ambiguity"
+      ],
+      [
+       "A tool must never be skipped",
+       "Hook or prerequisite gate",
+       "Prompts aren't guarantees"
+      ],
+      [
+       "Tool gives wrong results",
+       "Fix the tool itself",
+       "Not a selection problem"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The reviewer still uses Grep on function names, so it misses the interface calls",
+      "means": "A selection problem: Claude chooses the built-in."
+     },
+     {
+      "quote": "When it does call find_usages, the results are right",
+      "means": "The tool itself is fine. Only how Claude chooses it needs work."
+     },
+     {
+      "quote": "The tool's description reads only “Find usages.”",
+      "means": "The decider. The main selection signal is nearly empty, so fix it first: <b>[[1]]</b>. A name (<b>[[3]]</b>) can carry only part of it."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "A CLAUDE.md line (<b>[[0]]</b>) and a hook (<b>[[2]]</b>) are later steps if a full description is not enough."
+     }
+    ],
+    "rule": "When Claude prefers a built-in over a more capable MCP tool, improve the MCP tool's description first.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Enhance MCP tool descriptions so the agent doesn't prefer built-ins (Grep) over more capable MCP tools"
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-06",
+   "was": "m7-s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria over confidence wording",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Developers dismiss most of the reviewer's performance findings. The prompt's only guidance for this category is “flag performance problems”. Last month the team added “report only findings you are highly confident about”, and the dismissal rate did not change. The team wants to keep the category, since real performance bugs have reached production. What should they change <b>next</b>?",
+   "options": [
+    {
+     "t": "Replace it with concrete conditions, such as a database query run inside a loop.",
+     "why": "Best. Explicit criteria tell the reviewer exactly what counts as a performance problem. Vague wording plus a plea for confidence does not."
+    },
+    {
+     "t": "Add three sample findings to the prompt, each with flagged code and why.",
+     "why": "Works, but too early. Examples sharpen criteria that are applied unevenly. Here there are no criteria yet, so the examples would have to carry the whole definition.",
+     "trap": "too early"
+    },
+    {
+     "t": "Switch the performance category off until its precision improves, then bring it back.",
+     "why": "Works, but wrong goal. Pausing a noisy category protects developers' trust, but the team wants to keep catching real performance bugs.",
+     "trap": "wrong goal"
+    },
+    {
+     "t": "Tag each finding with the pattern it matched, and study which patterns get dismissed.",
+     "why": "Works, but delays the fix. Tracking patterns shows where the noise comes from, but it measures the problem while the vague guidance stays in place.",
+     "trap": "delays the problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The prompt's only guidance for this category is “flag performance problems”.",
+   "explanation": "Vague instructions plus “only high-confidence” wording do not raise precision. Define the category with concrete, checkable conditions; add examples once criteria exist.",
+   "eli5": {
+    "question": "The reviewer's performance comments are mostly ignored. Asking it to be “highly confident” didn't help. The clue: the only guidance is “flag performance problems”.",
+    "answer": "Telling a new referee “call bad fouls, but only when you're sure” changes nothing. Giving them the rulebook does: “a push from behind is a foul”. Concrete conditions are the <b>explicit criteria</b> for the category. <b>Rule: too many false alarms → define exactly what counts, don't ask for more confidence.</b>",
+    "options": [
+     "Correct. Spell out what counts as a performance problem.",
+     "Showing past calls helps a referee who has a rulebook. Without one, they are guessing what the examples have in common.",
+     "Benching the referee stops bad calls, and good ones too.",
+     "Keeping a tally of bad calls is useful later, but the referee still has no rulebook."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>false positives mean the model is not careful enough</b>, so you ask it to be careful. Precision comes from knowing <b>what counts</b>. “Flag performance problems” leaves that open, and “only if highly confident” doesn't close it.",
+    "mapTitle": "The reviewer raises too many false alarms. What's missing?",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Category is vague; no criteria",
+       "Concrete, checkable conditions",
+       "Says exactly what counts"
+      ],
+      [
+       "Criteria exist but are applied unevenly",
+       "2–4 examples with reasoning",
+       "Shows how to apply them"
+      ],
+      [
+       "Prompt asks for “high confidence”",
+       "Replace with criteria",
+       "Confidence wording doesn't raise precision"
+      ],
+      [
+       "Not sure which findings are noise",
+       "Track <code>detected_pattern</code> on findings",
+       "Shows dismissal patterns"
+      ],
+      [
+       "Category is noisy and not needed",
+       "Pause it",
+       "Protects trust in the rest"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Developers dismiss most of the reviewer's performance findings",
+      "means": "A precision problem in one category."
+     },
+     {
+      "quote": "The prompt's only guidance for this category is “flag performance problems”",
+      "means": "The decider. There are no criteria, so define them: <b>[[0]]</b>. Examples (<b>[[1]]</b>) illustrate criteria; they come after."
+     },
+     {
+      "quote": "the dismissal rate did not change",
+      "means": "Confidence wording failed, as the exam guide predicts."
+     },
+     {
+      "quote": "The team wants to keep the category, since real performance bugs have reached production",
+      "means": "Pausing it (<b>[[2]]</b>) gives up the real catches. Tracking patterns (<b>[[3]]</b>) measures, but doesn't fix."
+     }
+    ],
+    "rule": "To cut false positives, define explicit criteria. “Only high-confidence” wording does not raise precision.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-07",
+   "was": "m7-s5-07",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for generalisation",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The reviewer's dead-code rule says code is not dead when a feature flag can turn it on. Flags in this repository take many forms, such as config lookups, annotations and environment checks. Teams add new forms as they adopt new libraries. The reviewer follows the rule for some forms and flags the rest as dead. What should the team add to the prompt <b>first</b>?",
+   "options": [
+    {
+     "t": "A full list of the flag forms in use today, with the exact call or annotation for each.",
+     "why": "Works, but goes stale. The list fixes today's forms, but new forms keep arriving, so it is always behind.",
+     "trap": "goes stale"
+    },
+    {
+     "t": "A sharper definition: any runtime check that decides whether code runs.",
+     "why": "Works, but same gap. The rule is already clear; the reviewer fails to recognise unfamiliar forms, and more words describe the pattern less well than cases do.",
+     "trap": "same gap"
+    },
+    {
+     "t": "A second pass in a fresh instance that rechecks each dead-code finding before posting.",
+     "why": "Works, but different problem. An independent pass catches self-review bias, but it applies the same rule with the same blind spot about unfamiliar forms.",
+     "trap": "different problem"
+    },
+    {
+     "t": "A few worked cases in different flag forms, each with its verdict and the reason.",
+     "why": "Best. Varied examples with reasoning teach the pattern, so the reviewer can recognise forms it has not seen."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Teams add new forms as they adopt new libraries.",
+   "explanation": "The rule is clear; the reviewer fails to recognise unfamiliar cases. Few-shot examples that show reasoning help the model generalise to new patterns, which a list of today's forms cannot do.",
+   "eli5": {
+    "question": "The reviewer knows the rule but doesn't recognise every kind of feature flag. The clue: new kinds keep appearing.",
+    "answer": "You teach a child to spot dogs by showing a few very different dogs and saying why each is a dog. A list of today's breeds is out of date when a new breed turns up. A few <b>worked examples with reasons</b> (few-shot) teach the pattern, not the list. <b>Rule: the model must handle new variants → show varied examples with reasoning.</b>",
+    "options": [
+     "A breed list works today and falls behind tomorrow.",
+     "A tighter definition of “dog” is still words. The child knows the definition and still misses odd-looking dogs.",
+     "A second child with the same training misses the same odd dogs.",
+     "Correct. Varied examples with reasons teach the pattern."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a model that misses cases needs more precise wording</b>. The rule here is already clear. The failure is <b>recognising unfamiliar forms</b>, and that is what few-shot examples with reasoning are for: they let the model generalise to cases nobody listed.",
+    "mapTitle": "The model misapplies a rule. What helps?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best help",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Clear rule, many and changing forms",
+       "2–4 varied examples with reasoning",
+       "Generalises to new forms"
+      ],
+      [
+       "Clear rule, small fixed set of forms",
+       "List them",
+       "Complete and cheap"
+      ],
+      [
+       "Rule itself is vague",
+       "Explicit criteria",
+       "Defines what counts"
+      ],
+      [
+       "Session reviews its own work",
+       "Independent review instance",
+       "No shared reasoning"
+      ],
+      [
+       "Output format varies",
+       "Examples of the format",
+       "Shows the shape"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Flags in this repository take many forms, such as config lookups, annotations and environment checks",
+      "means": "The pattern is varied, so a single definition (<b>[[1]]</b>) hasn't helped Claude recognise it."
+     },
+     {
+      "quote": "Teams add new forms as they adopt new libraries",
+      "means": "The decider. A list of today's forms (<b>[[0]]</b>) is always behind."
+     },
+     {
+      "quote": "The reviewer follows the rule for some forms and flags the rest as dead",
+      "means": "It knows the rule; it doesn't recognise every form. A second pass (<b>[[2]]</b>) shares that blind spot. Worked cases teach recognition: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "When the model must recognise new variants of a pattern, give 2–4 varied examples that show the reasoning.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "enable generalization to novel patterns"
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-08",
+   "was": "m7-s5-08",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch fit and request trimming",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 2,
+   "question": "The weekly dependency-risk report sends one request per module on Saturday night. Nobody reads it until the Monday planning meeting. Each request carries the module's whole source tree, but the report uses only its build file and lockfile. The report must rate every module every week. Which <b>two changes</b> cut its cost the most?",
+   "options": [
+    {
+     "t": "Send the requests as one Message Batches API job, one <code>custom_id</code> per module.",
+     "why": "Best. Nobody needs the results before Monday, so the batch discount costs nothing in practice. <code>custom_id</code> matches each result to its module."
+    },
+    {
+     "t": "Skip modules whose build file and lockfile have not changed since last week's run.",
+     "why": "Works, but drops coverage. It saves a lot, but the report must rate every module weekly, and a new advisory can hit an unchanged lockfile.",
+     "trap": "drops coverage"
+    },
+    {
+     "t": "Send each module's build file and lockfile alone, and leave its source code out.",
+     "why": "Best. Most tokens are source code the report never reads. Trimming the input cuts cost without losing coverage."
+    },
+    {
+     "t": "Merge the modules into a few large requests, one for each product area.",
+     "why": "Works, but saves little. The same source still goes in, so tokens barely drop, and bigger requests spread attention across many modules.",
+     "trap": "saves little"
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Nobody reads it until the Monday planning meeting. Each request carries the module's whole source tree, but the report uses only its build file and lockfile.",
+   "explanation": "Latency-tolerant work like a weekly report fits the Message Batches API. Sending only the content the task uses cuts tokens. Neither reduces coverage, unlike skipping work.",
+   "eli5": {
+    "question": "A weekly report costs too much. Which two changes save the most and still rate every module? The clues: nobody reads it until Monday, and it only uses the build file and lockfile.",
+    "answer": "Think of posting parcels. If nobody needs them until Monday, use the cheap slow service (the <b>Message Batches API</b>: half price, results within a day). And don't ship the whole house when only two letters are needed: send just those files (<b>trim the input</b>). Skipping some parcels would save even more, but every module must be rated. <b>Rule: batch work nobody waits for, and send only what the task reads.</b>",
+    "options": [
+     "Correct. Half price, and Monday is plenty of time. <code>custom_id</code> links each result to its module.",
+     "Cheap, but it breaks “rate every module every week”.",
+     "Correct. Most of each request is code the report doesn't use.",
+     "Fewer, bigger parcels with the same contents: little saving, and each module gets less attention."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the biggest saving is doing less work</b>, like skipping unchanged modules. The requirement is full coverage every week. The savings that keep coverage are <b>paying less per request</b> (batch) and <b>sending fewer tokens per request</b> (trim the input).",
+    "mapTitle": "Cutting cost: which levers keep the output complete?",
+    "map": {
+     "head": [
+      "Lever",
+      "When it fits",
+      "Watch out for"
+     ],
+     "rows": [
+      [
+       "Message Batches API",
+       "Nobody waits on results (overnight, weekly)",
+       "No latency SLA; no multi-turn tools"
+      ],
+      [
+       "Trim input to what the task uses",
+       "Requests carry content the task ignores",
+       "Don't drop what's used"
+      ],
+      [
+       "Skip unchanged items",
+       "Old results stay valid",
+       "Breaks full-coverage requirements"
+      ],
+      [
+       "Pack many items per request",
+       "Rarely",
+       "Attention spread thin"
+      ],
+      [
+       "Real-time requests",
+       "Someone waits (pre-merge check)",
+       "Full price"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Nobody reads it until the Monday planning meeting",
+      "means": "Nobody waits on it, so batch fits: <b>[[0]]</b>."
+     },
+     {
+      "quote": "Each request carries the module's whole source tree, but the report uses only its build file and lockfile",
+      "means": "Most tokens are wasted. Trim the input: <b>[[2]]</b>. Merging (<b>[[3]]</b>) keeps the same tokens."
+     },
+     {
+      "quote": "The report must rate every module every week",
+      "means": "Skipping modules (<b>[[1]]</b>) breaks this."
+     }
+    ],
+    "rule": "Batch what nobody waits for; trim what the task doesn't read. Don't skip work a requirement says to cover.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits); bad for blocking (pre-merge)."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-09",
+   "was": "m7-s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific error feedback",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The autofix job patches failing builds. When a patch does not compile, the job reruns Claude with the message “The patch failed. Try again.” Most second attempts fail the same way. The compiler output names each broken file, line and error. Every fix needed lies in the repository's own code. What is the <b>best change</b> to raise the fix rate?",
+   "options": [
+    {
+     "t": "After one failed retry, open a draft pull request with the patch and build log for a developer.",
+     "why": "Works, but gives up too soon. A hand-off is right when the fix needs information the job can't reach. Here everything is in the repository, and the retry never got the errors.",
+     "trap": "gives up too soon"
+    },
+    {
+     "t": "On each retry, send the compiler's error lines for the failed patch with the original request.",
+     "why": "Best. The errors are specific and fixable from the repository, so feeding them back gives the retry what it needs."
+    },
+    {
+     "t": "Have a separate review instance read each failed patch, and pass its comments into the retry.",
+     "why": "Works, but overbuilt. It adds feedback, but a reviewer's opinion is weaker than the compiler's exact errors, which already exist for free.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "On each retry, attach the current contents of each broken file the compiler named.",
+     "why": "Works, but more context, not the error. The files help Claude see the code, but they don't say what broke.",
+     "trap": "more context, not the error"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The compiler output names each broken file, line and error.",
+   "explanation": "Retries succeed when they carry the specific validation errors and the needed information is in the source. A bare “try again” gives the model nothing new.",
+   "eli5": {
+    "question": "When a fix fails, the job just says “try again”, and Claude fails the same way. The clue: the compiler already says exactly what broke.",
+    "answer": "A teacher who hands back homework marked only “wrong, redo” gets the same mistakes back. Circle the errors and the student can fix them. The compiler's messages are those circles. <b>Retry with the specific errors</b>. <b>Rule: retry with the exact error when the fix is findable in the source; hand to a person when it isn't.</b>",
+    "options": [
+     "Calling in a tutor after one bare “redo”: the student never saw the circles.",
+     "Correct. Hand back the exact errors with the task.",
+     "A second teacher's opinion, when the marking key already says what's wrong.",
+     "Giving back the whole exercise book without circling anything."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a failing retry means the task is too hard for the model</b>. Here the retry got no new information: “try again” only. When the error is specific and the fix is in the source, <b>feeding back the error</b> is what makes a retry work.",
+    "diagram": "patch → build fails → compiler: File.kt:42 type mismatch\nretry(request + patch + compiler errors) → new patch",
+    "mapTitle": "A retry keeps failing. What should the next attempt get?",
+    "map": {
+     "head": [
+      "Situation",
+      "Next step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Specific error, fix is in the source",
+       "Retry with the error messages",
+       "Model sees what broke"
+      ],
+      [
+       "Fix needs information that isn't there",
+       "Hand to a person",
+       "Retrying can't create it"
+      ],
+      [
+       "Retry with errors still fails repeatedly",
+       "Hand off with the log",
+       "Diminishing returns"
+      ],
+      [
+       "Output parses but values are wrong",
+       "Validate and retry with the specific error",
+       "Schemas can't catch meaning"
+      ],
+      [
+       "Bare “try again”",
+       "Add the error",
+       "Gives nothing new"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the job reruns Claude with the message “The patch failed. Try again.”",
+      "means": "The retry carries no information about what broke."
+     },
+     {
+      "quote": "The compiler output names each broken file, line and error",
+      "means": "The decider. Precise feedback already exists: <b>[[1]]</b>. Opinions (<b>[[2]]</b>) and raw files (<b>[[3]]</b>) are weaker substitutes."
+     },
+     {
+      "quote": "Every fix needed lies in the repository's own code",
+      "means": "The information is reachable, so handing off early (<b>[[0]]</b>) gives up too soon."
+     }
+    ],
+    "rule": "Retry with the specific error when the fix can be found in the source. Hand to a person when the information is missing.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retry-with-error-feedback: append specific validation errors on retry."
+    }
+   }
+  },
+  {
+   "id": "m7p-s5-10",
+   "was": "m7-s5-10",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.6 Independent review instance",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "After the autofix job's patch compiles, the same session is asked to check the patch for side effects. It approves nearly every patch. Several approved patches later broke callers in other modules. The check's prompt already lists the kinds of side effect to look for. What is the <b>best way</b> to improve this check?",
+   "options": [
+    {
+     "t": "Add worked examples of patches that broke callers, each with the clue the check missed.",
+     "why": "Works, but leaves the cause. Examples sharpen a reviewer that misses a category, but a session checking its own patch keeps the reasoning that wrote it.",
+     "trap": "leaves the cause"
+    },
+    {
+     "t": "Turn on extended thinking for the check and have it trace each changed signature.",
+     "why": "Works, but same blind spot. Longer reasoning finds some problems, but in the same session it tends to confirm the patch it just wrote.",
+     "trap": "same blind spot"
+    },
+    {
+     "t": "Require a <code>side_effects</code> entry in the check's output schema for each changed function.",
+     "why": "Works, but form, not judgment. A schema makes the check report on every function, but a session reviewing its own patch fills it with “none” just as easily.",
+     "trap": "form, not judgment"
+    },
+    {
+     "t": "Run the check as a fresh <code>claude -p</code> call that sees the patch and code, not the session.",
+     "why": "Best. An independent instance has no stake in the earlier reasoning and catches what self-review misses."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "the same session is asked to check the patch for side effects",
+   "explanation": "A model reviewing its own work in the same session keeps its generation reasoning and rarely questions it. An independent instance without that history catches more than self-review, extended thinking or examples.",
+   "eli5": {
+    "question": "The session that wrote a patch is asked to check it, and it approves almost everything. The clue: it's the <i>same session</i>.",
+    "answer": "Writers miss their own typos because they read what they meant, not what they wrote. A fresh reader catches them. A new <code>claude -p</code> call that never saw the writing session is that fresh reader (an <b>independent review instance</b>). <b>Rule: don't let a session mark its own homework; use a fresh instance.</b>",
+    "options": [
+     "Examples help a reader who lacks the knowledge. This one has it, but is reading its own work.",
+     "Thinking longer about your own work mostly convinces you it's right.",
+     "A form with a box for each change: the writer still writes “none”.",
+     "Correct. A fresh reader with no memory of writing it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a check that misses things needs more guidance or more thinking</b>. The prompt already lists what to look for. The problem is <b>who is checking</b>: the session that wrote the patch keeps its own reasoning and tends to agree with itself.",
+    "diagram": "now:  session A writes patch → session A checks it → approve\nfix:  session A writes patch → fresh claude -p checks it",
+    "mapTitle": "A review step misses problems. What's wrong with it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Reviewer is the session that wrote the code",
+       "Independent review instance",
+       "No shared reasoning"
+      ],
+      [
+       "Independent reviewer misses one category",
+       "Worked examples of that category",
+       "Teaches the pattern"
+      ],
+      [
+       "Criteria for the check are vague",
+       "Explicit criteria",
+       "Says what counts"
+      ],
+      [
+       "Large change reviewed in one pass",
+       "Per-file passes + a cross-file pass",
+       "Avoids spread-thin attention"
+      ],
+      [
+       "Findings must reach a script",
+       "Output schema",
+       "Shapes the report, not the judgment"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the same session is asked to check the patch for side effects",
+      "means": "The decider. Self-review in the same session: <b>[[3]]</b> removes that."
+     },
+     {
+      "quote": "It approves nearly every patch",
+      "means": "The signature of self-review: it agrees with its own reasoning. Extended thinking (<b>[[1]]</b>) in that session tends to do the same."
+     },
+     {
+      "quote": "The check's prompt already lists the kinds of side effect to look for",
+      "means": "Guidance is present. Examples (<b>[[0]]</b>) and a schema (<b>[[2]]</b>) refine it but keep the same reviewer."
+     }
+    ],
+    "rule": "A session reviewing its own work keeps its reasoning. Use an independent instance for review.",
+    "guide": {
+     "obj": "4.6 Multi-instance and multi-pass review architectures",
+     "quote": "Independent review instances (no prior reasoning) catch subtle issues better than self-review/extended thinking."
+    }
+   }
+  }
+ ]
+}

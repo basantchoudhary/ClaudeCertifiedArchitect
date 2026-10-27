@@ -1,0 +1,1128 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m7p-s3-01",
+   "was": "m7-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Loop termination on stop_reason",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The team wrote its own loop for the coordinator. After each response, the loop looks for a text block. If it finds one, it treats the run as finished and sends that text to the report subagent. Many runs now stop after the first search. In those runs, Claude wrote a short sentence and also asked for more Task calls in the same response. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Keep looping while <code>stop_reason</code> is <code>tool_use</code>, and end the run when it is <code>end_turn</code>.",
+     "why": "Best. <code>stop_reason</code> is the API's own signal for whether Claude wants tools run. A response can hold a sentence and tool calls together, and <code>tool_use</code> says the work is not done."
+    },
+    {
+     "t": "End the run only when a response has text and no <code>tool_use</code> blocks in it.",
+     "why": "Works, but it is still a check on the content. It handles this case, but it guesses at what <code>stop_reason</code> already says, and other stop reasons (such as hitting <code>max_tokens</code>) can look finished too.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Tell the coordinator in its system prompt to write no text in a response that calls tools.",
+     "why": "Works, but only usually. Claude will mostly follow it, but the loop still trusts text as the finish signal, so one stray sentence ends a run early again.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>any</code> until the report subagent has run, then set it back to <code>auto</code>.",
+     "why": "Works, but it fixes a different problem. Forcing a tool call stops Claude replying in text, but Claude was already calling tools here. The loop was ignoring them.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "In those runs, Claude wrote a short sentence and also asked for more Task calls in the same response.",
+   "explanation": "The agentic loop continues while stop_reason is tool_use and ends on end_turn. Checking the reply for text is an unreliable finish signal, because Claude often writes a sentence beside its tool calls.",
+   "eli5": {
+    "question": "The loop decides a run is over as soon as Claude writes any words. The clue: Claude wrote a sentence <i>and</i> asked for more searches in the same reply.",
+    "answer": "Imagine a waiter who clears the table the moment you say anything, even “mmm, and could I have dessert?”. The better waiter waits for you to say “that's all”. The API gives that signal on every reply: a field called <b><code>stop_reason</code></b>. <code>tool_use</code> means “please run these”, <code>end_turn</code> means “I'm done”. <b>Rule: the loop reads <code>stop_reason</code>, not the words.</b>",
+    "options": [
+     "Correct. Listen for “that's all” (<code>end_turn</code>), not for any words at all.",
+     "Closer, but it is still the waiter guessing from what you say instead of the clear signal.",
+     "Asking diners to stay silent while ordering mostly works, but one chatty diner still gets the table cleared.",
+     "Forcing a tool call helps when Claude talks instead of acting. Here it was already acting."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>text in the reply means the answer is ready</b>. But Claude often writes a sentence and asks for tools in the same response. The API already says which case it is: <code>stop_reason</code> is <code>tool_use</code> when tools are wanted and <code>end_turn</code> when Claude is finished.",
+    "diagram": "response: \"Searching the registry next.\" + Task call\n  text check      → stop  (wrong)\n  stop_reason     → tool_use → run Task, loop again",
+    "mapTitle": "How should an agent loop decide it is done?",
+    "map": {
+     "head": [
+      "Approach",
+      "Verdict",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Read <code>stop_reason</code>: continue on <code>tool_use</code>, stop on <code>end_turn</code>",
+       "Correct",
+       "It is the API's own signal"
+      ],
+      [
+       "Stop when the reply has text and no tool blocks",
+       "Fragile",
+       "Still guesses from content"
+      ],
+      [
+       "Stop when the reply contains a phrase like “done”",
+       "Anti-pattern",
+       "Parses natural language"
+      ],
+      [
+       "Stop after a fixed number of turns",
+       "Anti-pattern as the main stop",
+       "Cuts long runs short"
+      ],
+      [
+       "Claude replies in text when a tool call is needed",
+       "Different problem",
+       "Set <code>tool_choice</code> to <code>any</code>"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "After each response, the loop looks for a text block",
+      "means": "The loop's finish test is “is there text?”. The guide calls that an anti-pattern."
+     },
+     {
+      "quote": "Many runs now stop after the first search",
+      "means": "The symptom: runs end too early, so the finish test is wrong."
+     },
+     {
+      "quote": "Claude wrote a short sentence and also asked for more Task calls in the same response",
+      "means": "The decider. Claude did call tools, so <code>tool_choice</code> (<b>[[3]]</b>) is not needed, and a prompt asking for no text (<b>[[2]]</b>) leaves the faulty test in place."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Replace the content test with the API's signal: <b>[[0]]</b>. A tighter content test (<b>[[1]]</b>) is still a guess."
+     }
+    ],
+    "rule": "An agent loop continues on stop_reason tool_use and ends on end_turn. Never decide from the text.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "checking assistant text content as a completion indicator"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-02",
+   "was": "m7-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Per-request context in the Task prompt",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Each committee sets its own inclusion rules when it sends a request, such as a minimum trial size or drug classes to leave out. The coordinator agrees these rules with the committee before it delegates. Later, the analysis subagent includes studies the committee excluded. Its Task prompt names only the drug and the outcome. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "List each committee's usual rules in the analysis subagent's system prompt, by committee.",
+     "why": "Works, but wrong home. A fixed system prompt can hold rules that rarely change, but these are agreed per request, so the list goes stale and misses one-off rules.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Add a check step after analysis that removes studies the committee's rules exclude.",
+     "why": "Works, but too late. A filter afterwards can drop the wrong studies, but the analysis has already been done on them, and the filter still needs the same rules passed to it.",
+     "trap": "too late"
+    },
+    {
+     "t": "Save the agreed rules to a file for each request and tell the subagent to read it.",
+     "why": "Works, but more moving parts. The subagent can read the file, but its Task prompt must still name the file, so you may as well put the rules in the prompt.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Write the agreed rules into each analysis Task prompt, beside the drug and the outcome.",
+     "why": "Best. Subagents do not see the coordinator's conversation. Anything agreed for one request must be written into that request's Task prompt."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Its Task prompt names only the drug and the outcome.",
+   "explanation": "Subagents have isolated context and do not inherit what the coordinator discussed. Per-request details must be passed explicitly in the Task prompt; fixed role guidance belongs in the AgentDefinition.",
+   "eli5": {
+    "question": "The coordinator agrees the rules with the committee, but the analysis helper never hears them. The clue: the helper's instructions name only the drug and the outcome.",
+    "answer": "A manager agrees special requests with a client on the phone, then hands a junior a sticky note that says only “Report on drug X”. The junior wasn't on the call. Put the special requests on the note. For a subagent, the note is the <b>Task prompt</b>; it does not hear the coordinator's conversation. <b>Rule: if a subagent needs it for this request, write it into the Task prompt.</b>",
+    "options": [
+     "A standing list on the junior's desk helps with usual requests, but not with what was agreed on today's call.",
+     "Checking the work afterwards catches some mistakes, but the junior still worked without the rules.",
+     "A separate file works, but the note must point to it anyway. Just write the rules on the note.",
+     "Correct. Write today's rules on today's note."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the subagent knows what the coordinator knows</b>. It doesn't. A subagent starts with its own system prompt and the Task prompt, nothing else. Rules that change with each request can only reach it through that Task prompt.",
+    "diagram": "coordinator ↔ committee: agree rules\n  Task prompt: drug + outcome        → rules lost\n  Task prompt: drug + outcome + rules → applied",
+    "mapTitle": "Where should information for a subagent go?",
+    "map": {
+     "head": [
+      "Kind of information",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Details for this one request",
+       "The Task prompt",
+       "Subagents don't inherit the coordinator's context"
+      ],
+      [
+       "Role guidance the same on every run",
+       "The subagent's AgentDefinition system prompt",
+       "Loaded every time"
+      ],
+      [
+       "Findings from an earlier subagent",
+       "Passed in full in the next Task prompt",
+       "No shared memory"
+      ],
+      [
+       "Wrong studies already included",
+       "A later filter",
+       "Cleans up, but too late"
+      ],
+      [
+       "Facts that must survive a long chat",
+       "Case-facts block",
+       "Protects the coordinator's own context"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each committee sets its own inclusion rules when it sends a request",
+      "means": "The rules change per request, so a fixed system prompt (<b>[[0]]</b>) is the wrong home."
+     },
+     {
+      "quote": "The coordinator agrees these rules with the committee before it delegates",
+      "means": "The rules live only in the coordinator's context."
+     },
+     {
+      "quote": "Later, the analysis subagent includes studies the committee excluded",
+      "means": "The subagent never got the rules. A filter afterwards (<b>[[1]]</b>) treats the result, not the cause."
+     },
+     {
+      "quote": "Its Task prompt names only the drug and the outcome",
+      "means": "The decider. The delegation is missing the rules. Put them there: <b>[[3]]</b>. A file (<b>[[2]]</b>) still has to be named in this prompt."
+     }
+    ],
+    "rule": "Subagents don't inherit context. Per-request details go in the Task prompt.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-03",
+   "was": "m7-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Parallel subagent spawning",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "For each request, the coordinator runs three searches: journals, the trial registry and regulatory notices. No search needs another's results. Today the coordinator sends one Task call, waits for its result, then sends the next. Committees say summaries take too long, and most of the time goes on waiting for these searches. What is the <b>best way</b> to cut the wait?",
+   "options": [
+    {
+     "t": "Have the coordinator skip any search that a request does not seem to need.",
+     "why": "Works, but only on some requests. Skipping a search saves time when it is not needed, but most requests still wait for three searches one after another.",
+     "trap": "only helps some requests"
+    },
+    {
+     "t": "Have the coordinator send all three Task calls in one response and run them together.",
+     "why": "Best. The searches don't depend on each other, so they can run at the same time. The coordinator does this by sending several Task calls in one response."
+    },
+    {
+     "t": "Give each search subagent a shorter time limit, returning partial results when it runs out.",
+     "why": "Works, but trades away quality. Each search ends sooner, but some return less evidence, and they still run one after another.",
+     "trap": "cuts quality"
+    },
+    {
+     "t": "Have each search subagent return only the fields the coordinator needs from its results.",
+     "why": "Works, but solves a different problem. Smaller results save context and a little time, but the wait comes from running the searches in series.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "No search needs another's results.",
+   "explanation": "Independent subtasks should run in parallel: the coordinator emits several Task calls in one response. Skipping or trimming searches helps only around the edges.",
+   "eli5": {
+    "question": "Three searches run one after another, and nothing links them. The clue: no search needs another's results.",
+    "answer": "Three friends each need to buy one thing in three different shops. Sending them one at a time, each waiting for the last to come back, is slow. Send all three at once. For the coordinator, “send all at once” means putting <b>several Task calls in one response</b>. <b>Rule: independent subagents run in parallel; send their Task calls together.</b>",
+    "options": [
+     "Skipping a shop you don't need helps sometimes, but the usual trip still has three shops, one after another.",
+     "Correct. Send all three friends at once.",
+     "Telling each friend to hurry gets them back sooner, with less shopping done.",
+     "Smaller shopping bags are lighter, but the friends still go one at a time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the searches themselves are too slow</b>. But each search waits for the one before it to finish, even though none of them needs the others. The quickest gain is to run them at the same time, not to make each one smaller or shorter.",
+    "diagram": "today:  journals ──▶ registry ──▶ notices\nbetter: journals ─┐\n        registry ─┼─▶ coordinator\n        notices ──┘",
+    "mapTitle": "A multi-agent run is slow. Where does the time go?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Independent subagents run one after another",
+       "Serial delegation",
+       "Several Task calls in one response"
+      ],
+      [
+       "Requests often run subagents they don't need",
+       "Full pipeline every time",
+       "Select subagents by request"
+      ],
+      [
+       "Coordinator context fills with long results",
+       "Verbose outputs",
+       "Trim results to needed fields"
+      ],
+      [
+       "Many round trips for simple lookups",
+       "Every check routed through the coordinator",
+       "A scoped tool for the common case"
+      ],
+      [
+       "One step needs another's result",
+       "Real dependency",
+       "Keep that step in order"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "For each request, the coordinator runs three searches",
+      "means": "All three searches are part of the normal run, so skipping some (<b>[[0]]</b>) helps only now and then."
+     },
+     {
+      "quote": "No search needs another's results",
+      "means": "The decider. Nothing forces them to run in order, so they can run in parallel."
+     },
+     {
+      "quote": "Today the coordinator sends one Task call, waits for its result, then sends the next",
+      "means": "The cause: serial delegation."
+     },
+     {
+      "quote": "most of the time goes on waiting for these searches",
+      "means": "The wait is the searches running in a row. Time limits (<b>[[2]]</b>) and smaller results (<b>[[3]]</b>) trim the edges."
+     },
+     {
+      "quote": "What is the best way to cut the wait?",
+      "means": "Run them together: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Independent subagents? Emit all their Task calls in one response so they run in parallel.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "spawn parallel subagents by emitting multiple Task calls in one response"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-04",
+   "was": "m7-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Programmatic prerequisite gate",
+   "trap": "Prompt where enforcement was required",
+   "fam": 1,
+   "select": 1,
+   "question": "The coordinator publishes each summary by calling <code>publish_summary</code>. Policy says no summary may reach a committee until the citation-check subagent has passed every citation in it. In a few runs, the coordinator publishes before the check has run. Each of those runs is a reportable compliance incident. Which change <b>best meets the policy</b>?",
+   "options": [
+    {
+     "t": "State in the coordinator's prompt that publishing must wait for a passing citation check.",
+     "why": "Works, but only usually. A clear instruction cuts early publishes, but prompts have a non-zero failure rate, and each miss is an incident.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Run the citation check in a <code>PostToolUse</code> hook on <code>publish_summary</code> and recall failures.",
+     "why": "Works, but too late. The hook runs after the call, so a bad summary has already reached the committee before it is recalled.",
+     "trap": "too late"
+    },
+    {
+     "t": "Make <code>publish_summary</code> refuse any summary with no passing citation check on record.",
+     "why": "Best. A prerequisite gate in code blocks the publish until the check has passed, on every run, with no person in the loop."
+    },
+    {
+     "t": "Hold every summary for a staff member to approve before <code>publish_summary</code> sends it.",
+     "why": "Works, but overbuilt. A person can stop early publishes, but it adds a manual step to every run for a check that code can enforce.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Each of those runs is a reportable compliance incident.",
+   "explanation": "When one step must happen before another every time, enforce it in code: block the downstream tool until the prerequisite has a recorded result. Prompt instructions have a non-zero failure rate.",
+   "eli5": {
+    "question": "Summaries sometimes go out before their citations are checked. The clue: each early one is a compliance incident, so it must never happen.",
+    "answer": "A post room has a rule: no letter leaves without a stamp from the checker. Reminding staff mostly works. A slot that won't take a letter without the stamp works every time. In code, that slot is a <b>prerequisite gate</b>: <code>publish_summary</code> refuses until a passing check is on record. <b>Rule: must happen every time → enforce it in code, not in the prompt.</b>",
+    "options": [
+     "A reminder mostly works, but “mostly” still means incidents.",
+     "Checking letters after they're posted means some wrong ones already arrived.",
+     "Correct. The slot won't accept a letter with no stamp.",
+     "A person at the door works, but it slows every letter for a check a machine can do."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a firm instruction is enough</b> when the rule is clear. The guide says prompt instructions have a non-zero failure rate. When every miss is a compliance incident, the order must be enforced in code: the publish tool itself refuses until the check has passed.",
+    "diagram": "publish_summary(draft)\n  check passed on record? ── no  → refuse\n                          └ yes → publish",
+    "mapTitle": "How firmly must this step order hold?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A miss breaks policy or costs money",
+       "Prerequisite gate or hook in code",
+       "Holds on every run"
+      ],
+      [
+       "A nice-to-have; an occasional miss is harmless",
+       "Prompt instruction plus examples",
+       "Cheap and easy to change"
+      ],
+      [
+       "The problem is seen only after the action",
+       "<code>PostToolUse</code> check",
+       "Catches it, but too late"
+      ],
+      [
+       "A judgement code can't make",
+       "Human approval",
+       "Costly; use it where needed"
+      ],
+      [
+       "One tool must run before another inside a request",
+       "Forced <code>tool_choice</code>",
+       "Sets the first call"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Policy says no summary may reach a committee until the citation-check subagent has passed every citation in it",
+      "means": "The check must come before publishing. A check after the call (<b>[[1]]</b>) is too late."
+     },
+     {
+      "quote": "In a few runs, the coordinator publishes before the check has run",
+      "means": "The model sometimes gets the order wrong, which is exactly what prompt rules (<b>[[0]]</b>) cannot fully stop."
+     },
+     {
+      "quote": "Each of those runs is a reportable compliance incident",
+      "means": "The decider. The order must hold every time, so enforce it in code."
+     },
+     {
+      "quote": "Which change best meets the policy?",
+      "means": "A gate on the tool: <b>[[2]]</b>. A human approver (<b>[[3]]</b>) works but is far more than the rule needs."
+     }
+    ],
+    "rule": "A step that must come first every time → block the later tool in code until it has.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "Block downstream tool calls until prerequisites complete"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-05",
+   "was": "m7-s3-05",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Fixed pipeline vs adaptive decomposition",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Every evidence summary follows the committee template. It has four sections: efficacy, safety, cost and guideline status. Each section is researched the same way every time, and no section depends on what another finds. Auditors must be able to replay each run step by step. The team is redesigning how the coordinator splits up the work. Which approach <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Chain a fixed set of steps for each part, then run one pass that merges the four outputs.",
+     "why": "Best. The steps are known in advance and don't depend on findings, so a fixed pipeline (prompt chaining) fits. Every run has the same shape, which auditors can replay."
+    },
+    {
+     "t": "Let the coordinator plan from early findings and add new subtasks as results come back.",
+     "why": "Works, but less predictable. Adaptive plans suit open questions where findings decide the next step. Here the steps never change, and each run would take a different path.",
+     "trap": "hard to audit"
+    },
+    {
+     "t": "Draft all four sections, check the draft for gaps, and send any thin section back for more work.",
+     "why": "Works, but solves a different problem. A refinement loop fills coverage gaps, but it makes run length vary, which works against step-by-step replay.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Let the coordinator judge each request and call only the subagents its sections need.",
+     "why": "Works, but there is little to skip. Choosing subagents per request helps when requests vary. Every request here has the same four sections.",
+     "trap": "only helps varied requests"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Each section is researched the same way every time, and no section depends on what another finds.",
+   "explanation": "Fixed sequential pipelines suit work whose steps are known in advance; adaptive decomposition suits investigations whose subtasks depend on intermediate findings. Predictability and auditability favour the fixed pipeline.",
+   "eli5": {
+    "question": "Every summary has the same four sections, researched the same way, and auditors must replay each run. The clue: the steps never change and don't depend on each other.",
+    "answer": "A bakery that makes the same four cakes every day uses a fixed recipe for each, then boxes them together. An inventor's lab, where each test decides the next, plans as it goes. This job is the bakery. In agent terms that's a <b>fixed pipeline</b> (prompt chaining) with one combining pass at the end. <b>Rule: steps known in advance → fixed pipeline. Next step depends on findings → adaptive plan.</b>",
+    "options": [
+     "Correct. Same recipes every day, then box them together.",
+     "Planning as you go suits the inventor's lab. Here every day is the same, and inspectors want the same steps each time.",
+     "Checking for gaps helps when you don't know what's missing. It makes every day's work a different length.",
+     "Choosing which cakes to bake helps when orders vary. Here every order is the same four cakes."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the smarter, adaptive plan is always better</b>. Adaptive decomposition is for open-ended work, where what you find decides what you do next. When the steps are known in advance and audit needs the same shape every run, a fixed pipeline is simpler and easier to replay.",
+    "diagram": "efficacy ─┐\nsafety   ─┤\ncost     ─┼─▶ combine pass ─▶ summary\nstatus   ─┘",
+    "mapTitle": "How should the coordinator split up the work?",
+    "map": {
+     "head": [
+      "Shape of the work",
+      "Strategy",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Steps known in advance, independent",
+       "Fixed pipeline (prompt chaining) + integration pass",
+       "Predictable, easy to audit"
+      ],
+      [
+       "Next step depends on what was found",
+       "Adaptive decomposition",
+       "Subtasks come from findings"
+      ],
+      [
+       "Drafts often miss parts of the topic",
+       "Refinement loop: check gaps, re-delegate",
+       "Fills coverage gaps"
+      ],
+      [
+       "Requests vary a lot in size",
+       "Select subagents per request",
+       "Skips what isn't needed"
+      ],
+      [
+       "One big input dilutes attention",
+       "Per-part passes, then a combining pass",
+       "Each part gets full attention"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Every evidence summary follows the committee template",
+      "means": "The output shape is the same every time."
+     },
+     {
+      "quote": "Each section is researched the same way every time, and no section depends on what another finds",
+      "means": "The decider. The steps are fixed and independent, so nothing needs to adapt (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "Auditors must be able to replay each run step by step",
+      "means": "Runs must have the same shape. A gap-filling loop (<b>[[2]]</b>) varies in length."
+     },
+     {
+      "quote": "Which approach fits best?",
+      "means": "A fixed pipeline with a combining pass: <b>[[0]]</b>. Choosing subagents (<b>[[3]]</b>) has nothing to skip."
+     }
+    ],
+    "rule": "Steps known in advance → fixed pipeline. Steps depend on findings → adaptive decomposition.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Fixed sequential pipelines (prompt chaining) vs dynamic adaptive decomposition based on intermediate findings"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-06",
+   "was": "m7-s3-06",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.1 Tool results in conversation history",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "The team's own coordinator loop sends each request with the system prompt, the original question and only the latest tool result. Earlier turns are dropped to keep requests small. The coordinator often repeats searches it already ran in the same run. Runs are short and use a small part of the context window. What should the team <b>change first</b>?",
+   "options": [
+    {
+     "t": "Write each search and its findings to a scratchpad file the coordinator reads every turn.",
+     "why": "Works, but overbuilt. A scratchpad keeps findings across context limits or sessions. These runs are short, and the normal message history fits easily.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add a case-facts block listing the searches already run, sent with the latest result.",
+     "why": "Works, but only patches the gap. Claude would see which searches ran, but not their results or its own reasoning between turns.",
+     "trap": "only partly works"
+    },
+    {
+     "t": "Have each search tool return a cached answer when it gets a query it already answered.",
+     "why": "Works, but hides the problem. Repeats get cheaper, but Claude still doesn't know what it already did, so it keeps asking.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Send the full message history each turn, with every tool result appended in order.",
+     "why": "Best. The agentic loop appends each tool result to the conversation, so Claude decides its next step from everything it has done."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Earlier turns are dropped to keep requests small.",
+   "explanation": "In the agentic loop, each tool result is appended to the conversation history and sent back on the next request. Without it, the model cannot know what it has already done and repeats work.",
+   "eli5": {
+    "question": "Each turn, Claude only sees the latest search result, so it forgets what it already searched. The clue: earlier turns are dropped, and the runs are short.",
+    "answer": "Imagine a detective who gets only the last page of their notebook each morning. They will re-interview the same witnesses. Give them the whole notebook. For Claude, the notebook is the <b>message history</b>: every turn and every tool result, in order. <b>Rule: append each tool result to the conversation and send it all back.</b>",
+    "options": [
+     "A separate filing cabinet helps when the notebook gets too thick. This notebook is thin.",
+     "A list of who was interviewed helps, but not what they said or what the detective concluded.",
+     "Making repeat interviews quicker saves time, but the detective still doesn't know they did them.",
+     "Correct. Hand back the whole notebook."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>repeat searches need a memory system</b>. But the loop already has memory: the message history. This loop throws it away. When runs are short and fit easily in context, the first fix is to stop dropping turns.",
+    "diagram": "today:  system + question + last result\nbetter: system + question + turn 1 + result 1\n        + turn 2 + result 2 + ...",
+    "mapTitle": "The agent forgets what it already did. What do you fix?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Repeats work in a short run",
+       "History not sent back",
+       "Append each tool result to the conversation"
+      ],
+      [
+       "Forgets findings across context limits or sessions",
+       "Context runs out",
+       "Scratchpad file of key findings"
+      ],
+      [
+       "Amounts or promises drift after summarising",
+       "Facts blurred by summaries",
+       "Case-facts block"
+      ],
+      [
+       "Context fills fast with long results",
+       "Verbose tool output",
+       "Trim results to the needed fields"
+      ],
+      [
+       "Repeated calls are costly but not wrong",
+       "Expensive lookups",
+       "Cache results"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "only the latest tool result",
+      "means": "Claude never sees its earlier results."
+     },
+     {
+      "quote": "Earlier turns are dropped to keep requests small",
+      "means": "The decider. The history is being thrown away. A list of searches (<b>[[1]]</b>) restores only a part of it."
+     },
+     {
+      "quote": "The coordinator often repeats searches it already ran in the same run",
+      "means": "The symptom. A cache (<b>[[2]]</b>) makes repeats cheap but doesn't stop them."
+     },
+     {
+      "quote": "Runs are short and use a small part of the context window",
+      "means": "The full history fits, so a scratchpad (<b>[[0]]</b>) is more than needed."
+     },
+     {
+      "quote": "What should the team change first?",
+      "means": "Send the full history: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "The loop sends every turn and tool result back each time. Reach for a scratchpad only when context runs out.",
+    "guide": {
+     "obj": "1.1 Design and implement agentic loops for autonomous task execution",
+     "quote": "Tool results are appended to conversation history so the model reasons about the next action"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-07",
+   "was": "m7-s3-07",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Forcing a tool to run first",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The document-analysis subagent has two tools: <code>extract_citation_metadata</code> and <code>analyze_findings</code>. Analysis needs the page and DOI fields that extraction produces, so extraction must come first for each paper. The subagent calls a tool on every turn. On some papers it calls <code>analyze_findings</code> first, and those findings have no page numbers. Which change <b>fixes this most directly</b>?",
+   "options": [
+    {
+     "t": "Rewrite both tool descriptions to say extraction comes first and which fields analysis needs.",
+     "why": "Works, but only usually. Clearer descriptions help Claude pick the right tool, but the order is still left to the model's judgement.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "On the first request for each paper, force <code>tool_choice</code> to <code>extract_citation_metadata</code>.",
+     "why": "Best. A forced <code>tool_choice</code> makes Claude call that exact tool, so extraction runs first on every paper. Later requests go back to <code>auto</code>."
+    },
+    {
+     "t": "Add a <code>PostToolUse</code> hook that looks up page and DOI fields and adds them to each analysis.",
+     "why": "Works, but too late. The hook fills the fields afterwards, but the analysis already ran without them, and the skipped step is hidden.",
+     "trap": "too late"
+    },
+    {
+     "t": "Merge the two tools into one that extracts the metadata and then analyses the paper.",
+     "why": "Works, but overbuilt. One tool fixes the order, but it means rewriting both tools when a single setting does the job.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "On some papers it calls analyze_findings first, and those findings have no page numbers.",
+   "explanation": "tool_choice auto lets Claude choose, any forces some tool call, and a forced named tool makes Claude call that exact tool. To make a specific tool run first, force it on that request.",
+   "eli5": {
+    "question": "The helper sometimes analyses a paper before pulling out its page and DOI details. The clue: it does call a tool every time; it just picks the wrong one first.",
+    "answer": "A lab says “label the sample, then test it”. A sign on the wall mostly works. Handing the technician the label printer first, and nothing else, works every time. For Claude, that is a <b>forced <code>tool_choice</code></b>: on the first request, it must call <code>extract_citation_metadata</code>. <b>Rule: a specific tool must run first → force it by name on that request.</b>",
+    "options": [
+     "A better sign on the wall helps, but the technician can still grab the wrong tool.",
+     "Correct. Hand over the label printer first.",
+     "Labelling samples after the test fills the gap, but the test already ran without a label.",
+     "Building one machine that labels and tests works, but it's a big job when handing over the printer first does it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>better descriptions</b> will fix the order. Descriptions help Claude pick between tools, but the choice is still the model's. When one tool must run first, the API can make that call happen: set <code>tool_choice</code> to that named tool on the first request.",
+    "diagram": "request 1: tool_choice = extract_citation_metadata\nrequest 2+: tool_choice = auto → analyze_findings",
+    "mapTitle": "Which tool_choice setting fits?",
+    "map": {
+     "head": [
+      "What you need",
+      "Setting or fix",
+      "Effect"
+     ],
+     "rows": [
+      [
+       "One specific tool must run first",
+       "Forced <code>{\"type\":\"tool\",\"name\":…}</code>",
+       "That exact tool is called"
+      ],
+      [
+       "Claude replies in text when it should call a tool",
+       "<code>tool_choice</code>: <code>any</code>",
+       "Some tool must be called"
+      ],
+      [
+       "Claude may answer or call a tool",
+       "<code>tool_choice</code>: <code>auto</code>",
+       "Claude decides"
+      ],
+      [
+       "Claude mixes up tools with thin descriptions",
+       "Expand the descriptions",
+       "Better selection, still probabilistic"
+      ],
+      [
+       "Results need reshaping before Claude reads them",
+       "<code>PostToolUse</code> hook",
+       "Changes results, not order"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Analysis needs the page and DOI fields that extraction produces, so extraction must come first for each paper",
+      "means": "The order matters every time, so a description (<b>[[0]]</b>) that only suggests it is weaker."
+     },
+     {
+      "quote": "The subagent calls a tool on every turn",
+      "means": "It is not replying in text. The problem is which tool comes first."
+     },
+     {
+      "quote": "On some papers it calls analyze_findings first, and those findings have no page numbers",
+      "means": "The decider. The wrong tool runs first. Fixing fields afterwards (<b>[[2]]</b>) hides the skipped step."
+     },
+     {
+      "quote": "Which change fixes this most directly?",
+      "means": "One setting on the first request: <b>[[1]]</b>. Merging tools (<b>[[3]]</b>) is a rebuild."
+     }
+    ],
+    "rule": "To make a specific tool run first, force tool_choice to that tool on that request.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Force a tool to run first (e.g., extract_metadata before enrichment)"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-08",
+   "was": "m7-s3-08",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Scoped tool access per subagent",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "All subagents are built from one AgentDefinition template that holds the full tool set. The synthesis subagent only needs to read analysis results and save drafts. It often runs journal and registry searches in the middle of a draft. Sometimes it saves drafts with the wrong tool. Every tool already has a clear, detailed description. What is the <b>best fix</b> for its tool use?",
+   "options": [
+    {
+     "t": "List in the synthesis system prompt which tools it may use and which belong to other roles.",
+     "why": "Works, but only usually. Claude will mostly follow the list, but it still holds every tool, and prompt guidance is probabilistic.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks the synthesis subagent from calling search tools.",
+     "why": "Works, but overbuilt. The hook stops the searches, but it adds code to undo a tool list that is too wide, and the wrong draft tool is still there.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Give synthesis its own AgentDefinition whose tool list holds only its read and draft tools.",
+     "why": "Best. Too many tools make selection less reliable, and agents misuse tools outside their role. Scoping the list removes both problems at the source."
+    },
+    {
+     "t": "Add sample calls and a note on when synthesis should not use each tool to every description.",
+     "why": "Works, but solves a different problem. Richer descriptions help when descriptions are thin. These are already detailed; the trouble is how many off-role tools it holds.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "All subagents are built from one AgentDefinition template that holds the full tool set.",
+   "explanation": "Selection reliability drops as the tool count grows, and agents misuse tools outside their specialty. Give each subagent only the tools its role needs.",
+   "eli5": {
+    "question": "The writing helper has every tool in the system, and it keeps using ones that aren't its job. The clue: everyone is built from one template with all the tools.",
+    "answer": "Give a new writer a desk with only a pen and a filing tray, and they write. Give them a desk piled with forty gadgets, and they fiddle with the gadgets. For a subagent, the desk is its <b>tool list in the AgentDefinition</b>. <b>Rule: give each subagent only the tools its role needs.</b>",
+    "options": [
+     "A note saying “don't touch the gadgets” mostly works, but the gadgets are still on the desk.",
+     "A lock on some gadgets works, but it's easier to not put them on the desk.",
+     "Correct. Clear the desk down to a pen and a tray.",
+     "Better labels on the gadgets help when labels are poor. These labels are already good."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>misused tools mean unclear descriptions</b>. That is the first fix when descriptions are thin. Here they are already detailed. The real cause is that the synthesis subagent holds every role's tools, and agents misuse tools outside their specialty.",
+    "diagram": "template: 15 tools → synthesis picks searches\nsynthesis AgentDefinition: read_results, save_draft",
+    "mapTitle": "A subagent uses the wrong tools. What is the cause?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Uses other roles' tools; descriptions are good",
+       "Too many off-role tools",
+       "Scope its tool list in its AgentDefinition"
+      ],
+      [
+       "Mixes up similar tools; descriptions are one line",
+       "Thin descriptions",
+       "Expand the descriptions"
+      ],
+      [
+       "Needs one cross-role lookup very often",
+       "Round trips through the coordinator",
+       "Add one limited cross-role tool"
+      ],
+      [
+       "A call must be blocked for policy reasons",
+       "Compliance rule",
+       "<code>PreToolUse</code> hook"
+      ],
+      [
+       "Prompt wording pulls Claude towards a tool",
+       "Keyword association",
+       "Reword the system prompt"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "All subagents are built from one AgentDefinition template that holds the full tool set",
+      "means": "The decider. Synthesis carries every role's tools. Telling it which to avoid (<b>[[0]]</b>) leaves them all in place."
+     },
+     {
+      "quote": "The synthesis subagent only needs to read analysis results and save drafts",
+      "means": "Its role needs very few tools."
+     },
+     {
+      "quote": "It often runs journal and registry searches in the middle of a draft",
+      "means": "Off-role tools are being used. A hook (<b>[[1]]</b>) blocks the searches but leaves the wide list."
+     },
+     {
+      "quote": "Every tool already has a clear, detailed description",
+      "means": "Descriptions are not the cause, so improving them (<b>[[3]]</b>) misses."
+     },
+     {
+      "quote": "What is the best fix for its tool use?",
+      "means": "Give synthesis its own scoped tool list: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Each subagent gets only the tools its role needs, set in its own AgentDefinition.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Agents with off-specialization tools misuse them"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-09",
+   "was": "m7-s3-09",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Lost in the middle",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The synthesis subagent gets one long input: findings from every analysed paper, in the order the papers were found. Each finding is already cut down to a few relevant fields. Reviewers say the summaries cover the first and last papers well. Findings from papers in the middle of the input are often missing. Which change <b>best addresses this</b>?",
+   "options": [
+    {
+     "t": "Split the findings into batches, summarise each batch, then merge the batch summaries.",
+     "why": "Works, but overbuilt. Shorter inputs lose less, but it adds passes and a merge step, where claims can lose their sources.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Have an independent reviewer instance list the papers each draft leaves out.",
+     "why": "Works, but too late. A fresh reviewer can catch missing papers, but it finds the gap after the draft and adds a pass to every run.",
+     "trap": "too late"
+    },
+    {
+     "t": "Start the input with a digest of the key findings, and put the details under headings.",
+     "why": "Best. Models read the start and end of a long input most reliably. A leading digest and clear section headings keep the middle from being lost."
+    },
+    {
+     "t": "Order the findings so the strongest studies sit at the start and the end of the input.",
+     "why": "Works, but moves the problem. The strongest studies get read, but whatever lands in the middle is still skipped.",
+     "trap": "moves the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "Findings from papers in the middle of the input are often missing.",
+   "explanation": "Models reliably process the beginning and end of long inputs but may omit the middle. Put key findings first and organise the rest under explicit headers.",
+   "eli5": {
+    "question": "In one long input, the start and end get used, but the middle gets skipped. The clue: what goes missing depends on <i>where</i> it sits.",
+    "answer": "When you skim a long report, you remember the first and last pages. A good report opens with a one-page summary and uses clear headings, so nothing in the middle is lost. That's the fix here: a <b>digest of key findings at the start</b> and <b>section headings</b> for the rest. <b>Rule: lost in the middle → key points first, clear headings throughout.</b>",
+    "options": [
+     "Splitting the report into small booklets works, but now you also have to combine them.",
+     "A second reader who lists what was skipped helps, but only after the report is written.",
+     "Correct. A summary page up front and clear headings.",
+     "Putting the best pages first and last helps those pages, but the middle is still skimmed."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the input is too big and needs cutting</b>. But the findings are already trimmed. What's missing depends on position: start and end are covered, the middle isn't. That is the “lost in the middle” effect, and the guide's fix is a summary at the start plus clear section headers.",
+    "diagram": "[digest: key findings from every paper]\n## Efficacy   ...\n## Safety     ...\n## Cost       ...",
+    "mapTitle": "Details go missing from a long input. Why?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Start and end used, middle missed",
+       "Lost in the middle",
+       "Key digest first + section headings"
+      ],
+      [
+       "Input bloated with fields nobody uses",
+       "Verbose tool output",
+       "Trim to relevant fields"
+      ],
+      [
+       "Facts drift after summarising a long chat",
+       "Lossy summaries",
+       "Case-facts block"
+      ],
+      [
+       "Claims lose their sources after merging",
+       "No claim-source mapping",
+       "Keep sources with each claim"
+      ],
+      [
+       "One pass over many items misses some",
+       "Attention diluted",
+       "Per-item passes, then integration"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "findings from every analysed paper, in the order the papers were found",
+      "means": "No structure: important findings can land anywhere, including the middle."
+     },
+     {
+      "quote": "Each finding is already cut down to a few relevant fields",
+      "means": "Size has already been tackled, so the cause is layout, not bulk."
+     },
+     {
+      "quote": "Reviewers say the summaries cover the first and last papers well",
+      "means": "Coverage depends on position, the signature of “lost in the middle”."
+     },
+     {
+      "quote": "Findings from papers in the middle of the input are often missing",
+      "means": "The decider. Reordering (<b>[[3]]</b>) only moves what's in the middle; a reviewer (<b>[[1]]</b>) catches it late; batches (<b>[[0]]</b>) add machinery."
+     },
+     {
+      "quote": "Which change best addresses this?",
+      "means": "Digest first, headings for the rest: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Middle of a long input gets missed → put key findings first and use clear section headers.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "place key summaries at the beginning + explicit section headers"
+    }
+   }
+  },
+  {
+   "id": "m7p-s3-10",
+   "was": "m7-s3-10",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Structured error propagation",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The trial-registry subagent sometimes cannot reach the registry, and these outages can last for hours. Today it raises an exception that ends the whole run and throws away finished work from the other subagents. The team wants the coordinator to decide what happens next: wait, use another source, or publish with a noted gap. Which <b>TWO</b> changes should the subagent make?",
+   "options": [
+    {
+     "t": "Retry the registry call with backoff for a short while before reporting back.",
+     "why": "Works, but delays the problem. A short retry rides out brief blips, but these outages last hours, and the coordinator still learns nothing it can decide with.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Return a structured failure with the error type, the query it tried and possible alternatives.",
+     "why": "Best. Structured error context tells the coordinator what failed and what else could work, so it can choose to wait, switch source or publish with a gap."
+    },
+    {
+     "t": "Log the full error to the team's monitoring dashboard and page the on-call engineer.",
+     "why": "Works, but solves a different problem. People hear about the outage, but the coordinator gets nothing to decide with, and the run still ends.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Return any trial records it had already fetched before the registry went down.",
+     "why": "Best. Passing partial results keeps finished work, and lets the coordinator publish with a noted gap instead of starting over."
+    }
+   ],
+   "answer": [
+    1,
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The team wants the coordinator to decide what happens next: wait, use another source, or publish with a noted gap.",
+   "explanation": "Recover locally from brief errors, but pass unresolved ones up with structured context: failure type, attempted query, partial results and alternatives. Crashing the run and hiding the failure are both anti-patterns.",
+   "eli5": {
+    "question": "When the registry is down, the helper crashes the whole job. The team wants the coordinator to choose what to do next. The clue: the coordinator needs enough information to choose.",
+    "answer": "A courier can't get into a building. Phoning the office to say “building locked, tried the front door, the back entrance might work, here are the parcels I did deliver” lets the office decide. Throwing the whole van away does not. For the subagent that means a <b>structured error</b> (what failed, what was tried, alternatives) plus its <b>partial results</b>. <b>Rule: pass failures up with context and partial results; don't crash and don't hide them.</b>",
+    "options": [
+     "Knocking again for a minute helps with a brief delay. These outages last hours.",
+     "Correct. Say what failed, what was tried and what else might work.",
+     "Telling the IT team is good practice, but it doesn't help the office decide what to do now.",
+     "Correct. Hand back the parcels already delivered."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the subagent should just try harder</b> before giving up. Local retry is right for brief blips. These outages last hours, and the team wants the coordinator to make the call. That needs information: what failed, what was tried, what else might work, and what was already found.",
+    "diagram": "registry down\n  → { error: \"registry_unreachable\", query: ...,\n      alternatives: [...], partial: [records] }\n  → coordinator: wait / switch / publish with gap",
+    "mapTitle": "A subagent hits an error. What does it send back?",
+    "map": {
+     "head": [
+      "Situation",
+      "Right response",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Brief, transient blip",
+       "Retry locally with backoff",
+       "Usually clears on its own"
+      ],
+      [
+       "Outage that won't clear soon",
+       "Structured error + partial results to the coordinator",
+       "Coordinator chooses recovery"
+      ],
+      [
+       "Query ran and found nothing",
+       "A valid empty result, not an error",
+       "Absence is an answer"
+      ],
+      [
+       "Any failure ends the whole run",
+       "Anti-pattern",
+       "Loses finished work"
+      ],
+      [
+       "Failure reported as success or as “operation failed”",
+       "Anti-pattern",
+       "Hides what happened"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "these outages can last for hours",
+      "means": "A short retry (<b>[[0]]</b>) won't outlast the outage."
+     },
+     {
+      "quote": "Today it raises an exception that ends the whole run and throws away finished work from the other subagents",
+      "means": "Ending the run on one failure is an anti-pattern, and finished work should be kept: <b>[[3]]</b>."
+     },
+     {
+      "quote": "The team wants the coordinator to decide what happens next",
+      "means": "The coordinator needs facts to decide with: <b>[[1]]</b>. Paging a person (<b>[[2]]</b>) doesn't give it any."
+     },
+     {
+      "quote": "wait, use another source, or publish with a noted gap",
+      "means": "Alternatives support “use another source”; partial results support “publish with a noted gap”."
+     }
+    ],
+    "rule": "Unresolved errors go up with structure: failure type, query tried, alternatives, partial results.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Structured error context (failure type, attempted query, partial results, alternatives) enables coordinator recovery"
+    }
+   }
+  }
+ ]
+}
