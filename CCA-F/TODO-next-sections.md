@@ -51,7 +51,7 @@ subagent spawn payloads) or keep it strictly to the Messages API wire format.
 
 ## 2. MCP Skeletons — bare-minimum servers, one per design pattern ✅ BUILT (2026-08-23)
 
-**Shipped as** `D4-MCP-Skeletons/` — reference page + 8 runnable servers + smoke tests.
+**Shipped as** `D2-MCP-Skeletons/` — reference page + 8 runnable servers + smoke tests.
 Decisions taken on the two open questions below: **Python/FastMCP throughout**, and
 **runnable + tested** (all eight exercised in-process by `skeletons/test_skeletons.py`
 against fastmcp 3.4.7). All 8 candidate skeletons were built, none dropped.

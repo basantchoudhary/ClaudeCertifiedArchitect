@@ -157,7 +157,7 @@ def main() -> None:
 #             this script with your own execute_tool() if you want them live.
 # 10          (MCP) needs a reachable remote MCP server URL for the connector half; the
 #             JSON-RPC half is the server's own wire format, captured by running one of
-#             the D4-MCP-Skeletons servers with a protocol-level client.
+#             the D2-MCP-Skeletons servers with a protocol-level client.
 # 11          (Batches) is asynchronous — create, poll, then fetch results. Worth doing
 #             by hand once rather than scripting; it also takes up to an hour to settle.
 # -----------------------------------------------------------------------------

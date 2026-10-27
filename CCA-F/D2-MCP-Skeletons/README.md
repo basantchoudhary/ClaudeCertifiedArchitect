@@ -2,7 +2,7 @@
 
 Eight runnable MCP servers, ~40–80 lines each, each isolating exactly one design decision.
 Reading the spec tells you what is *possible*; these show which possible thing is *right* —
-which is what Domain 4 actually tests.
+which is what Domain 2 actually tests.
 
 ## 👉 Start here
 
@@ -11,7 +11,7 @@ grounding (host/client/server, the three primitives sorted by who controls them,
 lifecycle), then walks the eight patterns, each with the code, what it exposes, and the exam
 question shape it answers.
 
-**Live:** https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-MCP-Skeletons/index.html
+**Live:** https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-MCP-Skeletons/index.html
 
 ## The eight
 
@@ -32,7 +32,7 @@ Plus [`mcp.json.example`](skeletons/mcp.json.example) — a project-scoped confi
 ## Running them
 
 ```bash
-cd CCA-F/D4-MCP-Skeletons/skeletons
+cd CCA-F/D2-MCP-Skeletons/skeletons
 pip install fastmcp
 
 python test_skeletons.py        # exercises all eight in-process — no network, no API key

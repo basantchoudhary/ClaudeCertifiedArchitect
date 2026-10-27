@@ -22,14 +22,14 @@ exam-focused CCA material land more easily.
 | **CCA-F · Domain 1 — Agentic Architecture** (curriculum hub) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/index.html) |
 | CCA-F · Domain 1 — visual overview & flashcards | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/overview.html) |
 | 🧪 **CCA-F · Domain 1 — Mock Exam Bank** (7 sets + full mock, 118 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
-| **CCA-F · Domain 2 — Claude Code** (curriculum hub · 8 clusters, 41 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Claude-Code/index.html) |
-| 🧪 **CCA-F · Domain 2 — Mock Exam Bank** (8 sets + full mock, 121 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Claude-Code/quizzes/index.html) |
-| **CCA-F · Domain 3 — Prompt Engineering** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/index.html) |
-| 🧪 **CCA-F · Domain 3 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
-| 🧪 **CCA-F · Domain 3 — Hands-On Lab** (8 exercises in a throwaway repo · memory, rules, commands, skills, permissions) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Hands-On-Lab/index.html) |
-| **CCA-F · Domain 4 — Tool Design & MCP** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/index.html) |
-| 🧪 **CCA-F · Domain 4 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
-| 🦴 **CCA-F · Domain 4 — MCP Skeletons** 🆕 (mental model + 8 minimal servers, one per design pattern · runnable Python, all tested) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-MCP-Skeletons/index.html) |
+| **CCA-F · Domain 3 — Claude Code** (curriculum hub · 8 clusters, 41 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Claude-Code/index.html) |
+| 🧪 **CCA-F · Domain 3 — Mock Exam Bank** (8 sets + full mock, 121 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Claude-Code/quizzes/index.html) |
+| **CCA-F · Domain 4 — Prompt Engineering** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Prompt-Engineering/index.html) |
+| 🧪 **CCA-F · Domain 4 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D4-Prompt-Engineering/quizzes/index.html) |
+| 🧪 **CCA-F · Domain 4 — Hands-On Lab** (8 exercises in a throwaway repo · memory, rules, commands, skills, permissions) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D3-Hands-On-Lab/index.html) |
+| **CCA-F · Domain 2 — Tool Design & MCP** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Tool-Design-MCP/index.html) |
+| 🧪 **CCA-F · Domain 2 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-Tool-Design-MCP/quizzes/index.html) |
+| 🦴 **CCA-F · Domain 2 — MCP Skeletons** 🆕 (mental model + 8 minimal servers, one per design pattern · runnable Python, all tested) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D2-MCP-Skeletons/index.html) |
 | 🔌 **CCA-F · Wire-Format Reference** 🆕 (11 scenarios × scenario → client code → request JSON → response JSON, annotated · what actually goes to the model and comes back) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/Wire-Format-Reference/index.html) |
 | **CCA-F · Domain 5 — Context & Reliability** (curriculum hub · 8 clusters, 40 subtopics) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/index.html) |
 | 🧪 **CCA-F · Domain 5 — Mock Exam Bank** (8 sets + full mock, 120 questions, instant scoring) | [open ›](https://basantchoudhary.github.io/ClaudeCertifiedArchitect/CCA-F/D5-Context-Management/quizzes/index.html) |
@@ -49,9 +49,9 @@ exam-focused CCA material land more easily.
 | # | Domain | Weight | Key focus areas | Mock exam |
 |---|--------|:------:|-----------------|-----------|
 | **D1** | Agentic Architecture & Orchestration | **27%** | Agentic loops, `stop_reason`, multi-agent patterns, orchestration | [Take quiz ›](CCA-F/D1-Agentic-Architecture/quizzes/index.html) |
-| **D2** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents | [Take quiz ›](CCA-F/D2-Claude-Code/quizzes/index.html) |
-| **D3** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples | [Take quiz ›](CCA-F/D3-Prompt-Engineering/quizzes/index.html) |
-| **D4** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | [Take quiz ›](CCA-F/D4-Tool-Design-MCP/quizzes/index.html) |
+| **D3** | Claude Code Configuration & Workflows | **20%** | `CLAUDE.md`, skills, commands, hooks, subagents | [Take quiz ›](CCA-F/D3-Claude-Code/quizzes/index.html) |
+| **D4** | Prompt Engineering & Structured Outputs | **20%** | System prompts, JSON output, few-shot examples | [Take quiz ›](CCA-F/D4-Prompt-Engineering/quizzes/index.html) |
+| **D2** | Tool Design & MCP Integration | **18%** | Tool definitions, MCP primitives, error handling | [Take quiz ›](CCA-F/D2-Tool-Design-MCP/quizzes/index.html) |
 | **D5** | Context Management & Reliability | **15%** | Token budgeting, prompt caching, reliability | [Take quiz ›](CCA-F/D5-Context-Management/quizzes/index.html) |
 | | **Total** | **100%** | | |
 
@@ -142,258 +142,258 @@ exam-focused CCA material land more easily.
 
 *(7 clusters · 44 subtopics — or open the [Domain 1 curriculum hub](CCA-F/D1-Agentic-Architecture/index.html) for the full deep-dive)*
 
-### D2 · Claude Code Configuration & Workflows (20%)
+### D3 · Claude Code Configuration & Workflows (20%)
 
-8 clusters · 41 subtopics · every flag/setting/hook-event verified against the official Claude Code docs. Full deep-dive: [Domain 2 curriculum hub](CCA-F/D2-Claude-Code/index.html).
+8 clusters · 41 subtopics · every flag/setting/hook-event verified against the official Claude Code docs. Full deep-dive: [Domain 3 curriculum hub](CCA-F/D3-Claude-Code/index.html).
 
 **Cluster 1 · Memory & CLAUDE.md**
 
 | # | Subtopic |
 |:-:|----------|
-| 1.1 | [What CLAUDE.md Is & When It Loads](CCA-F/D2-Claude-Code/subtopics/1-1-claude-md-what-and-when.html) |
-| 1.2 | [The Memory Hierarchy](CCA-F/D2-Claude-Code/subtopics/1-2-memory-hierarchy.html) |
-| 1.3 | [Imports (@path) & Tree Lookup](CCA-F/D2-Claude-Code/subtopics/1-3-imports-and-recursion.html) |
-| 1.4 | [Writing an Effective CLAUDE.md](CCA-F/D2-Claude-Code/subtopics/1-4-writing-effective-claude-md.html) |
-| 1.5 | [Quick-Add (#) & the /memory Command](CCA-F/D2-Claude-Code/subtopics/1-5-quick-add-and-memory-command.html) |
-| 1.6 | [Nested / Sub-directory CLAUDE.md](CCA-F/D2-Claude-Code/subtopics/1-6-nested-scoping.html) |
+| 1.1 | [What CLAUDE.md Is & When It Loads](CCA-F/D3-Claude-Code/subtopics/1-1-claude-md-what-and-when.html) |
+| 1.2 | [The Memory Hierarchy](CCA-F/D3-Claude-Code/subtopics/1-2-memory-hierarchy.html) |
+| 1.3 | [Imports (@path) & Tree Lookup](CCA-F/D3-Claude-Code/subtopics/1-3-imports-and-recursion.html) |
+| 1.4 | [Writing an Effective CLAUDE.md](CCA-F/D3-Claude-Code/subtopics/1-4-writing-effective-claude-md.html) |
+| 1.5 | [Quick-Add (#) & the /memory Command](CCA-F/D3-Claude-Code/subtopics/1-5-quick-add-and-memory-command.html) |
+| 1.6 | [Nested / Sub-directory CLAUDE.md](CCA-F/D3-Claude-Code/subtopics/1-6-nested-scoping.html) |
 
 **Cluster 2 · Settings & Configuration**
 
 | # | Subtopic |
 |:-:|----------|
-| 2.1 | [settings.json & Its Precedence](CCA-F/D2-Claude-Code/subtopics/2-1-settings-json-hierarchy.html) |
-| 2.2 | [Key Settings You Must Know](CCA-F/D2-Claude-Code/subtopics/2-2-key-settings.html) |
-| 2.3 | [Environment Variables](CCA-F/D2-Claude-Code/subtopics/2-3-env-vars.html) |
-| 2.4 | [The .claude Directory & /config](CCA-F/D2-Claude-Code/subtopics/2-4-claude-dir-layout.html) |
+| 2.1 | [settings.json & Its Precedence](CCA-F/D3-Claude-Code/subtopics/2-1-settings-json-hierarchy.html) |
+| 2.2 | [Key Settings You Must Know](CCA-F/D3-Claude-Code/subtopics/2-2-key-settings.html) |
+| 2.3 | [Environment Variables](CCA-F/D3-Claude-Code/subtopics/2-3-env-vars.html) |
+| 2.4 | [The .claude Directory & /config](CCA-F/D3-Claude-Code/subtopics/2-4-claude-dir-layout.html) |
 
 **Cluster 3 · Permissions & Safety**
 
 | # | Subtopic |
 |:-:|----------|
-| 3.1 | [Permission Modes](CCA-F/D2-Claude-Code/subtopics/3-1-permission-modes.html) |
-| 3.2 | [Allow / Deny / Ask Rules](CCA-F/D2-Claude-Code/subtopics/3-2-allow-deny-ask-rules.html) |
-| 3.3 | [Directory Access & Working Dirs](CCA-F/D2-Claude-Code/subtopics/3-3-directory-access.html) |
-| 3.4 | [Sandboxing & Bypassing Prompts](CCA-F/D2-Claude-Code/subtopics/3-4-sandboxing.html) |
-| 3.5 | [Enterprise Managed Policy](CCA-F/D2-Claude-Code/subtopics/3-5-managed-policy.html) |
+| 3.1 | [Permission Modes](CCA-F/D3-Claude-Code/subtopics/3-1-permission-modes.html) |
+| 3.2 | [Allow / Deny / Ask Rules](CCA-F/D3-Claude-Code/subtopics/3-2-allow-deny-ask-rules.html) |
+| 3.3 | [Directory Access & Working Dirs](CCA-F/D3-Claude-Code/subtopics/3-3-directory-access.html) |
+| 3.4 | [Sandboxing & Bypassing Prompts](CCA-F/D3-Claude-Code/subtopics/3-4-sandboxing.html) |
+| 3.5 | [Enterprise Managed Policy](CCA-F/D3-Claude-Code/subtopics/3-5-managed-policy.html) |
 
 **Cluster 4 · Slash Commands**
 
 | # | Subtopic |
 |:-:|----------|
-| 4.1 | [Built-in Slash Commands](CCA-F/D2-Claude-Code/subtopics/4-1-builtin-commands.html) |
-| 4.2 | [Custom Slash Commands](CCA-F/D2-Claude-Code/subtopics/4-2-custom-commands.html) |
-| 4.3 | [Command Frontmatter](CCA-F/D2-Claude-Code/subtopics/4-3-command-frontmatter.html) |
-| 4.4 | [Arguments & Injection](CCA-F/D2-Claude-Code/subtopics/4-4-arguments-injection.html) |
-| 4.5 | [Command Scopes](CCA-F/D2-Claude-Code/subtopics/4-5-command-scopes.html) |
+| 4.1 | [Built-in Slash Commands](CCA-F/D3-Claude-Code/subtopics/4-1-builtin-commands.html) |
+| 4.2 | [Custom Slash Commands](CCA-F/D3-Claude-Code/subtopics/4-2-custom-commands.html) |
+| 4.3 | [Command Frontmatter](CCA-F/D3-Claude-Code/subtopics/4-3-command-frontmatter.html) |
+| 4.4 | [Arguments & Injection](CCA-F/D3-Claude-Code/subtopics/4-4-arguments-injection.html) |
+| 4.5 | [Command Scopes](CCA-F/D3-Claude-Code/subtopics/4-5-command-scopes.html) |
 
 **Cluster 5 · Skills**
 
 | # | Subtopic |
 |:-:|----------|
-| 5.1 | [What Agent Skills Are](CCA-F/D2-Claude-Code/subtopics/5-1-what-are-skills.html) |
-| 5.2 | [Progressive Disclosure & Invocation](CCA-F/D2-Claude-Code/subtopics/5-2-progressive-disclosure.html) |
-| 5.3 | [Skill Structure & Bundled Resources](CCA-F/D2-Claude-Code/subtopics/5-3-skill-structure.html) |
-| 5.4 | [Skills vs Commands vs Subagents vs MCP](CCA-F/D2-Claude-Code/subtopics/5-4-skills-vs-others.html) |
-| 5.5 | [Distributing Skills (Plugins)](CCA-F/D2-Claude-Code/subtopics/5-5-distributing-skills.html) |
+| 5.1 | [What Agent Skills Are](CCA-F/D3-Claude-Code/subtopics/5-1-what-are-skills.html) |
+| 5.2 | [Progressive Disclosure & Invocation](CCA-F/D3-Claude-Code/subtopics/5-2-progressive-disclosure.html) |
+| 5.3 | [Skill Structure & Bundled Resources](CCA-F/D3-Claude-Code/subtopics/5-3-skill-structure.html) |
+| 5.4 | [Skills vs Commands vs Subagents vs MCP](CCA-F/D3-Claude-Code/subtopics/5-4-skills-vs-others.html) |
+| 5.5 | [Distributing Skills (Plugins)](CCA-F/D3-Claude-Code/subtopics/5-5-distributing-skills.html) |
 
 **Cluster 6 · Hooks**
 
 | # | Subtopic |
 |:-:|----------|
-| 6.1 | [Hook Events Overview](CCA-F/D2-Claude-Code/subtopics/6-1-hook-events.html) |
-| 6.2 | [Hook Configuration & Matchers](CCA-F/D2-Claude-Code/subtopics/6-2-hook-configuration.html) |
-| 6.3 | [Hook Input & Output](CCA-F/D2-Claude-Code/subtopics/6-3-hook-io.html) |
-| 6.4 | [Blocking & Decision Control](CCA-F/D2-Claude-Code/subtopics/6-4-blocking-decisions.html) |
-| 6.5 | [Hook Use Cases](CCA-F/D2-Claude-Code/subtopics/6-5-hook-use-cases.html) |
-| 6.6 | [Hook Security](CCA-F/D2-Claude-Code/subtopics/6-6-hook-security.html) |
+| 6.1 | [Hook Events Overview](CCA-F/D3-Claude-Code/subtopics/6-1-hook-events.html) |
+| 6.2 | [Hook Configuration & Matchers](CCA-F/D3-Claude-Code/subtopics/6-2-hook-configuration.html) |
+| 6.3 | [Hook Input & Output](CCA-F/D3-Claude-Code/subtopics/6-3-hook-io.html) |
+| 6.4 | [Blocking & Decision Control](CCA-F/D3-Claude-Code/subtopics/6-4-blocking-decisions.html) |
+| 6.5 | [Hook Use Cases](CCA-F/D3-Claude-Code/subtopics/6-5-hook-use-cases.html) |
+| 6.6 | [Hook Security](CCA-F/D3-Claude-Code/subtopics/6-6-hook-security.html) |
 
 **Cluster 7 · Subagents**
 
 | # | Subtopic |
 |:-:|----------|
-| 7.1 | [What Subagents Are](CCA-F/D2-Claude-Code/subtopics/7-1-what-are-subagents.html) |
-| 7.2 | [Subagent Configuration](CCA-F/D2-Claude-Code/subtopics/7-2-subagent-config.html) |
-| 7.3 | [Context Isolation & Delegation](CCA-F/D2-Claude-Code/subtopics/7-3-context-isolation.html) |
-| 7.4 | [Invoking Subagents](CCA-F/D2-Claude-Code/subtopics/7-4-invoking-subagents.html) |
-| 7.5 | [Subagents vs Skills vs Commands](CCA-F/D2-Claude-Code/subtopics/7-5-subagents-vs-others.html) |
+| 7.1 | [What Subagents Are](CCA-F/D3-Claude-Code/subtopics/7-1-what-are-subagents.html) |
+| 7.2 | [Subagent Configuration](CCA-F/D3-Claude-Code/subtopics/7-2-subagent-config.html) |
+| 7.3 | [Context Isolation & Delegation](CCA-F/D3-Claude-Code/subtopics/7-3-context-isolation.html) |
+| 7.4 | [Invoking Subagents](CCA-F/D3-Claude-Code/subtopics/7-4-invoking-subagents.html) |
+| 7.5 | [Subagents vs Skills vs Commands](CCA-F/D3-Claude-Code/subtopics/7-5-subagents-vs-others.html) |
 
 **Cluster 8 · Automation, MCP & Integrations**
 
 | # | Subtopic |
 |:-:|----------|
-| 8.1 | [Headless Mode & Scripting](CCA-F/D2-Claude-Code/subtopics/8-1-headless-mode.html) |
-| 8.2 | [Adding MCP Servers](CCA-F/D2-Claude-Code/subtopics/8-2-mcp-in-claude-code.html) |
-| 8.3 | [Using MCP in Claude Code](CCA-F/D2-Claude-Code/subtopics/8-3-mcp-usage.html) |
-| 8.4 | [CI & GitHub Actions](CCA-F/D2-Claude-Code/subtopics/8-4-ci-github-actions.html) |
-| 8.5 | [IDE Integrations & the SDK](CCA-F/D2-Claude-Code/subtopics/8-5-ide-integrations.html) |
+| 8.1 | [Headless Mode & Scripting](CCA-F/D3-Claude-Code/subtopics/8-1-headless-mode.html) |
+| 8.2 | [Adding MCP Servers](CCA-F/D3-Claude-Code/subtopics/8-2-mcp-in-claude-code.html) |
+| 8.3 | [Using MCP in Claude Code](CCA-F/D3-Claude-Code/subtopics/8-3-mcp-usage.html) |
+| 8.4 | [CI & GitHub Actions](CCA-F/D3-Claude-Code/subtopics/8-4-ci-github-actions.html) |
+| 8.5 | [IDE Integrations & the SDK](CCA-F/D3-Claude-Code/subtopics/8-5-ide-integrations.html) |
 
-### D3 · Prompt Engineering & Structured Outputs (20%)
+### D4 · Prompt Engineering & Structured Outputs (20%)
 
-8 clusters · 40 subtopics · every technique & API parameter verified against the official prompt-engineering docs and the Messages API. Full deep-dive: [Domain 3 curriculum hub](CCA-F/D3-Prompt-Engineering/index.html).
+8 clusters · 40 subtopics · every technique & API parameter verified against the official prompt-engineering docs and the Messages API. Full deep-dive: [Domain 4 curriculum hub](CCA-F/D4-Prompt-Engineering/index.html).
 
 **Cluster 1 · Foundations & Being Clear**
 
 | # | Subtopic |
 |:-:|----------|
-| 1.1 | [What Prompt Engineering Is & When to Use It](CCA-F/D3-Prompt-Engineering/subtopics/1-1-what-is-prompt-engineering.html) |
-| 1.2 | [The Empirical, Iterative Loop](CCA-F/D3-Prompt-Engineering/subtopics/1-2-empirical-iterative-loop.html) |
-| 1.3 | [Be Clear and Direct](CCA-F/D3-Prompt-Engineering/subtopics/1-3-be-clear-and-direct.html) |
-| 1.4 | [Sequential Steps & Numbered Instructions](CCA-F/D3-Prompt-Engineering/subtopics/1-4-sequential-steps.html) |
-| 1.5 | [The Prompt Anatomy (Element Order)](CCA-F/D3-Prompt-Engineering/subtopics/1-5-prompt-anatomy.html) |
+| 1.1 | [What Prompt Engineering Is & When to Use It](CCA-F/D4-Prompt-Engineering/subtopics/1-1-what-is-prompt-engineering.html) |
+| 1.2 | [The Empirical, Iterative Loop](CCA-F/D4-Prompt-Engineering/subtopics/1-2-empirical-iterative-loop.html) |
+| 1.3 | [Be Clear and Direct](CCA-F/D4-Prompt-Engineering/subtopics/1-3-be-clear-and-direct.html) |
+| 1.4 | [Sequential Steps & Numbered Instructions](CCA-F/D4-Prompt-Engineering/subtopics/1-4-sequential-steps.html) |
+| 1.5 | [The Prompt Anatomy (Element Order)](CCA-F/D4-Prompt-Engineering/subtopics/1-5-prompt-anatomy.html) |
 
 **Cluster 2 · Roles & System Prompts**
 
 | # | Subtopic |
 |:-:|----------|
-| 2.1 | [The System Parameter vs the User Turn](CCA-F/D3-Prompt-Engineering/subtopics/2-1-system-parameter.html) |
-| 2.2 | [Giving Claude a Role (Persona)](CCA-F/D3-Prompt-Engineering/subtopics/2-2-role-prompting.html) |
-| 2.3 | [What Belongs in System vs User](CCA-F/D3-Prompt-Engineering/subtopics/2-3-system-vs-user.html) |
-| 2.4 | [Tone, Character & Staying in Character](CCA-F/D3-Prompt-Engineering/subtopics/2-4-tone-and-character.html) |
-| 2.5 | [Prompt Templates & Variables](CCA-F/D3-Prompt-Engineering/subtopics/2-5-prompt-templates-variables.html) |
+| 2.1 | [The System Parameter vs the User Turn](CCA-F/D4-Prompt-Engineering/subtopics/2-1-system-parameter.html) |
+| 2.2 | [Giving Claude a Role (Persona)](CCA-F/D4-Prompt-Engineering/subtopics/2-2-role-prompting.html) |
+| 2.3 | [What Belongs in System vs User](CCA-F/D4-Prompt-Engineering/subtopics/2-3-system-vs-user.html) |
+| 2.4 | [Tone, Character & Staying in Character](CCA-F/D4-Prompt-Engineering/subtopics/2-4-tone-and-character.html) |
+| 2.5 | [Prompt Templates & Variables](CCA-F/D4-Prompt-Engineering/subtopics/2-5-prompt-templates-variables.html) |
 
 **Cluster 3 · Examples (Multishot)**
 
 | # | Subtopic |
 |:-:|----------|
-| 3.1 | [Why Examples Work (Multishot)](CCA-F/D3-Prompt-Engineering/subtopics/3-1-why-examples-work.html) |
-| 3.2 | [How Many Examples & Choosing Them](CCA-F/D3-Prompt-Engineering/subtopics/3-2-how-many-examples.html) |
-| 3.3 | [Formatting & Wrapping Examples](CCA-F/D3-Prompt-Engineering/subtopics/3-3-formatting-examples.html) |
-| 3.4 | [Covering Edge Cases with Examples](CCA-F/D3-Prompt-Engineering/subtopics/3-4-edge-cases-examples.html) |
-| 3.5 | [Example Pitfalls (Leakage, Over-fit)](CCA-F/D3-Prompt-Engineering/subtopics/3-5-example-pitfalls.html) |
+| 3.1 | [Why Examples Work (Multishot)](CCA-F/D4-Prompt-Engineering/subtopics/3-1-why-examples-work.html) |
+| 3.2 | [How Many Examples & Choosing Them](CCA-F/D4-Prompt-Engineering/subtopics/3-2-how-many-examples.html) |
+| 3.3 | [Formatting & Wrapping Examples](CCA-F/D4-Prompt-Engineering/subtopics/3-3-formatting-examples.html) |
+| 3.4 | [Covering Edge Cases with Examples](CCA-F/D4-Prompt-Engineering/subtopics/3-4-edge-cases-examples.html) |
+| 3.5 | [Example Pitfalls (Leakage, Over-fit)](CCA-F/D4-Prompt-Engineering/subtopics/3-5-example-pitfalls.html) |
 
 **Cluster 4 · Structure with XML Tags**
 
 | # | Subtopic |
 |:-:|----------|
-| 4.1 | [Why XML Tags Reduce Ambiguity](CCA-F/D3-Prompt-Engineering/subtopics/4-1-why-xml-tags.html) |
-| 4.2 | [Common Tag Patterns](CCA-F/D3-Prompt-Engineering/subtopics/4-2-common-tag-patterns.html) |
-| 4.3 | [Separating Data from Instructions](CCA-F/D3-Prompt-Engineering/subtopics/4-3-separating-data-instructions.html) |
-| 4.4 | [Nesting & Referencing Tags](CCA-F/D3-Prompt-Engineering/subtopics/4-4-nesting-referencing-tags.html) |
-| 4.5 | [Long-Context Structuring](CCA-F/D3-Prompt-Engineering/subtopics/4-5-long-context-structuring.html) |
+| 4.1 | [Why XML Tags Reduce Ambiguity](CCA-F/D4-Prompt-Engineering/subtopics/4-1-why-xml-tags.html) |
+| 4.2 | [Common Tag Patterns](CCA-F/D4-Prompt-Engineering/subtopics/4-2-common-tag-patterns.html) |
+| 4.3 | [Separating Data from Instructions](CCA-F/D4-Prompt-Engineering/subtopics/4-3-separating-data-instructions.html) |
+| 4.4 | [Nesting & Referencing Tags](CCA-F/D4-Prompt-Engineering/subtopics/4-4-nesting-referencing-tags.html) |
+| 4.5 | [Long-Context Structuring](CCA-F/D4-Prompt-Engineering/subtopics/4-5-long-context-structuring.html) |
 
 **Cluster 5 · Chain of Thought & Extended Thinking**
 
 | # | Subtopic |
 |:-:|----------|
-| 5.1 | [Let Claude Think (CoT) — When It Helps](CCA-F/D3-Prompt-Engineering/subtopics/5-1-let-claude-think.html) |
-| 5.2 | [Structured Thinking with Tags](CCA-F/D3-Prompt-Engineering/subtopics/5-2-structured-thinking-tags.html) |
-| 5.3 | [Extended Thinking vs Prompted CoT](CCA-F/D3-Prompt-Engineering/subtopics/5-3-extended-thinking.html) |
-| 5.4 | [Thinking with Tool Use](CCA-F/D3-Prompt-Engineering/subtopics/5-4-thinking-with-tools.html) |
-| 5.5 | [CoT Trade-offs & When Not to Use](CCA-F/D3-Prompt-Engineering/subtopics/5-5-cot-tradeoffs.html) |
+| 5.1 | [Let Claude Think (CoT) — When It Helps](CCA-F/D4-Prompt-Engineering/subtopics/5-1-let-claude-think.html) |
+| 5.2 | [Structured Thinking with Tags](CCA-F/D4-Prompt-Engineering/subtopics/5-2-structured-thinking-tags.html) |
+| 5.3 | [Extended Thinking vs Prompted CoT](CCA-F/D4-Prompt-Engineering/subtopics/5-3-extended-thinking.html) |
+| 5.4 | [Thinking with Tool Use](CCA-F/D4-Prompt-Engineering/subtopics/5-4-thinking-with-tools.html) |
+| 5.5 | [CoT Trade-offs & When Not to Use](CCA-F/D4-Prompt-Engineering/subtopics/5-5-cot-tradeoffs.html) |
 
 **Cluster 6 · Prefill & Output Control**
 
 | # | Subtopic |
 |:-:|----------|
-| 6.1 | [Prefilling the Assistant Turn](CCA-F/D3-Prompt-Engineering/subtopics/6-1-prefilling-basics.html) |
-| 6.2 | [Prefill to Control Format](CCA-F/D3-Prompt-Engineering/subtopics/6-2-prefill-format-control.html) |
-| 6.3 | [Prefill to Steer & Stay in Character](CCA-F/D3-Prompt-Engineering/subtopics/6-3-prefill-character-steering.html) |
-| 6.4 | [Stop Sequences as Output Control](CCA-F/D3-Prompt-Engineering/subtopics/6-4-stop-sequences.html) |
-| 6.5 | [Prefill Constraints & Gotchas](CCA-F/D3-Prompt-Engineering/subtopics/6-5-prefill-constraints.html) |
+| 6.1 | [Prefilling the Assistant Turn](CCA-F/D4-Prompt-Engineering/subtopics/6-1-prefilling-basics.html) |
+| 6.2 | [Prefill to Control Format](CCA-F/D4-Prompt-Engineering/subtopics/6-2-prefill-format-control.html) |
+| 6.3 | [Prefill to Steer & Stay in Character](CCA-F/D4-Prompt-Engineering/subtopics/6-3-prefill-character-steering.html) |
+| 6.4 | [Stop Sequences as Output Control](CCA-F/D4-Prompt-Engineering/subtopics/6-4-stop-sequences.html) |
+| 6.5 | [Prefill Constraints & Gotchas](CCA-F/D4-Prompt-Engineering/subtopics/6-5-prefill-constraints.html) |
 
 **Cluster 7 · Structured Outputs & JSON**
 
 | # | Subtopic |
 |:-:|----------|
-| 7.1 | [Increasing Output Consistency](CCA-F/D3-Prompt-Engineering/subtopics/7-1-output-consistency.html) |
-| 7.2 | [JSON via Prefill + Stop Sequence](CCA-F/D3-Prompt-Engineering/subtopics/7-2-json-prefill-stop.html) |
-| 7.3 | [Tool Use to Force a Schema](CCA-F/D3-Prompt-Engineering/subtopics/7-3-tool-use-for-json.html) |
-| 7.4 | [The Structured Outputs Feature](CCA-F/D3-Prompt-Engineering/subtopics/7-4-structured-outputs-feature.html) |
-| 7.5 | [Streaming & Parsing Structured Output](CCA-F/D3-Prompt-Engineering/subtopics/7-5-streaming-parsing-json.html) |
+| 7.1 | [Increasing Output Consistency](CCA-F/D4-Prompt-Engineering/subtopics/7-1-output-consistency.html) |
+| 7.2 | [JSON via Prefill + Stop Sequence](CCA-F/D4-Prompt-Engineering/subtopics/7-2-json-prefill-stop.html) |
+| 7.3 | [Tool Use to Force a Schema](CCA-F/D4-Prompt-Engineering/subtopics/7-3-tool-use-for-json.html) |
+| 7.4 | [The Structured Outputs Feature](CCA-F/D4-Prompt-Engineering/subtopics/7-4-structured-outputs-feature.html) |
+| 7.5 | [Streaming & Parsing Structured Output](CCA-F/D4-Prompt-Engineering/subtopics/7-5-streaming-parsing-json.html) |
 
 **Cluster 8 · Reliability, Hallucination & Iteration**
 
 | # | Subtopic |
 |:-:|----------|
-| 8.1 | [Reducing Hallucinations](CCA-F/D3-Prompt-Engineering/subtopics/8-1-reduce-hallucinations.html) |
-| 8.2 | [Grounding in Documents & Citations](CCA-F/D3-Prompt-Engineering/subtopics/8-2-grounding-citations.html) |
-| 8.3 | [Chaining Complex Prompts](CCA-F/D3-Prompt-Engineering/subtopics/8-3-chaining-prompts.html) |
-| 8.4 | [Evaluating & Iterating (Success Criteria)](CCA-F/D3-Prompt-Engineering/subtopics/8-4-evaluating-iterating.html) |
-| 8.5 | [The Prompt Improver & Templates](CCA-F/D3-Prompt-Engineering/subtopics/8-5-prompt-improver-templates.html) |
+| 8.1 | [Reducing Hallucinations](CCA-F/D4-Prompt-Engineering/subtopics/8-1-reduce-hallucinations.html) |
+| 8.2 | [Grounding in Documents & Citations](CCA-F/D4-Prompt-Engineering/subtopics/8-2-grounding-citations.html) |
+| 8.3 | [Chaining Complex Prompts](CCA-F/D4-Prompt-Engineering/subtopics/8-3-chaining-prompts.html) |
+| 8.4 | [Evaluating & Iterating (Success Criteria)](CCA-F/D4-Prompt-Engineering/subtopics/8-4-evaluating-iterating.html) |
+| 8.5 | [The Prompt Improver & Templates](CCA-F/D4-Prompt-Engineering/subtopics/8-5-prompt-improver-templates.html) |
 
-### D4 · Tool Design & MCP Integration (18%)
+### D2 · Tool Design & MCP Integration (18%)
 
-8 clusters · 40 subtopics · every field/block/MCP primitive verified against the tool-use docs, the Messages API, and the MCP spec. Full deep-dive: [Domain 4 curriculum hub](CCA-F/D4-Tool-Design-MCP/index.html).
+8 clusters · 40 subtopics · every field/block/MCP primitive verified against the tool-use docs, the Messages API, and the MCP spec. Full deep-dive: [Domain 2 curriculum hub](CCA-F/D2-Tool-Design-MCP/index.html).
 
 **Cluster 1 · Tool Use Fundamentals**
 
 | # | Subtopic |
 |:-:|----------|
-| 1.1 | [What Tool Use Is & the Request/Result Flow](CCA-F/D4-Tool-Design-MCP/subtopics/1-1-tool-use-flow.html) |
-| 1.2 | [The Tool Definition (name · description · input_schema)](CCA-F/D4-Tool-Design-MCP/subtopics/1-2-tool-definition-schema.html) |
-| 1.3 | [tool_use & tool_result Blocks (the Contract)](CCA-F/D4-Tool-Design-MCP/subtopics/1-3-tool-use-result-blocks.html) |
-| 1.4 | [tool_choice (auto / any / tool / none)](CCA-F/D4-Tool-Design-MCP/subtopics/1-4-tool-choice.html) |
-| 1.5 | [Client Tools vs Server Tools](CCA-F/D4-Tool-Design-MCP/subtopics/1-5-client-vs-server-tools.html) |
+| 1.1 | [What Tool Use Is & the Request/Result Flow](CCA-F/D2-Tool-Design-MCP/subtopics/1-1-tool-use-flow.html) |
+| 1.2 | [The Tool Definition (name · description · input_schema)](CCA-F/D2-Tool-Design-MCP/subtopics/1-2-tool-definition-schema.html) |
+| 1.3 | [tool_use & tool_result Blocks (the Contract)](CCA-F/D2-Tool-Design-MCP/subtopics/1-3-tool-use-result-blocks.html) |
+| 1.4 | [tool_choice (auto / any / tool / none)](CCA-F/D2-Tool-Design-MCP/subtopics/1-4-tool-choice.html) |
+| 1.5 | [Client Tools vs Server Tools](CCA-F/D2-Tool-Design-MCP/subtopics/1-5-client-vs-server-tools.html) |
 
 **Cluster 2 · Designing Great Tools**
 
 | # | Subtopic |
 |:-:|----------|
-| 2.1 | [Writing Tool Descriptions (the #1 Lever)](CCA-F/D4-Tool-Design-MCP/subtopics/2-1-writing-descriptions.html) |
-| 2.2 | [Input Schema Design (JSON Schema, Enums)](CCA-F/D4-Tool-Design-MCP/subtopics/2-2-input-schema-design.html) |
-| 2.3 | [Naming & Granularity](CCA-F/D4-Tool-Design-MCP/subtopics/2-3-naming-granularity.html) |
-| 2.4 | [Namespacing & Avoiding Tool Overlap](CCA-F/D4-Tool-Design-MCP/subtopics/2-4-namespacing-overlap.html) |
-| 2.5 | [Token Efficiency & Tool-Set Size](CCA-F/D4-Tool-Design-MCP/subtopics/2-5-token-efficiency.html) |
+| 2.1 | [Writing Tool Descriptions (the #1 Lever)](CCA-F/D2-Tool-Design-MCP/subtopics/2-1-writing-descriptions.html) |
+| 2.2 | [Input Schema Design (JSON Schema, Enums)](CCA-F/D2-Tool-Design-MCP/subtopics/2-2-input-schema-design.html) |
+| 2.3 | [Naming & Granularity](CCA-F/D2-Tool-Design-MCP/subtopics/2-3-naming-granularity.html) |
+| 2.4 | [Namespacing & Avoiding Tool Overlap](CCA-F/D2-Tool-Design-MCP/subtopics/2-4-namespacing-overlap.html) |
+| 2.5 | [Token Efficiency & Tool-Set Size](CCA-F/D2-Tool-Design-MCP/subtopics/2-5-token-efficiency.html) |
 
 **Cluster 3 · Tool Results & Error Handling**
 
 | # | Subtopic |
 |:-:|----------|
-| 3.1 | [Returning Results (content, is_error)](CCA-F/D4-Tool-Design-MCP/subtopics/3-1-returning-results.html) |
-| 3.2 | [Error Handling Patterns](CCA-F/D4-Tool-Design-MCP/subtopics/3-2-error-handling.html) |
-| 3.3 | [Large / Structured Results & Truncation](CCA-F/D4-Tool-Design-MCP/subtopics/3-3-large-results-truncation.html) |
-| 3.4 | [Parallel Tool Calls & Result Ordering](CCA-F/D4-Tool-Design-MCP/subtopics/3-4-parallel-tool-calls.html) |
-| 3.5 | [Tool-Result Contract Failures (400s)](CCA-F/D4-Tool-Design-MCP/subtopics/3-5-contract-failures.html) |
+| 3.1 | [Returning Results (content, is_error)](CCA-F/D2-Tool-Design-MCP/subtopics/3-1-returning-results.html) |
+| 3.2 | [Error Handling Patterns](CCA-F/D2-Tool-Design-MCP/subtopics/3-2-error-handling.html) |
+| 3.3 | [Large / Structured Results & Truncation](CCA-F/D2-Tool-Design-MCP/subtopics/3-3-large-results-truncation.html) |
+| 3.4 | [Parallel Tool Calls & Result Ordering](CCA-F/D2-Tool-Design-MCP/subtopics/3-4-parallel-tool-calls.html) |
+| 3.5 | [Tool-Result Contract Failures (400s)](CCA-F/D2-Tool-Design-MCP/subtopics/3-5-contract-failures.html) |
 
 **Cluster 4 · Advanced Tool Use**
 
 | # | Subtopic |
 |:-:|----------|
-| 4.1 | [Tool Use with Extended Thinking](CCA-F/D4-Tool-Design-MCP/subtopics/4-1-thinking-with-tools.html) |
-| 4.2 | [Forcing Structured JSON via Tools](CCA-F/D4-Tool-Design-MCP/subtopics/4-2-structured-json-via-tools.html) |
-| 4.3 | [Streaming & Fine-Grained Tool Use](CCA-F/D4-Tool-Design-MCP/subtopics/4-3-streaming-fine-grained.html) |
-| 4.4 | [Programmatic Tool Calling & Code Execution](CCA-F/D4-Tool-Design-MCP/subtopics/4-4-programmatic-code-execution.html) |
-| 4.5 | [tool_choice Control & Parallel Toggle](CCA-F/D4-Tool-Design-MCP/subtopics/4-5-tool-choice-control.html) |
+| 4.1 | [Tool Use with Extended Thinking](CCA-F/D2-Tool-Design-MCP/subtopics/4-1-thinking-with-tools.html) |
+| 4.2 | [Forcing Structured JSON via Tools](CCA-F/D2-Tool-Design-MCP/subtopics/4-2-structured-json-via-tools.html) |
+| 4.3 | [Streaming & Fine-Grained Tool Use](CCA-F/D2-Tool-Design-MCP/subtopics/4-3-streaming-fine-grained.html) |
+| 4.4 | [Programmatic Tool Calling & Code Execution](CCA-F/D2-Tool-Design-MCP/subtopics/4-4-programmatic-code-execution.html) |
+| 4.5 | [tool_choice Control & Parallel Toggle](CCA-F/D2-Tool-Design-MCP/subtopics/4-5-tool-choice-control.html) |
 
 **Cluster 5 · MCP Fundamentals**
 
 | # | Subtopic |
 |:-:|----------|
-| 5.1 | [What MCP Is & Why It Exists](CCA-F/D4-Tool-Design-MCP/subtopics/5-1-what-is-mcp.html) |
-| 5.2 | [Architecture (Host · Client · Server)](CCA-F/D4-Tool-Design-MCP/subtopics/5-2-mcp-architecture.html) |
-| 5.3 | [Transports (stdio · Streamable HTTP)](CCA-F/D4-Tool-Design-MCP/subtopics/5-3-mcp-transports.html) |
-| 5.4 | [Lifecycle & Capability Negotiation](CCA-F/D4-Tool-Design-MCP/subtopics/5-4-mcp-lifecycle.html) |
-| 5.5 | [MCP vs Plain Tool Use](CCA-F/D4-Tool-Design-MCP/subtopics/5-5-mcp-vs-tool-use.html) |
+| 5.1 | [What MCP Is & Why It Exists](CCA-F/D2-Tool-Design-MCP/subtopics/5-1-what-is-mcp.html) |
+| 5.2 | [Architecture (Host · Client · Server)](CCA-F/D2-Tool-Design-MCP/subtopics/5-2-mcp-architecture.html) |
+| 5.3 | [Transports (stdio · Streamable HTTP)](CCA-F/D2-Tool-Design-MCP/subtopics/5-3-mcp-transports.html) |
+| 5.4 | [Lifecycle & Capability Negotiation](CCA-F/D2-Tool-Design-MCP/subtopics/5-4-mcp-lifecycle.html) |
+| 5.5 | [MCP vs Plain Tool Use](CCA-F/D2-Tool-Design-MCP/subtopics/5-5-mcp-vs-tool-use.html) |
 
 **Cluster 6 · MCP Primitives**
 
 | # | Subtopic |
 |:-:|----------|
-| 6.1 | [Tools (Server-Exposed Functions)](CCA-F/D4-Tool-Design-MCP/subtopics/6-1-mcp-tools.html) |
-| 6.2 | [Resources (Readable Data)](CCA-F/D4-Tool-Design-MCP/subtopics/6-2-mcp-resources.html) |
-| 6.3 | [Prompts (Reusable Templates)](CCA-F/D4-Tool-Design-MCP/subtopics/6-3-mcp-prompts.html) |
-| 6.4 | [Sampling (Server → Client LLM Calls)](CCA-F/D4-Tool-Design-MCP/subtopics/6-4-mcp-sampling.html) |
-| 6.5 | [Roots & Elicitation](CCA-F/D4-Tool-Design-MCP/subtopics/6-5-mcp-roots-elicitation.html) |
+| 6.1 | [Tools (Server-Exposed Functions)](CCA-F/D2-Tool-Design-MCP/subtopics/6-1-mcp-tools.html) |
+| 6.2 | [Resources (Readable Data)](CCA-F/D2-Tool-Design-MCP/subtopics/6-2-mcp-resources.html) |
+| 6.3 | [Prompts (Reusable Templates)](CCA-F/D2-Tool-Design-MCP/subtopics/6-3-mcp-prompts.html) |
+| 6.4 | [Sampling (Server → Client LLM Calls)](CCA-F/D2-Tool-Design-MCP/subtopics/6-4-mcp-sampling.html) |
+| 6.5 | [Roots & Elicitation](CCA-F/D2-Tool-Design-MCP/subtopics/6-5-mcp-roots-elicitation.html) |
 
 **Cluster 7 · Building & Consuming MCP Servers**
 
 | # | Subtopic |
 |:-:|----------|
-| 7.1 | [Building a Server (SDK)](CCA-F/D4-Tool-Design-MCP/subtopics/7-1-building-mcp-server.html) |
-| 7.2 | [The Claude API MCP Connector](CCA-F/D4-Tool-Design-MCP/subtopics/7-2-mcp-connector-api.html) |
-| 7.3 | [Remote MCP Servers & OAuth](CCA-F/D4-Tool-Design-MCP/subtopics/7-3-remote-mcp-auth.html) |
-| 7.4 | [MCP in Claude Code / Desktop](CCA-F/D4-Tool-Design-MCP/subtopics/7-4-mcp-in-claude-code.html) |
-| 7.5 | [Testing & Debugging (MCP Inspector)](CCA-F/D4-Tool-Design-MCP/subtopics/7-5-testing-mcp-inspector.html) |
+| 7.1 | [Building a Server (SDK)](CCA-F/D2-Tool-Design-MCP/subtopics/7-1-building-mcp-server.html) |
+| 7.2 | [The Claude API MCP Connector](CCA-F/D2-Tool-Design-MCP/subtopics/7-2-mcp-connector-api.html) |
+| 7.3 | [Remote MCP Servers & OAuth](CCA-F/D2-Tool-Design-MCP/subtopics/7-3-remote-mcp-auth.html) |
+| 7.4 | [MCP in Claude Code / Desktop](CCA-F/D2-Tool-Design-MCP/subtopics/7-4-mcp-in-claude-code.html) |
+| 7.5 | [Testing & Debugging (MCP Inspector)](CCA-F/D2-Tool-Design-MCP/subtopics/7-5-testing-mcp-inspector.html) |
 
 **Cluster 8 · MCP Security & Production**
 
 | # | Subtopic |
 |:-:|----------|
-| 8.1 | [Security Risks (Injection, Tool Poisoning)](CCA-F/D4-Tool-Design-MCP/subtopics/8-1-mcp-security-risks.html) |
-| 8.2 | [Authentication & Authorization](CCA-F/D4-Tool-Design-MCP/subtopics/8-2-mcp-auth.html) |
-| 8.3 | [Human-in-the-Loop & Permissioning](CCA-F/D4-Tool-Design-MCP/subtopics/8-3-human-in-the-loop.html) |
-| 8.4 | [Confused Deputy & Data Exfiltration](CCA-F/D4-Tool-Design-MCP/subtopics/8-4-confused-deputy-exfiltration.html) |
-| 8.5 | [Versioning, Observability & Ops](CCA-F/D4-Tool-Design-MCP/subtopics/8-5-versioning-observability.html) |
+| 8.1 | [Security Risks (Injection, Tool Poisoning)](CCA-F/D2-Tool-Design-MCP/subtopics/8-1-mcp-security-risks.html) |
+| 8.2 | [Authentication & Authorization](CCA-F/D2-Tool-Design-MCP/subtopics/8-2-mcp-auth.html) |
+| 8.3 | [Human-in-the-Loop & Permissioning](CCA-F/D2-Tool-Design-MCP/subtopics/8-3-human-in-the-loop.html) |
+| 8.4 | [Confused Deputy & Data Exfiltration](CCA-F/D2-Tool-Design-MCP/subtopics/8-4-confused-deputy-exfiltration.html) |
+| 8.5 | [Versioning, Observability & Ops](CCA-F/D2-Tool-Design-MCP/subtopics/8-5-versioning-observability.html) |
 
 ### D5 · Context Management & Reliability (15%)
 
@@ -494,17 +494,17 @@ CCA-F/                          Claude Certified Architect — Foundations
     subtopics/                  architect-level page per subtopic
     examples/                   runnable Python demos
     assets/style.css            shared styling
-  D2-Claude-Code/               Domain 2 deep-dive (20% of exam)
+  D3-Claude-Code/               Domain 3 deep-dive (20% of exam)
     index.html                  curriculum hub — 41 subtopics, 8 clusters
     subtopics/                  architect-level page per subtopic
     quizzes/                    interactive mock exam bank (121 questions)
     assets/style.css            shared styling
-  D3-Prompt-Engineering/        Domain 3 deep-dive (20% of exam)
+  D4-Prompt-Engineering/        Domain 4 deep-dive (20% of exam)
     index.html                  curriculum hub — 40 subtopics, 8 clusters
     subtopics/                  architect-level page per subtopic
     quizzes/                    interactive mock exam bank (120 questions)
     assets/style.css            shared styling
-  D4-Tool-Design-MCP/           Domain 4 deep-dive (18% of exam)
+  D2-Tool-Design-MCP/           Domain 2 deep-dive (18% of exam)
     index.html                  curriculum hub — 40 subtopics, 8 clusters
     subtopics/                  architect-level page per subtopic
     quizzes/                    interactive mock exam bank (120 questions)

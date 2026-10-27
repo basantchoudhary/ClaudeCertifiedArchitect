@@ -63,5 +63,5 @@ Entry 10 is the one place two protocols appear together, and that contrast is it
 
 ## Related
 
-- [MCP Skeletons](../D4-MCP-Skeletons/index.html) — what to *put* in the tool list; this page is
+- [MCP Skeletons](../D2-MCP-Skeletons/index.html) — what to *put* in the tool list; this page is
   what the wire does with it.
