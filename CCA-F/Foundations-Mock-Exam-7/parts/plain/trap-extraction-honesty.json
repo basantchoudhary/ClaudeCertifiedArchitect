@@ -1,0 +1,329 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  },
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  },
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-extraction-honesty-1",
+   "sid": "s4",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 tool_use with a JSON schema",
+   "trap": "Fixing text instead of using a tool",
+   "fam": 4,
+   "select": 1,
+   "question": "An internal Agent SDK script reads each incident write-up in Linear. It asks Claude to reply with a JSON object holding the service, severity, start time and root cause. A parser then reads the reply. On some write-ups Claude adds a sentence before the JSON or drops a closing bracket. The parser skips those incidents. The values themselves are usually right. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a complete example reply to the prompt that shows the JSON and nothing else.",
+     "why": "Works, but only usually. An example cuts the stray sentences, but text replies can still break, and each break loses an incident.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Resend any reply that fails to parse, along with the error from the parser.",
+     "why": "Works, but treats the symptom. The retry usually fixes the reply, but every broken reply costs a second call that a schema would avoid.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Define a <code>record_incident</code> tool with a JSON schema and have Claude call it.",
+     "why": "Best. Tool input arrives as structured JSON that matches the schema, so syntax errors and stray sentences go away at the source."
+    },
+    {
+     "t": "Make the parser cut out the text between the first and last brace before reading.",
+     "why": "Works, but only for one kind of break. It drops the stray sentence, but a missing bracket still fails, and the next new quirk will too.",
+     "trap": "catches only some cases"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "On some write-ups Claude adds a sentence before the JSON or drops a closing bracket.",
+   "explanation": "Tool use with a JSON schema is the most reliable way to get schema-compliant output; it removes JSON syntax errors. Prompts, retries and lenient parsers only reduce them.",
+   "eli5": {
+    "question": "Claude writes the JSON as text, and sometimes the text breaks. The clue: the values are right; only the format fails.",
+    "answer": "Asking someone to write a form out by hand, neatly, mostly works. Handing them a form with boxes always gives you the boxes. A <b>tool with a JSON schema</b> is the form with boxes. <b>Rule: if structured output breaks as text, return it through a tool.</b>",
+    "options": [
+     "A neat example helps, but handwriting still slips sometimes.",
+     "Sending messy forms back works, but costs a second round each time.",
+     "Correct. Use the form with boxes.",
+     "Tidying up the handwriting fixes one kind of mess, not every kind."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>better instructions will fix the format</b>. Text replies are probabilistic; a tool call with a JSON schema is structured by design. The guide: tool use with a schema <b>eliminates JSON syntax errors</b>. It does not fix wrong values, but here the values are fine.",
+    "diagram": "text reply:  “Here it is: {…”  → parser fails\ntool call:   record_incident({service, …})\n             → structured input, no parsing",
+    "mapTitle": "What goes wrong, and which layer fixes it?",
+    "map": {
+     "head": [
+      "Problem",
+      "Layer",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "JSON breaks: stray text, missing bracket",
+       "Output format",
+       "Tool with a JSON schema"
+      ],
+      [
+       "Field has no value on the page",
+       "Schema design",
+       "Optional or nullable field"
+      ],
+      [
+       "Category not in the list",
+       "Schema design",
+       "Enum with other + detail"
+      ],
+      [
+       "Value on the page, extracted wrong",
+       "Validation loop",
+       "Retry with the specific error"
+      ],
+      [
+       "Odd layouts read wrong",
+       "Prompt",
+       "Worked examples of those layouts"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It asks Claude to reply with a JSON object",
+      "means": "The output is text, so its syntax can break."
+     },
+     {
+      "quote": "On some write-ups Claude adds a sentence before the JSON or drops a closing bracket",
+      "means": "The decider: syntax failures. A tool call removes them: <b>[[2]]</b>."
+     },
+     {
+      "quote": "The values themselves are usually right",
+      "means": "Nothing to fix in the content. An example (<b>[[0]]</b>), a retry (<b>[[1]]</b>) or a lenient parser (<b>[[3]]</b>) works around the format instead of removing the cause."
+     }
+    ],
+    "rule": "Structured output breaking as text? Return it through a tool with a JSON schema.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_use with JSON schemas = most reliable schema-compliant output (eliminates JSON syntax errors)"
+    }
+   }
+  },
+  {
+   "id": "tg-extraction-honesty-2",
+   "sid": "s3",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Nullable fields against fabrication",
+   "trap": "Forcing a value that isn't there",
+   "fam": 4,
+   "select": 1,
+   "question": "The document-analysis subagent extracts each paper's details through a tool with a JSON schema. The schema makes <code>trial_registration_id</code> a required string. Many older papers do not print a registration ID. For those papers, the subagent returns IDs in the right format that do not exist. Reviewers then spend time searching the registry for them. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a prompt rule telling the subagent not to guess an ID that isn't printed.",
+     "why": "Works, but only usually. The rule lowers the guessing, but the schema still demands a string, so the model still has to put something there.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Make <code>trial_registration_id</code> nullable, to be left null when not printed.",
+     "why": "Best. The schema now has an honest answer for “not printed”, so the model has no reason to invent an ID."
+    },
+    {
+     "t": "Have the citation-check subagent look up every extracted ID in the registry.",
+     "why": "Works, but catches it late. The lookup finds the fake IDs, but they are still invented first, and every paper costs an extra registry call.",
+     "trap": "catches it late"
+    },
+    {
+     "t": "Add worked examples of papers both with and without a printed registration ID.",
+     "why": "Works, but only usually. Examples show the right behaviour, but a required field still leaves no valid way to say “none”.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The schema makes trial_registration_id a required string.",
+   "explanation": "When a field may be absent from the source, make it optional or nullable. A required field pushes the model to fabricate a plausible value.",
+   "eli5": {
+    "question": "Old papers have no registration ID, but the form insists on one, so the model makes one up. The clue: the field is required.",
+    "answer": "A screen that won't save until every box is filled gets fake answers in the boxes. Add a “not given” option and people stop faking. A <b>nullable field</b> is that option. <b>Rule: if a value may be missing, let the schema say so.</b>",
+    "options": [
+     "Asking people not to fake helps, but the box still has to be filled.",
+     "Correct. Give the box a “not given” option.",
+     "Checking every answer later finds the fakes after they were made.",
+     "Showing examples helps, but the screen still won't save an empty box."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the model needs to be told not to invent</b>. Here the schema is what demands a value. Give the schema an honest answer for “not printed” and the pressure to invent goes away.",
+    "diagram": "required string, nothing printed → plausible fake ID\nnullable, nothing printed        → null (honest)",
+    "mapTitle": "A value may be missing. How does the schema handle it?",
+    "map": {
+     "head": [
+      "Schema choice",
+      "What the model returns",
+      "Effect"
+     ],
+     "rows": [
+      [
+       "Required field",
+       "A plausible value",
+       "Fabrication that looks real"
+      ],
+      [
+       "Sentinel such as 0 or N/A",
+       "A fake value",
+       "Read downstream as real"
+      ],
+      [
+       "Optional or nullable field",
+       "null",
+       "Honest gap, easy to route"
+      ],
+      [
+       "Enum with other + detail",
+       "other, plus what it is",
+       "Honest new category"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The schema makes trial_registration_id a required string",
+      "means": "The decider: the schema has no valid way to say “not printed”. Make it nullable: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Many older papers do not print a registration ID",
+      "means": "The value is absent from the source, so a required field forces a guess."
+     },
+     {
+      "quote": "the subagent returns IDs in the right format that do not exist",
+      "means": "Fabrication. A rule (<b>[[0]]</b>) or examples (<b>[[3]]</b>) fight the schema; a registry check (<b>[[2]]</b>) catches fakes after they're made."
+     }
+    ],
+    "rule": "A value may be missing? Make the field optional or nullable, not required.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "Optional/nullable fields prevent fabrication; enum \"unclear\"/\"other\" + detail for extensible categories"
+    }
+   }
+  },
+  {
+   "id": "tg-extraction-honesty-3",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retries can't recover absent information",
+   "trap": "Retrying the impossible",
+   "fam": 4,
+   "select": 1,
+   "question": "The broker's system needs a policy number on every certificate. When none is extracted, the pipeline retries with the specific error, up to two times. On some scanned certificates, the policy number is cut off at the page edge. These fail each retry. Sometimes the last retry returns a number that is not on the page, and it gets posted. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Raise the retry limit and say in the message that the number must be found.",
+     "why": "Works, but presses harder for the impossible. More retries help only when the number is on the page; here they invite more invented numbers.",
+     "trap": "retrying the impossible"
+    },
+    {
+     "t": "Check each policy number against the carrier's format before it is posted.",
+     "why": "Works, but catches only some cases. A broken number fails the check, but an invented one in the right format passes.",
+     "trap": "catches only some cases"
+    },
+    {
+     "t": "Add worked examples that show where each carrier prints its policy number.",
+     "why": "Works, but a different problem. Examples help find a number that is printed somewhere unusual; this one is not on the page.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Return null when the policy number isn't printed and send it to a person.",
+     "why": "Best. A retry can't recover what the scan lost. Null says so honestly, and a person can get the number from the carrier."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "On some scanned certificates, the policy number is cut off at the page edge.",
+   "explanation": "Retries with error feedback fix values that are in the document. When the information is absent from the source, retries fail or invite fabrication; return null and route to human review.",
+   "eli5": {
+    "question": "The policy number is torn off the scan, and the system keeps asking for it until the model makes one up. The clue: the number isn't on the page.",
+    "answer": "If the date is torn off a form, telling the temp “find it” three times won't bring it back. It might get you a made-up date. Hand that form to someone who can phone the customer. <b>Rule: retry only when the answer is on the page. If it isn't, say so and send it to a person.</b>",
+    "options": [
+     "Asking more firmly makes a made-up answer more likely, not a real one.",
+     "Checking the format catches messy numbers, not neat fakes.",
+     "Examples help find a number printed in an odd place, not one that's missing.",
+     "Correct. Say it's missing and hand it to someone who can find it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a specific retry fixes any validation failure</b>. It fixes values that are on the page but extracted wrong. When the information is absent, every retry fails, and pressure to fill the field produces an invention.",
+    "diagram": "scan: Policy NG-44▒▒▒▒\n  retry “policy number required” → NG-448126 (fake)\n  null + person                  → real number found",
+    "mapTitle": "Validation failed. Is the value on the page?",
+    "map": {
+     "head": [
+      "Situation",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "On the page, wrong field or format",
+       "Retry with the specific error",
+       "The model can correct it"
+      ],
+      [
+       "On the page, odd layouts every time",
+       "Worked examples",
+       "Fixes the first pass"
+      ],
+      [
+       "Not on the page",
+       "Null, then a person",
+       "No retry can find it"
+      ],
+      [
+       "Invented value in the right format",
+       "Not caught by format checks",
+       "Prevent it at the schema"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the pipeline retries with the specific error",
+      "means": "The retry is already the good kind. Its content is not the problem."
+     },
+     {
+      "quote": "On some scanned certificates, the policy number is cut off at the page edge",
+      "means": "The decider: the information is absent from the source. Examples (<b>[[2]]</b>) and more retries (<b>[[0]]</b>) can't bring it back."
+     },
+     {
+      "quote": "the last retry returns a number that is not on the page, and it gets posted",
+      "means": "Fabrication under pressure. A format check (<b>[[1]]</b>) passes a well-formed fake. Return null and route it: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Value missing from the source? Don't retry; return null and send it to a person.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retries are ineffective when info is absent from the source (vs format/structural errors)"
+    }
+   }
+  }
+ ]
+}

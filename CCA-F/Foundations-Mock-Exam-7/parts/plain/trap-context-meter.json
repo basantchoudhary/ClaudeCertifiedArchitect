@@ -1,0 +1,329 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  },
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-context-meter-1",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Trim verbose tool results",
+   "trap": "More room instead of less noise",
+   "fam": 5,
+   "select": 1,
+   "question": "Customers with several boxes often ask about each one in turn. Each <code>lookup_order</code> result holds about forty fields, such as packing station, nutrition data and courier scans. The agent uses only the items, the delivery date, the status and the price. In these chats the context fills early, and older turns are summarised after a few lookups. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Move the agent to a model with a larger context window, so summaries start much later.",
+     "why": "Works, but delays the problem. The window still fills with fields nobody reads, just later, and every turn re-sends all of them.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Keep a case-facts block with each box's items, dates and refund amounts outside the summary.",
+     "why": "Works, but treats the symptom. The facts survive the summaries, but the window still fills with unused fields and the summaries keep coming.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Cut each order lookup down to the few values the agent needs before Claude reads it.",
+     "why": "Best. It removes the cause: about forty fields shrink to the few the agent needs, so the context stops filling early."
+    },
+    {
+     "t": "Ask the summariser for a longer, more detailed summary that keeps every order field.",
+     "why": "Works, but makes room tighter. A longer summary keeps more, but it takes space the order fields already crowd, so passes still come early.",
+     "trap": "delays the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The agent uses only the items, the delivery date, the status and the price.",
+   "explanation": "Tool results pile up in the context and use tokens out of all proportion to what the agent needs. Trim them to the relevant fields before they accumulate.",
+   "eli5": {
+    "question": "Every order lookup brings back a huge record, and the chat runs out of room. The clue: the agent only ever uses four of the fields.",
+    "answer": "If a nurse stapled every lab printout into the handover folder, the folder would be too thick to read. Copy the four values that matter instead. <b>Trimming tool results</b> is that copy. <b>Rule: if a tool returns far more than the agent uses, cut it down before it enters the context.</b>",
+    "options": [
+     "A bigger folder holds more printouts. It is still full of pages nobody reads.",
+     "Writing the key facts on a chart keeps them safe, but the folder is still overflowing.",
+     "Correct. Copy the values that matter; leave the printout out.",
+     "A longer retelling takes even more room in a folder that is already full."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the window is too small</b>. Here the window is full of things nobody uses. The guide's line: tool results <b>accumulate and consume tokens disproportionately</b>. Fix what goes in, not how much fits.",
+    "diagram": "lookup_order → ~40 fields → [trim to 4] → context\nbefore: window full after a few lookups\nafter:  window stays low, no summary pass",
+    "mapTitle": "Where is the context going, and what fixes it?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Window fills after a few tool calls",
+       "Verbose tool results",
+       "Trim results to the relevant fields"
+      ],
+      [
+       "Amounts and promises drift after a summary",
+       "Facts retold by each summary",
+       "Case-facts block outside the summary"
+      ],
+      [
+       "One long input; middle facts missed",
+       "Lost in the middle",
+       "Key facts first + section headers"
+      ],
+      [
+       "Claude Code session full of old output",
+       "Old output still in the window",
+       "/compact, plus a scratchpad file"
+      ],
+      [
+       "Wish the window were bigger",
+       "Usually one of the above",
+       "Find which one first"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each lookup_order result holds about forty fields",
+      "means": "The weight is in the tool results, not the chat."
+     },
+     {
+      "quote": "The agent uses only the items, the delivery date, the status and the price",
+      "means": "The decider: most of each result is unused. Cut it: <b>[[2]]</b>."
+     },
+     {
+      "quote": "older turns are summarised after a few lookups",
+      "means": "A bigger window (<b>[[0]]</b>) or longer summary (<b>[[3]]</b>) leaves the unused fields in place. A facts block (<b>[[1]]</b>) protects facts but not the room."
+     }
+    ],
+    "rule": "Window filling with tool output? Trim the results to the fields the agent uses.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Tool results accumulate and consume tokens disproportionately (40+ fields when 5 are relevant)"
+    }
+   }
+  },
+  {
+   "id": "tg-context-meter-2",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Facts block across progressive summarisation",
+   "trap": "Better retelling instead of a facts block",
+   "fam": 5,
+   "select": 1,
+   "question": "Long evidence runs pass through many search and analysis steps. To stay inside the context limit, the coordinator replaces older steps with a running summary. Committees now read lines such as “a large trial showed a modest benefit”. The analysis results gave the exact patient count, the effect size and the section. Those details are gone by the time the report is written. Which change <b>best fixes</b> this?",
+   "options": [
+    {
+     "t": "Tell the summariser to copy every number, date and citation exactly as it appears.",
+     "why": "Works, but only usually. A clear instruction cuts the slips, but the summary is still a model rewriting the facts, pass after pass.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Give the coordinator a model with a larger window so it can skip the running summary.",
+     "why": "Works, but delays the problem. Longer runs still hit the limit, and until then the findings sit in the middle of a very long context.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Have the report subagent rerun the analysis for each paper it cites in the summary.",
+     "why": "Works, but overbuilt. It recovers the numbers by doing the analysis twice, at the cost of a second pass over every paper.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Keep each finding's numbers, dates and source in a block passed on unsummarised.",
+     "why": "Best. The exact figures live outside the running summary, so no pass can blur them, and the report reads them as they were."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "The analysis results gave the exact patient count, the effect size and the section.",
+   "explanation": "Progressive summarisation condenses numbers, dates and sources into vague text. Keep transactional facts in a persistent structured block that is carried forward unchanged.",
+   "eli5": {
+    "question": "The numbers were right after analysis, then turned into “a large trial” after a few summaries. The clue: the exact details existed and were lost on the way.",
+    "answer": "Retelling a patient's dose each shift turns “40 mg at 6 pm” into “some pain relief”. Writing it on the chart keeps it exact. A <b>facts block</b> passed on unsummarised is the chart. <b>Rule: facts that must stay exact go somewhere no summary rewrites.</b>",
+    "options": [
+     "Asking each nurse to retell carefully helps, but it is still a retelling.",
+     "A longer shift means fewer handovers, not none.",
+     "Re-examining the patient finds the numbers again, but that's a lot of work to redo.",
+     "Correct. Write it on the chart; nobody retells the chart."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better summary keeps the numbers</b>. Each pass is still a model compressing text, and numbers, dates and sources are the first to go. Put them where no summary touches them.",
+    "diagram": "analysis → finding {n, effect, date, paper §}\n  ├─ running summary: rewritten each pass\n  └─ facts block: copied forward unchanged → report",
+    "mapTitle": "Which part of the context keeps a fact exact?",
+    "map": {
+     "head": [
+      "Where the fact lives",
+      "What happens to it",
+      "Use it for"
+     ],
+     "rows": [
+      [
+       "Running summary",
+       "Rewritten on every pass",
+       "The story of the run"
+      ],
+      [
+       "Facts block outside the summary",
+       "Copied forward word for word",
+       "Numbers, dates, sources, promises"
+      ],
+      [
+       "Recent turns",
+       "Exact until the next pass",
+       "Current step only"
+      ],
+      [
+       "Middle of a very long context",
+       "Easy to miss",
+       "Nothing you need exact"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the coordinator replaces older steps with a running summary",
+      "means": "Every fact in the history gets retold, again and again."
+     },
+     {
+      "quote": "The analysis results gave the exact patient count, the effect size and the section",
+      "means": "The decider: the details existed. They are lost in the retelling, so give them a home outside it: <b>[[3]]</b>."
+     },
+     {
+      "quote": "Those details are gone by the time the report is written",
+      "means": "A firmer instruction (<b>[[0]]</b>) lowers the loss rate; a bigger window (<b>[[1]]</b>) postpones it; redoing the analysis (<b>[[2]]</b>) is costly."
+     }
+    ],
+    "rule": "Numbers blurring after summaries? Keep them in a facts block the summary never rewrites.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Progressive summarization risks condensing numbers, %, dates, customer expectations into vague summaries"
+    }
+   }
+  },
+  {
+   "id": "tg-context-meter-3",
+   "sid": "s4",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.4 Scratchpad and /compact in long exploration",
+   "trap": "More room instead of saved findings",
+   "fam": 5,
+   "select": 1,
+   "question": "An engineer has spent a long Claude Code session tracing how lessons are priced. Early on, Claude named the exact classes that apply discounts and taxes. Now its answers mention “the usual service objects” instead, and two recent answers contradict each other. The context is nearly full of earlier output. Several pricing questions are still left. What should the engineer <b>do next</b>?",
+   "options": [
+    {
+     "t": "Have Claude save its key findings to a notes file, then /compact the session.",
+     "why": "Best. The class names and decisions are kept exact in a file, and /compact clears the old output that is crowding them."
+    },
+    {
+     "t": "Switch the session to a model with a larger context window and keep asking.",
+     "why": "Works, but delays the problem. The early findings stay buried in the middle of a longer session, and the answers keep drifting.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Start a fresh session and ask Claude to explore the pricing code from scratch.",
+     "why": "Works, but throws away work. The early findings were right; a fresh start pays to rediscover them and may drift again later.",
+     "trap": "throws away work"
+    },
+    {
+     "t": "Add a CLAUDE.md line asking Claude to name the specific classes in each answer.",
+     "why": "Works, but only usually. The instruction asks for names, but the names it found early are what is getting lost.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Now its answers mention “the usual service objects” instead, and two recent answers contradict each other.",
+   "explanation": "Inconsistent answers and talk of typical patterns are signs of context degradation. Persist key findings in a scratchpad file and reduce context use with /compact.",
+   "eli5": {
+    "question": "Claude found the exact classes early, and now speaks vaguely and contradicts itself. The clue: the session is nearly full of old output.",
+    "answer": "When a long meeting runs on, write the decisions on the whiteboard, then clear the table of old papers. A <b>notes file</b> is the whiteboard; <b>/compact</b> clears the table. <b>Rule: save what you found, then make room.</b>",
+    "options": [
+     "Correct. Write the findings down, then clear the clutter.",
+     "A bigger table holds more papers; the decisions are still buried among them.",
+     "Starting the meeting again repeats all the work done so far.",
+     "A rule to quote names helps only if the names are still in front of Claude."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude has forgotten because the window is too small</b>. Vague, contradictory answers are context degradation: early findings are buried under later output. The guide's fix is structure: persist findings in a file, then compact.",
+    "diagram": "early findings → buried under test output\n  → write notes file → /compact → answers cite notes",
+    "mapTitle": "A long Claude Code session is degrading. What fits?",
+    "map": {
+     "head": [
+      "Situation",
+      "Move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Key findings must survive a reset",
+       "Scratchpad file",
+       "Persists across boundaries"
+      ],
+      [
+       "Window full of old output",
+       "/compact",
+       "Reduces context usage"
+      ],
+      [
+       "Exploration will produce lots of output",
+       "Delegate to a subagent",
+       "Isolates verbose output"
+      ],
+      [
+       "Long task may crash midway",
+       "State manifest",
+       "Resume where it stopped"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Early on, Claude named the exact classes that apply discounts and taxes",
+      "means": "The findings exist; they are worth keeping, not rediscovering (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Now its answers mention “the usual service objects” instead, and two recent answers contradict each other",
+      "means": "The decider: classic context degradation. More room (<b>[[1]]</b>) or a rule (<b>[[3]]</b>) does not bring the buried findings back."
+     },
+     {
+      "quote": "The context is nearly full of earlier output",
+      "means": "Save the findings, then compact: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Answers turning vague in a long session? Save findings to a scratchpad file, then /compact.",
+    "guide": {
+     "obj": "5.4 Manage context in large codebase exploration",
+     "quote": "Scratchpad files persist key findings across boundaries; subagent delegation isolates verbose output"
+    }
+   }
+  }
+ ]
+}
