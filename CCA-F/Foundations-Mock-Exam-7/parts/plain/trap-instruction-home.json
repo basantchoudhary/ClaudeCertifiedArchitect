@@ -1,0 +1,351 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  },
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 · D4 · D5",
+   "brief": "A startup uses Claude Code in one TypeScript repository with <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> folders. The repository commits a <code>.claude/</code> directory and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-instruction-home-1",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 User-level memory for personal preferences",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "A developer added a line to the committed root <code>CLAUDE.md</code>. It says: “Explain every change in detail, I am new to Kotlin.” Now the CI review job posts long teaching comments on every pull request. Teammates' own sessions have started explaining everything too. The developer still wants detailed answers in all of their own sessions. Where should the line <b>live</b>?",
+   "options": [
+    {
+     "t": "In a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches only the Kotlin files.",
+     "why": "Works, but still shared. The rule is committed, so CI and teammates load it whenever a Kotlin file is touched, which is most of the time.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In the developer's own <code>~/.claude/CLAUDE.md</code>, removed from the committed project file.",
+     "why": "Best. User-level memory is personal and not shared through git. It loads in every one of the developer's sessions, in every project, and nobody else's."
+    },
+    {
+     "t": "In a project skill that the developer invokes at the start of each of their sessions.",
+     "why": "Works, but only when remembered. It is also committed, so the skill shows up for the whole team.",
+     "trap": "only when invoked"
+    },
+    {
+     "t": "In the CI job's <code>-p</code> prompt, as an override asking for short review comments.",
+     "why": "Works, but for CI only. The review gets shorter, yet teammates' sessions still load the line from the root file.",
+     "trap": "treats one symptom"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The developer still wants detailed answers in all of their own sessions.",
+   "explanation": "A personal preference belongs in user-level ~/.claude/CLAUDE.md. It is not shared through version control, so it changes only that person's sessions.",
+   "eli5": {
+    "question": "One developer's personal wish (“explain everything to me”) went into the shared file. Now CI and teammates get it too.",
+    "answer": "A sticky note on the office noticeboard is read by everyone. A note in your own notebook is read only by you, wherever you go. The root <code>CLAUDE.md</code> is the noticeboard; <code>~/.claude/CLAUDE.md</code> is your notebook. <b>Rule: only for me → user-level memory. For the team → the project file.</b>",
+    "options": [
+     "A note that pops up on Kotlin files is still on the noticeboard: CI and teammates see it.",
+     "Correct. Your own notebook: you get it everywhere, and nobody else does.",
+     "A note you must remember to fetch each morning, and the whole team can see it.",
+     "Telling CI to ignore it helps CI, but teammates still read the noticeboard."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the problem is CI's output</b>, so the fix goes in CI. The real fault is the <i>home</i> of the line: a personal wish sits in a file that every clone and every CI run loads. Move it to the file that only this person loads.",
+    "diagram": "~/.claude/CLAUDE.md  → this developer, every project\nrepo/CLAUDE.md       → every teammate and every CI run",
+    "mapTitle": "Who should this instruction reach?",
+    "map": {
+     "head": [
+      "Who it is for",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Only me, in every project",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not in git"
+      ],
+      [
+       "The whole team and CI, always",
+       "Root <code>CLAUDE.md</code>",
+       "Committed, loads for everyone"
+      ],
+      [
+       "Files matching a pattern",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Committed, loads for matching files"
+      ],
+      [
+       "A task run on request",
+       "A skill or slash command",
+       "Loads only when invoked"
+      ],
+      [
+       "One CI job's run",
+       "That job's <code>-p</code> prompt",
+       "Affects that run only"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A developer added a line to the committed root CLAUDE.md",
+      "means": "Committed means shared: every clone and CI load it."
+     },
+     {
+      "quote": "Teammates' own sessions have started explaining everything too",
+      "means": "The leak is not only in CI, so a CI-only override (<b>[[3]]</b>) fixes one symptom."
+     },
+     {
+      "quote": "The developer still wants detailed answers in all of their own sessions",
+      "means": "The decider: personal, and in every project. A committed rule (<b>[[0]]</b>) or skill (<b>[[2]]</b>) is still shared, and stays in this repo."
+     },
+     {
+      "quote": "Where should the line live?",
+      "means": "In the file only this developer loads: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Only for me, everywhere → ~/.claude/CLAUDE.md. For the team and CI → the committed project CLAUDE.md.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "User-level is not shared via version control."
+    }
+   }
+  },
+  {
+   "id": "tg-instruction-home-2",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Project commands shared through git",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "An engineer wrote a <code>/new-screen</code> command that creates a screen, its test and its story in the team's layout. It lives in their <code>~/.claude/commands/</code>. Teammates copied it from a chat message, and the copies have drifted, so new screens come out in different layouts. The team wants one version that every engineer gets with the code. Where should the command <b>live</b>?",
+   "options": [
+    {
+     "t": "In the repository's <code>.claude/commands/</code> folder, committed alongside the code.",
+     "why": "Best. Project commands live in the repository, so every engineer gets the same version on clone or pull, and changes go through review."
+    },
+    {
+     "t": "In the root <code>CLAUDE.md</code>, as a section that lists the steps for a new screen.",
+     "why": "Works, but wrong kind of file. Claude can follow the steps, but they load into every session and there is no <code>/new-screen</code> to run.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In a <code>.claude/rules/</code> file whose <code>paths:</code> glob matches <code>*.screen.tsx</code>.",
+     "why": "Works, but loads too late. A path rule loads when a matching file is touched, and the screen does not exist until the command creates it.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In a team dotfiles repo that copies it into each engineer's <code>~/.claude/commands/</code>.",
+     "why": "Works, but outside the project. Each engineer must install and update the dotfiles, so versions can drift again.",
+     "trap": "copies to maintain"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "The team wants one version that every engineer gets with the code.",
+   "explanation": "A command the whole team should share lives in the project's .claude/commands/, committed to git. ~/.claude/commands/ is for personal commands.",
+   "eli5": {
+    "question": "A handy command lives on one person's laptop. Everyone copied it, and the copies no longer match.",
+    "answer": "If the whole crew needs the same tool, leave it in the shared toolshed on site, not in one person's van. The repository's <code>.claude/commands/</code> is the shared toolshed: whoever clones gets the same tool, and any change is reviewed. <b>Rule: a team command → <code>.claude/commands/</code> in the repo. A personal command → <code>~/.claude/commands/</code>.</b>",
+    "options": [
+     "Correct. One tool in the shared toolshed; everyone gets the same one.",
+     "Written instructions on the wall aren't a tool you can pick up, and everyone reads them all day.",
+     "A note that appears only next to finished screens can't help you make a new one.",
+     "Copying the tool into every van works until someone forgets to update theirs."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the drift is a sharing problem to solve with a sync tool</b>. Claude Code already has a shared home for commands: the repository's <code>.claude/commands/</code>. Committed there, the command arrives with the code and changes go through review.",
+    "diagram": "repo/.claude/commands/new-screen.md → every engineer\n~/.claude/commands/new-screen.md     → one engineer",
+    "mapTitle": "Who needs the command, and where does it live?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Whole team, this repository",
+       "<code>.claude/commands/</code>, committed",
+       "Same version for everyone, reviewed"
+      ],
+      [
+       "Only me, every repository",
+       "<code>~/.claude/commands/</code>",
+       "Personal, follows me"
+      ],
+      [
+       "A standard that always applies",
+       "<code>CLAUDE.md</code>",
+       "Always loaded, not invoked"
+      ],
+      [
+       "Conventions for a kind of file",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads when a matching file is touched"
+      ],
+      [
+       "Shared copies kept in sync by a script",
+       "Dotfiles repo",
+       "Outside the project; can drift"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It lives in their ~/.claude/commands/",
+      "means": "A user-level command: personal, so teammates had to copy it."
+     },
+     {
+      "quote": "the copies have drifted, so new screens come out in different layouts",
+      "means": "Any copy-based fix, such as a dotfiles sync (<b>[[3]]</b>), keeps the copies."
+     },
+     {
+      "quote": "The team wants one version that every engineer gets with the code",
+      "means": "The decider: shared through the repository. A CLAUDE.md section (<b>[[1]]</b>) is shared but isn't a command."
+     },
+     {
+      "quote": "Where should the command live?",
+      "means": "It must run on request before any screen exists, which rules out a path rule (<b>[[2]]</b>). Answer: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Team command → .claude/commands/ in the repo. Personal command → ~/.claude/commands/.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "Project commands in .claude/commands/ (shared) vs user ~/.claude/commands/ (personal)"
+    }
+   }
+  },
+  {
+   "id": "tg-instruction-home-3",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 @import for modular references",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team's API style guide lives in <code>docs/api-style.md</code>, and the API team updates it often. The root <code>CLAUDE.md</code> holds a pasted copy of the guide. That copy is months out of date, so Claude follows rules the guide has since changed. The guide applies to every endpoint in the app. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Replace the copy with an <code>@import</code> line naming the guide file in <code>docs/</code>.",
+     "why": "Best. The import pulls the live guide into memory, so there is one copy to maintain and Claude always reads the current rules."
+    },
+    {
+     "t": "Add a CI step that copies the latest guide into <code>CLAUDE.md</code> after every merge.",
+     "why": "Works, but overbuilt. It keeps the copy fresh with a moving part you must build and maintain, when an import line does it with no copy.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Move the guide into an <code>/api-style</code> skill that engineers invoke for endpoint work.",
+     "why": "Works, but only when invoked. Endpoints written without the skill miss the guide, and the skill is another copy.",
+     "trap": "only when invoked"
+    },
+    {
+     "t": "Paste the guide into a <code>.claude/rules/</code> file with a <code>paths:</code> glob on the controllers.",
+     "why": "Works, but still a copy. It loads more precisely, yet it drifts from <code>docs/</code> exactly like the pasted copy did.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "That copy is months out of date, so Claude follows rules the guide has since changed.",
+   "explanation": "@import lets CLAUDE.md reference a file instead of copying it, so memory stays in step with the source document.",
+   "eli5": {
+    "question": "The rule book was photocopied into Claude's notes. The real rule book changed; the photocopy didn't.",
+    "answer": "Instead of a photocopy pinned to the wall, pin a note that says “read the rule book on shelf 3”. Whoever reads the note always gets the current book. An <code>@import</code> line in <code>CLAUDE.md</code> is that note. <b>Rule: the content already lives in a file → import it, don't copy it.</b>",
+    "options": [
+     "Correct. Point at the real book, so there's nothing to keep in sync.",
+     "A machine that re-photocopies the book after every change works, but it's a machine to keep running.",
+     "Locking the book in a cupboard means people only read it when they remember to open the cupboard.",
+     "A neater photocopy in a better spot is still a photocopy that goes stale."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>this is about where the guide should load</b>. The guide applies to every endpoint, so always-loaded memory is already the right place. The fault is that memory holds a <i>copy</i>. <code>@import</code> makes <code>CLAUDE.md</code> point at the source file instead.",
+    "diagram": "CLAUDE.md:  @docs/api-style.md\n            ↓ loads the current file\ndocs/api-style.md  (the API team edits only this)",
+    "mapTitle": "Copy it, import it, or load it somewhere else?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Content already lives in a repo file",
+       "<code>@import</code> it from <code>CLAUDE.md</code>",
+       "One source, no copy to drift"
+      ],
+      [
+       "Conventions for a file pattern across folders",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads only for matching files"
+      ],
+      [
+       "A workflow run now and then",
+       "A skill",
+       "Loads only when invoked"
+      ],
+      [
+       "Only you need it",
+       "<code>~/.claude/CLAUDE.md</code>",
+       "Personal, not shared"
+      ],
+      [
+       "Memory doesn't seem to load",
+       "Check with <code>/memory</code>",
+       "Shows which files loaded"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team's API style guide lives in docs/api-style.md, and the API team updates it often",
+      "means": "The source of truth is a file that changes."
+     },
+     {
+      "quote": "The root CLAUDE.md holds a pasted copy of the guide",
+      "means": "Memory holds a copy, not the source."
+     },
+     {
+      "quote": "That copy is months out of date",
+      "means": "The decider: drift. Another copy (<b>[[2]]</b>, <b>[[3]]</b>) drifts the same way; a sync job (<b>[[1]]</b>) is extra machinery."
+     },
+     {
+      "quote": "The guide applies to every endpoint in the app",
+      "means": "Always-loaded memory is the right place; only the copy is wrong. Import the file: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Content already in a repo file? @import it from CLAUDE.md instead of pasting a copy.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "@import syntax for modular references"
+    }
+   }
+  }
+ ]
+}

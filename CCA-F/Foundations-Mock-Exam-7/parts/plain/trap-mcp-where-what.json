@@ -1,0 +1,344 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  },
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-mcp-where-what-1",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Project .mcp.json with env var expansion",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "One engineer connected Claude to the Linear MCP server through their own <code>~/.claude.json</code>, with their API key written in it. Teammates now want the same Linear tools, and so does a new CI job. Each person and the CI job have their own key. No key may be committed to the repository. How should the team <b>set it up</b>?",
+   "options": [
+    {
+     "t": "Have each engineer add the server to their own <code>~/.claude.json</code>, as a README describes.",
+     "why": "Works, but personal. Each engineer configures it by hand, the entries drift, and the CI job needs its own setup too.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Add the server to a committed <code>.mcp.json</code> that reads the key from <code>${LINEAR_API_KEY}</code>.",
+     "why": "Best. Project <code>.mcp.json</code> is shared through git, so every clone and CI get the server, and each sets the variable from its own environment or secret store."
+    },
+    {
+     "t": "Add a script to the repo that calls the Linear API, and let Claude run it through Bash.",
+     "why": "Works, but loses the MCP tools. Claude gets one script instead of described tools with structured errors, and the team maintains it.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Copy the engineer's server entry into the CI runner's <code>~/.claude.json</code> as well.",
+     "why": "Works, but for CI only. Teammates still have nothing, and the server now has two hand-made entries to keep in step.",
+     "trap": "covers only CI"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "No key may be committed to the repository.",
+   "explanation": "Shared MCP servers belong in the project-level .mcp.json. Env var expansion such as ${LINEAR_API_KEY} keeps secrets out of the committed file.",
+   "eli5": {
+    "question": "One engineer's laptop knows how to reach Linear. The team and CI want it too, but nobody's key may go into the repo.",
+    "answer": "Put the address book in the shared office, but leave a blank where the door code goes. Each person fills in their own code from their own pocket. The committed <code>.mcp.json</code> is the shared address book; <code>${LINEAR_API_KEY}</code> is the blank. <b>Rule: a server the team shares → project <code>.mcp.json</code>, with secrets as environment variables.</b>",
+    "options": [
+     "Everyone writing their own address book works, but they drift, and CI needs one too.",
+     "Correct. One shared address book, with each person's code filled in from their own pocket.",
+     "A hand-written phone script works, but it is clumsier than the real phone and someone has to maintain it.",
+     "Giving a copy to CI helps CI only; the teammates still have nothing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a secret means the config must stay personal</b>. Claude Code separates the two: the server entry goes in the committed project <code>.mcp.json</code>, and the secret stays outside git as an environment variable that the file expands.",
+    "diagram": ".mcp.json (in git):  \"LINEAR_API_KEY\": \"${LINEAR_API_KEY}\"\nlaptop env / CI secret → fills in the real key",
+    "mapTitle": "Who needs the server, and where is it configured?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Whole team and CI, needs a secret",
+       "Project <code>.mcp.json</code> with <code>${VAR}</code>",
+       "Shared config, no committed secret"
+      ],
+      [
+       "Whole team, no secret needed",
+       "Project <code>.mcp.json</code>",
+       "Arrives with the clone"
+      ],
+      [
+       "Only me, or an experiment",
+       "User-level <code>~/.claude.json</code>",
+       "Personal, not shared"
+      ],
+      [
+       "A standard service like Jira or Linear",
+       "An existing community server",
+       "No custom code to maintain"
+      ],
+      [
+       "Only one CI job needs it",
+       "Still <code>.mcp.json</code>; CI sets the variable",
+       "One config for all"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "One engineer connected Claude to the Linear MCP server through their own ~/.claude.json",
+      "means": "User-level config: personal, so nobody else has it."
+     },
+     {
+      "quote": "Teammates now want the same Linear tools, and so does a new CI job",
+      "means": "Shared need. Per-person entries (<b>[[0]]</b>) and a CI-only copy (<b>[[3]]</b>) each cover part of it."
+     },
+     {
+      "quote": "No key may be committed to the repository",
+      "means": "The decider: the committed file names a variable, not the key: <b>[[1]]</b>."
+     },
+     {
+      "quote": "How should the team set it up?",
+      "means": "Keep the MCP server and its tools; a Bash script (<b>[[2]]</b>) replaces them with something weaker."
+     }
+    ],
+    "rule": "Team-shared MCP server → project .mcp.json, secrets as ${VARS}. Personal or experimental → ~/.claude.json.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Env var expansion in .mcp.json (e.g., ${GITHUB_TOKEN}) — no committed secrets."
+    }
+   }
+  },
+  {
+   "id": "tg-mcp-where-what-2",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 Community MCP servers for standard integrations",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The review job should read the Jira ticket linked in each pull request and check the change against it. It also needs to search related tickets and add a comment. These are ordinary Jira tasks. A developer plans to write the team's own MCP server for them. What is the <b>best approach</b>?",
+   "options": [
+    {
+     "t": "Write the planned server, with detailed tool descriptions and structured errors.",
+     "why": "Works, but overbuilt. A well-made custom server does the job, but the team now builds and maintains a Jira client that already exists.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Give the job a script that calls the Jira REST API with <code>curl</code> through Bash.",
+     "why": "Works, but fragile. Claude gets raw HTTP output instead of described tools, and the script grows with every new need.",
+     "trap": "fragile"
+    },
+    {
+     "t": "Configure an existing community Jira MCP server in the project <code>.mcp.json</code>.",
+     "why": "Best. Jira is a standard integration with maintained community servers. Configured in the project file, the review job and every developer get it."
+    },
+    {
+     "t": "Add the Jira calls as new tools on the team's existing code-search MCP server.",
+     "why": "Works, but still custom code. There is no new server, yet the team writes and maintains Jira code that already exists, inside a server built for something else.",
+     "trap": "still custom code"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "These are ordinary Jira tasks.",
+   "explanation": "For standard integrations such as Jira, prefer an existing community MCP server over writing a custom one.",
+   "eli5": {
+    "question": "The team needs Claude to read and comment on Jira tickets, and someone wants to build a connector from scratch.",
+    "answer": "If you need a kettle, you buy a good one from the shop; you don't build one from parts. Jira is the kettle: lots of teams need the same thing, so a well-tested <b>community MCP server</b> already exists. Build your own only for systems nobody else has. <b>Rule: standard integration → community server; your own system → your own server.</b>",
+    "options": [
+     "A hand-built kettle works, but you'll be fixing it for years.",
+     "Boiling water over a campfire works, but it's clumsy every time.",
+     "Correct. Buy the good kettle everyone uses, and put it in the shared kitchen.",
+     "Bolting a hand-built kettle onto the toaster: still yours to fix."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a custom server is the careful choice</b> because you control it. For standard integrations the exam guide says the opposite: prefer a community MCP server. Custom code is for your own systems, where nothing exists to adopt.",
+    "mapTitle": "Adopt, build, or work around?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best choice",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Standard service (Jira, GitHub)",
+       "Community MCP server",
+       "Already built and maintained"
+      ],
+      [
+       "Your own internal system",
+       "Your own MCP server",
+       "Nothing exists to adopt"
+      ],
+      [
+       "The team and CI need it",
+       "Configure it in project <code>.mcp.json</code>",
+       "Shared on clone"
+      ],
+      [
+       "Only you, trying it out",
+       "User-level <code>~/.claude.json</code>",
+       "Personal"
+      ],
+      [
+       "Claude explores to learn what exists",
+       "Add an MCP resource",
+       "A catalog cuts exploratory calls"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The review job uses an MCP server for code search and API guidelines",
+      "means": "The team already works through MCP; adding another server fits."
+     },
+     {
+      "quote": "It also needs to search related tickets and add a comment",
+      "means": "It must act, not only read, so it needs real Jira tools."
+     },
+     {
+      "quote": "These are ordinary Jira tasks",
+      "means": "The decider: a standard integration, so a community server exists."
+     },
+     {
+      "quote": "A developer plans to write the team's own MCP server for them",
+      "means": "Building it (<b>[[0]]</b>), bolting it onto another server (<b>[[3]]</b>) or scripting around it (<b>[[1]]</b>) is more to maintain. Adopt: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Standard integration (Jira)? Configure a community MCP server; build your own only for your own systems.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "prefer community MCP servers for standard integrations (Jira)"
+    }
+   }
+  },
+  {
+   "id": "tg-mcp-where-what-3",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resources for schema catalogs",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Engineers ask Claude questions about data in the staging database. Before each answer, Claude runs many queries on the system tables to learn which tables and columns exist. Most of those queries find nothing useful. The database has several hundred tables, and its structure changes only when a migration runs. What is the <b>best way</b> to cut these exploratory calls?",
+   "options": [
+    {
+     "t": "Add a <code>describe_table</code> tool that returns the columns of one named table.",
+     "why": "Works, but still exploring. Claude must already know a table's name, so it still calls once per guess.",
+     "trap": "still exploratory"
+    },
+    {
+     "t": "Paste the full schema into the root <code>CLAUDE.md</code> for every session to load.",
+     "why": "Works, but wrong home. Hundreds of tables load into every session, even ones about other work, and the copy drifts after each migration.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Expand the query tool's description with sample queries on the system tables.",
+     "why": "Works, but a different problem. The queries get better aimed, but Claude still runs them to explore.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Expose the schema as an MCP resource: tables, columns and a summary of each.",
+     "why": "Best. A resource is a catalog Claude reads when it needs it. One read shows what exists, so the exploratory queries go away."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Claude runs many queries on the system tables to learn which tables and columns exist.",
+   "explanation": "MCP resources expose content catalogs, such as schemas, so the agent can see what exists without exploratory tool calls.",
+   "eli5": {
+    "question": "Claude keeps knocking on doors to find out which rooms the building has.",
+    "answer": "Give it the floor plan instead. A floor plan on the wall shows every room at a glance, and you only walk to the room you need. An <b>MCP resource</b> is that floor plan: a catalog Claude can read. Tools are the doors you open to <i>do</i> something. <b>Rule: Claude explores to learn what exists → publish a resource.</b>",
+    "options": [
+     "A door you can open only if you know the room's name: still guessing.",
+     "Printing the whole floor plan on everyone's desk every day, even when they work elsewhere.",
+     "Better knocking technique, but still knocking.",
+     "Correct. One floor plan, read once, and no more knocking."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>every MCP feature is a tool</b>, so the fix must be a better or new tool. MCP has a second primitive: a <b>resource</b>, content the client can read, such as a schema or a document list. It answers “what exists?” in one read, which is exactly what the exploratory queries were doing.",
+    "diagram": "Today:  query, query, query … (most find nothing)\nAfter:  read schema resource → one targeted query",
+    "mapTitle": "Tool, resource, or memory?",
+    "map": {
+     "head": [
+      "Need",
+      "MCP primitive",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Learn what exists (schemas, doc lists)",
+       "Resource",
+       "A catalog read once"
+      ],
+      [
+       "Do something with inputs (run a query)",
+       "Tool",
+       "An action with parameters"
+      ],
+      [
+       "Claude picks Grep over a better tool",
+       "Better tool description",
+       "Descriptions drive selection"
+      ],
+      [
+       "A fact every session needs, short and stable",
+       "<code>CLAUDE.md</code>",
+       "Always loaded"
+      ],
+      [
+       "Standard service such as Jira",
+       "Community server",
+       "Adopt, don't build"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Claude runs many queries on the system tables to learn which tables and columns exist",
+      "means": "The decider: the calls are exploration. Better-aimed queries (<b>[[2]]</b>) are still exploration."
+     },
+     {
+      "quote": "Most of those queries find nothing useful",
+      "means": "Wasted calls, not wrong answers. The fix is to make the calls unnecessary."
+     },
+     {
+      "quote": "The database has several hundred tables",
+      "means": "Too big for always-loaded memory (<b>[[1]]</b>), and too many to guess one by one (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "What is the best way to cut these exploratory calls?",
+      "means": "A catalog Claude reads when needed: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Claude explores to learn what exists? Publish an MCP resource (a catalog); keep tools for actions.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "MCP resources expose content catalogs (issue summaries, doc hierarchies, schemas) to reduce exploratory tool calls."
+    }
+   }
+  }
+ ]
+}
