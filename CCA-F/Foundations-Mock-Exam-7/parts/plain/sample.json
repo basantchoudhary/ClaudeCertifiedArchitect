@@ -89,6 +89,16 @@
        "Prompts have a non-zero failure rate"
       ],
       [
+       "Only some customers may get a soft offer, under a written policy",
+       "A tool that checks the policy in code, plus a prompt for the wording",
+       "Code decides who; a subagent would still be a model guessing"
+      ],
+      [
+       "The soft step grows into a long negotiation with its own tools",
+       "A dedicated subagent",
+       "Its own context and prompt now earn their cost"
+      ],
+      [
        "Sensitive data must never reach the model",
        "<code>PostToolUse</code> hook that strips it",
        "The model can't repeat what it never saw"
