@@ -17,13 +17,12 @@ DOMAINS = {
     "D4": ("D4-Prompt-Engineering", "Prompt Engineering & Structured Output"),
     "D5": ("D5-Context-Management", "Context Management & Reliability"),
 }
-TRAPS = {  # domain -> [(slug, title)]
-    "D1": [("prompt-vs-hook", "Prompt or hook?"), ("coordinator-split", "The coordinator's split")],
-    "D2": [("tool-picker", "The tool picker"), ("mcp-where-what", "MCP: where and what"), ("tool-failure", "When a tool fails")],
-    "D3": [("instruction-home", "Where does this instruction live?"), ("plan-or-do", "Plan or just do it?")],
-    "D4": [("extraction-honesty", "Extraction honesty"), ("batch-or-now", "Batch or now?")],
-    "D5": [("context-meter", "The context meter"), ("tool-failure", "When a tool fails"), ("who-escalates", "Who escalates?")],
-}
+TRAPS = {d: [] for d in DOMAINS}  # domain -> [(page folder, title)], from Trap-Gym/data (the master list's source)
+for f in sorted((ccaf / "Trap-Gym" / "data").glob("part-*.json")):
+    for t in json.loads(f.read_text()):
+        page = t.get("gym") or t["slug"]
+        if page not in [x[0] for x in TRAPS[t["domain"]]]:
+            TRAPS[t["domain"]].append((page, t["title"]))
 
 sources = []  # (label, file)
 for n in (7, 6, 5, 4):
@@ -49,8 +48,8 @@ allq = [q for d in DOMAINS for q in by_dom[d]]
                               + json.dumps({"scenarios": list(scen.values()), "questions": allq}, ensure_ascii=False)
                               + ";\nwindow.PRACTICE_IDS = " + json.dumps(ids_by_dom) + ";\n")
 
-# A trap page counts as ready when the Trap gym index links it (its list is the one source of truth).
-READY = set(re.findall(r'\["([a-z-]+)/", "', (ccaf / "Trap-Gym" / "index.html").read_text()))
+# A trap page counts as ready once its folder has an index.html.
+READY = {p.parent.name for p in (ccaf / "Trap-Gym").glob("*/index.html")}
 
 def trap_links(dom, prefix):
     return [(f"{prefix}Trap-Gym/{slug}/", t) for slug, t in TRAPS[dom] if slug in READY]

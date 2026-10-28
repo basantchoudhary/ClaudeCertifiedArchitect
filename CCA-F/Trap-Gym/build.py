@@ -20,6 +20,22 @@ for f in files:
     scen.update({s["id"]: s for s in d["scenarios"]})
     qs.update({q["id"]: q for q in d["questions"]})
 
+# Trap pages may also show questions from the Mock 4-7 plain papers: bundle just the ones they reference.
+import re
+used = set()
+for page in here.glob("*/index.html"):
+    for ids in re.findall(r"renderPlain\([^\[]*\[([^\]]*)\]", page.read_text()):
+        used.update(re.findall(r'"([^"]+)"', ids))
+for f in sorted(here.parent.glob("Foundations-Mock-Exam-*/parts/plain/paper/s*.json")):
+    d = json.loads(f.read_text())
+    picked = [q for q in d["questions"] if q["id"] in used and q["id"] not in qs]
+    if picked:
+        scen.update({s["id"]: s for s in d["scenarios"]})
+        qs.update({q["id"]: q for q in picked})
+missing = used - set(qs)
+if missing:
+    sys.exit(f"trap pages reference unknown question ids: {sorted(missing)}")
+
 old = {}
 for f in sorted((mock7 / "parts").glob("*.json")):
     old.update({q["id"]: q for q in json.loads(f.read_text())["questions"]})
