@@ -1,0 +1,336 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  },
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  },
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-tool-failure-1",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Report access failures with partial results",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The document-analysis subagent fetches each paper's full text through the journals' MCP server. Some papers sit behind paywalls the hospital does not subscribe to, and the server refuses them. The subagent analyses the rest and returns only those findings. Summaries then read as if no other evidence exists. How should the subagent <b>report this</b>?",
+   "options": [
+    {
+     "t": "Return its findings plus a structured error naming each refused paper and the reason.",
+     "why": "Best. The coordinator gets the work that succeeded and knows exactly what is missing and why, so it can ask the library, try another source or publish with the gap stated."
+    },
+    {
+     "t": "Retry refused papers with backoff, then return the findings and “some papers unavailable”.",
+     "why": "Works, but it hides the detail. A paywall refusal won't change on retry, and “some papers” doesn't say which ones or why.",
+     "trap": "hides the context"
+    },
+    {
+     "t": "Stop with an error until every paper can be fetched, and return no findings before then.",
+     "why": "Works, but it throws away good work. One refused paper shouldn't end a run whose other analyses are finished and useful.",
+     "trap": "ends the run"
+    },
+    {
+     "t": "Return its findings, and add a line to each summary that some sources may be missing.",
+     "why": "Works, but vaguely. The committee is warned, yet nobody knows which papers are missing, so nobody can fetch them or judge how much they matter.",
+     "trap": "loses which ones"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "Summaries then read as if no other evidence exists.",
+   "explanation": "Report failures with structured context: what failed, why, what was tried and the partial results. Silently returning only the successes makes a gap look like a finding.",
+   "eli5": {
+    "question": "Some papers couldn't be opened, and the report pretends they don't exist. The clue: the summaries read as if there's no other evidence.",
+    "answer": "If an assistant can't get into three of the files, you want to hear “here are 17, and these 3 were locked”, not just the 17. Then you can ask for a key. <b>Report what worked and exactly what didn't, with the reason.</b> <b>Rule: never let a failure look like an empty result.</b>",
+    "options": [
+     "Correct. Here's what I have, and here's exactly what's locked.",
+     "Knocking on a locked door again won't open it, and “some files” doesn't say which.",
+     "Refusing to hand over anything because three files were locked wastes the 17.",
+     "“Some may be missing” worries people without telling them what to fetch."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>returning only what worked is the clean, safe option</b>. But silence about a failure reads as “nothing else exists”. The coordinator can only recover from a failure it can see: what failed, why, and what is already done.",
+    "diagram": "server refuses paywalled papers\ntoday:  findings only -> gap looks like no evidence\nbetter: findings + refused list + reason\n        -> coordinator decides",
+    "mapTitle": "How the failure reaches the coordinator",
+    "map": {
+     "head": [
+      "Report",
+      "What the coordinator knows",
+      "Outcome"
+     ],
+     "rows": [
+      [
+       "Findings only",
+       "Thinks the set is complete",
+       "Gap reads as “no evidence”"
+      ],
+      [
+       "Findings + “some missing”",
+       "Something is missing, not what",
+       "Can't fetch or weigh the gap"
+      ],
+      [
+       "Exception, run ends",
+       "Nothing; finished work lost",
+       "Committee gets nothing"
+      ],
+      [
+       "Findings + structured failure",
+       "Which papers, why, no retry",
+       "Ask library, other source, or state the gap"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the server refuses them",
+      "means": "An access failure, not an empty result. A paywall refusal won't change on retry (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "The subagent analyses the rest and returns only those findings",
+      "means": "The failure is dropped on the way up. Stopping the run (<b>[[2]]</b>) would swing too far the other way."
+     },
+     {
+      "quote": "Summaries then read as if no other evidence exists",
+      "means": "The decider: lost information has turned into a false impression. A vague warning (<b>[[3]]</b>) doesn't say what to fetch."
+     },
+     {
+      "quote": "every claim must cite a paper and section",
+      "means": "The committee needs to know which papers were never read, by name."
+     }
+    ],
+    "rule": "Report a failure with its type, what was tried and the partial results. Silence reads as “no evidence”.",
+    "guide": {
+     "obj": "5.3 Error propagation across multi-agent systems",
+     "quote": "Structured error context (failure type, attempted query, partial results, alternatives) enables coordinator recovery."
+    }
+   }
+  },
+  {
+   "id": "tg-tool-failure-2",
+   "sid": "s6",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Access failure vs valid empty result",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The extraction agent calls a <code>verify_carrier</code> MCP tool to check each carrier against the licensing registry. The registry sometimes goes offline for an hour or more. During those outages the tool returns “Carrier not found”, the same text it returns for a carrier with no licence. Certificates from licensed carriers are then rejected as unlicensed. Which change is <b>best</b>?",
+   "options": [
+    {
+     "t": "Retry the registry with backoff inside the tool before it returns “Carrier not found”.",
+     "why": "Works, but only for short blips. After an hour-long outage the retries run out and the tool still says “not found”, a wrong answer that looks like a real one.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Send each “Carrier not found” certificate to a reviewer before it is rejected.",
+     "why": "Works, but it treats the symptom. Reviewers catch the wrong rejections, at the cost of checking every real miss too, while the tool keeps saying something false.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Answer from a cache of earlier registry lookups while the registry is offline.",
+     "why": "Works, but only for carriers seen before, and the cached answer may be out of date. A new carrier still comes back “not found”.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Return a transient, retryable <code>isError</code> result when the registry is offline.",
+     "why": "Best. The agent can now tell “the registry couldn't be reached” from “the registry says no licence”, and hold the certificate until the lookup works."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "the same text it returns for a carrier with no licence",
+   "explanation": "A tool must distinguish an access failure from a valid empty result. Return an isError result with an error category and a retryable flag, and keep “not found” for lookups that actually worked.",
+   "eli5": {
+    "question": "When the registry is down, the tool says “not found”, the same words it uses for a real “no licence”. The clue: two very different events give the same answer.",
+    "answer": "If you phone a shop and nobody picks up, that doesn't mean the shop doesn't sell bread. “No answer” and “we have none” are different news. A tool must say which one happened: an <b>isError</b> result marked <b>transient, retryable</b> for “couldn't reach it”. <b>Rule: never report an access failure as an empty result.</b>",
+    "options": [
+     "Ringing again helps if the line is busy for a minute, not for an hour.",
+     "Asking a person to double-check every “none” works, but the phone is still lying.",
+     "Remembering last week's answer helps only for shops you've rung before.",
+     "Correct. Say “nobody answered”, not “they have none”."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>“not found” is a safe default when a lookup fails</b>. It isn't: it turns “we don't know” into a confident wrong answer. Downstream logic acts on it as fact. The tool has to report the failure as a failure.",
+    "diagram": "offline -> \"Carrier not found\" -> rejected (wrong)\noffline -> isError, transient, retryable\n        -> hold, retry later",
+    "mapTitle": "What the tool returns, and what the agent can do",
+    "map": {
+     "head": [
+      "What happened",
+      "What the tool returns",
+      "What the agent can do"
+     ],
+     "rows": [
+      [
+       "Registry answered: no licence",
+       "Success, “not found”",
+       "Reject as unlicensed"
+      ],
+      [
+       "Registry offline",
+       "<code>isError</code>, transient, retryable",
+       "Hold and retry later"
+      ],
+      [
+       "Bad input (malformed carrier ID)",
+       "<code>isError</code>, validation",
+       "Fix the input and call again"
+      ],
+      [
+       "Registry offline, reported as “not found”",
+       "A false empty result",
+       "Rejects good certificates"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The registry sometimes goes offline for an hour or more",
+      "means": "Too long for retries inside the tool (<b>[[0]]</b>) to wait out."
+     },
+     {
+      "quote": "the same text it returns for a carrier with no licence",
+      "means": "The decider: an access failure and a valid empty result look identical. Only the tool can tell them apart."
+     },
+     {
+      "quote": "Certificates from licensed carriers are then rejected as unlicensed",
+      "means": "Wrong answers acted on as fact. A reviewer (<b>[[1]]</b>) or a cache (<b>[[2]]</b>) works around the false answer instead of removing it."
+     },
+     {
+      "quote": "Which change is best?",
+      "means": "Report the outage as an error with its category: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Couldn't reach it is not the same as found nothing. Return isError with a category and a retryable flag.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "distinguish access failures from valid empty results."
+    }
+   }
+  },
+  {
+   "id": "tg-tool-failure-3",
+   "sid": "s5",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.3 Local recovery, propagate only unresolved errors",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The weekly dependency-risk report runs one subagent per module. Each subagent looks up every package in an advisory database over MCP. A few lookups per run time out, and they succeed on a second try seconds later. Today each timeout goes straight to the coordinator, which restarts that module's scan from the start. Runs now take most of the night. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Have the coordinator wait a minute before it restarts a module after a timeout.",
+     "why": "Works, but it still throws away finished lookups. Each restart redoes the whole module for one failed package.",
+     "trap": "redoes finished work"
+    },
+    {
+     "t": "Have the subagent retry blips itself and pass up only lookups that still fail.",
+     "why": "Best. Short blips are fixed where they happen, finished lookups are kept, and the coordinator hears only about failures it has to decide on."
+    },
+    {
+     "t": "Raise the advisory client's timeout to give slow lookups longer to finish.",
+     "why": "Works, but it hides the problem. Fewer timeouts, yet a hung call now holds the run for longer, and any timeout that remains still restarts the module.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Have the subagent skip timed-out packages and list them in the report as not checked.",
+     "why": "Works, but it gives up too soon. A lookup that would succeed seconds later is left as a gap in the report every week.",
+     "trap": "gives up too soon"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "they succeed on a second try seconds later",
+   "explanation": "Recover locally from transient errors in the subagent, and propagate only unresolved errors, with the partial results, to the coordinator.",
+   "eli5": {
+    "question": "A few lookups hiccup and work on a second try, but each hiccup restarts a whole module. The clue: a second try seconds later works.",
+    "answer": "If one page of a 40-page print job jams, the printer reprints that page, not the whole document, and only calls you if it keeps jamming. A subagent should do the same: <b>retry the blip itself</b>, keep what's done, and <b>report up only what is still broken</b>. <b>Rule: recover locally, propagate only unresolved errors.</b>",
+    "options": [
+     "Waiting before reprinting the whole document still reprints the whole document.",
+     "Correct. Reprint the jammed page; call for help only if it keeps jamming.",
+     "A longer wait for each page means a stuck page holds everything up longer.",
+     "Leaving the jammed page out works, but the document has a hole every week."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>every error should go straight to the coordinator, so nothing is hidden</b>. But a blip that a quick retry fixes isn't a decision for the coordinator. Handle transient errors locally; send up only what is still unresolved, together with the partial results.",
+    "diagram": "timeout -> subagent retries (seconds) -> ok\nstill failing -> error + results so far\n              -> coordinator",
+    "mapTitle": "Who handles which failure",
+    "map": {
+     "head": [
+      "Failure",
+      "Who handles it",
+      "How"
+     ],
+     "rows": [
+      [
+       "Brief timeout, fine on retry",
+       "The subagent",
+       "Retry locally, keep the results"
+      ],
+      [
+       "Still failing after retries",
+       "The coordinator",
+       "Structured error + partial results"
+      ],
+      [
+       "Business or permission refusal",
+       "The coordinator",
+       "Not retryable; report the reason"
+      ],
+      [
+       "Bad input to the tool",
+       "The subagent",
+       "Fix the input and call again"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "they succeed on a second try seconds later",
+      "means": "The decider: these are transient blips that a local retry fixes. Skipping them (<b>[[3]]</b>) gives up on lookups that would work."
+     },
+     {
+      "quote": "Today each timeout goes straight to the coordinator, which restarts that module's scan from the start",
+      "means": "Finished lookups are thrown away. Waiting first (<b>[[0]]</b>) still restarts the module."
+     },
+     {
+      "quote": "Runs now take most of the night",
+      "means": "The cost of handling every blip at the top. A longer timeout (<b>[[2]]</b>) trades restarts for longer waits."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Retry in the subagent, propagate only what is still failing: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Recover from blips inside the subagent; send up only unresolved errors, with partial results.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "local recovery in subagents, propagate only unresolved errors with partial results"
+    }
+   }
+  }
+ ]
+}

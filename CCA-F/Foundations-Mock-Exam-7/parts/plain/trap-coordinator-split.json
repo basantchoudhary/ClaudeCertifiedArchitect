@@ -1,0 +1,324 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-coordinator-split-1",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Narrow task decomposition",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "A committee asks how to prevent falls among hospital inpatients. The coordinator splits the work into three searches: exercise programmes, balance training and strength training. Each subagent returns well-cited findings within its topic. The committee replies that the summary leaves out bed alarms, medication reviews and ward layout. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Give each search subagent wider search terms and a higher limit on papers per topic.",
+     "why": "Works, but it blames the subagents. They did their assigned topics well. Wider terms inside “balance training” still won't turn up bed alarms or ward layout.",
+     "trap": "blames the subagent"
+    },
+    {
+     "t": "Have synthesis check each draft for missing topics and send out more searches.",
+     "why": "Works, but late. A gap check is a good safety net, yet here it catches the hole only after a full wasted round, and the narrow split repeats on the next request.",
+     "trap": "catches it late"
+    },
+    {
+     "t": "Have the coordinator split the request by type of prevention first.",
+     "why": "Best. The fault is upstream: all three topics were kinds of exercise. A split by type of prevention (exercise, alarms, medicines, environment) covers the whole question."
+    },
+    {
+     "t": "Ask the committee to list every subtopic it wants covered in each new request.",
+     "why": "Works, but it moves the coordinator's job onto the committee. Breaking a broad question into parts is exactly what the coordinator is for.",
+     "trap": "shifts the work to the user"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Each subagent returns well-cited findings within its topic.",
+   "explanation": "When every subagent does its assigned job well and whole topics are still missing, the coordinator's decomposition was too narrow. Fix the split, not the subagents.",
+   "eli5": {
+    "question": "Every helper did a good job, and the report still misses whole topics. The clue: all three topics were kinds of exercise.",
+    "answer": "A head chef asked for three dishes: soup, salad and bread. All three were perfect, and there was no main course. You don't retrain the cooks; you fix the chef's list. The <b>coordinator</b> is the chef. <b>Rule: if every subagent succeeded and topics are missing, the split was too narrow.</b>",
+    "options": [
+     "Better searching inside “balance training” still never reaches bed alarms.",
+     "A check at the end finds the hole, but only after a wasted round.",
+     "Correct. Fix the list of dishes, not the cooks.",
+     "Asking the guests to write the menu is the chef's job handed back."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a gap in the report means a subagent did a poor job</b>. Here each subagent did exactly what it was asked. The gap was created one step earlier, when the coordinator chose the topics. Overly narrow decomposition gives incomplete coverage even when every subagent works perfectly.",
+    "diagram": "falls prevention\n  -> exercise | balance | strength   (all one kind)\nmissing: alarms, medicines, ward layout",
+    "mapTitle": "Where did the gap start?",
+    "map": {
+     "head": [
+      "Symptom",
+      "Where it started",
+      "Fix there"
+     ],
+     "rows": [
+      [
+       "Whole topics missing, each subagent fine",
+       "Coordinator's split",
+       "Split the request more broadly"
+      ],
+      [
+       "Subagent ignores a rule the user gave",
+       "Coordinator's Task prompt",
+       "Write the rule into the prompt"
+      ],
+      [
+       "Subagent's results are poor for its topic",
+       "The subagent itself",
+       "Improve its prompt or tools"
+      ],
+      [
+       "Draft has a thin spot on a covered topic",
+       "One round of research",
+       "Gap check, then re-delegate"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator splits the work into three searches: exercise programmes, balance training and strength training",
+      "means": "All three topics are kinds of exercise. The split itself leaves out every other kind of prevention."
+     },
+     {
+      "quote": "Each subagent returns well-cited findings within its topic",
+      "means": "The decider: the subagents worked. Tuning them (<b>[[0]]</b>) fixes something that isn't broken."
+     },
+     {
+      "quote": "the summary leaves out bed alarms, medication reviews and ward layout",
+      "means": "Whole topics, not thin sections. A gap check (<b>[[1]]</b>) would find them, but only after a wasted round."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Fix the split where it was made: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Every subagent succeeded, yet topics are missing? Fix the coordinator's split.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Risk: overly narrow decomposition → incomplete coverage of broad topics."
+    }
+   }
+  },
+  {
+   "id": "tg-coordinator-split-2",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Complete prior findings in the Task prompt",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "When the searches finish, the coordinator writes a short paragraph about the papers they found and sends it to the analysis subagent. Paper titles appear inside sentences, and section numbers are left out. The analysis subagent's findings often cite the wrong paper or no section at all. The citation checker then rejects them. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Let the analysis subagent run its own journal searches and find each of the papers again.",
+     "why": "Works, but it repeats finished work. The searches already found the papers; the coordinator just didn't pass them on in a usable form.",
+     "trap": "duplicate work"
+    },
+    {
+     "t": "Send the findings to it as a list, with paper titles and section numbers as fields.",
+     "why": "Best. The subagent inherits nothing, so the coordinator passes the complete findings, with the citation details kept apart from the text where they can't be lost."
+    },
+    {
+     "t": "Add a rule to the analysis subagent's prompt to cite a paper and section for each claim.",
+     "why": "Works, but it blames the subagent. It can't cite a section number it was never sent. The gap is in the prompt the coordinator wrote.",
+     "trap": "blames the subagent"
+    },
+    {
+     "t": "Have the citation checker find the right paper and section for each claim it rejects.",
+     "why": "Works, but at the end of the line. It repairs citations after the fact, one by one, instead of sending the right details in the first place.",
+     "trap": "catches it late"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Paper titles appear inside sentences, and section numbers are left out.",
+   "explanation": "Subagents receive only what the coordinator writes into the Task prompt. Pass prior agents' complete findings, in a structured form that keeps metadata such as DOI and section apart from the content.",
+   "eli5": {
+    "question": "The analyst cites the wrong papers. The clue: the coordinator's note mixed the titles into sentences and dropped the section numbers.",
+    "answer": "If a manager hands a new colleague a chatty note instead of the file, the colleague can't quote page numbers that weren't in the note. Hand over the file, with the labels on. A subagent starts empty: it knows only the <b>Task prompt</b>. <b>Rule: pass complete findings, with the citation details in their own fields.</b>",
+    "options": [
+     "Sending the colleague to fetch every file again wastes the work already done.",
+     "Correct. Hand over the file with its labels.",
+     "Telling the colleague to quote pages doesn't help if the pages were never handed over.",
+     "Fixing the quotes afterwards is slower than sending them right the first time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a subagent that cites badly needs a stricter instruction</b>. But a subagent knows only what is in its Task prompt. Here the coordinator summarised the search results into prose and dropped the section numbers, so the details the citations need never arrived.",
+    "diagram": "search results -> coordinator prose (no sections)\n               -> analysis subagent -> bad citations",
+    "mapTitle": "What the coordinator should hand on",
+    "map": {
+     "head": [
+      "Need downstream",
+      "Put in the Task prompt",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Cite paper and section",
+       "Each finding with title, DOI, section fields",
+       "Metadata stays attached to the content"
+      ],
+      [
+       "Apply this request's rules",
+       "The rules agreed with the user",
+       "Subagents don't see the coordinator's chat"
+      ],
+      [
+       "Build on earlier work",
+       "Complete prior-agent findings",
+       "No re-searching, nothing lost in a summary"
+      ],
+      [
+       "Do the job well",
+       "The goal and quality criteria",
+       "Lets the subagent choose how"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the coordinator writes a short paragraph about the papers they found",
+      "means": "Prose written by the coordinator, not the complete findings."
+     },
+     {
+      "quote": "Paper titles appear inside sentences, and section numbers are left out",
+      "means": "The decider: the citation details were mixed in or dropped before the subagent saw them. A citing rule (<b>[[2]]</b>) can't bring them back."
+     },
+     {
+      "quote": "every claim must cite a paper and section",
+      "means": "The details that went missing are exactly the ones every claim needs."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Send the findings complete, with metadata in separate fields: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Subagents inherit nothing. Pass complete findings, with citation details in their own fields.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Include complete prior-agent findings in the subagent prompt; use structured formats to separate content from metadata (URLs, doc names, page numbers) for attribution"
+    }
+   }
+  },
+  {
+   "id": "tg-coordinator-split-3",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Goals and quality criteria, not step lists",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The coordinator writes each search Task prompt as fixed steps: search the drug name with the outcome, take the first ten results, and summarise each one. Subagents follow the steps exactly. They miss trials that use a brand name or another word for the outcome. They also summarise reviews the committee did not need. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "State the goal and what counts as good evidence, and let each subagent plan its searches.",
+     "why": "Best. With the goal and a quality bar, a subagent can adapt: try brand names, skip reviews nobody asked for, and stop when the evidence is good enough."
+    },
+    {
+     "t": "Add steps to also search brand names and outcome synonyms, and take the first twenty results.",
+     "why": "Works, but it patches the list. This request's misses go away; the next request will find a gap the steps didn't foresee.",
+     "trap": "patches the step list"
+    },
+    {
+     "t": "Give the search subagents a synonym tool that expands each drug name before they search.",
+     "why": "Works, but it blames the subagents' tools. Brand names get found; the subagents still take the first ten results and still don't know which papers the committee needs.",
+     "trap": "blames the subagent"
+    },
+    {
+     "t": "Have the analysis subagent drop summarised papers that don't answer the committee's question.",
+     "why": "Works, but late, and only half. It removes unneeded reviews after they were summarised, and it can't add the trials the steps missed.",
+     "trap": "catches it late"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Subagents follow the steps exactly.",
+   "explanation": "Coordinator prompts should state goals and quality criteria, not step-by-step procedures. Subagents that know what good looks like can adapt their searches; subagents given a recipe follow it, gaps and all.",
+   "eli5": {
+    "question": "The helpers did exactly what the steps said, and missed what mattered. The clue: they follow the steps exactly.",
+    "answer": "Tell a helper “buy the first ten items on aisle 3” and they'll come back with ten items. Tell them “we're cooking for six, one is vegetarian, keep it under $40” and they'll shop well. The <b>goal and quality bar</b> let them adapt. <b>Rule: brief subagents with goals and quality criteria, not recipes.</b>",
+    "options": [
+     "Correct. Say what you need and what good looks like.",
+     "A longer recipe fixes today's miss; tomorrow brings a new one.",
+     "A better tool helps, but the helper still follows the recipe.",
+     "Throwing out the wrong shopping later doesn't bring back what was never bought."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a subagent that misses things needs more instructions or a better tool</b>. Here the subagents followed their steps exactly; the steps were the problem. A step list can't foresee every request. A goal and a quality bar let the subagent decide how to search.",
+    "diagram": "steps:  search X -> first 10 -> summarise  (rigid)\ngoal:   what the committee needs + quality bar\n        -> subagent plans its own searches",
+    "mapTitle": "Recipe or goal?",
+    "map": {
+     "head": [
+      "Brief style",
+      "What the subagent does",
+      "Result"
+     ],
+     "rows": [
+      [
+       "Fixed steps",
+       "Follows them exactly",
+       "Misses whatever the steps didn't foresee"
+      ],
+      [
+       "Longer fixed steps",
+       "Follows more of them",
+       "Fixes today's miss only"
+      ],
+      [
+       "Goal + quality criteria",
+       "Plans and adapts its searches",
+       "Finds what the goal needs"
+      ],
+      [
+       "Goal only, no criteria",
+       "Adapts, but guesses the bar",
+       "Uneven depth and sources"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator writes each search Task prompt as fixed steps",
+      "means": "The brief is a recipe. The coordinator decides how, so the subagent can't adapt."
+     },
+     {
+      "quote": "Subagents follow the steps exactly",
+      "means": "The decider: the subagents did what they were told. A new tool (<b>[[2]]</b>) works on the wrong layer."
+     },
+     {
+      "quote": "They miss trials that use a brand name or another word for the outcome",
+      "means": "More steps (<b>[[1]]</b>) cover this case; the next request brings another one."
+     },
+     {
+      "quote": "They also summarise reviews the committee did not need",
+      "means": "They don't know what the committee needs. Filtering later (<b>[[3]]</b>) can't add what was missed."
+     }
+    ],
+    "rule": "Brief subagents with the goal and quality criteria, not a step list.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "write coordinator prompts as goals + quality criteria, not step-by-step procedures."
+    }
+   }
+  }
+ ]
+}
