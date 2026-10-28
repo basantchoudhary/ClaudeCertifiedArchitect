@@ -88,10 +88,10 @@ for dom, (folder, name) in DOMAINS.items():
 
     hub = ccaf / folder / "index.html"
     s = hub.read_text()
-    s = re.sub(r"\n?<!-- traps:start -->.*?<!-- traps:end -->\n?", "\n", s, flags=re.S)
+    s = re.sub(r"\s*<!-- traps:start -->.*?<!-- traps:end -->", "", s, flags=re.S)
+    s = re.sub(r'<div class="wrap">\s*', '<div class="wrap">\n', s, count=1)
     tl = " ".join(f'<a href="{u}">{t}</a>' for u, t in trap_links(dom, "../"))
-    box = f"""
-<!-- traps:start -->
+    box = f"""<!-- traps:start -->
     <div class="intro" id="exam-traps" style="border-left:4px solid #8a6bd1;margin-bottom:18px">
         <h2 style="margin-top:0">Exam traps and practice for this domain</h2>
         <p>On the exam every option in this domain is a sensible practice; these traps decide most questions.
@@ -101,7 +101,8 @@ for dom, (folder, name) in DOMAINS.items():
         “Explain simply” and “Think it through”. New here? <a href="../">Start here</a>.</p>
     </div>
 <!-- traps:end -->
+
 """
-    s = s.replace('<div class="wrap">', '<div class="wrap">' + box, 1)
+    s = s.replace('<div class="wrap">\n', '<div class="wrap">\n' + box, 1)
     hub.write_text(s)
     print(f"{dom}: {n} questions, {len(trap_links(dom, ''))} trap pages")
