@@ -49,8 +49,11 @@ allq = [q for d in DOMAINS for q in by_dom[d]]
                               + json.dumps({"scenarios": list(scen.values()), "questions": allq}, ensure_ascii=False)
                               + ";\nwindow.PRACTICE_IDS = " + json.dumps(ids_by_dom) + ";\n")
 
+# A trap page counts as ready when the Trap gym index links it (its list is the one source of truth).
+READY = set(re.findall(r'\["([a-z-]+)/", "', (ccaf / "Trap-Gym" / "index.html").read_text()))
+
 def trap_links(dom, prefix):
-    return [(f"{prefix}Trap-Gym/{slug}/", t) for slug, t in TRAPS[dom] if (ccaf / "Trap-Gym" / slug / "index.html").exists()]
+    return [(f"{prefix}Trap-Gym/{slug}/", t) for slug, t in TRAPS[dom] if slug in READY]
 
 for dom, (folder, name) in DOMAINS.items():
     n = len(by_dom[dom])

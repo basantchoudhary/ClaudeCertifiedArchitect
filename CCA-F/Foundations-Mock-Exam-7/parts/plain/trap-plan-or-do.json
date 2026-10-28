@@ -1,0 +1,345 @@
+{
+ "scenarios": [
+  {
+   "id": "s2",
+   "title": "Scenario 2 — Code Generation with Claude Code",
+   "domains": "D3 · D4 · D5",
+   "brief": "A startup uses Claude Code in one TypeScript repository with <code>server/</code>, <code>mobile/</code> and <code>packages/shared/</code> folders. The repository commits a <code>.claude/</code> directory and a root <code>CLAUDE.md</code>. Engineers use Claude Code to generate endpoints, screens and tests from tickets."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-plan-or-do-1",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Direct execution for a well-scoped change",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A ticket asks for one new check on the sign-up endpoint in <code>server/</code>. Passwords shorter than twelve characters must be rejected with the team's usual error response. The engineer knows the endpoint file and its test file, and the error format already exists. How should the engineer <b>approach</b> this with Claude?",
+   "options": [
+    {
+     "t": "Enter plan mode, have Claude survey the auth code, then approve a written plan.",
+     "why": "Works, but overbuilt. The plan would say what the ticket already says. Plan mode is for open design choices across many files, and here there are none.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Send an Explore subagent to map every input check in <code>server/</code>, then edit.",
+     "why": "Works, but overbuilt. The Explore subagent keeps long discovery output out of the session. Here there is nothing to discover: the engineer already knows both files.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Ask Claude to add the check and a test case directly, then run the tests.",
+     "why": "Best. One rule, two known files, an existing error format. A simple, well-scoped change like this is what direct execution is for."
+    },
+    {
+     "t": "Have Claude interview the engineer about password rules before writing code.",
+     "why": "Works, but nothing is left to ask. The interview pattern draws out unclear requirements. The ticket already states the rule and the error.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The engineer knows the endpoint file and its test file, and the error format already exists.",
+   "explanation": "Direct execution fits simple, well-scoped changes such as a single validation check. Plan mode fits large changes with several valid approaches or architectural decisions.",
+   "eli5": {
+    "question": "A small, clear ticket: add one password check to one endpoint. The clue: the engineer already knows which files to change, and the error format exists.",
+    "answer": "Hanging one picture doesn't need an architect. You know the wall, you have the nail, you hang it. <b>Direct execution</b> is hanging the picture: Claude makes the change and runs the tests. <b>Rule: small and settled → just do it. Big or undecided → plan first.</b>",
+    "options": [
+     "Drawing up a plan for one picture: correct in the end, but slow for no gain.",
+     "Sending someone to measure every wall when you already know which wall.",
+     "Correct. Make the change, add a test, run the tests.",
+     "Asking questions when the ticket has already answered them."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>planning first is always the safer choice</b>. Plan mode costs time: Claude explores, writes a plan, and waits for approval. That pays off when the approach is open or many files change. For one clear rule in two known files, the plan adds time and changes nothing.",
+    "diagram": "known files + settled rule\n  -> edit endpoint + add test case\n  -> run tests -> done",
+    "mapTitle": "Which mode fits the task?",
+    "map": {
+     "head": [
+      "Task looks like",
+      "Mode",
+      "Why"
+     ],
+     "rows": [
+      [
+       "One rule, known files, settled approach",
+       "Direct execution",
+       "Nothing to decide, so just do it"
+      ],
+      [
+       "Many files and two valid approaches",
+       "Plan mode",
+       "Agree the design before any edits"
+      ],
+      [
+       "Discovery output would flood the session",
+       "Explore subagent",
+       "Returns a summary, not the raw output"
+      ],
+      [
+       "Requirements are unclear",
+       "Interview pattern",
+       "Claude asks questions first"
+      ],
+      [
+       "Known right answers, fixes keep breaking",
+       "Tests first, share failures",
+       "Each round has a clear target"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A ticket asks for one new check on the sign-up endpoint",
+      "means": "One rule in one place: a small, well-scoped change."
+     },
+     {
+      "quote": "The engineer knows the endpoint file and its test file, and the error format already exists",
+      "means": "The decider. There is nothing to explore (<b>[[1]]</b>) and no design to agree (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "Passwords shorter than twelve characters must be rejected with the team's usual error response",
+      "means": "The requirement is already stated, so an interview (<b>[[3]]</b>) has nothing to ask."
+     },
+     {
+      "quote": "How should the engineer approach this with Claude?",
+      "means": "Make the change and test it: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Small, well-scoped and settled? Direct execution. Plan mode is for big or undecided changes.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Direct execution: simple well-scoped changes (single validation check)."
+    }
+   }
+  },
+  {
+   "id": "tg-plan-or-do-2",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.4 Explore subagent for verbose discovery",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An engineer is in plan mode with Claude, designing how to split the large <code>User</code> model into smaller pieces. The design depends on every place in the app that reads or writes user fields. Last time, those searches filled most of the session's context. The design talk that followed lost track of earlier decisions. What should the engineer <b>do</b> for the search?",
+   "options": [
+    {
+     "t": "Have an Explore subagent run the searches and return a summary per field.",
+     "why": "Best. The subagent does the noisy searching in its own context and hands back only the summary. The planning session keeps its room for the design."
+    },
+    {
+     "t": "Let Claude run the searches in the session, then use <code>/compact</code> before designing.",
+     "why": "Works, but after the damage. Compacting frees space, but the raw output already crowded the session, and the summary it keeps is not chosen for this design.",
+     "trap": "too late"
+    },
+    {
+     "t": "Leave plan mode and change the model in small steps, searching as each step needs.",
+     "why": "Works, but wrong mode. Splitting a central model is an architectural change. Without a plan, early steps pick a design by default, and later steps redo them.",
+     "trap": "wrong mode"
+    },
+    {
+     "t": "Save the full usage list in <code>CLAUDE.md</code> for every later session to load.",
+     "why": "Works, but wrong home. The list is loaded into every session, for every task, and goes stale as soon as the code changes.",
+     "trap": "wrong home"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Last time, those searches filled most of the session's context.",
+   "explanation": "The Explore subagent isolates verbose discovery output and returns a summary, so the main session keeps its context for planning and decisions.",
+   "eli5": {
+    "question": "Planning a big change needs a long search through the app, and last time the search output crowded out the planning. The clue: the searches filled the session's context.",
+    "answer": "When you plan a kitchen, you send someone to measure every room. They come back with one sheet of numbers, not a pile of tape-measure notes. The <b>Explore subagent</b> is that helper: it does the messy searching elsewhere and hands back a short summary. <b>Rule: noisy discovery goes to the Explore subagent; the planning session gets the summary.</b>",
+    "options": [
+     "Correct. The helper measures; you get one tidy sheet.",
+     "Letting the notes pile up on the table, then tidying: the mess already got in the way.",
+     "Starting to knock down walls before the plan is agreed.",
+     "Pinning the notes to the fridge for every future job, where they go out of date."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a full context can be fixed afterwards</b>. Compacting helps later, but the design talk already ran in a crowded session. The Explore subagent keeps the long output out of the session from the start. Only its summary comes back.",
+    "diagram": "plan session -> Explore subagent: find user-field usages\n               (long output stays in the subagent)\nplan session <- summary per field",
+    "mapTitle": "Where should long output go?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Effect on the main session"
+     ],
+     "rows": [
+      [
+       "Long discovery before a design",
+       "Explore subagent",
+       "Only the summary comes back"
+      ],
+      [
+       "Session already full of old output",
+       "<code>/compact</code>",
+       "Shrinks what is there"
+      ],
+      [
+       "Facts every task needs, every time",
+       "<code>CLAUDE.md</code>",
+       "Loaded into every session"
+      ],
+      [
+       "Architectural change, open design",
+       "Plan mode",
+       "Design agreed before edits"
+      ],
+      [
+       "One small, settled edit",
+       "Direct execution",
+       "No discovery needed"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer is in plan mode with Claude, designing how to split the large User model",
+      "means": "An architectural change: plan mode is right. Leaving it (<b>[[2]]</b>) trades one problem for another."
+     },
+     {
+      "quote": "Last time, those searches filled most of the session's context",
+      "means": "The decider: the problem is long discovery output landing in the planning session."
+     },
+     {
+      "quote": "The design talk that followed lost track of earlier decisions",
+      "means": "Compacting after the search (<b>[[1]]</b>) comes after the damage. Keep the output out from the start."
+     },
+     {
+      "quote": "What should the engineer do for the search?",
+      "means": "Run it in an Explore subagent and take back a summary: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Long discovery output? Give the search to an Explore subagent and keep only its summary.",
+    "guide": {
+     "obj": "3.4 Plan mode vs direct execution",
+     "quote": "Explore subagent isolates verbose discovery output, returns summaries."
+    }
+   }
+  },
+  {
+   "id": "tg-plan-or-do-3",
+   "sid": "s2",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Test-driven iteration",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Claude wrote a function in <code>packages/shared/</code> that prices a booking from its start and end times. Prices come out wrong around midnight and around daylight-saving changes. Each fix, asked for in prose, breaks another case. The team has a list of about twenty such bookings with the correct price for each. How should the engineer <b>get</b> the function right?",
+   "options": [
+    {
+     "t": "Describe the midnight and daylight-saving rules in more detail, and ask for a rewrite.",
+     "why": "Works, but more of the same. Better prose helps a little, but prose is what keeps breaking other cases. Nothing checks every case each round.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Paste three of the bookings into the prompt as input and expected-price examples.",
+     "why": "Works, but covers only some cases. Concrete examples beat prose, but three of twenty leaves the rest unchecked, and nothing runs them after each change.",
+     "trap": "covers only some cases"
+    },
+    {
+     "t": "Enter plan mode and have Claude design a new pricing approach before any edits.",
+     "why": "Works, but different problem. The approach is not in question; the edge cases are. A new design still needs checking against the same bookings.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Turn the list into tests first, have Claude run them, and share the failures.",
+     "why": "Best. Every known case is checked on every round, and each failure tells Claude exactly what is still wrong. Fixes can't quietly break another case."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "The team has a list of about twenty such bookings with the correct price for each.",
+   "explanation": "When the right answers are known, write them as tests first and share the failures with Claude. Test-driven iteration gives each round a clear target and catches fixes that break other cases.",
+   "eli5": {
+    "question": "A pricing function keeps getting edge cases wrong, and each fix breaks another. The clue: the team already knows the right price for twenty tricky bookings.",
+    "answer": "If a student keeps getting sums wrong, you don't explain the rules again in longer words. You give them the answer sheet as a checklist, and after each try you show which sums are still wrong. <b>Tests first, then share the failures</b> is that checklist. <b>Rule: known right answers → tests first, and feed Claude the failures.</b>",
+    "options": [
+     "Explaining the rules again in longer words.",
+     "Showing three worked sums out of twenty, and never checking the rest.",
+     "Redesigning the method when the problem is a handful of tricky sums.",
+     "Correct. Mark every sum after every try, and show what is still wrong."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a clearer description will finally get it right</b>. The description is what keeps failing: each prose fix breaks another case. When the right answers are known, turn them into tests. Every round is then checked against every case, and the failures say exactly what to fix.",
+    "diagram": "write tests from the twenty bookings\n  -> Claude edits -> run tests\n  -> share failures -> repeat until all pass",
+    "mapTitle": "How do you tell Claude what “right” means?",
+    "map": {
+     "head": [
+      "You have",
+      "Technique",
+      "What it gives Claude"
+     ],
+     "rows": [
+      [
+       "Known right answers for many cases",
+       "Tests first, share failures",
+       "A target checked every round"
+      ],
+      [
+       "A few clear before/after examples",
+       "Input and output examples",
+       "The shape of the change"
+      ],
+      [
+       "Unclear requirements",
+       "Interview pattern",
+       "Questions answered before code"
+      ],
+      [
+       "Several problems that affect each other",
+       "One message with all of them",
+       "Fixes made together"
+      ],
+      [
+       "Independent problems",
+       "One at a time, in sequence",
+       "Clean, separate fixes"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each fix, asked for in prose, breaks another case",
+      "means": "More prose (<b>[[0]]</b>) repeats what is failing."
+     },
+     {
+      "quote": "The team has a list of about twenty such bookings with the correct price for each",
+      "means": "The decider: the right answers are known, so they can become tests. Three examples (<b>[[1]]</b>) leave most of them unchecked."
+     },
+     {
+      "quote": "Prices come out wrong around midnight and around daylight-saving changes",
+      "means": "Edge cases, not an open design question, so plan mode (<b>[[2]]</b>) aims at the wrong thing."
+     },
+     {
+      "quote": "How should the engineer get the function right?",
+      "means": "Tests first, then share the failures each round: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Know the right answers? Write them as tests first, then share the failures with Claude.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "Test-driven iteration (write tests first, share failures)"
+    }
+   }
+  }
+ ]
+}

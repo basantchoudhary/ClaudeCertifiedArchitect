@@ -1,0 +1,333 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  },
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  },
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-batch-or-now-1",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Blocking work stays synchronous",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The pull-request review job must pass before a branch can merge, and developers wait for its comments. Each review request sends every file in the changed modules, though comments go only on changed lines. A manager wants to move the job to the Message Batches API to halve its cost. Which change <b>best</b> cuts the review's cost?",
+   "options": [
+    {
+     "t": "Move the job to the Message Batches API and poll for its results every minute.",
+     "why": "Works, but blocks the merge. It halves the price, but a batch can take up to 24 hours with no latency promise. Polling faster doesn't make it finish sooner.",
+     "trap": "blocks the merge"
+    },
+    {
+     "t": "Keep the job on the standard API and send only the diff and changed files.",
+     "why": "Best. Developers are waiting, so the review stays synchronous. Most of the tokens are files the review never comments on, so trimming them cuts the cost."
+    },
+    {
+     "t": "Send the job as a batch, with a timeout that falls back to a standard call.",
+     "why": "Works, but overbuilt. Developers still wait out the timeout, slow batches end up paid for twice, and there are now two paths to run and test.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Review only larger pull requests, and let small ones merge without a review.",
+     "why": "Works, but drops coverage. It saves money by not doing the job. Small changes can still break things.",
+     "trap": "drops coverage"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The pull-request review job must pass before a branch can merge, and developers wait for its comments.",
+   "explanation": "Batch processing suits latency-tolerant work, not blocking checks like a pre-merge review. To cut the cost of a blocking job, keep it synchronous and send only what it needs.",
+   "eli5": {
+    "question": "A review that blocks merging costs too much, and a manager wants the cheap batch service. The clue: developers are <i>waiting</i> for it.",
+    "answer": "A half-price dry cleaner that returns shirts “within a day” is no use if you need the shirt for a meeting in an hour. Keep the fast service, and stop sending the whole wardrobe when only one shirt is dirty. <b>Rule: someone waiting → synchronous. To save money, trim what you send.</b>",
+    "options": [
+     "Phoning the slow cleaner every minute doesn't get the shirt back sooner.",
+     "Correct. Fast service, and send only the dirty shirt.",
+     "Trying the slow cleaner first, then paying for express when it's late.",
+     "Saving money by not cleaning some shirts at all."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>batch is simply the cheaper way to call Claude</b>. It is half price because it has no latency promise: results arrive within 24 hours. A check that people wait on can't take that deal. The saving for a blocking job has to come from somewhere else, such as sending fewer tokens.",
+    "diagram": "push -> review (standard API, diff + changed files)\n     -> comments in minutes -> merge",
+    "mapTitle": "Batch or now?",
+    "map": {
+     "head": [
+      "Job",
+      "API",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Blocks a merge or a person",
+       "Standard (synchronous)",
+       "Batch has no latency promise"
+      ],
+      [
+       "Report read days later",
+       "Message Batches API",
+       "Half price, results within 24 hours"
+      ],
+      [
+       "Large backfill due next week",
+       "Message Batches API",
+       "Half price, time to spare"
+      ],
+      [
+       "Needs tool calls mid-task",
+       "Standard (synchronous)",
+       "A batch request can't loop through tools"
+      ],
+      [
+       "Sends far more than it reads",
+       "Trim the request",
+       "Fewer tokens on either API"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The pull-request review job must pass before a branch can merge, and developers wait for its comments",
+      "means": "The decider: a blocking job. Batch (<b>[[0]]</b>) and batch with a fallback (<b>[[2]]</b>) both make people wait."
+     },
+     {
+      "quote": "Each review request sends every file in the changed modules, though comments go only on changed lines",
+      "means": "Most of the tokens are never used. Trim them: <b>[[1]]</b>."
+     },
+     {
+      "quote": "Which change best cuts the review's cost?",
+      "means": "Cut cost without dropping reviews, which rules out <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Someone waiting on it? Keep it synchronous, and cut cost by trimming the request.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Good for non-blocking/latency-tolerant (overnight reports, weekly audits); bad for blocking (pre-merge)."
+    }
+   }
+  },
+  {
+   "id": "tg-batch-or-now-2",
+   "sid": "s1",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch for latency-tolerant work",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "When a support chat ends, a script sends the transcript to Claude to tag the reason for contact. The quality team reads these tags once a week, at its Friday review. Each tag needs a single call with no tools. The script uses the standard Messages API, one call per chat as it ends. Which change <b>best</b> cuts the tagging cost?",
+   "options": [
+    {
+     "t": "Send each day's transcripts every night as one Message Batches API job.",
+     "why": "Best. Nobody reads the tags until Friday, and each tag is a single call. The batch costs half as much, and results are back within a day."
+    },
+    {
+     "t": "Tag a random sample of chats each week instead of tagging every chat.",
+     "why": "Works, but drops coverage. It saves money by doing less, and the quality team loses the full picture.",
+     "trap": "drops coverage"
+    },
+    {
+     "t": "Put twenty transcripts into each request to cut the number of calls made.",
+     "why": "Works, but crowds each request. Fewer calls, but still full price, attention spread across twenty chats, and one odd chat can spoil the rest.",
+     "trap": "crowds each request"
+    },
+    {
+     "t": "Have the support agent tag the reason itself as the last step of each chat.",
+     "why": "Works, but still full price. The tag moves into the live chat, which still pays the standard rate for speed nobody needs.",
+     "trap": "full price"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "The quality team reads these tags once a week, at its Friday review.",
+   "explanation": "Work nobody waits on, made of single calls with no tools, belongs on the Message Batches API: half the cost, results within 24 hours.",
+   "eli5": {
+    "question": "Every chat gets tagged straight away at full price, but the tags are only read on Friday. The clue: nobody waits for them.",
+    "answer": "If a letter only has to arrive by Friday, you don't send it by express courier. You drop the day's letters in the cheap bulk mail each evening. The <b>Message Batches API</b> is that bulk mail: half the price, delivered within a day. <b>Rule: nobody waiting + one call each → batch.</b>",
+    "options": [
+     "Correct. Bulk mail each evening, still well before Friday.",
+     "Saving stamps by sending only some of the letters.",
+     "Stuffing twenty letters in one express envelope: still express, and they get mixed up.",
+     "Handing letters to the courier at the door: still express price."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>sending each item as soon as it exists is the normal way</b>. It is only needed when someone is waiting. When results are read days later, the instant answer is speed you pay full price for and never use.",
+    "diagram": "chats end -> collect the day's transcripts\n  -> nightly Message Batches job (custom_id per chat)\n  -> tags ready long before Friday",
+    "mapTitle": "Is anyone waiting?",
+    "map": {
+     "head": [
+      "When the result is used",
+      "API",
+      "Cost"
+     ],
+     "rows": [
+      [
+       "Seconds later, by a person or a merge",
+       "Standard (synchronous)",
+       "Full price"
+      ],
+      [
+       "Next day or later",
+       "Message Batches API",
+       "Half price"
+      ],
+      [
+       "Next week, in bulk",
+       "Message Batches API",
+       "Half price"
+      ],
+      [
+       "Mid-task, after a tool call",
+       "Standard (synchronous)",
+       "Full price"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The quality team reads these tags once a week, at its Friday review",
+      "means": "The decider: nobody waits for a tag. Instant answers (<b>[[3]]</b>) are speed nobody uses."
+     },
+     {
+      "quote": "Each tag needs a single call with no tools",
+      "means": "A batch request can do this; it doesn't need a tool loop."
+     },
+     {
+      "quote": "Which change best cuts the tagging cost?",
+      "means": "Cut cost and still tag every chat: <b>[[0]]</b>, not a sample (<b>[[1]]</b>) or crowded requests (<b>[[2]]</b>)."
+     }
+    ],
+    "rule": "Nobody waiting, one call each? Send it as a Message Batches API job at half the cost.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Message Batches API: 50% cost savings, up to 24-hour window, no latency SLA."
+    }
+   }
+  },
+  {
+   "id": "tg-batch-or-now-3",
+   "sid": "s3",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch has no multi-turn tool calling",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Each quarter the team audits about 3,000 past summaries. For each one, the citation-check subagent fetches the cited sections over MCP, then confirms each claim matches its source. Every summary already lists the papers and sections it cites. The audit is due in two weeks, and the team wants it to cost less. What is the <b>best</b> approach?",
+   "options": [
+    {
+     "t": "Keep running the audit through the subagent on the standard API, as it runs today.",
+     "why": "Works, but full price. It finishes in time, but nobody needs the answers this week, and every call pays the standard rate.",
+     "trap": "full price"
+    },
+    {
+     "t": "Fetch the quoted passages in code, then batch one request per summary.",
+     "why": "Best. The summaries already say what to fetch, so code can fetch it. Each request then needs no tools, which a batch can run at half the cost."
+    },
+    {
+     "t": "Batch one request per summary, and send each tool result back in a follow-up batch.",
+     "why": "Works, but slow round trips. A batch request can't loop through tools, so every fetch becomes a new batch that can take up to 24 hours.",
+     "trap": "slow round trips"
+    },
+    {
+     "t": "Run several citation-check subagents in parallel to finish the audit within a day.",
+     "why": "Works, but overbuilt. It is fast, but it pays full price and adds coordination for speed nobody needs.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Every summary already lists the papers and sections it cites.",
+   "explanation": "The Message Batches API does not support multi-turn tool calling in a single request. When the data a step needs is known in advance, fetch it in code and send single-call requests as a batch.",
+   "eli5": {
+    "question": "A big, slow-deadline audit uses tool calls to fetch papers. The clue: each summary already says exactly which sections to fetch.",
+    "answer": "The cheap bulk service can't phone you halfway to ask for a missing page. So put every page it needs in the envelope before you post it. Fetching the sections in code first turns each check into one self-contained request, which the <b>Message Batches API</b> runs at half price. <b>Rule: batch requests can't call tools, so hand them everything up front.</b>",
+    "options": [
+     "Keeps working, at express price, for an audit due in two weeks.",
+     "Correct. Put the pages in the envelope, then use bulk mail.",
+     "Posting a letter, waiting a day for a question, posting the answer, and so on.",
+     "Hiring more couriers to finish in a day when you have two weeks."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>an agent job can move to batch as it is</b>. A batch request returns once. If Claude needs a tool result mid-task, the request can't loop. But when the tool calls are predictable, code can make them first, and each request no longer needs a tool.",
+    "diagram": "code: fetch cited sections for each summary\n  -> batch: one request per summary (custom_id)\n  -> results within 24 h, half price",
+    "mapTitle": "Can this job go to batch?",
+    "map": {
+     "head": [
+      "Job shape",
+      "Fit for batch?",
+      "What to do"
+     ],
+     "rows": [
+      [
+       "One call, no tools, nobody waiting",
+       "Yes",
+       "Batch it"
+      ],
+      [
+       "Tool calls Claude must choose as it goes",
+       "No",
+       "Keep it synchronous"
+      ],
+      [
+       "Tool calls known in advance",
+       "Yes, after a change",
+       "Fetch in code, then batch"
+      ],
+      [
+       "Someone waiting on the answer",
+       "No",
+       "Keep it synchronous"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the citation-check subagent fetches the cited sections over MCP",
+      "means": "Today the job uses tool calls, which a single batch request can't loop through (<b>[[2]]</b>)."
+     },
+     {
+      "quote": "Every summary already lists the papers and sections it cites",
+      "means": "The decider: the fetches are known in advance, so code can do them first."
+     },
+     {
+      "quote": "The audit is due in two weeks, and the team wants it to cost less",
+      "means": "Nobody is waiting. Full price (<b>[[0]]</b>) and parallel speed (<b>[[3]]</b>) buy nothing."
+     },
+     {
+      "quote": "What is the best approach?",
+      "means": "Fetch in code, then batch: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Batch can't run a tool loop. If the tool calls are predictable, make them in code, then batch.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Batch API does not support multi-turn tool calling in a single request."
+    }
+   }
+  }
+ ]
+}
