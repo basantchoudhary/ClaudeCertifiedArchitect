@@ -1,0 +1,1052 @@
+{
+ "scenarios": [
+  {
+   "id": "s6",
+   "title": "Scenario 6 — Structured Data Extraction",
+   "domains": "D4 · D5 · D1",
+   "brief": "An insurance broker extracts data from certificates of insurance sent by many carriers. Claude returns the insured name, carrier, policy number, limits, deductibles and dates through a tool with a JSON schema. A validator checks each result before it is posted to the broker's system."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m6p-s6-01",
+   "was": "m6-s6-01",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Adaptive decomposition",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Some submissions hold a certificate plus several policy endorsements. The pipeline runs a fixed chain: the certificate, then each attached endorsement, then a step that merges the results. Certificates often cite endorsements that were not attached. The agent can fetch these with <code>fetch_endorsement</code>. A fetched endorsement may change limits or cite yet another form. Which way of splitting the work <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Keep the fixed chain, and add a final pass that reconciles every field across all the extractions.",
+     "why": "Works, but only covers what arrived. A reconcile pass tidies the attached documents, but nothing in the chain fetches the forms they cite.",
+     "trap": "only covers what arrived"
+    },
+    {
+     "t": "Run one subagent per attached document in parallel, and let the coordinator merge their fields.",
+     "why": "Works, but only covers what arrived. Parallel subagents read the attached documents faster, but none of them follows a citation to a missing form.",
+     "trap": "only covers what arrived"
+    },
+    {
+     "t": "Let the coordinator plan from a first read, adding fetch and extract steps as citations turn up.",
+     "why": "Best. Adaptive decomposition creates subtasks from what is found. Each citation, including one inside a fetched form, becomes a new fetch and extract step."
+    },
+    {
+     "t": "Keep the chain, but first fetch every endorsement the certificate cites before extraction starts.",
+     "why": "Works, but one level deep. Fetching the certificate's citations up front catches most gaps, but a fetched endorsement can cite another form that the chain never fetches.",
+     "trap": "one level deep"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "A fetched endorsement may change limits or cite yet another form.",
+   "explanation": "Use a fixed chain when the inputs are known up front. Use adaptive decomposition when the subtasks depend on what is found along the way.",
+   "eli5": {
+    "question": "The pipeline always runs the same steps, but some needed documents only show up while reading. The clue is: <i>a fetched endorsement may change limits or cite yet another form</i>. The work list grows as you read.",
+    "answer": "Think of a detective who reads a letter, finds a mention of a second letter, fetches it, and finds a third mention there. You cannot write the full to-do list before you start. That is <b>adaptive decomposition</b>: the coordinator plans from a first read and adds a fetch-and-extract step for each citation it finds. A fixed chain (<b>prompt chaining</b>) is great when you know every document in advance. <b>Rule: if the next task depends on what you just found, plan as you go.</b>",
+    "options": [
+     "Tidying up the documents you have is useful, but no one goes to get the ones that are missing.",
+     "Reading the attached documents side by side is faster, but still nobody fetches the missing forms.",
+     "Correct. Each new citation becomes a new task, however deep the chain of forms goes.",
+     "Close. Fetching what the certificate names covers the first level, but a fetched form can name another one, and the chain stops there."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a fixed pipeline just needs one more step</b>, such as a pre-fetch or a reconcile pass. Those work when the full set of documents is known before you start. Here the set <b>grows while reading</b>: a fetched endorsement can cite another form. Only a plan that adds subtasks from what it finds can follow that.",
+    "diagram": "certificate ─cites→ endorsement A (fetch)\n                     └─cites→ form B (fetch)\nfixed chain: stops at attachments\nadaptive:    adds a step per citation",
+    "mapTitle": "Which way of splitting the work fits these inputs?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best split",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Same documents every time, known up front",
+       "Fixed chain (prompt chaining)",
+       "Predictable steps, easy to test"
+      ],
+      [
+       "One long document",
+       "Per-section passes plus an integration pass",
+       "Avoids attention dilution"
+      ],
+      [
+       "Documents cite others that must be fetched, possibly in turn",
+       "Adaptive decomposition by the coordinator",
+       "Subtasks come from what is found"
+      ],
+      [
+       "Citations go only one level deep",
+       "Fixed chain with an up-front fetch step",
+       "The full set is known after one read"
+      ],
+      [
+       "Many independent documents",
+       "Parallel subagents, coordinator merges",
+       "Faster, no dependencies"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The pipeline runs a fixed chain: the certificate, then each attached endorsement, then a step that merges the results",
+      "means": "Today's design only knows about the attached documents. A reconcile pass (<b>[[0]]</b>) keeps that limit."
+     },
+     {
+      "quote": "Certificates often cite endorsements that were not attached",
+      "means": "Some needed documents are missing. Parallel subagents over the attachments (<b>[[1]]</b>) never see them."
+     },
+     {
+      "quote": "A fetched endorsement may change limits or cite yet another form",
+      "means": "The decider. Fetching only the certificate's citations (<b>[[3]]</b>) stops one level deep."
+     },
+     {
+      "quote": "Which way of splitting the work fits best?",
+      "means": "A plan that adds steps as citations surface: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "When the next subtask depends on what was just found, let the coordinator plan adaptively instead of running a fixed chain.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Adaptive investigation plans generate subtasks from what's discovered"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-02",
+   "was": "m6-s6-02",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Explicit context passing between subagents",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The coordinator starts three extraction subagents in one response: header, limits and endorsements. The endorsements subagent must confirm that each endorsement belongs to this policy, so it needs the policy number. Endorsement forms often print older policy numbers too, and the subagent sometimes picks the wrong one. The header subagent reads the policy number reliably. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Give the endorsements subagent a scoped <code>read_policy_number</code> tool, and keep all three running in parallel.",
+     "why": "Works, but duplicates work. A scoped tool lets it look the number up, but the header subagent already finds it reliably, and two lookups can disagree.",
+     "trap": "duplicates work"
+    },
+    {
+     "t": "Run header extraction first, and have the coordinator copy its result into the endorsement task.",
+     "why": "Best. Subagents do not inherit context, so the coordinator passes the finding in the prompt. Only the dependent pair runs in order; limits stays parallel."
+    },
+    {
+     "t": "Add example endorsements to the subagent's prompt that show where the current number is printed.",
+     "why": "Works, but only usually works. Examples help it find the right number more often, but it still searches for a value another subagent already has.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "After both finish, compare the two numbers, and rerun the endorsements subagent on any mismatch.",
+     "why": "Works, but too late. The check catches the mistake, but every mismatch costs a second run for a value that could have been passed in first.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The header subagent reads the policy number reliably.",
+   "explanation": "Subagents have isolated context, so the coordinator must pass earlier findings in the prompt. Run only true dependencies in order and keep the rest parallel.",
+   "eli5": {
+    "question": "One helper needs a fact that another helper already finds well. The clue is: <i>the header subagent reads the policy number reliably</i>. So the question is how to hand that fact over, not how to find it again.",
+    "answer": "Think of a kitchen where one cook weighs the flour and another bakes. The baker should not weigh the flour again; the head chef passes the weight along. Subagents work the same way: they <b>do not share memory</b>, so the coordinator must <b>write the finding into the next task prompt</b>. Run the header first, then the endorsements subagent with the number in hand. Limits still runs alongside. <b>Rule: if one subagent needs another's result, the coordinator passes it in explicitly.</b>",
+    "options": [
+     "Close. A lookup tool fits a value needed often during a task. Here it is needed once, and another helper already has it.",
+     "Correct. The number is passed in, so there is nothing to guess.",
+     "Better examples help it guess right more often, but it is still re-finding a known value.",
+     "Checking afterwards catches the error, but you pay for a second run each time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the endorsements subagent needs better ways to find the number</b>. But the number is already found, reliably, by the header subagent. The real gap is that <b>subagents do not inherit context</b>. The coordinator must pass the value in, and only the two dependent subagents need to run in order.",
+    "mapTitle": "How should one subagent get a value another one finds?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best mechanism",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Needs a value another subagent finds reliably, once",
+       "Run in order, pass it in the task prompt",
+       "No inheritance; explicit passing"
+      ],
+      [
+       "Needs a lookup often during its own work",
+       "Scoped cross-role tool",
+       "Frequent need, avoids round trips"
+      ],
+      [
+       "Subagents are fully independent",
+       "Several Task calls in one response",
+       "Parallel and fast"
+      ],
+      [
+       "Needs the full findings of earlier subagents",
+       "Include them, with sources, in its prompt",
+       "Keeps attribution"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator starts three extraction subagents in one response",
+      "means": "Today all three run in parallel, so nothing flows between them."
+     },
+     {
+      "quote": "it needs the policy number",
+      "means": "There is a real dependency between two of the three."
+     },
+     {
+      "quote": "Endorsement forms often print older policy numbers too, and the subagent sometimes picks the wrong one",
+      "means": "Searching on its own is where it goes wrong. Better examples (<b>[[2]]</b>) only make that search more likely to succeed."
+     },
+     {
+      "quote": "The header subagent reads the policy number reliably",
+      "means": "The decider. The value exists already; a second lookup tool (<b>[[0]]</b>) or a later re-check (<b>[[3]]</b>) duplicates it. Pass it in: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Subagents don't inherit context: pass earlier findings in the task prompt, and serialise only the dependent pair.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-03",
+   "was": "m6-s6-03",
+   "sid": "s6",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Structured handoff to humans",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "When the agent cannot settle a certificate, it hands it to an account manager. Account managers work in the broker's system and cannot see the agent's session. Today they get the PDF and a note saying “needs review”. Most of their time goes on redoing the agent's checks to find what went wrong. What should the agent <b>attach to each handoff</b>?",
+   "options": [
+    {
+     "t": "A confidence score for every field, lowest first, with the PDF pages behind the lowest ones highlighted.",
+     "why": "Works, but different problem. Scores point at weak fields, but they say neither what the doubt is nor what was already checked.",
+     "trap": "different problem"
+    },
+    {
+     "t": "A source map for every extracted value, giving the page and text it came from, beside the result.",
+     "why": "Works, but buries the issue. Provenance for every value helps checking, but the manager still has to find which field is in doubt and why.",
+     "trap": "buries the issue"
+    },
+    {
+     "t": "The full transcript of the agent's session, attached for the account manager as a text file.",
+     "why": "Works, but too much to read. The transcript holds everything, but the manager must read the whole session to find the problem.",
+     "trap": "too much to read"
+    },
+    {
+     "t": "A short case summary: ID, the issue, competing values with pages, checks run and a suggested fix.",
+     "why": "Best. A structured handoff gives someone without the session what they need to act at once."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Most of their time goes on redoing the agent's checks to find what went wrong.",
+   "explanation": "When handing off to a person who cannot see the session, compile a structured summary: identifiers, the issue, evidence with locations, what was tried and the recommended action.",
+   "eli5": {
+    "question": "A person takes over work they did not see. The clue is: <i>most of their time goes on redoing the agent's checks to find what went wrong</i>. They need the story of the problem, not more raw data.",
+    "answer": "Think of a nurse handing over a patient at shift change. She does not hand over the whole chart or every reading. She says who, what is wrong, what was tried and what she suggests. That is a <b>structured handoff summary</b>: ID, the issue, the competing values with pages, the checks already run and a recommended fix. <b>Rule: for a human without the transcript, hand over a short structured case summary.</b>",
+    "options": [
+     "Scores say which fields look weak, not what the doubt is or what was tried.",
+     "Close. A page for every value helps someone re-check the whole result. Here they need the one problem, not a map of everything.",
+     "The whole session has the answer somewhere, but reading it is the slow part.",
+     "Correct. The manager sees the issue, the evidence and a suggestion straight away."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>more information helps the reviewer</b>: every score, every source, the whole transcript. But the manager's time is going on <b>reconstructing what went wrong</b>. A handoff should state the problem, show the evidence, say what was tried and suggest a fix.",
+    "mapTitle": "What does the person taking over need?",
+    "map": {
+     "head": [
+      "Reviewer's need",
+      "Best attachment",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Act on one unresolved problem without the session",
+       "Structured summary: ID, issue, evidence, checks, suggestion",
+       "Ready to act"
+      ],
+      [
+       "Re-check every value in a result",
+       "Source map: page and text for each value",
+       "Fast verification"
+      ],
+      [
+       "Decide which results need review at all",
+       "Calibrated field confidence",
+       "Routing, not explaining"
+      ],
+      [
+       "Audit how the agent behaved",
+       "Session transcript or logs",
+       "Complete, but slow to read"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Account managers work in the broker's system and cannot see the agent's session",
+      "means": "Whatever they need must travel with the handoff."
+     },
+     {
+      "quote": "Today they get the PDF and a note saying “needs review”",
+      "means": "The note gives no issue, no evidence and no history."
+     },
+     {
+      "quote": "Most of their time goes on redoing the agent's checks to find what went wrong",
+      "means": "The decider. They need the issue and what was tried. A full source map (<b>[[1]]</b>) and a transcript (<b>[[2]]</b>) make them dig; scores (<b>[[0]]</b>) don't say what was tried."
+     },
+     {
+      "quote": "What should the agent attach to each handoff?",
+      "means": "A short structured summary: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Humans without the transcript get a structured handoff: identifier, issue, evidence, what was tried, recommended action.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "compile structured handoff summaries (customer ID, root cause, refund amount, recommended action) for humans without the transcript"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-04",
+   "was": "m6-s6-04",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 Extensible enum vs nullable",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "The schema's <code>insured_type</code> field is an enum with four values: individual, corporation, LLC and partnership. Many certificates name other kinds of insured, such as a trust, a joint venture or a city council. The wording is printed clearly. The extraction forces these into corporation. New kinds keep turning up as the broker signs new clients. Which schema change is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add <code>other</code> to the enum, plus an <code>insured_type_detail</code> string for the printed text.",
+     "why": "Best. An extensible enum keeps the four common values and records any other kind exactly as printed."
+    },
+    {
+     "t": "Make <code>insured_type</code> nullable, and leave it empty when no listed value matches.",
+     "why": "Works, but loses information. Null stops the wrong label, but the kind is printed clearly and null throws it away.",
+     "trap": "loses information"
+    },
+    {
+     "t": "Add an <code>unclear</code> value with a note field, for insureds whose kind is hard to read.",
+     "why": "Works, but wrong label. It stops the forcing, but these kinds are clear, not hard to read, so they get mislabelled as unclear.",
+     "trap": "wrong label"
+    },
+    {
+     "t": "Keep the four values, and add examples to the prompt showing how other kinds map onto them.",
+     "why": "Works, but standardises a wrong answer. Examples make the mapping consistent, but no listed value is correct for a trust or a council.",
+     "trap": "standardises a wrong answer"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "New kinds keep turning up as the broker signs new clients.",
+   "explanation": "Use nullable fields when the source lacks the information, <code>unclear</code> when the text is ambiguous, and <code>other</code> plus a detail field when a clear value falls outside the list.",
+   "eli5": {
+    "question": "A fixed list of choices doesn't cover what the documents say. The clue is: <i>the wording is printed clearly</i> and <i>new kinds keep turning up</i>. The value exists and is readable; it just isn't on the list.",
+    "answer": "Think of a form with tick boxes for Mr, Mrs and Ms. Someone writes Dr. You add a box marked <i>Other: ____</i>, not a blank and not a guess. That is an <b>extensible enum</b>: an <code>other</code> value plus a detail field. Null is for when the information is missing; <code>unclear</code> is for when it can't be read. <b>Rule: clear value outside the list → other + detail.</b>",
+    "options": [
+     "Correct. Common kinds stay tidy, and anything new is kept word for word.",
+     "Close. Null is right when the certificate says nothing. Here it says clearly, so null discards it.",
+     "Unclear is for smudged or ambiguous text. These are clear, so the label would be wrong.",
+     "Examples make the wrong mapping consistent; a trust is still not a corporation."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>any value that doesn't fit should be left empty</b>. Empty (null) means the source lacks the information. Here the kind of insured is <b>present and clear</b>, just outside the list, and new kinds keep coming. The schema needs room for them.",
+    "mapTitle": "The value doesn't fit the enum. What is it really?",
+    "map": {
+     "head": [
+      "What the document shows",
+      "Schema answer",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Nothing about this field",
+       "Nullable field, return null",
+       "Prevents fabrication"
+      ],
+      [
+       "Text that is ambiguous or illegible",
+       "<code>unclear</code> value",
+       "Honest about doubt"
+      ],
+      [
+       "A clear value outside the list, new ones keep coming",
+       "<code>other</code> + detail field",
+       "Keeps the real value"
+      ],
+      [
+       "A clear value that fits a listed one",
+       "The listed value",
+       "Normal case"
+      ],
+      [
+       "A few stable new values",
+       "Add them to the enum",
+       "Simple when the set settles"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Many certificates name other kinds of insured, such as a trust, a joint venture or a city council",
+      "means": "The values are real and outside the four."
+     },
+     {
+      "quote": "The wording is printed clearly",
+      "means": "Not missing, so null (<b>[[1]]</b>) loses it; not ambiguous, so <code>unclear</code> (<b>[[2]]</b>) mislabels it."
+     },
+     {
+      "quote": "The extraction forces these into corporation",
+      "means": "Examples of how to map them (<b>[[3]]</b>) keep forcing them."
+     },
+     {
+      "quote": "New kinds keep turning up as the broker signs new clients",
+      "means": "The decider. The list can't be finished; leave room: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Clear value outside a fixed list → add other plus a detail field; null only when the source lacks it.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "enum \"unclear\"/\"other\" + detail for extensible categories"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-05",
+   "was": "m6-s6-05",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific error feedback",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A validator checks each policy number against the format its carrier uses. On a mismatch, the pipeline resends the certificate with “Output failed validation. Try again.” Second attempts rarely pass. In sampled failures, the right number is printed on the certificate. The model took a nearby number instead, such as the certificate number or the carrier's NAIC code. Which change <b>most improves</b> second attempts?",
+   "options": [
+    {
+     "t": "Send each certificate that fails the format check to a reviewer, and stop retrying it.",
+     "why": "Works, but gives up too early. A person will fix it, but the number is printed, so an informed retry could fix most of these without one.",
+     "trap": "gives up too early"
+    },
+    {
+     "t": "Add a <code>matches_carrier_format</code> flag that the model fills in beside the policy number.",
+     "why": "Works, but no new information. A self-check flag can make the model look twice, but the retry still does not say what failed.",
+     "trap": "no new information"
+    },
+    {
+     "t": "Resend with the specific error: the value returned, the carrier's format and the field it broke.",
+     "why": "Best. Appending the specific validation error tells the model what was wrong and what to look for."
+    },
+    {
+     "t": "Add example certificates to the prompt that mark the policy number box apart from nearby numbers.",
+     "why": "Works, but helps first tries. Examples may cut the misreads, but the retry message still says only “try again”.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "In sampled failures, the right number is printed on the certificate.",
+   "explanation": "Retry with error feedback appends the specific validation failure. It works for misreads and format errors, not for information missing from the source.",
+   "eli5": {
+    "question": "Retries fail because they say nothing useful. The clue is: <i>the right number is printed on the certificate</i>. The answer is there to find, if the model is told what went wrong.",
+    "answer": "Think of a teacher who hands back homework marked only \"wrong, try again\". The pupil tends to make the same mistake. If the teacher writes \"you copied the page number, not the answer\", the second try is far better. That is <b>retry with error feedback</b>: send the value returned and the rule it broke. It only helps when the right value is in the document. <b>Rule: when the answer is in the source, retry with the specific error.</b>",
+    "options": [
+     "Close. Handing it to a person is right when the number is missing. Here it is printed.",
+     "A self-check box may help a little, but the model still isn't told what failed.",
+     "Correct. The model learns exactly what was wrong on the second try.",
+     "Examples may help first attempts, but the retry is still blind."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a retry that fails needs a person</b> or a better prompt. But these failures are misreads: the correct value is <b>on the page</b>. The retry fails because its message carries <b>no detail</b>. Tell the model what it returned and what rule it broke.",
+    "mapTitle": "A retry keeps failing. What is the cause?",
+    "map": {
+     "head": [
+      "What you see",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Value is in the document, retries repeat the error",
+       "Generic retry message",
+       "Append the specific validation error"
+      ],
+      [
+       "Value is not in the document",
+       "Information absent",
+       "Null or route to a person"
+      ],
+      [
+       "First attempts misread one layout",
+       "Model hasn't seen it",
+       "Few-shot examples"
+      ],
+      [
+       "Totals don't add up",
+       "Semantic error",
+       "Calculated vs stated fields, conflict flag"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "On a mismatch, the pipeline resends the certificate with “Output failed validation. Try again.”",
+      "means": "The retry carries no detail. Examples (<b>[[3]]</b>) don't change that message."
+     },
+     {
+      "quote": "Second attempts rarely pass",
+      "means": "The model repeats its mistake without guidance. A self-check flag (<b>[[1]]</b>) adds no guidance either."
+     },
+     {
+      "quote": "In sampled failures, the right number is printed on the certificate",
+      "means": "The decider. The information is present, so a reviewer (<b>[[0]]</b>) isn't needed for most."
+     },
+     {
+      "quote": "The model took a nearby number instead, such as the certificate number or the carrier's NAIC code",
+      "means": "A misread, which a specific error message can correct: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Value present but misread → retry with the specific validation error. Value absent → don't retry.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retry-with-error-feedback: append specific validation errors on retry"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-06",
+   "was": "m6-s6-06",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.3 tool_choice any vs forced",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "Each document goes alone to a request with three tools: <code>extract_certificate</code>, <code>extract_endorsement</code> and <code>extract_schedule</code>. Uploads carry no type label. With <code>tool_choice</code> on auto, some replies are a prose summary with no tool call, and the parser drops them. When the model does call a tool, it picks the right one. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Expand each extractor's description with the headings and features of its document type.",
+     "why": "Works, but different problem. Richer descriptions help the model pick a tool, but it already picks well; the gap is replies with no tool at all.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Add a first call that labels the document type, then force the matching extractor by name.",
+     "why": "Works, but overbuilt. Classify-then-force is right when the model picks the wrong tool. Here it picks well, so the extra call adds cost for nothing.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Keep auto, and when <code>stop_reason</code> is <code>end_turn</code>, resend saying a tool call is required.",
+     "why": "Works, but patches after. Detecting and resending recovers the dropped replies, but each costs a second call when the API can require a tool call on the first.",
+     "trap": "patches after"
+    },
+    {
+     "t": "Set <code>tool_choice</code> to <code>any</code> on every extraction call, with the schemas unchanged.",
+     "why": "Best. <code>any</code> requires a tool call and leaves the choice of tool to the model, which already chooses well."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "When the model does call a tool, it picks the right one.",
+   "explanation": "<code>auto</code> may return text, <code>any</code> requires some tool call, and a forced tool requires one named tool. Use <code>any</code> when a call is needed but the right tool is not known in advance.",
+   "eli5": {
+    "question": "Some replies come back as plain text instead of a tool call. The clue is: <i>when the model does call a tool, it picks the right one</i>. Choosing is fine; the only problem is not calling at all.",
+    "answer": "Think of a post room with three trays. The clerk always picks the right tray, but sometimes writes a note instead of filing the letter. You don't need to tell the clerk which tray; you just say \"every letter goes in a tray\". That is <code>tool_choice: any</code>: <b>a tool call is required, and the model still picks which</b>. Forcing one named tool is for when you already know which tray. <b>Rule: must call a tool, model picks well → any.</b>",
+    "options": [
+     "Better labels on the trays help picking, but picking is already right.",
+     "Close. Labelling first and forcing a tool fits when the model picks the wrong tool. It doesn't.",
+     "Catching text replies and asking again works, but every miss costs an extra call.",
+     "Correct. Every reply is a tool call, and the model keeps choosing the right one."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a missing tool call means the model is confused about which tool</b>. But when it calls one, it chooses correctly. The only failure is <b>no call at all</b>, which <code>auto</code> allows. The API setting <code>any</code> removes that option on the first try.",
+    "mapTitle": "What should tool_choice be?",
+    "map": {
+     "head": [
+      "Situation",
+      "Setting",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Text replies are acceptable",
+       "<code>auto</code>",
+       "Model may answer without a tool"
+      ],
+      [
+       "A tool call is required, model picks well",
+       "<code>any</code>",
+       "Must call some tool"
+      ],
+      [
+       "A tool call is required, model picks the wrong one",
+       "Classify, then force the named tool",
+       "You decide the tool"
+      ],
+      [
+       "One step must run first, such as metadata",
+       "Forced tool on that call",
+       "Fixed order"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Uploads carry no type label",
+      "means": "The code can't know the right tool in advance, so forcing a named one needs an extra classify call (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "With tool_choice on auto, some replies are a prose summary with no tool call, and the parser drops them",
+      "means": "The failure is text instead of a call. Resending after <code>end_turn</code> (<b>[[2]]</b>) repairs it a call late."
+     },
+     {
+      "quote": "When the model does call a tool, it picks the right one",
+      "means": "The decider. Selection is fine, so better descriptions (<b>[[0]]</b>) aim at the wrong thing. Require a call: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Model picks well but sometimes replies in text → tool_choice any.",
+    "guide": {
+     "obj": "4.3 Structured output via tool use and JSON schemas",
+     "quote": "tool_choice: \"auto\" (may return text), \"any\" (must call a tool)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-07",
+   "was": "m6-s6-07",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria vs few-shot",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "Each result includes a <code>coverage_concerns</code> list for account managers. The instruction says “list anything unusual about the coverage”. Most listed items turn out to be routine wording, such as standard exclusions and the usual disclaimer. Real problems get lost among them. The broker's compliance checklist already defines a concern as five cases, each with how it reads on a certificate. What <b>most improves precision</b>?",
+   "options": [
+    {
+     "t": "Add three annotated certificates to the prompt that mark which items belonged on the list.",
+     "why": "Works, but only usually works. Examples help where a line is hard to put into words, but the checklist already states the line.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Swap the open request for the checklist's definitions, and treat everything else as routine.",
+     "why": "Best. Explicit categorical criteria are the main lever for precision; a vague word like “unusual” produces false positives."
+    },
+    {
+     "t": "Tag each item with a <code>detected_pattern</code>, track which ones managers dismiss, and prune those.",
+     "why": "Works, but slow. Tracking dismissals finds unknown noise over time, but the definition of a real concern already exists and can be used now.",
+     "trap": "slow"
+    },
+    {
+     "t": "Have a second, independent Claude instance drop routine items before the list reaches managers.",
+     "why": "Works, but doubles the vague rule. A second reviewer still judges “routine” without a definition, at twice the cost.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The broker's compliance checklist already defines a concern as five cases, each with how it reads on a certificate.",
+   "explanation": "Precision comes from explicit categorical criteria. Examples support criteria; review layers don't fix a vague definition.",
+   "eli5": {
+    "question": "A list is full of noise because the instruction is vague. The clue is: <i>the compliance checklist already defines a concern as five cases</i>. The rule exists; the prompt just doesn't use it.",
+    "answer": "Think of telling a new shop assistant \"tell me about anything odd\". You get told about everything. Hand them the store's list of five things to report, and they report those. That is <b>explicit criteria</b>: replace a vague word with the defined categories and how each looks. <b>Rule: vague instruction, many false alarms → write the categories down.</b>",
+    "options": [
+     "Close. Examples teach a line that is hard to describe. This line is already written down.",
+     "Correct. The model reports only the five defined cases.",
+     "Learning from dismissals takes time to rediscover a definition you already have.",
+     "A second checker with the same vague idea of routine makes the same mistakes, at twice the cost."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>noise needs filtering or more examples</b>. The cause is the word <b>“unusual”</b>: it has no boundary, so the model lists anything that might count. The boundary already exists in the checklist. <b>Put the categories in the prompt.</b>",
+    "mapTitle": "Too many false positives. What fixes it?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best lever",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Vague instruction, written definition exists",
+       "Explicit categorical criteria",
+       "Draws the line"
+      ],
+      [
+       "Line is hard to put into words",
+       "Few-shot examples with reasoning",
+       "Shows the line"
+      ],
+      [
+       "Noise source unknown",
+       "Track <code>detected_pattern</code> on dismissals",
+       "Finds the cause"
+      ],
+      [
+       "Subtle errors a self-review misses",
+       "Independent review instance",
+       "Fresh eyes"
+      ],
+      [
+       "“Be conservative” in the prompt",
+       "Doesn't help precision",
+       "No categories"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The instruction says “list anything unusual about the coverage”",
+      "means": "The cause: a vague instruction."
+     },
+     {
+      "quote": "Most listed items turn out to be routine wording, such as standard exclusions and the usual disclaimer",
+      "means": "False positives. A second filter (<b>[[3]]</b>) uses the same vague idea of routine."
+     },
+     {
+      "quote": "The broker's compliance checklist already defines a concern as five cases, each with how it reads on a certificate",
+      "means": "The decider. The line can be stated, so examples (<b>[[0]]</b>) and dismissal tracking (<b>[[2]]</b>) are slower routes to it. State it: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "When a definition exists, put explicit categories in the prompt; it beats examples or filters for precision.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "Explicit criteria beat vague instructions"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-08",
+   "was": "m6-s6-08",
+   "sid": "s6",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for ambiguous cases",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Auto liability limits go into an <code>auto_limits</code> object. It has a <code>basis</code> of combined or split, plus fields for each amount and any sublimit. The brokers confirm every wording seen so far fits this shape. The prompt defines each basis and where sublimits go. Yet mixed wordings, such as a combined limit with a per-person sublimit, come out differently from run to run. What is the <b>most effective next step</b>?",
+   "options": [
+    {
+     "t": "Add three worked examples of these cases to the prompt, with the expected JSON and a reason.",
+     "why": "Best. When written definitions still give inconsistent results, a few worked cases that show the reasoning are the most effective fix."
+    },
+    {
+     "t": "Add an <code>other</code> basis with a detail field, and send those limits to a reviewer.",
+     "why": "Works, but different problem. Other-plus-detail suits values outside the schema. These fit it, so this sends data that could be structured to a person.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Split it into two calls: classify the basis first, then extract the amounts with a basis prompt.",
+     "why": "Works, but overbuilt. Chaining isolates the steps, but the unstable part is the basis decision itself, which the first call still makes.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Check that the amounts and sublimits are consistent, and retry with any problem described.",
+     "why": "Works, but partly. A consistency check catches some bad encodings, but many inconsistent mappings are still valid, so it can't tell which is right.",
+     "trap": "only partly"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The brokers confirm every wording seen so far fits this shape.",
+   "explanation": "Few-shot examples, including ambiguous cases with the reasoning shown, are the most effective way to get consistent output when instructions alone are inconsistent.",
+   "eli5": {
+    "question": "The schema is fine and the rules are written, yet results wobble. The clue is: <i>every wording seen so far fits this shape</i> and <i>the prompt defines each basis</i>. Instructions alone aren't enough; the model needs to see it done.",
+    "answer": "Think of learning to fold a shirt from written steps. The tricky collar still comes out different each time, until someone shows you three times. That is <b>few-shot prompting</b>: a few worked mixed cases, each with the expected JSON and a line on why. <b>Rule: instructions given, output still inconsistent → show 2–4 worked examples of the hard cases.</b>",
+    "options": [
+     "Correct. Worked hard cases show how to map them the same way every run.",
+     "Close. Other-plus-detail fits values the schema can't hold. These fit it.",
+     "Splitting the call still leaves the shaky decision in the first step.",
+     "A check catches some mistakes but often can't tell two valid shapes apart."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>inconsistent output means the schema is wrong</b> or the task needs splitting. But the brokers confirm every wording fits, and the rules are already written. What's missing is <b>demonstration</b>: worked examples of the hard, mixed cases.",
+    "mapTitle": "Output varies run to run. What is the lever?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best lever",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Schema fits, rules written, hard cases vary",
+       "2–4 worked examples with reasoning",
+       "Shows the mapping"
+      ],
+      [
+       "Values fall outside the schema",
+       "<code>other</code> + detail",
+       "Room for new values"
+      ],
+      [
+       "One prompt does several jobs badly",
+       "Prompt chaining",
+       "One job per call"
+      ],
+      [
+       "Values break arithmetic rules",
+       "Validate and retry with the error",
+       "Catches semantic errors"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The brokers confirm every wording seen so far fits this shape",
+      "means": "The decider. The schema is not the problem, so <code>other</code> (<b>[[1]]</b>) answers a different question."
+     },
+     {
+      "quote": "The prompt defines each basis and where sublimits go",
+      "means": "Instructions alone are already in place."
+     },
+     {
+      "quote": "Yet mixed wordings, such as a combined limit with a per-person sublimit, come out differently from run to run",
+      "means": "Inconsistency on ambiguous cases. Splitting calls (<b>[[2]]</b>) keeps the same decision; a check (<b>[[3]]</b>) can't always see it. Show it: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Instructions alone inconsistent on hard cases → a few worked examples with the reasoning.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-09",
+   "was": "m6-s6-09",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Temporal differences vs conflicts",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "A submission can show different liability limits for the same policy: one on the certificate, another on an endorsement, another on a reissued certificate. The merge step keeps whichever figure its prompt finds most authoritative and drops the rest. Each document states the date it takes effect. A document issued later can take effect earlier. What should the merge step do <b>with these figures</b>?",
+   "options": [
+    {
+     "t": "Mark the limit as disputed, store each with its source, and send it to a reviewer to choose.",
+     "why": "Works, but over-escalates. Flagging with sources is right for a real conflict. These are values over time, and their dates order them.",
+     "trap": "over-escalates"
+    },
+    {
+     "t": "Set a <code>conflict_detected</code> flag, keep the most recently issued figure, and log the rest.",
+     "why": "Works, but wrong date. Issue order usually matches effect order, but a later document can take effect earlier.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Run a second, independent extraction, and keep the figure both passes judge most authoritative.",
+     "why": "Works, but ignores the dates. Agreement between passes makes the pick steadier, but it still drops the other values and never uses the dates.",
+     "trap": "ignores the dates"
+    },
+    {
+     "t": "Keep each limit with its document and effective date; the latest is current, the rest history.",
+     "why": "Best. Capturing dates with sources shows a sequence over time, not a contradiction, and keeps provenance for every value."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Each document states the date it takes effect.",
+   "explanation": "Keep claim-to-source mappings and capture dates so changes over time aren't misread as contradictions. Real conflicts get annotated with sources, not picked arbitrarily.",
+   "eli5": {
+    "question": "Several documents give different limits. The clue is: <i>each document states the date it takes effect</i>. They aren't arguing; they are a timeline.",
+    "answer": "Think of a price tag that has been re-stickered twice. The three prices don't contradict each other; each was right from a certain date. Keep all three with their dates, and the newest by date is the price today. That is <b>capturing dates with sources</b>, so <b>changes over time aren't misread as conflicts</b>. Use the effective date, not the date it was issued. <b>Rule: dated values → order them by when they take effect and keep the history.</b>",
+    "options": [
+     "Close. Sending to a person fits a true clash, such as two limits in force at once. Dates settle this one.",
+     "The newest document isn't always the one in force; use the effective date.",
+     "Two passes agreeing still throws away the history and ignores the dates.",
+     "Correct. Every value keeps its source, and the dates say which is current."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>different figures mean a conflict</b> that someone must settle. But each document <b>states when it takes effect</b>, so the figures form a sequence. Record each with its source and effective date; the latest effective one is current.",
+    "mapTitle": "Sources disagree. Conflict or change over time?",
+    "map": {
+     "head": [
+      "What you see",
+      "What it is",
+      "Right handling"
+     ],
+     "rows": [
+      [
+       "Values with effective dates",
+       "Change over time",
+       "Keep all with dates; latest effective is current"
+      ],
+      [
+       "Two values in force at the same time",
+       "Real conflict",
+       "Annotate both with sources; escalate"
+      ],
+      [
+       "Values without dates",
+       "Unknown",
+       "Keep sources; flag for review"
+      ],
+      [
+       "One source cited for a value",
+       "Provenance",
+       "Claim-to-source mapping"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The merge step keeps whichever figure its prompt finds most authoritative and drops the rest",
+      "means": "The cause: values and sources are thrown away. A second pass (<b>[[2]]</b>) still drops them."
+     },
+     {
+      "quote": "Each document states the date it takes effect",
+      "means": "The decider. The values can be ordered, so a reviewer (<b>[[0]]</b>) isn't needed."
+     },
+     {
+      "quote": "A document issued later can take effect earlier",
+      "means": "Issue order (<b>[[1]]</b>) is the wrong date. Use effective dates: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Capture dates with sources so changes over time aren't misread as contradictions.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "Require publication/collection dates so temporal differences aren't misread as contradictions"
+    }
+   }
+  },
+  {
+   "id": "m6p-s6-10",
+   "was": "m6-s6-10",
+   "sid": "s6",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.5 Validation before automating",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "The broker wants some fields to post without review from launch day. Compliance requires a measured error rate under 1% for any field that skips review, before it posts. A labelled set of past certificates exists. It mixes standard forms with a smaller share of carriers' own schedules. The model returns a confidence for each field. Which TWO together <b>meet this at launch</b>?",
+   "options": [
+    {
+     "t": "Break labelled results out by document type and field; only pairs under the bar skip review.",
+     "why": "Best. Aggregate accuracy can hide weak document types or fields; measuring each pair shows which can skip review."
+    },
+    {
+     "t": "Sample posted fields each week, stratified by document type, and track the error rate per type.",
+     "why": "Works, but after launch. Stratified sampling is the right ongoing monitor, but it measures only what has already posted.",
+     "trap": "too late"
+    },
+    {
+     "t": "Fit each field's confidence cut-off on the labelled set, and send values below it to a reviewer.",
+     "why": "Best. Confidence calibrated on labelled data routes individual doubtful values to review."
+    },
+    {
+     "t": "Check each certificate's dates and limits for internal consistency, and send failures to a reviewer.",
+     "why": "Works, but measures nothing. Consistency checks catch some errors, but they give no error rate, and many fields have nothing to check against.",
+     "trap": "measures nothing"
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Compliance requires a measured error rate under 1% for any field that skips review, before it posts.",
+   "explanation": "Aggregate accuracy masks weak segments. Before automating, validate by document type and field and calibrate field-level confidence on labelled data; after launch, monitor with stratified sampling.",
+   "eli5": {
+    "question": "They want to skip review safely from day one. The clue is: <i>a measured error rate … before it posts</i>. Only data you already have can measure that, and it must be measured per type of document.",
+    "answer": "Think of a restaurant inspector. A good average score can hide one dirty kitchen. So you check each kitchen separately (<b>accuracy by document type and field</b>), and on the day you set a bar each dish must pass before it leaves (<b>calibrated confidence thresholds</b>). Weekly spot checks come later. <b>Rule: before automating, measure per type and field on labelled data, and calibrate field confidence.</b>",
+    "options": [
+     "Correct. Per-type, per-field numbers show which fields can safely skip review.",
+     "Close. Weekly stratified sampling is the right check after launch, but it can't measure anything before the first post.",
+     "Correct. Each doubtful value goes to a person; the rest post.",
+     "Consistency checks catch some errors but give no error rate, and most fields can't be checked this way."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>one good accuracy number</b> or ongoing sampling is enough. But the rate must be measured <b>before the first post</b>, and an average over mostly standard forms can hide weak schedules. Use the labelled set: break it out by type and field, and calibrate per-field confidence to route doubtful values.",
+    "mapTitle": "When can a field skip review?",
+    "map": {
+     "head": [
+      "Question",
+      "Mechanism",
+      "When"
+     ],
+     "rows": [
+      [
+       "Which type-field pairs are accurate enough?",
+       "Accuracy by document type and field on labelled data",
+       "Before launch"
+      ],
+      [
+       "Which single values are doubtful?",
+       "Confidence calibrated on labelled data",
+       "Before launch, then each value"
+      ],
+      [
+       "Is quality holding up?",
+       "Stratified sampling of posted output",
+       "After launch"
+      ],
+      [
+       "Do values agree with each other?",
+       "Consistency checks",
+       "Any time; partial cover"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Compliance requires a measured error rate under 1% for any field that skips review, before it posts",
+      "means": "The decider. It must be measured before launch; weekly sampling of posted output (<b>[[1]]</b>) comes too late."
+     },
+     {
+      "quote": "A labelled set of past certificates exists",
+      "means": "The data to measure with is already here."
+     },
+     {
+      "quote": "It mixes standard forms with a smaller share of carriers' own schedules",
+      "means": "An average can hide weak schedules: break it out (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The model returns a confidence for each field",
+      "means": "Calibrate it on the labelled set to route values: <b>[[2]]</b>. Consistency checks (<b>[[3]]</b>) give no rate."
+     }
+    ],
+    "rule": "Validate by document type and field, and calibrate field confidence on labelled data, before automating.",
+    "guide": {
+     "obj": "5.5 Human review workflows and confidence calibration",
+     "quote": "Validate accuracy by document type and field before automating"
+    }
+   }
+  }
+ ]
+}

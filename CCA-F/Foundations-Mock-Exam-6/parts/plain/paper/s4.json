@@ -1,0 +1,1059 @@
+{
+ "scenarios": [
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m6p-s4-01",
+   "was": "m6-s4-01",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Grep then incremental Read",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 2,
+   "question": "An engineer new to the app wants to learn where the <code>X-Learner-Locale</code> header is read. They also want to see how its value reaches the lesson scheduler. Teams named their request-handling classes differently over the years. Some code reads the header through a shared constant. The engineer wants to follow the trail with Claude and see each file on the way. Which <b>TWO</b> steps should Claude take?",
+   "options": [
+    {
+     "t": "Glob for <code>**/*middleware*.rb</code> and <code>**/*concern*.rb</code> to list likely classes, then Read each one.",
+     "why": "Works, but only usually. Glob matches file names, and these classes were named differently over the years, so some places that read the header are missed.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Grep the Ruby code for the header's name, then Grep for any constant found to hold it.",
+     "why": "Best. Grep searches file contents, so it finds the header and its constant wherever they sit, whatever the files are called."
+    },
+    {
+     "t": "Read the files the searches find and follow their calls toward the scheduler, file by file.",
+     "why": "Best. Find the entry points by content, then Read along the flow, opening each next file only when the trail reaches it."
+    },
+    {
+     "t": "Ask an Explore subagent to trace the header to the scheduler and return a summary of the path.",
+     "why": "Works, but hides the trail. An Explore subagent keeps the discovery out of this session and sends back only a summary, while the engineer wants to see each file.",
+     "trap": "hides the trail"
+    }
+   ],
+   "answer": [
+    1,
+    2
+   ],
+   "runnerUp": 3,
+   "decider": "The engineer wants to follow the trail with Claude and see each file on the way.",
+   "explanation": "Grep finds content wherever it lives, whatever the file names. Then Read follows the flow step by step, which is how you build understanding without loading everything up front.",
+   "eli5": {
+    "question": "Someone wants to learn how one header travels through the code, and watch it happen. The clues: class names are messy, the header hides behind a constant, and <i>they want to see each file</i>.",
+    "answer": "Think of finding a person in a big building. Door name plates are unreliable, so you ask \"where is the word Maria written?\" (<b>Grep</b>). Then you walk from room to room, following the signs (<b>Read</b>, one file at a time). Sending a runner who comes back with a note (an <b>Explore subagent</b>) is quicker, but you don't see the rooms. <b>Rule: find by content with Grep, then follow the flow with Read.</b>",
+    "options": [
+     "Name plates on doors: some rooms that use the header have other names, so you miss them.",
+     "Correct. Search for the words themselves, including the constant that hides them.",
+     "Correct. Walk the trail one room at a time, so the engineer sees each step.",
+     "A runner brings back a note. That wins when only the answer matters, but here the engineer wants to see the walk."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>finding files is about their names</b>, so Glob comes first. Glob matches paths. When names are inconsistent, the reliable signal is what the file <i>contains</i>, and that is Grep. After that, understanding grows by reading along the flow, not by opening everything at once.",
+    "diagram": "Grep 'X-Learner-Locale' -> LOCALE_HEADER constant\nGrep 'LOCALE_HEADER'      -> 3 files\nRead file 1 -> calls LessonPlanner\nRead LessonPlanner -> calls Scheduler",
+    "mapTitle": "Which built-in tool for this step?",
+    "map": {
+     "head": [
+      "What you need",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Find where some text or name appears",
+       "Grep",
+       "Searches file contents"
+      ],
+      [
+       "List files by a name or path pattern",
+       "Glob",
+       "Matches paths, not contents"
+      ],
+      [
+       "Follow a flow from a found entry point",
+       "Read, one file at a time",
+       "Builds understanding step by step"
+      ],
+      [
+       "Only the conclusion, discovery kept out",
+       "Explore subagent",
+       "Isolates verbose output"
+      ],
+      [
+       "Change one unique line",
+       "Edit",
+       "Targeted change by unique match"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Teams named their request-handling classes differently over the years",
+      "means": "File names are a poor guide, so a Glob on names (<b>[[0]]</b>) misses some files."
+     },
+     {
+      "quote": "Some code reads the header through a shared constant",
+      "means": "A second content search, for the constant, is needed: <b>[[1]]</b>."
+     },
+     {
+      "quote": "The engineer wants to follow the trail with Claude and see each file on the way",
+      "means": "The decider. Read along the flow in this session (<b>[[2]]</b>); a subagent summary (<b>[[3]]</b>) hides the trail."
+     },
+     {
+      "quote": "Which TWO steps should Claude take?",
+      "means": "Search by content, then read along the flow: <b>[[1]]</b> and <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Find entry points by content with Grep, then Read along the flow. Glob is for file names.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "Build understanding incrementally: Grep entry points → Read to follow imports/trace flows (not read-all-upfront)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-02",
+   "was": "m6-s4-02",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 User vs project MCP scope",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The Linear MCP server is set up in the repository's <code>.mcp.json</code>, and the whole team uses it. Priya is trying a beta build of that server which adds write tools. Until a security review ends, teammates must not get the beta when they pull. Priya needs it in this repository and in two sibling ones. Its token must stay out of git. Where should she <b>set up</b> the beta server?",
+   "options": [
+    {
+     "t": "As a second entry in the repository's <code>.mcp.json</code>, with its token read from <code>${LINEAR_BETA_TOKEN}</code>.",
+     "why": "Works, but shared on pull. Env-var expansion keeps the token out of git, yet a committed entry reaches every teammate, and it covers only this repository.",
+     "trap": "shared on pull"
+    },
+    {
+     "t": "As a local-scope server added with <code>claude mcp add</code> inside each of the three repositories.",
+     "why": "Works, but repeated per repo. Local scope stays private, but she must add and update it three times, where one user-level entry covers all of them.",
+     "trap": "repeated per repo"
+    },
+    {
+     "t": "In <code>.mcp.json</code> on a personal branch of each repository that she keeps rebased on main.",
+     "why": "Works, but fragile. Teammates miss it while the branches stay unmerged, but she keeps three branches in step, and one merge ships it to everyone.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "In her user-level config file, <code>~/.claude.json</code>, with the token read from her shell.",
+     "why": "Best. User-level config is personal, stays out of git, suits experimental servers and applies in all her repositories."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Priya needs it in this repository and in two sibling ones.",
+   "explanation": "Project .mcp.json is shared with everyone who pulls. User-level ~/.claude.json is personal and experimental, and it applies across all of that person's repositories.",
+   "eli5": {
+    "question": "One person wants to try a risky new version of a shared tool, in three repositories, without anyone else getting it. The clue: <i>teammates must not get it</i>, and she needs it <i>in three places</i>.",
+    "answer": "The team's toolbox sits in the shared office (<b>.mcp.json</b>). Anything you put there, everyone gets. Priya's own bag (<b>~/.claude.json</b>) goes with her into every room and nobody else sees it. A drawer in each room (<b>local scope</b>) is private too, but she'd have to stock three drawers. <b>Rule: team tool → .mcp.json. Personal or experimental tool → ~/.claude.json.</b>",
+    "options": [
+     "The shared toolbox: everyone gets the beta on their next pull.",
+     "Private drawers work, but three of them to keep stocked.",
+     "A private copy of the shared toolbox. It works until one merge hands it to everyone.",
+     "Correct. Her own bag, in every repository, seen by no one else."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>MCP setup belongs in the repository</b> because that is where the team server lives. That is right for servers the team shares. A server one person is trying out belongs in that person's own config, which also follows her into every repository.",
+    "mapTitle": "Where should this MCP server be configured?",
+    "map": {
+     "head": [
+      "Who needs it",
+      "Where",
+      "Why"
+     ],
+     "rows": [
+      [
+       "The whole team, in this repo",
+       "Project <code>.mcp.json</code> with <code>${VAR}</code> tokens",
+       "Shared on pull, no secrets in git"
+      ],
+      [
+       "Only me, in all my repos",
+       "User-level <code>~/.claude.json</code>",
+       "Personal and experimental"
+      ],
+      [
+       "Only me, in this one repo",
+       "Local scope via <code>claude mcp add</code>",
+       "Private to one project"
+      ],
+      [
+       "A standard service like Jira",
+       "A community MCP server",
+       "No need to build your own"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "teammates must not get the beta when they pull",
+      "means": "Anything committed, like <b>[[0]]</b>, reaches them. It must be personal config."
+     },
+     {
+      "quote": "Priya needs it in this repository and in two sibling ones",
+      "means": "The decider. One user-level entry covers all three; local scope (<b>[[1]]</b>) needs three."
+     },
+     {
+      "quote": "Its token must stay out of git",
+      "means": "Read it from her environment, which <b>[[3]]</b> does."
+     }
+    ],
+    "rule": "Shared server → project .mcp.json. Personal or experimental server → user-level ~/.claude.json.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Scoping: project-level .mcp.json (shared) vs user-level ~/.claude.json (personal/experimental)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-03",
+   "was": "m6-s4-03",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP resource for a content catalog",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Before planning work, Claude runs many <code>search_issues</code> calls on the Linear server with guessed words. It does this only to learn which projects and epics exist. The workspace holds a few hundred epics, grouped by team and project. That grouping changes only a few times a month. Which change would <b>most reduce</b> these exploratory calls?",
+   "options": [
+    {
+     "t": "Publish the project and epic list, with owners and short summaries, as an MCP resource.",
+     "why": "Best. An MCP resource exposes a content catalog, so Claude knows what exists without guessing searches."
+    },
+    {
+     "t": "Expand the <code>search_issues</code> description with the team names, the query syntax and example queries.",
+     "why": "Works, but a different problem. A better description helps Claude call the tool well, but it can't list a few hundred epics, so the guessing goes on.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Keep a hand-written list of the projects and epics in the root <code>CLAUDE.md</code> for every session.",
+     "why": "Works, but goes stale. It tells Claude what exists, but someone must update it by hand, and it fills every session, even with no planning.",
+     "trap": "goes stale"
+    },
+    {
+     "t": "Send Linear lookups to an Explore subagent that searches in its own context and returns the right epic.",
+     "why": "Works, but moves the problem. The main context stays cleaner, but the same guessing searches still run inside the subagent.",
+     "trap": "moves the problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "It does this only to learn which projects and epics exist.",
+   "explanation": "MCP resources expose content catalogs such as issue summaries and hierarchies, so the agent knows what exists without exploratory tool calls.",
+   "eli5": {
+    "question": "Claude keeps searching with guesses just to find out what's there. The clue: the searches are <i>only to learn which projects and epics exist</i>. It needs a map, not a better search.",
+    "answer": "In a new library you could guess titles at the search desk all day. Or you could read the floor plan by the door first. An <b>MCP resource</b> is that floor plan: a list of what exists, served by the server and kept current. <b>Rule: lots of calls just to discover what exists → publish a catalog as an MCP resource.</b>",
+    "options": [
+     "Correct. Hand Claude the floor plan before it starts.",
+     "Teaches Claude to use the search desk well. It still has to guess what to search for.",
+     "A floor plan drawn by hand on the wall: goes out of date, and everyone walks past it every day.",
+     "Sends a helper to do the guessing. The guessing still happens."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a search problem needs a better search tool</b>. Here Claude searches well enough; it searches because it doesn't know what exists. That is a catalog problem, and MCP has a feature for it: resources, which expose read-only content the agent can look at directly.",
+    "mapTitle": "Why is Claude making so many calls?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Many calls only to learn what exists",
+       "No catalog",
+       "MCP resource with the catalog"
+      ],
+      [
+       "Claude calls the tool with bad queries",
+       "Thin tool description",
+       "Expand the description"
+      ],
+      [
+       "Tool results fill the context",
+       "Verbose output",
+       "Trim to the relevant fields"
+      ],
+      [
+       "Verbose discovery crowds the main session",
+       "Exploration in main context",
+       "Explore subagent"
+      ],
+      [
+       "Claude picks Grep over a better MCP tool",
+       "Weak MCP description",
+       "Strengthen that description"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It does this only to learn which projects and epics exist",
+      "means": "The decider. Discovery, not search quality, so a richer description (<b>[[1]]</b>) misses the cause."
+     },
+     {
+      "quote": "The workspace holds a few hundred epics, grouped by team and project",
+      "means": "A structured catalog that a resource can expose, too big to write into a description."
+     },
+     {
+      "quote": "That grouping changes only a few times a month",
+      "means": "It still changes, so a hand-kept list (<b>[[2]]</b>) drifts; a resource served by the server stays current."
+     },
+     {
+      "quote": "Which change would most reduce these exploratory calls?",
+      "means": "Reduce, not relocate: a subagent (<b>[[3]]</b>) still makes them. <b>[[0]]</b> removes them."
+     }
+    ],
+    "rule": "Calls made only to discover what exists → expose a catalog as an MCP resource.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "MCP resources expose content catalogs (issue summaries, doc hierarchies, schemas) to reduce exploratory tool calls"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-04",
+   "was": "m6-s4-04",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Tool descriptions on an owned server",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The team also built a small MCP server for its feature-flag service, and owns its code. Its three tools have one-line descriptions: <code>get_flag</code> 'Gets flag info', <code>get_flag_rules</code> 'Gets rules' and <code>evaluate_flag</code> 'Evaluates a flag'. Asked whether a learner will see a new lesson flow, Claude calls <code>get_flag</code>. It answers from the default value and misses the targeting rules. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Add a section to the project <code>CLAUDE.md</code> telling Claude to use <code>evaluate_flag</code> for questions about a learner.",
+     "why": "Works, but wrong home. It steers Claude in this repository only. The team owns the server, so the fix belongs in the descriptions every client reads.",
+     "trap": "wrong home"
+    },
+    {
+     "t": "Rename the tools to purpose-specific names such as <code>resolve_flag_for_learner</code> and <code>list_flag_rules</code>.",
+     "why": "Works, but more than a first step. Clearer names help, yet they don't state inputs, outputs or when to pick a sibling, and renames touch every caller.",
+     "trap": "more than a first step"
+    },
+    {
+     "t": "Rewrite each tool's description with inputs, outputs, an example question and when a sibling fits.",
+     "why": "Best. Descriptions are the main way Claude picks a tool. One-line descriptions on similar tools cause exactly this misrouting."
+    },
+    {
+     "t": "Merge the three tools into one <code>check_flag</code> tool that returns the default, rules and result.",
+     "why": "Works, but overbuilt. One tool removes the choice, but it redesigns the server, where better descriptions fix the selection at low cost.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The team also built a small MCP server for its feature-flag service, and owns its code.",
+   "explanation": "Tool descriptions are the primary mechanism for tool selection. Minimal descriptions on similar tools cause misrouting; expanding them is the low-effort, high-leverage first step.",
+   "eli5": {
+    "question": "Claude picks the wrong one of three similar tools. The clues: the descriptions are <i>one line each</i>, and the team <i>owns the server</i>, so it can change them.",
+    "answer": "Three drawers labelled \"stuff\", \"things\" and \"items\": anyone grabs the wrong one. Writing a proper label on each drawer (<b>the tool description</b>) fixes it for everyone who opens them. A note on your own fridge (<b>CLAUDE.md</b>) only helps in your kitchen. <b>Rule: wrong tool picked among similar tools → improve the descriptions first.</b>",
+    "options": [
+     "A note on your own fridge. It helps here, but the drawers are yours to relabel.",
+     "New drawer names help, but a name alone doesn't say what's inside, and everyone must relearn them.",
+     "Correct. Proper labels on every drawer.",
+     "Rebuilding the cupboard into one big drawer. It works, but it is a big job for a labelling problem."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>Claude needs telling which tool to use</b>, in the prompt or in CLAUDE.md. But Claude chooses tools mainly from their descriptions. When the descriptions are one line each and the tools overlap, that is the root cause, and the team can fix it at the source because it owns the server.",
+    "mapTitle": "Claude picks the wrong tool. Where is the fix?",
+    "map": {
+     "head": [
+      "Situation",
+      "First step",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Similar tools, one-line descriptions, server you own",
+       "Rewrite the descriptions",
+       "Primary selection signal"
+      ],
+      [
+       "Third-party server you can't edit",
+       "Guidance in CLAUDE.md or the prompt",
+       "Only place you can reach"
+      ],
+      [
+       "Descriptions are good, names still confuse",
+       "Rename or split into purpose-specific tools",
+       "Clear I/O contracts"
+      ],
+      [
+       "A tool must run first, every time",
+       "Forced <code>tool_choice</code> or a hook",
+       "Deterministic order"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The team also built a small MCP server for its feature-flag service, and owns its code",
+      "means": "The decider. The team can fix the descriptions themselves, so a CLAUDE.md workaround (<b>[[0]]</b>) is the wrong home."
+     },
+     {
+      "quote": "Its three tools have one-line descriptions",
+      "means": "The root cause: minimal descriptions on similar tools."
+     },
+     {
+      "quote": "It answers from the default value and misses the targeting rules",
+      "means": "Claude didn't know which tool covers the rules. A description that says so fixes it: <b>[[2]]</b>."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "First step: renaming (<b>[[1]]</b>) or merging (<b>[[3]]</b>) are bigger changes."
+     }
+    ],
+    "rule": "Misrouting among similar tools → expand the descriptions first; rename or merge later if needed.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Tool descriptions are the primary mechanism LLMs use for selection; minimal descriptions → unreliable selection among similar tools"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-05",
+   "was": "m6-s4-05",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Forking from a shared baseline",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "An engineer spent an hour with Claude mapping how the lesson-sync code uses a blocking Redis client. They now want to try two migrations: one to an async client and one to a connection pool. Each should go far enough to show test failures, and the better one is kept. No files have changed since the mapping, and the context is under half full. How should they <b>go on</b>?",
+   "options": [
+    {
+     "t": "Ask Claude for a structured summary of the mapping, then seed two new sessions with it, one per migration.",
+     "why": "Works, but loses detail. A fresh session with a summary is right when tool results are stale or context is nearly full. Neither is true, and a summary drops detail.",
+     "trap": "loses detail"
+    },
+    {
+     "t": "Branch the session twice from the end of the mapping with <code>fork_session</code>, one migration per branch.",
+     "why": "Best. Forking makes independent branches from a shared, still-valid baseline, which is what comparing two approaches needs."
+    },
+    {
+     "t": "Spawn two subagents with the Task tool, and give each the mapping findings and one migration to build.",
+     "why": "Works, but the edits clash. Both subagents change the same working tree, and a prompt carries less than the full mapping session.",
+     "trap": "clashing edits"
+    },
+    {
+     "t": "Enter plan mode and have Claude design both migrations side by side before picking one to build.",
+     "why": "Works, but skips the trial. Plan mode compares designs on paper, while the engineer wants each migration far enough to see real test failures.",
+     "trap": "skips the trial"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "No files have changed since the mapping, and the context is under half full.",
+   "explanation": "fork_session creates independent branches from a shared baseline. When that baseline is still valid, forking keeps all of it for each approach.",
+   "eli5": {
+    "question": "After an hour of good groundwork, someone wants to try two different paths from the same point. The clues: <i>nothing has changed</i> and the session still has room, so the groundwork is still good.",
+    "answer": "Picture a save point in a game. You want to try the left door and the right door, both from the same save. You don't write notes and start a new game. You load the save twice (<b>fork_session</b>). <b>Rule: two approaches from one still-valid baseline → fork. Baseline stale or context full → new session with a summary.</b>",
+    "options": [
+     "Writing notes and starting new games: right when the save is broken. Here it isn't, and notes miss detail.",
+     "Correct. Load the same save twice and try each door.",
+     "Two helpers in the same room, both rearranging the same furniture at once.",
+     "Planning both routes on a map. The engineer wants to actually walk them and see what breaks."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a fresh start with a summary is the clean way</b> to begin new work. That is right when the old session is stale or full. Here it is neither, so the session itself is the best baseline, and forking copies all of it into two independent branches.",
+    "diagram": "mapping session (1 hour, still valid)\n   |-- fork A: async client   -> run tests\n   |-- fork B: connection pool -> run tests\nkeep the better branch",
+    "mapTitle": "Resume, fork or start fresh?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Two approaches from one valid baseline",
+       "<code>fork_session</code>",
+       "Independent branches, full context"
+      ],
+      [
+       "Baseline stale or context nearly full",
+       "New session + structured summary",
+       "Old results are unreliable"
+      ],
+      [
+       "Continue one named past session",
+       "<code>--resume &lt;name&gt;</code>",
+       "Same conversation, same work"
+      ],
+      [
+       "Compare designs before writing code",
+       "Plan mode",
+       "Explore safely before changes"
+      ],
+      [
+       "Hand a focused subtask to another agent",
+       "Task subagent with findings in its prompt",
+       "No automatic context sharing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "They now want to try two migrations",
+      "means": "Two divergent approaches from one starting point."
+     },
+     {
+      "quote": "Each should go far enough to show test failures",
+      "means": "They must be built, not only designed, so plan mode (<b>[[3]]</b>) stops short."
+     },
+     {
+      "quote": "No files have changed since the mapping, and the context is under half full",
+      "means": "The decider. The baseline is still good, so a summary (<b>[[0]]</b>) only loses detail. Fork it: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Two paths from a still-valid session → fork_session. Stale or full → new session with a summary.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "fork_session creates independent branches from a shared baseline"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-06",
+   "was": "m6-s4-06",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.6 Per-item passes plus integration",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Before a reliability review, a staff engineer asks Claude how each of the app's 25 API clients retries failed calls. The reviewers set the questions in advance: retry count, backoff, timeout and idempotency key. Claude did it all in one long session. Early rows were detailed, and later rows were thin. It also contradicted itself about a shared retry module. What is the <b>best way</b> to restructure the work?",
+   "options": [
+    {
+     "t": "Have Claude draft an investigation plan from the first clients and add subtasks as new patterns turn up.",
+     "why": "Works, but fits unknown work. Adaptive plans suit work whose shape comes from discoveries. Here the clients and the questions were set in advance.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Hand the job to an Explore subagent that reads every client in its own context and returns one table.",
+     "why": "Works, but moves the problem. The main session stays clean, but one long pass inside the subagent still thins out.",
+     "trap": "moves the problem"
+    },
+    {
+     "t": "Have Claude note each client's findings in a scratchpad file and check it before writing later rows.",
+     "why": "Works, but only half the problem. The file keeps findings across context limits, but it is still one long pass with uneven attention.",
+     "trap": "only half the problem"
+    },
+    {
+     "t": "Give each client its own focused pass, then run one comparison pass that settles the shared module question.",
+     "why": "Best. A focused pass per client gives even depth, and a separate integration pass reconciles what they say about the shared module."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 2,
+   "decider": "Early rows were detailed, and later rows were thin.",
+   "explanation": "Prompt chaining: analyze each item on its own, then run a cross-item integration pass. This avoids attention dilution and resolves contradictions.",
+   "eli5": {
+    "question": "One long job got worse as it went on and contradicted itself. The clue: <i>early rows detailed, later rows thin</i>. Attention ran out over one long pass.",
+    "answer": "A teacher marking 25 essays in one sitting gives the first ones care and the last ones a glance. Better: mark each essay on its own, fresh (<b>a focused pass per item</b>). Then read all the marks side by side to settle disagreements (<b>an integration pass</b>). <b>Rule: many items, same questions → one pass per item, then one pass across all of them.</b>",
+    "options": [
+     "Making up the plan as you go suits a job you don't understand yet. Here the questions were fixed in advance.",
+     "Another teacher marking all 25 in one sitting gets just as tired.",
+     "Notes help you remember, but you are still marking all 25 in one tired sitting.",
+     "Correct. Each essay fresh, then one side-by-side check."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the problem is memory</b>, so a notes file or a fresh context fixes it. The pattern here is attention dilution: one pass over many items gives later items less care, and nothing compares them at the end. Splitting into one pass per item plus a cross-item pass fixes both symptoms.",
+    "mapTitle": "How should a big analysis be split?",
+    "map": {
+     "head": [
+      "Shape of the work",
+      "Strategy",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Known items, fixed questions",
+       "Per-item passes + one integration pass",
+       "Even depth, contradictions settled"
+      ],
+      [
+       "Shape unknown, comes from findings",
+       "Adaptive investigation plan",
+       "Subtasks follow discoveries"
+      ],
+      [
+       "Findings must survive context limits",
+       "Scratchpad file",
+       "Persists key facts"
+      ],
+      [
+       "Verbose discovery crowds the main session",
+       "Explore subagent",
+       "Isolates output"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The reviewers set the questions in advance",
+      "means": "The work is known up front, so an adaptive plan (<b>[[0]]</b>) solves a problem they don't have."
+     },
+     {
+      "quote": "Claude did it all in one long session",
+      "means": "One pass over every client is the cause."
+     },
+     {
+      "quote": "Early rows were detailed, and later rows were thin",
+      "means": "The decider. Attention dilution, which a scratchpad (<b>[[2]]</b>) or a subagent (<b>[[1]]</b>) doing the same long pass keeps."
+     },
+     {
+      "quote": "It also contradicted itself about a shared retry module",
+      "means": "A cross-client pass is needed to reconcile it: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Many items with fixed questions → one focused pass per item, then one integration pass.",
+    "guide": {
+     "obj": "1.6 Design task decomposition strategies for complex workflows",
+     "quote": "Prompt chaining: analyze each file individually, then a cross-file integration pass"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-07",
+   "was": "m6-s4-07",
+   "sid": "s4",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Structured handoff for a human",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Late at night, an engineer uses Claude to look into a jump in lesson load times. Claude traces it to a caching config change and drafts a rollback. The engineer's shift is ending. An engineer from the infrastructure team will do the rollback. That engineer works only from the incident ticket and does not use Claude Code. What should the engineer have Claude <b>produce</b>?",
+   "options": [
+    {
+     "t": "A short incident note: service, cause, evidence with file references, revert steps, open questions.",
+     "why": "Best. A structured handoff summary lets a person act without the session or its transcript."
+    },
+    {
+     "t": "A scratchpad file in the repository with each finding and its evidence, for a later session to load.",
+     "why": "Works, but built for an agent. Scratchpad files carry findings across context limits for Claude, while the next person works from the ticket.",
+     "trap": "built for an agent"
+    },
+    {
+     "t": "The full transcript of the investigation, attached to the incident ticket through the Linear server.",
+     "why": "Works, but too much to act on. Everything is there, but the infrastructure engineer must dig the cause and the steps out of a long conversation.",
+     "trap": "too much to act on"
+    },
+    {
+     "t": "A pull request with the rollback change, linked from the ticket, and a commit message describing it.",
+     "why": "Works, but only half the handoff. The change is ready, but the cause, the evidence and the open questions are missing.",
+     "trap": "only half the handoff"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 3,
+   "decider": "That engineer works only from the incident ticket and does not use Claude Code.",
+   "explanation": "When a human takes over without the transcript, compile a structured handoff summary: what is affected, root cause, evidence and the recommended action.",
+   "eli5": {
+    "question": "Work passes from Claude's session to a person who never uses Claude Code. The clue: they work <i>only from the incident ticket</i>.",
+    "answer": "When a night nurse hands over to the day nurse, she doesn't hand over her diary or her shopping list. She writes a short handover note: patient, problem, what was seen, what to do next, what's unclear (<b>a structured handoff summary</b>). <b>Rule: handing over to a person without the transcript → a short structured summary they can act on.</b>",
+    "options": [
+     "Correct. The handover note, in the ticket the next person reads.",
+     "Notes for Claude's next session. The next person isn't using Claude.",
+     "The whole diary. Everything is in it, but the reader has to dig.",
+     "The medicine is ready, but nobody says why, what was seen, or what's still unclear."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>more information is a better handoff</b>, or that a ready fix is enough. A person taking over needs the cause, the proof and the next steps in one short, structured place they already use. Tools for carrying context between Claude sessions don't reach them.",
+    "mapTitle": "Who picks up the work, and what do they need?",
+    "map": {
+     "head": [
+      "Next actor",
+      "Handoff",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A person, from a ticket, no transcript",
+       "Structured summary: cause, evidence, action",
+       "Actionable without the session"
+      ],
+      [
+       "A later Claude session",
+       "Scratchpad file with key findings",
+       "Survives context limits"
+      ],
+      [
+       "The same engineer, same work later",
+       "<code>--resume &lt;name&gt;</code>",
+       "Same conversation"
+      ],
+      [
+       "A reviewer approving a code change",
+       "Pull request with a clear description",
+       "Reviews the change itself"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Claude traces it to a caching config change and drafts a rollback",
+      "means": "There is a cause, evidence and an action to pass on, not only a change."
+     },
+     {
+      "quote": "An engineer from the infrastructure team will do the rollback",
+      "means": "The next actor is a person, so agent-facing notes (<b>[[1]]</b>) miss them."
+     },
+     {
+      "quote": "That engineer works only from the incident ticket and does not use Claude Code",
+      "means": "The decider. It must be short and in the ticket: <b>[[0]]</b>. A transcript (<b>[[2]]</b>) is too much; a PR (<b>[[3]]</b>) lacks the why."
+     }
+    ],
+    "rule": "Handing work to a person without the transcript → a short structured summary: cause, evidence, action, open questions.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "compile structured handoff summaries (customer ID, root cause, refund amount, recommended action) for humans without the transcript"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-08",
+   "was": "m6-s4-08",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skill with context: fork",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Once a month, an engineer upgrades the app's gems with Claude. Claude reads the release notes for dozens of gems, about 150,000 tokens of text. It then returns a short list of required code edits. The engineer makes those edits in the same conversation afterwards. Several engineers take turns doing this task. What is the <b>best way</b> to package it?",
+   "options": [
+    {
+     "t": "A project slash command in <code>.claude/commands/upgrade-gems.md</code> with the steps, checks and edit-list format.",
+     "why": "Works, but fills the conversation. A shared command suits a repeatable team task, but the release notes would load into the conversation the engineer keeps using.",
+     "trap": "fills the conversation"
+    },
+    {
+     "t": "A user-level skill in <code>~/.claude/skills/upgrade-gems/</code> with <code>context: fork</code> and Read and Grep allowed.",
+     "why": "Works, but not shared. The forked context keeps the reading out, but a user-level skill lives on one machine, and the task rotates.",
+     "trap": "not shared"
+    },
+    {
+     "t": "A skill in the repository's <code>.claude/skills/</code> with <code>context: fork</code> set, ending with the edit list.",
+     "why": "Best. A project skill is shared through git, and context: fork runs the reading in an isolated sub-agent context, so only the edit list comes back."
+    },
+    {
+     "t": "A procedure file in <code>docs/</code> pulled into the project <code>CLAUDE.md</code> with an <code>@import</code> line.",
+     "why": "Works, but loads every session. @import keeps CLAUDE.md tidy, but a monthly task then fills every session, and the reading is not isolated.",
+     "trap": "loads every session"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The engineer makes those edits in the same conversation afterwards.",
+   "explanation": "Skills are on-demand team workflows. context: fork runs a skill in an isolated sub-agent context, so heavy reading does not pollute the main conversation.",
+   "eli5": {
+    "question": "A heavy monthly task produces a short result that people keep working with. The clues: <i>150,000 tokens</i> of reading, the edits happen <i>in the same conversation</i>, and <i>several engineers</i> do it.",
+    "answer": "Send someone to the archive to read a mountain of papers and bring back one page. Your desk stays clear (<b>context: fork</b>). Put the instructions on the shared team shelf, not in your own drawer, so whoever is on duty finds them (<b>.claude/skills/ in the repo</b>). <b>Rule: on-demand team task with heavy reading → project skill with context: fork.</b>",
+    "options": [
+     "Shared instructions, but the mountain of paper lands on the desk you keep working at.",
+     "The archive trip is right, but the instructions sit in one person's drawer.",
+     "Correct. Shared instructions, reading done in the archive, one page back.",
+     "Pinning the instructions to every desk, every day, for a monthly job."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a slash command and a skill are the same thing</b>. Both package a repeatable task. A skill can also set <code>context: fork</code>, which runs it in its own sub-agent context. That matters when the work reads far more than it returns.",
+    "mapTitle": "How should this workflow be packaged?",
+    "map": {
+     "head": [
+      "Need",
+      "Package",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Team task, heavy reading, short result",
+       "Project skill with <code>context: fork</code>",
+       "Shared, and isolates the reading"
+      ],
+      [
+       "Team task, output fine in the conversation",
+       "Project command in <code>.claude/commands/</code>",
+       "Shared through git"
+      ],
+      [
+       "Personal task only",
+       "<code>~/.claude/skills/</code> or <code>~/.claude/commands/</code>",
+       "Not shared"
+      ],
+      [
+       "Standard every session needs",
+       "<code>CLAUDE.md</code>, with @import for modules",
+       "Always loaded"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "about 150,000 tokens of text",
+      "means": "The reading is huge; it should not land in the working conversation."
+     },
+     {
+      "quote": "The engineer makes those edits in the same conversation afterwards",
+      "means": "The decider. Only the edit list should come back, so isolate the reading; a plain command (<b>[[0]]</b>) doesn't."
+     },
+     {
+      "quote": "Several engineers take turns doing this task",
+      "means": "It must be shared through the repo, which rules out the user-level skill (<b>[[1]]</b>)."
+     },
+     {
+      "quote": "Once a month",
+      "means": "On demand, not always loaded, so @import into CLAUDE.md (<b>[[3]]</b>) is the wrong home. <b>[[2]]</b> fits."
+     }
+    ],
+    "rule": "Shared on-demand task with heavy reading → project skill with context: fork.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-09",
+   "was": "m6-s4-09",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.1 Verifying loaded memory files",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An engineer says Claude ignores <code>app/billing/CLAUDE.md</code> and keeps adding a <code>LogWrapper</code> call that the file forbids. Teammates in the same folder don't see this. The engineer's personal <code>~/.claude/CLAUDE.md</code> says to wrap outbound calls in <code>LogWrapper</code>. They also recently started working in a worktree made from an older branch. Either one might explain it. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Remove the <code>LogWrapper</code> line from their <code>~/.claude/CLAUDE.md</code> and restate the ban in the billing file.",
+     "why": "Works, but fixes a guess. It is right once the personal file is the cause. The old-branch worktree may lack the billing file, so check what loads first.",
+     "trap": "fixes a guess"
+    },
+    {
+     "t": "Run <code>/memory</code> in that engineer's own session, inside the worktree they use, and see which files load.",
+     "why": "Best. /memory shows which memory files are loaded, so one look tells a missing billing file apart from a conflicting personal one."
+    },
+    {
+     "t": "Recreate the worktree from the current main branch, then ask Claude to make the billing change again.",
+     "why": "Works, but fixes a guess. It helps if the old branch is the cause, but the personal instruction stays, and it shows nothing about what loaded.",
+     "trap": "fixes a guess"
+    },
+    {
+     "t": "Ask Claude in that session to list the billing rules it is following before it makes the next edit.",
+     "why": "Works, but only usually. Claude's own account of its instructions can be incomplete, while /memory shows the loaded files for certain.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Either one might explain it.",
+   "explanation": "/memory verifies which memory files are loaded. When two causes are possible, checking what is loaded comes before changing either one.",
+   "eli5": {
+    "question": "Claude ignores a folder's rules for one engineer only. The clue: <i>either one might explain it</i>. Two suspects, so the first step is to find out which, not to fix one.",
+    "answer": "Two people give a cook opposite orders, and you're not sure the cook even got the second note. Before you change anyone's orders, you look at the notes pinned on the cook's board (<b>/memory</b>). Then you know which problem you have. <b>Rule: instructions seem ignored → /memory first, to see what is actually loaded.</b>",
+    "options": [
+     "Takes down one suspect's note. Right if that was the cause, but maybe the other note never arrived.",
+     "Correct. Look at the board and see which notes are pinned.",
+     "Replaces the board. Helps if the note was missing, but the other order is still up.",
+     "Asking the cook to recite the orders. Useful, but the cook may not remember them all."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the conflicting personal instruction is obviously the cause</b>, so remove it. But the worktree came from an older branch, which may not have the billing file at all. When causes compete, the first step is a cheap check that tells them apart, and Claude Code has one: <code>/memory</code>.",
+    "diagram": "/memory in the engineer's worktree\n  ~/.claude/CLAUDE.md      loaded (LogWrapper rule)\n  CLAUDE.md                loaded\n  app/billing/CLAUDE.md    ?  <- present or missing",
+    "mapTitle": "Claude ignores an instruction. What do you check?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Likely cause",
+      "First step"
+     ],
+     "rows": [
+      [
+       "Only one person sees it, two causes possible",
+       "Unknown which file loads",
+       "Run <code>/memory</code> in their session"
+      ],
+      [
+       "Personal file confirmed to conflict",
+       "User-level instruction overrides intent",
+       "Fix the personal file"
+      ],
+      [
+       "Directory file missing in a worktree",
+       "Old branch lacks it",
+       "Update the worktree"
+      ],
+      [
+       "Everyone sees it",
+       "Project instruction unclear",
+       "Fix the project CLAUDE.md"
+      ],
+      [
+       "Convention needed across many folders",
+       "Directory file can't reach",
+       "<code>.claude/rules/</code> with a glob"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Teammates in the same folder don't see this",
+      "means": "The project files are fine; the cause is in this engineer's setup."
+     },
+     {
+      "quote": "The engineer's personal ~/.claude/CLAUDE.md says to wrap outbound calls in LogWrapper",
+      "means": "Suspect one, which <b>[[0]]</b> fixes."
+     },
+     {
+      "quote": "worktree made from an older branch",
+      "means": "Suspect two, which <b>[[2]]</b> fixes."
+     },
+     {
+      "quote": "Either one might explain it",
+      "means": "The decider. Check before fixing: <b>[[1]]</b> shows which files load. Asking Claude (<b>[[3]]</b>) is less certain."
+     }
+    ],
+    "rule": "Instructions seem ignored → run /memory first to see which memory files are loaded.",
+    "guide": {
+     "obj": "3.1 CLAUDE.md hierarchy, scoping, modular organization",
+     "quote": "/memory command verifies which memory files are loaded"
+    }
+   }
+  },
+  {
+   "id": "m6p-s4-10",
+   "was": "m6-s4-10",
+   "sid": "s4",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Interview pattern",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A product manager wants a daily CSV export of tutor payouts for finance. It replaces a spreadsheet an analyst built by hand, and the manager pastes a few rows. The engineer knows the schema but not payout accounting. Finance says the old sheet got some cases wrong, but not which. Nobody has decided how refunds after payout or lessons crossing midnight are handled. What is the <b>best way</b> to start?",
+   "options": [
+    {
+     "t": "Have Claude begin by asking the engineer about unusual cases the export must handle, then take open ones to finance.",
+     "why": "Best. The interview pattern has Claude ask first, surfacing the cases the engineer hasn't thought about in an unfamiliar domain."
+    },
+    {
+     "t": "Give Claude the pasted spreadsheet rows with their source records, and ask for an export that matches them exactly.",
+     "why": "Works, but copies known errors. Input/output examples are the best way to show a transformation when the outputs are right. These are wrong in unnamed cases.",
+     "trap": "copies known errors"
+    },
+    {
+     "t": "Write failing tests for the export's columns and header first, share the failures with Claude, and iterate on them.",
+     "why": "Works, but tests the easy part. Test-first works when the expected behaviour is known. These tests cover layout, not the unsettled payout rules.",
+     "trap": "tests the easy part"
+    },
+    {
+     "t": "Enter plan mode and have Claude design the full export, including refunds and midnight lessons, before any coding.",
+     "why": "Works, but invents the rules. Plan mode designs an approach, but Claude would have to make up rules nobody has set.",
+     "trap": "invents the rules"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Nobody has decided how refunds after payout or lessons crossing midnight are handled.",
+   "explanation": "In an unfamiliar domain with unsettled rules, the interview pattern has Claude ask questions first, so the missing requirements surface before code is written.",
+   "eli5": {
+    "question": "Build a report in an area nobody fully understands, from an example known to be wrong. The clue: <i>nobody has decided</i> the tricky cases, and the old sheet is wrong in unknown places.",
+    "answer": "A tailor making a suit for someone new doesn't copy a badly fitting old suit. They ask questions and take measurements first (<b>the interview pattern</b>). The answers they can't get from you, they check with the person paying. <b>Rule: unfamiliar domain, unsettled rules → have Claude ask questions first.</b>",
+    "options": [
+     "Correct. Ask first, and send the open questions to the people who decide.",
+     "Copying the old suit, including the bits that don't fit.",
+     "Checking the buttons and pockets first. The hard part is the fit, and nobody knows it yet.",
+     "Designing the whole suit now, guessing the measurements nobody took."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>examples or tests are always the best start</b>. They are, when you trust the expected output. Here the example is known to be wrong somewhere and key rules don't exist yet. The work starts by finding out what the requirements are, which is what the interview pattern does.",
+    "mapTitle": "How do you start an unclear build with Claude?",
+    "map": {
+     "head": [
+      "Situation",
+      "Technique",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Unfamiliar domain, rules not settled",
+       "Interview pattern: Claude asks first",
+       "Surfaces missing requirements"
+      ],
+      [
+       "Trusted input/output examples exist",
+       "Concrete examples",
+       "Show the transformation exactly"
+      ],
+      [
+       "Expected behaviour is known",
+       "Tests first, share failures",
+       "Tight feedback loop"
+      ],
+      [
+       "Big change, several valid approaches",
+       "Plan mode",
+       "Design before editing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The engineer knows the schema but not payout accounting",
+      "means": "The domain is unfamiliar; questions will find what the engineer hasn't thought of."
+     },
+     {
+      "quote": "Finance says the old sheet got some cases wrong, but not which",
+      "means": "The pasted rows aren't trustworthy, so matching them (<b>[[1]]</b>) copies errors."
+     },
+     {
+      "quote": "Nobody has decided how refunds after payout or lessons crossing midnight are handled",
+      "means": "The decider. The rules must be found before tests (<b>[[2]]</b>) or a plan (<b>[[3]]</b>) can use them: <b>[[0]]</b>."
+     }
+    ],
+    "rule": "Unfamiliar domain with unsettled rules → interview pattern: Claude asks questions first.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "the interview pattern (Claude asks questions first)"
+    }
+   }
+  }
+ ]
+}

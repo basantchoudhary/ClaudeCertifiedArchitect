@@ -1,0 +1,1048 @@
+{
+ "scenarios": [
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m6p-s3-01",
+   "was": "m6-s3-01",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Iterative refinement loop",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "For a request on a new blood thinner, the coordinator split the work into efficacy, dosing and cost. Each subagent did its part well. But the summary missed a drug-interaction warning. The warning appeared only in footnotes of papers the analysis subagent had already read. Nothing in the request pointed to it. Last month a statin summary missed a different finding the same way. What is the <b>most effective change</b>?",
+   "options": [
+    {
+     "t": "Add a drug-interaction part to the coordinator's planning instructions for every medicine request.",
+     "why": "Works, but only fixes this one. A wider plan helps when the missing area can be foreseen from the request. This warning showed up only inside papers already read, and the statin miss was something else again.",
+     "trap": "only covers foreseen gaps"
+    },
+    {
+     "t": "Pass the full findings of earlier subagents into each later subagent's prompt with its task.",
+     "why": "Works, but different problem. Passing prior findings helps subagents that depend on each other. Nobody is asked to chase what those findings point to, so the footnote stays unexamined.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Have the coordinator check each draft for gaps, delegate follow-ups, then redraft.",
+     "why": "Best. An iterative refinement loop (check the synthesis for gaps, re-delegate, re-synthesise) catches gaps that only appear once the subagents have read the papers."
+    },
+    {
+     "t": "Give the synthesis subagent a scoped lookup tool for quick fact checks while it drafts.",
+     "why": "Works, but wrong size. A scoped tool suits frequent simple checks. Investigating an interaction warning is real research, and nothing tells synthesis to look for it.",
+     "trap": "wrong size"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "The warning appeared only in footnotes of papers the analysis subagent had already read.",
+   "explanation": "Up-front decomposition covers only what is knowable at the start. When gaps appear in what subagents find, the coordinator should evaluate the synthesis for gaps, re-delegate targeted work and re-synthesise.",
+   "eli5": {
+    "question": "A summary went out missing an important warning. The question asks how to stop misses like this. The clue: the warning was in footnotes of papers <i>already read</i>, and nothing in the request pointed to it.",
+    "answer": "Think of a school project where the team splits the topic before anyone has read anything. Some important things only show up once you start reading. So someone has to read the draft, spot what it leans on but never checked, and send people back to look into it. That is an <b>iterative refinement loop</b>: check the synthesis for gaps, re-delegate, re-synthesise. <b>Rule: a gap you can only see after reading → a check-and-redo loop, not a bigger plan.</b>",
+    "options": [
+     "Adding one more topic to the plan helps for gaps you can predict. This one hid in footnotes, and next time it will be a different one.",
+     "Handing each helper the earlier notes is good practice, but nobody is told to chase what the notes point to.",
+     "Correct. The coordinator reads the draft, finds the hole, sends someone to fill it, then redrafts.",
+     "A quick lookup tool is for small checks. An interaction warning needs real research, and nobody asks for it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a miss means the plan was too narrow</b>, so the plan should get wider. That is right when the missing area could be seen from the request. Here the warning only surfaced <i>inside</i> papers already read, and the same kind of miss happened on another drug. No up-front plan names things nobody knows yet. A <b>refinement loop</b> after the draft does.",
+    "diagram": "plan → subagents read → draft\n   ↑                       │\n   └── re-delegate gaps ←── coordinator checks draft",
+    "mapTitle": "Something was missed. Where should the fix go?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Whole areas missing, foreseeable from the request",
+       "Decomposition too narrow",
+       "Widen the coordinator's split"
+      ],
+      [
+       "Gap appears only inside findings already read",
+       "No step looks for gaps",
+       "Refinement loop: check draft, re-delegate, redraft"
+      ],
+      [
+       "Later subagent ignores earlier findings",
+       "Context not passed",
+       "Put prior findings in its prompt"
+      ],
+      [
+       "Synthesis needs many quick fact checks",
+       "Round trips via coordinator",
+       "Scoped lookup tool for simple checks"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each subagent did its part well",
+      "means": "The subagents are not the problem. The process around them is."
+     },
+     {
+      "quote": "The warning appeared only in footnotes of papers the analysis subagent had already read",
+      "means": "The decider. The gap shows only after reading, so a wider plan (<b>[[0]]</b>) could not have named it."
+     },
+     {
+      "quote": "Last month a statin summary missed a different finding the same way",
+      "means": "The misses differ each time. A fixed extra part in the plan fixes one; a gap check after the draft catches each."
+     },
+     {
+      "quote": "What is the most effective change?",
+      "means": "Check the draft and re-delegate: <b>[[2]]</b>. Passing findings (<b>[[1]]</b>) or a lookup tool (<b>[[3]]</b>) never asks anyone to look for the gap."
+     }
+    ],
+    "rule": "Gaps that appear only in what subagents find → coordinator checks the draft for gaps, re-delegates, re-synthesises.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "iterative refinement loops (evaluate synthesis for gaps → re-delegate → re-synthesize)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-02",
+   "was": "m6-s3-02",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Coordinator-mediated communication",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The analysis subagent finds papers whose key data sit in supplementary files it cannot open. It reports each case to the coordinator, and each round trip adds delay. An engineer suggests a shared board where subagents post these requests for the search subagent. The right follow-up differs: find a public copy, narrow the claim, or ask the committee. It depends on what other subagents have found. Which design <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Keep sending each case to the coordinator as a typed field in the analysis result, and let it choose.",
+     "why": "Best. Hub-and-spoke: the coordinator sees every subagent's results, so it is the one place that can pick between searching, narrowing the claim or asking the committee."
+    },
+    {
+     "t": "Build the shared board, have the search subagent watch it, and let the coordinator read it later.",
+     "why": "Works, but wrong home. Requests move faster, but subagents now act around the coordinator, which can no longer pick the right follow-up or handle failures.",
+     "trap": "bypasses the coordinator"
+    },
+    {
+     "t": "Give the analysis subagent a scoped tool to find public copies, and send other cases to the coordinator.",
+     "why": "Works, but only part of the job. A scoped tool suits one frequent, simple need. Here a search is only one of several follow-ups, and choosing it needs findings the analysis subagent cannot see.",
+     "trap": "only part of the job"
+    },
+    {
+     "t": "Have the analysis subagent collect its cases and report them all to the coordinator once, at the end.",
+     "why": "Works, but delays the problem. Fewer round trips, but every follow-up now waits until analysis is finished.",
+     "trap": "delays the problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 2,
+   "decider": "It depends on what other subagents have found.",
+   "explanation": "In a coordinator-subagent design, requests between subagents flow through the coordinator, which sees all results and decides routing. Scoped cross-role tools are the exception for frequent, simple needs.",
+   "eli5": {
+    "question": "A subagent keeps hitting files it can't open, and asking the coordinator each time is slow. Someone wants subagents to talk to each other directly. The clue: the right next step <i>depends on what other subagents have found</i>.",
+    "answer": "Think of a hospital ward where the charge nurse knows what every nurse is doing. If nurses pass jobs to each other on a whiteboard, nobody sees the whole picture. The charge nurse is the <b>coordinator</b> in a <b>hub-and-spoke</b> design: every request goes through them, because only they know enough to choose. Sending the case as a clear, typed field keeps it quick to read. <b>Rule: a choice that needs the whole picture stays with the coordinator.</b>",
+    "options": [
+     "Correct. The one who sees every result makes the choice.",
+     "A whiteboard between nurses is quicker, but the charge nurse loses track and can't pick the right next step.",
+     "A tool for one common job is fine, but here the right job changes case by case.",
+     "Saving all the questions for the end means fewer trips, but every answer now arrives late."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>round-trip delay should be fixed by letting subagents talk directly</b>. Subagents have <b>isolated context</b>: each sees only its own task. The coordinator is the only one that sees everything, and here the right follow-up depends on everything. A scoped tool is the exception for one frequent, simple need, which this is not.",
+    "diagram": "analysis ──case──▶ coordinator ──▶ search / narrow / ask\n                   (sees all results)",
+    "mapTitle": "Who should decide what happens next?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best design",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Next step depends on other subagents' results",
+       "Route through the coordinator",
+       "Only it sees every result"
+      ],
+      [
+       "One frequent, simple need with one answer",
+       "Scoped cross-role tool",
+       "Skips round trips for the common case"
+      ],
+      [
+       "Complex or rare follow-ups",
+       "Coordinator re-delegates",
+       "Keeps routing and errors in one place"
+      ],
+      [
+       "Subagents post work to each other",
+       "Avoid",
+       "Bypasses the hub; nobody owns the outcome"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It reports each case to the coordinator, and each round trip adds delay",
+      "means": "The cost of the current design is delay, not wrong answers."
+     },
+     {
+      "quote": "The right follow-up differs: find a public copy, narrow the claim, or ask the committee",
+      "means": "Several possible actions, so a tool for one of them (<b>[[2]]</b>) covers only part."
+     },
+     {
+      "quote": "It depends on what other subagents have found",
+      "means": "The decider. Only the coordinator sees that. A shared board (<b>[[1]]</b>) bypasses it."
+     },
+     {
+      "quote": "Which design fits best?",
+      "means": "Keep the hub, send the case as a typed field: <b>[[0]]</b>. Batching to the end (<b>[[3]]</b>) only moves the wait."
+     }
+    ],
+    "rule": "If the right next step needs the whole picture, route it through the coordinator.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "Hub-and-spoke: coordinator manages all inter-subagent communication, error handling, routing"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-03",
+   "was": "m6-s3-03",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.3 Dependent vs parallel spawning",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "For each request, the coordinator sends four Task calls in one response: literature search, trial-registry search, safety review and cost search. The safety reviewer must check adverse-event reports for the trials in scope. Which trials are in scope is known only after the registry search returns. Today the safety review is generic and often covers the wrong trials. The other three subagents work well. Which change <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Keep four parallel calls, and give the safety prompt the drug, date range, output format and quality bar.",
+     "why": "Works, but missing input. Richer context helps a subagent whose work stands alone. The trial list it needs does not exist until the registry search returns.",
+     "trap": "missing input"
+    },
+    {
+     "t": "Add a step where the coordinator checks the safety output against the trial list and redoes mismatches.",
+     "why": "Works, but too late. A check-and-redo loop suits gaps found late. This dependency is known up front, so redoing the work each run is avoidable.",
+     "trap": "too late"
+    },
+    {
+     "t": "Give the safety subagent the registry search tool, and let it look up the trials in scope itself.",
+     "why": "Works, but duplicate work. The safety reviewer could find the trials, but it repeats a search another subagent already runs, outside its role.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Send the safety Task after the registry search returns, with its trial list; run the rest in parallel.",
+     "why": "Best. A dependent subtask waits for its input, which goes into its prompt. Independent searches still run in parallel."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Which trials are in scope is known only after the registry search returns.",
+   "explanation": "Subagents receive only what is in their prompt. Spawn independent work in parallel, but run a subtask after the one whose findings it needs, and include those findings in its prompt.",
+   "eli5": {
+    "question": "Four helpers start at the same time, but one of them needs another's result before it can do its job. The clue: the trials in scope are known <i>only after the registry search returns</i>.",
+    "answer": "Think of a kitchen. Three cooks can start at once, but the person plating dessert must wait until they know which desserts were ordered. Starting them early just makes them guess. So the <b>dependent</b> task starts after its input exists, and that input goes into its instructions. The independent ones still run <b>in parallel</b>. <b>Rule: independent work in parallel; dependent work waits and gets the result in its prompt.</b>",
+    "options": [
+     "Better instructions help a cook who already has the order. This one doesn't have it yet.",
+     "Checking the plate and redoing it works, but you knew in advance it would be wrong.",
+     "Letting the dessert cook take the orders too works, but now two people do the same job.",
+     "Correct. Wait for the order, hand it over, and let the other cooks carry on."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>parallel is always faster, so a weak subagent needs a better prompt</b>. Subagents get only what is in their prompt; they do not see each other's results. When one task needs another's output, starting it early forces it to guess. The fix is <b>order</b>: wait, then pass the result in explicitly.",
+    "diagram": "lit search ─┐\ncost search ─┼─ in parallel\nregistry ────┘──▶ trial list ──▶ safety review",
+    "mapTitle": "How should these subagents be started?",
+    "map": {
+     "head": [
+      "Situation",
+      "How to spawn",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Tasks need nothing from each other",
+       "Several Task calls in one response",
+       "Run in parallel"
+      ],
+      [
+       "A task needs another's output",
+       "Wait, then pass that output in its prompt",
+       "No shared memory between subagents"
+      ],
+      [
+       "A task stands alone but output is vague",
+       "Richer prompt: goal, scope, quality bar",
+       "Its input exists already"
+      ],
+      [
+       "Gaps only seen after the draft",
+       "Refinement loop",
+       "Not knowable up front"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "the coordinator sends four Task calls in one response",
+      "means": "Everything starts at once, including the task that needs input."
+     },
+     {
+      "quote": "Which trials are in scope is known only after the registry search returns",
+      "means": "The decider. A richer prompt (<b>[[0]]</b>) can't contain a list that doesn't exist yet."
+     },
+     {
+      "quote": "Today the safety review is generic and often covers the wrong trials",
+      "means": "The symptom of a subagent guessing at its input. Checking and redoing (<b>[[1]]</b>) treats it after the fact."
+     },
+     {
+      "quote": "The other three subagents work well",
+      "means": "Keep them in parallel. Wait only for the dependent one: <b>[[3]]</b>. Its own registry tool (<b>[[2]]</b>) repeats work."
+     }
+    ],
+    "rule": "Dependent subtask → spawn after its input exists and pass it in the prompt; independent ones stay parallel.",
+    "guide": {
+     "obj": "1.3 Configure subagent invocation, context passing, and spawning",
+     "quote": "Subagent context must be provided explicitly in the prompt (no automatic inheritance / shared memory)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-04",
+   "was": "m6-s3-04",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.2 Selecting subagents by query complexity",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "Committees complain that every request takes several minutes. Most requests are narrow questions, such as the dose one trial used. For those, the coordinator still runs search, analysis, synthesis and reporting in order. Synthesis and reporting take most of the time and change the answer little. Summaries for broad requests are rated well. What <b>best addresses</b> the complaint?",
+   "options": [
+    {
+     "t": "Run the literature and registry searches as parallel Task calls in one coordinator response.",
+     "why": "Works, but small gain. Parallel searches save a little, but most of the time goes on synthesis and reporting.",
+     "trap": "small part of the wait"
+    },
+    {
+     "t": "Let the coordinator pick the subagents per request and skip drafting for narrow ones.",
+     "why": "Best. The coordinator should pick which subagents to invoke by query complexity, which removes the slow stages from most requests."
+    },
+    {
+     "t": "Give the report subagent a short-answer template for narrow questions, without the full layout.",
+     "why": "Works, but still runs every stage. A shorter report helps a bit, but synthesis and reporting still run for a one-line answer.",
+     "trap": "still runs every stage"
+    },
+    {
+     "t": "Cache search and analysis results, and reuse them when a committee repeats an earlier question.",
+     "why": "Works, but different problem. Caching helps repeated questions. The slow part here is drafting, and it runs for new questions too.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "Synthesis and reporting take most of the time and change the answer little.",
+   "explanation": "A coordinator should choose which subagents to invoke based on the request, not route everything through the full pipeline.",
+   "eli5": {
+    "question": "Every request is slow, even simple ones. The clue: for narrow questions the slow stages (synthesis and reporting) <i>change the answer little</i>.",
+    "answer": "Asking a hospital pharmacy what dose a trial used shouldn't trigger a full written report. A good desk lead decides how much work each question needs. That is the coordinator <b>selecting subagents by query complexity</b>: narrow questions skip the drafting stages; broad ones get the full pipeline. <b>Rule: don't run the whole pipeline for every request. Let the coordinator choose.</b>",
+    "options": [
+     "Starting two searches together saves a little, but the slow part is the writing afterwards.",
+     "Correct. Small questions skip the long write-up; big ones still get it.",
+     "A shorter report form still means writing a report for a one-line answer.",
+     "Remembering old answers helps repeat questions, but the write-up is still slow for new ones."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a slow pipeline needs each stage to be faster</b>. The real waste is running stages that don't help. The coordinator owns decomposition, and part of that job is <b>choosing which subagents a request needs</b>. Broad requests still get the full pipeline.",
+    "diagram": "narrow: search → analysis → answer\nbroad:  search → analysis → synthesis → report",
+    "mapTitle": "Requests are slow. Where does the time go?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Simple requests run every stage",
+       "Fixed full pipeline",
+       "Coordinator picks subagents by complexity"
+      ],
+      [
+       "Independent searches run one after another",
+       "Serial spawning",
+       "Several Task calls in one response"
+      ],
+      [
+       "Subagents fetch the same documents",
+       "Overlapping scope",
+       "Partition scope between subagents"
+      ],
+      [
+       "Same questions asked again",
+       "Repeated work",
+       "Reuse earlier results"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most requests are narrow questions, such as the dose one trial used",
+      "means": "Most traffic needs a short answer."
+     },
+     {
+      "quote": "For those, the coordinator still runs search, analysis, synthesis and reporting in order",
+      "means": "The cause: the full pipeline runs every time. A shorter template (<b>[[2]]</b>) still runs it."
+     },
+     {
+      "quote": "Synthesis and reporting take most of the time and change the answer little",
+      "means": "The decider. Parallel searches (<b>[[0]]</b>) and caching (<b>[[3]]</b>) speed up stages that aren't the slow ones."
+     },
+     {
+      "quote": "Summaries for broad requests are rated well",
+      "means": "Keep the full pipeline for those. Choose per request: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "The coordinator picks which subagents to run per request; don't route every request through the full pipeline.",
+    "guide": {
+     "obj": "1.2 Orchestrate multi-agent systems with coordinator-subagent patterns",
+     "quote": "selecting which subagents to invoke by query complexity"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-05",
+   "was": "m6-s3-05",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.7 Resume vs fresh session with summary",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "A research session on a heart-failure drug was paused on Friday. By then the analysis subagent had read dozens of papers. Over the weekend, the journal replaced most of those papers with corrected versions. Several tables the coordinator had quoted have changed. The session history still holds the original tool results. On Monday the team wants to continue with two new questions. What is the <b>most reliable</b> way to continue?",
+   "options": [
+    {
+     "t": "Resume with <code>--resume hf-drug</code>, tell the agent which papers were corrected, then add the two new questions.",
+     "why": "Works, but stale history. Resuming and naming the changes is right when a few files changed. Here most results are out of date, and the old tables still fill the history.",
+     "trap": "stale history"
+    },
+    {
+     "t": "Resume with <code>--resume hf-drug</code>, run <code>/compact</code> to shrink the history, then re-read the corrected papers.",
+     "why": "Works, but keeps stale facts. Compacting shrinks the history, but it summarises the old tables instead of removing them.",
+     "trap": "keeps stale facts"
+    },
+    {
+     "t": "Open a new session from a structured summary of what still holds, and re-read the corrected papers.",
+     "why": "Best. When much of the earlier tool output is stale, a new session with a structured summary is more reliable than resuming."
+    },
+    {
+     "t": "Use <code>fork_session</code> to branch Friday's session: one branch for old questions, one for new.",
+     "why": "Works, but copies the problem. Forking suits trying different approaches from a good baseline. Both branches inherit the stale results.",
+     "trap": "copies the problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "Over the weekend, the journal replaced most of those papers with corrected versions.",
+   "explanation": "Resume when earlier context is still mostly valid and tell the agent what changed. Start fresh with a structured summary when much of the history is stale.",
+   "eli5": {
+    "question": "Work paused on Friday, and over the weekend most of the papers it read were corrected. The clue: <i>most</i> of the papers changed, and the history still holds the old versions.",
+    "answer": "If one page of your notes is wrong, you fix that page. If most of the notebook copied from an old edition, you start a clean notebook with just what still holds, and re-read the new edition. That is a <b>new session with a structured summary</b>. Resuming keeps the old tables in Claude's history, and it may keep reasoning from them. <b>Rule: a little changed → resume and say what changed. Much is stale → start fresh from a summary.</b>",
+    "options": [
+     "Saying \"page 4 changed\" works for a few pages. Here most of the notebook is out of date.",
+     "Shrinking an old notebook keeps a short version of the old facts.",
+     "Correct. A clean notebook with only what still holds, plus a list of papers to re-read.",
+     "Photocopying the old notebook twice gives you two notebooks with the same old facts."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>resuming is always best because it keeps the work</b>. It keeps the stale work too. Tool results in the history are what Claude reasons from. When most of them are out of date, a new session from a <b>structured summary</b> of what still holds is more reliable.",
+    "mapTitle": "Continue an old session, or start fresh?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Little changed since the pause",
+       "<code>--resume</code> and say what changed",
+       "History mostly valid"
+      ],
+      [
+       "Much of the tool output is stale",
+       "New session from a structured summary",
+       "Old results would mislead"
+      ],
+      [
+       "Try two approaches from a good baseline",
+       "<code>fork_session</code>",
+       "Independent branches"
+      ],
+      [
+       "Session healthy but nearly full",
+       "<code>/compact</code>",
+       "Frees space, keeps the work"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "By then the analysis subagent had read dozens of papers",
+      "means": "The history is full of tool results from those papers."
+     },
+     {
+      "quote": "Over the weekend, the journal replaced most of those papers with corrected versions",
+      "means": "The decider. <i>Most</i>, not a few, so resuming and naming changes (<b>[[0]]</b>) leaves mostly stale history."
+     },
+     {
+      "quote": "The session history still holds the original tool results",
+      "means": "Compacting (<b>[[1]]</b>) summarises them and forking (<b>[[3]]</b>) copies them."
+     },
+     {
+      "quote": "What is the most reliable way to continue?",
+      "means": "Start fresh from what still holds: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Most tool results stale → new session from a structured summary, not --resume.",
+    "guide": {
+     "obj": "1.7 Manage session state, resumption, and forking",
+     "quote": "Starting a new session with a structured summary is more reliable than resuming with stale tool results"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-06",
+   "was": "m6-s3-06",
+   "sid": "s3",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.5 PostToolUse normalization",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Three vendor-run MCP servers feed the analysis subagent. Each reports publication dates in its own format: Unix timestamps, quarter strings like 'Q3 2024', or day-first dates. The synthesis subagent sometimes puts trials in the wrong order. The vendors run these servers, and the team cannot change their responses. What is the <b>best fix</b>?",
+   "options": [
+    {
+     "t": "Add a <code>PostToolUse</code> hook that rewrites those dates to one format before Claude reads the results.",
+     "why": "Best. A PostToolUse hook rewrites tool results in code before the model sees them, on the side the team controls."
+    },
+    {
+     "t": "Run a small MCP proxy server of the team's own in front of the vendors that converts every date.",
+     "why": "Works, but overbuilt. A proxy fixes the dates, but it is a new server to run and maintain. A hook does the same inside the agent.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add few-shot examples to the analysis prompt that convert each vendor's date format to ISO 8601.",
+     "why": "Works, but only usually. Examples improve consistency, but the conversion stays probabilistic, and day-first dates are easy to misread.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Show each source's publication date beside every claim drawn from it in the summary the committee gets.",
+     "why": "Works, but different problem. Readers can spot an odd order, but the dates are still misread upstream and the order is still wrong.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The vendors run these servers, and the team cannot change their responses.",
+   "explanation": "PostToolUse hooks intercept tool results and normalise them before the model sees them, giving deterministic behaviour where prompts give only probabilistic compliance.",
+   "eli5": {
+    "question": "Three outside data feeds write dates three different ways, and trials end up in the wrong order. The clue: the team <i>can't change</i> the feeds.",
+    "answer": "If three suppliers send invoices with dates written differently, you put one clerk at the door who rewrites every date the same way before anyone files them. That clerk is a <b>PostToolUse hook</b>: code that runs on each tool result before Claude reads it. It works every time, not most times. <b>Rule: messy formats you can't fix at the source → normalise them in a hook.</b>",
+    "options": [
+     "Correct. One clerk at the door rewrites every date before anyone reads it.",
+     "Opening a separate office to rewrite the dates works, but it's a whole office to run.",
+     "Showing staff examples helps most of the time, but some dates still get misread.",
+     "Writing the date on the final report doesn't fix the order things were filed in."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the fix belongs in the prompt or at the source</b>. The source is not the team's to change, and a prompt only usually converts correctly. A <b>PostToolUse hook</b> sits in the team's own agent and rewrites results in code before the model reasons over them.",
+    "diagram": "vendor MCP → raw date → PostToolUse hook → ISO date → Claude",
+    "mapTitle": "Tool results arrive in mixed formats. Where do you fix them?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "You run the server",
+       "Fix the format at the source",
+       "Cleanest, one place"
+      ],
+      [
+       "Someone else runs the server",
+       "<code>PostToolUse</code> hook in your agent",
+       "Deterministic, on your side"
+      ],
+      [
+       "Need a shared fix for many agents and teams",
+       "Your own proxy server",
+       "Worth running only at that scale"
+      ],
+      [
+       "Wording or style varies, not data",
+       "Few-shot examples",
+       "Usually right is enough"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each reports publication dates in its own format",
+      "means": "Mixed formats reach the model as they are."
+     },
+     {
+      "quote": "The synthesis subagent sometimes puts trials in the wrong order",
+      "means": "The misread dates cause real errors. Showing dates to readers (<b>[[3]]</b>) leaves the order wrong."
+     },
+     {
+      "quote": "The vendors run these servers, and the team cannot change their responses",
+      "means": "The decider. Fix on the team's side. A hook does it in code (<b>[[0]]</b>); examples (<b>[[2]]</b>) only usually; a proxy (<b>[[1]]</b>) adds a server."
+     }
+    ],
+    "rule": "Normalise heterogeneous tool results in a PostToolUse hook before the model sees them.",
+    "guide": {
+     "obj": "1.5 Apply Agent SDK hooks for tool call interception and data normalization",
+     "quote": "PostToolUse hooks intercept results for transformation before the model sees them"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-07",
+   "was": "m6-s3-07",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Splitting a generic tool",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The analysis subagent searches four collections through one MCP tool, <code>search_source(source, text)</code>. The collections are journals, the trial registry, preprints and drug labels. About one call in five goes to the wrong collection. The tool's description is already long, with a worked query for each collection. Each collection has its own query syntax and returns different fields. What should the team <b>do next</b>?",
+   "options": [
+    {
+     "t": "Add four or five examples to the subagent's prompt that show the right collection for typical questions.",
+     "why": "Works, but only usually. Examples add tokens and help a little, but one tool still hides four different contracts behind a parameter.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Rewrite the description as a table that maps question types to source values, with common mistakes.",
+     "why": "Works, but more of the same. A better description is the right first step when it is thin. This one is already long, and a parameter can't express four syntaxes.",
+     "trap": "more of the same"
+    },
+    {
+     "t": "Return <code>isError</code> with a validation category when a query's syntax doesn't match its collection.",
+     "why": "Works, but too late. A clear error helps the agent recover after a wrong call. The wrong calls still happen.",
+     "trap": "too late"
+    },
+    {
+     "t": "Split it into one purpose-named tool per collection, each with its own parameters and result shape.",
+     "why": "Best. When operations differ in input and output, purpose-specific tools with defined contracts make selection reliable."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 1,
+   "decider": "Each collection has its own query syntax and returns different fields.",
+   "explanation": "Descriptions are the primary selection mechanism, but when one tool covers operations with different inputs and outputs, split it into purpose-specific tools.",
+   "eli5": {
+    "question": "One search tool covers four collections, and Claude picks the wrong one in about one call in five. The clue: the description is already detailed, and each collection <i>works differently</i>.",
+    "answer": "Picture one hospital phone number for the lab, pharmacy, records and radiology, with a long menu. People still press the wrong key, because each department needs different details. Giving each department its own number with its own form fixes it. That is <b>splitting a generic tool</b> into purpose-specific tools with their own inputs and outputs. <b>Rule: different inputs and outputs → separate tools, not a longer description.</b>",
+    "options": [
+     "Showing callers sample calls helps a little, but it's still one number for four departments.",
+     "A longer menu is the first fix for a short one. This menu is already long.",
+     "Telling callers \"wrong department\" helps them redial, but they still dial wrong first.",
+     "Correct. Each department gets its own number and its own form."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>misrouting always means the description needs work</b>. Descriptions are the first fix, and here it is already long and detailed. When one tool hides several operations with <b>different input syntax and output fields</b>, no description makes it clear. Split it into purpose-specific tools.",
+    "diagram": "search_source(source, text)\n  → search_journals(...)  search_registry(...)\n  → search_preprints(...) search_labels(...)",
+    "mapTitle": "Claude picks the wrong tool or target. What fixes it?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Short or vague descriptions",
+       "Not enough to choose by",
+       "Expand descriptions first"
+      ],
+      [
+       "Long description, operations differ in I/O",
+       "One tool hides several contracts",
+       "Split into purpose-specific tools"
+      ],
+      [
+       "Similar tools with overlapping wording",
+       "Ambiguous boundaries",
+       "Sharpen or rename to remove overlap"
+      ],
+      [
+       "Agent can't recover after a bad call",
+       "Generic errors",
+       "<code>isError</code> with a category"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "About one call in five goes to the wrong collection",
+      "means": "A selection problem: the wrong call is made. An error after it (<b>[[2]]</b>) comes too late."
+     },
+     {
+      "quote": "The tool's description is already long, with a worked query for each collection",
+      "means": "The first fix is done. A rewritten description (<b>[[1]]</b>) or more examples (<b>[[0]]</b>) is more of the same."
+     },
+     {
+      "quote": "Each collection has its own query syntax and returns different fields",
+      "means": "The decider. Four contracts in one tool: split them, <b>[[3]]</b>."
+     }
+    ],
+    "rule": "One tool, several operations with different inputs and outputs → split into purpose-specific tools.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Rename/split generic tools into purpose-specific tools with defined I/O contracts"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-08",
+   "was": "m6-s3-08",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.2 Access failure vs valid empty result",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The journal search tool's wrapper catches connection errors and returns an empty list instead. The journal index goes offline every night for a rebuild that takes up to two hours. Committees send requests at any hour. The coordinator treats an empty list as a search that found nothing. One summary wrongly said no trials of a drug had been published. How should the tool <b>change</b>?",
+   "options": [
+    {
+     "t": "Retry connection errors in the wrapper with backoff for up to a minute, then return the empty list.",
+     "why": "Works, but delays the problem. Local retries are right for brief faults. A two-hour rebuild outlasts them, and then the outage looks like no results again.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "Return outages as failed calls with a category and a retry flag, and empty lists only for real searches.",
+     "why": "Best. Telling an access failure apart from a valid empty result, with a category and retry flag, lets the coordinator wait, reroute or note the gap."
+    },
+    {
+     "t": "Fall back to the trial registry when the journal search returns nothing, and merge what it finds.",
+     "why": "Works, but hides the problem. Another source may help, but the coordinator still can't tell an outage from a real absence.",
+     "trap": "hides the problem"
+    },
+    {
+     "t": "Have the citation checker flag every “no evidence found” claim for a person to confirm before it goes out.",
+     "why": "Works, but too late. A person may catch some wrong claims, but the tool still reports outages as empty searches.",
+     "trap": "too late"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The coordinator treats an empty list as a search that found nothing.",
+   "explanation": "Tools must distinguish access failures from valid empty results and return structured error metadata (isError, category, retryability) so the agent can recover appropriately.",
+   "eli5": {
+    "question": "When the journal index is down, the tool says \"found nothing\" instead of \"couldn't search\". A summary then claimed no trials existed. The clue: the coordinator <i>treats an empty list as a search that found nothing</i>.",
+    "answer": "If a librarian finds the archive locked and tells you \"there are no books on that\", you'll believe it. They should say \"the archive is locked until morning\". That is a <b>structured error</b>: the call failed, here is why, and it's worth retrying later. An empty list then only means a real search found nothing. <b>Rule: \"couldn't look\" and \"looked and found nothing\" must never look the same.</b>",
+    "options": [
+     "Knocking a few more times helps if the door sticks, not if it's locked for two hours.",
+     "Correct. Say the archive is locked and when to come back. Save \"nothing found\" for real searches.",
+     "Checking another library helps, but you still don't know the first one was closed.",
+     "A second person double-checking \"no books\" claims catches some, but the librarian still says it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>an empty list is a safe default when a call fails</b>. To the agent, it means \"searched and found nothing\", which is a claim about the evidence. An outage must be reported as a <b>failure</b> with a category and a retry flag, so the coordinator can wait, reroute or note the gap.",
+    "diagram": "index offline → isError, category: unavailable, retryable\nsearch ran, no hits → []",
+    "mapTitle": "A tool returns nothing. What does it mean?",
+    "map": {
+     "head": [
+      "What happened",
+      "What the tool should return",
+      "What the coordinator can do"
+     ],
+     "rows": [
+      [
+       "Search ran, no matches",
+       "Empty result, success",
+       "Report \"no evidence found\""
+      ],
+      [
+       "Brief network blip",
+       "Retry locally first",
+       "Usually never sees it"
+      ],
+      [
+       "Source down for a long time",
+       "<code>isError</code>, availability category, retryable",
+       "Wait, reroute or note a gap"
+      ],
+      [
+       "Bad query",
+       "<code>isError</code>, validation category",
+       "Fix the query"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The journal search tool's wrapper catches connection errors and returns an empty list instead",
+      "means": "The cause: a failure is disguised as a result."
+     },
+     {
+      "quote": "The journal index goes offline every night for a rebuild that takes up to two hours",
+      "means": "Too long for a local retry (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "The coordinator treats an empty list as a search that found nothing",
+      "means": "The decider. The coordinator can't tell the cases apart. A fallback (<b>[[2]]</b>) or a later human check (<b>[[3]]</b>) leaves that confusion in place."
+     },
+     {
+      "quote": "How should the tool change?",
+      "means": "Report the outage as a structured failure: <b>[[1]]</b>."
+     }
+    ],
+    "rule": "Access failure → isError with category and retryability; empty result only when the search really ran.",
+    "guide": {
+     "obj": "2.2 Implement structured error responses for MCP tools",
+     "quote": "distinguish access failures from valid empty results"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-09",
+   "was": "m6-s3-09",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.6 Presenting conflicting sources",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "Two recent sources disagree on the rate of major bleeding with a new drug. A large trial gives one figure, and a national registry report gives a higher one. The synthesis subagent kept only the trial figure. The committee needs to see both figures to judge them. Summaries go straight from the report subagent to the committee. Which change to the synthesis output <b>fits best</b>?",
+   "options": [
+    {
+     "t": "Add a section for conflicting results that lists each estimate with its source, date and method.",
+     "why": "Best. Conflicting statistics are kept with source attribution in a clear section, not settled by picking one."
+    },
+    {
+     "t": "Keep the figure from the stronger study design, and mention the other source's figure in a footnote.",
+     "why": "Works, but still picks one. The other figure survives, but the summary has already chosen, and a footnote is easy to miss.",
+     "trap": "still picks one"
+    },
+    {
+     "t": "Show every source's publication and data-collection dates next to the claims drawn from it.",
+     "why": "Works, but different problem. Dates stop time gaps being read as conflicts. These sources are both recent and still disagree.",
+     "trap": "different problem"
+    },
+    {
+     "t": "Present numeric findings as tables with a source column, and keep narrative findings as prose.",
+     "why": "Works, but only the format. Tables suit numbers, but a table can still hold only the one figure synthesis chose.",
+     "trap": "only the format"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The committee needs to see both figures to judge them.",
+   "explanation": "When credible sources conflict, keep both values with attribution in a structured section rather than picking one.",
+   "eli5": {
+    "question": "Two good sources give different bleeding rates, and the summary kept only one. The clue: the committee <i>needs to see both figures</i> to judge them.",
+    "answer": "If two thermometers give different readings, you don't throw one away. You write down both, which thermometer, when, and how it was used, and let the doctor decide. In a summary, that is a <b>conflicts section with source attribution</b>. <b>Rule: credible sources disagree → show every figure with its source. Don't pick one.</b>",
+    "options": [
+     "Correct. Both readings, each labelled with where, when and how it was taken.",
+     "Keeping the \"better\" thermometer's reading up front still makes the choice for the doctor.",
+     "Writing the time on each reading helps when the readings were taken at different times. Here both are recent.",
+     "A neat table still only shows the one reading someone chose to keep."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a good synthesis resolves disagreements</b> by choosing the stronger source. When credible sources conflict and the reader must judge, picking one hides the disagreement. The exam guide says to <b>annotate conflicting statistics with source attribution</b>, not to pick one.",
+    "mapTitle": "Sources differ. What should the synthesis do?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best output",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Credible sources give different figures",
+       "Conflicts section, each figure with source and method",
+       "Reader judges; nothing hidden"
+      ],
+      [
+       "Figures differ because of different dates",
+       "Publication and collection dates beside claims",
+       "Time gap, not a conflict"
+      ],
+      [
+       "Numbers mixed into long prose",
+       "Tables for numbers, prose for narrative",
+       "Right format per content"
+      ],
+      [
+       "Claims lose their sources in summaries",
+       "Claim-source mappings kept through synthesis",
+       "Every claim stays cited"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Two recent sources disagree on the rate of major bleeding with a new drug",
+      "means": "Both are recent, so dates (<b>[[2]]</b>) don't explain the gap."
+     },
+     {
+      "quote": "The synthesis subagent kept only the trial figure",
+      "means": "The fault: it picked one. A footnote approach (<b>[[1]]</b>) still picks one."
+     },
+     {
+      "quote": "The committee needs to see both figures to judge them",
+      "means": "The decider. Both figures, with source and method: <b>[[0]]</b>. Table format (<b>[[3]]</b>) doesn't bring the lost figure back."
+     },
+     {
+      "quote": "Summaries go straight from the report subagent to the committee",
+      "means": "Nobody adds the second figure later, so the synthesis output must carry it."
+     }
+    ],
+    "rule": "Conflicting credible figures → keep each one with its source in a conflicts section; don't pick one.",
+    "guide": {
+     "obj": "5.6 Information provenance and uncertainty in multi-source synthesis",
+     "quote": "annotate conflicting statistics with source attribution (don't arbitrarily pick one)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s3-10",
+   "was": "m6-s3-10",
+   "sid": "s3",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.1 Preserving figures across long runs",
+   "trap": "More context or reasoning instead of structure",
+   "fam": 5,
+   "select": 1,
+   "question": "A large request produces many subagent results. The coordinator keeps a rolling summary of them and rewrites it as each result arrives. The synthesis subagent works from that summary. Audits show exact figures, such as a hazard ratio, turned into vague words like “lowered risk”. The full results are too long to give synthesis in one input. Which change <b>best fixes this</b>?",
+   "options": [
+    {
+     "t": "Have the coordinator summarise each result once, on its own, instead of one rolling rewrite of them all.",
+     "why": "Works, but still summarises numbers. Fewer rewrites lose less, but each summary can still turn a figure into vague words.",
+     "trap": "still summarises numbers"
+    },
+    {
+     "t": "Tell the coordinator in its prompt to keep every exact number when it rewrites the summary.",
+     "why": "Works, but only usually. The instruction helps, but repeated rewriting keeps condensing figures now and then.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Keep a separate facts block of exact figures with date and source, and pass it to synthesis as is.",
+     "why": "Best. A persistent facts block keeps numbers, dates and sources out of progressive summarisation."
+    },
+    {
+     "t": "Trim each subagent result to the fields the summary needs before the coordinator reads it.",
+     "why": "Works, but different problem. Trimming saves space, but the kept figures are still reworded in the rolling summary.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Audits show exact figures, such as a hazard ratio, turned into vague words like “lowered risk”.",
+   "explanation": "Progressive summarisation loses exact figures. Extract them into a persistent facts block that is passed on unchanged.",
+   "eli5": {
+    "question": "A summary that keeps getting rewritten turns exact numbers into vague words. The clue: figures like a hazard ratio become <i>“lowered risk”</i>.",
+    "answer": "Pass a story along a line of people and the exact numbers are the first thing to blur. So you write the numbers on a card that is handed along untouched, next to the story. That card is a <b>persistent facts block</b>: exact figures with date and source, kept out of the summary and given to synthesis as they are. <b>Rule: numbers that must survive go in a facts block, not in a summary.</b>",
+    "options": [
+     "Retelling each part once blurs less, but each retelling can still blur a number.",
+     "Asking people to remember the numbers works most of the time, not every time.",
+     "Correct. The numbers travel on a card nobody rewrites.",
+     "Shortening each part makes it quicker to pass on, but the numbers still blur in the retelling."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a better summary keeps the numbers</b>. Summarising is condensing, and exact figures, percentages and dates are what condensing turns vague. The fix is to keep them <b>outside</b> the summary: a persistent facts block passed on unchanged.",
+    "diagram": "results ─▶ rolling summary (prose, may blur) ─┐\n        └▶ facts block (exact, as is) ──────┴▶ synthesis",
+    "mapTitle": "Information is lost on the way to synthesis. Why?",
+    "map": {
+     "head": [
+      "What you observe",
+      "Cause",
+      "Fix"
+     ],
+     "rows": [
+      [
+       "Exact figures become vague words",
+       "Progressive summarisation",
+       "Persistent facts block, passed as is"
+      ],
+      [
+       "Middle items missing from long input",
+       "Lost in the middle",
+       "Key points first, clear section headers"
+      ],
+      [
+       "Context full of unused fields",
+       "Verbose tool results",
+       "Trim to the relevant fields"
+      ],
+      [
+       "Claims lose their sources",
+       "No claim-source mapping",
+       "Keep mappings through synthesis"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The coordinator keeps a rolling summary of them and rewrites it as each result arrives",
+      "means": "Progressive summarisation: each rewrite can blur a figure. Summarising once (<b>[[0]]</b>) is still summarising."
+     },
+     {
+      "quote": "Audits show exact figures, such as a hazard ratio, turned into vague words",
+      "means": "The decider. The loss is exact figures. Trimming fields (<b>[[3]]</b>) fixes size, not wording."
+     },
+     {
+      "quote": "The full results are too long to give synthesis in one input",
+      "means": "Some condensing is needed, so the figures must be kept apart from it: <b>[[2]]</b>. An instruction (<b>[[1]]</b>) only usually holds."
+     }
+    ],
+    "rule": "Exact numbers, dates and sources go in a persistent facts block outside any rolling summary.",
+    "guide": {
+     "obj": "5.1 Preserve critical information across long interactions",
+     "quote": "Extract transactional facts into a persistent \"case facts\" block"
+    }
+   }
+  }
+ ]
+}

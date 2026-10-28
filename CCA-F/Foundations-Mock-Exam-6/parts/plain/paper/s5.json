@@ -1,0 +1,1029 @@
+{
+ "scenarios": [
+  {
+   "id": "s5",
+   "title": "Scenario 5 — Claude Code for Continuous Integration",
+   "domains": "D3 · D4 · D2",
+   "brief": "A travel-booking company runs Claude Code in <b>GitHub Actions</b> on a Kotlin and TypeScript repository. It has four jobs: a pull-request review that posts inline comments, an autofix job for failing builds, test generation for new endpoints, and a weekly dependency-risk report. The review job uses an MCP server for code search and API guidelines. <code>CLAUDE.md</code> and <code>.claude/</code> are committed."
+  }
+ ],
+ "questions": [
+  {
+   "id": "m6p-s5-01",
+   "was": "m6-s5-01",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.4 MCP server scope and secrets",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "The review job links findings to tickets through the tracker vendor's community MCP server. An engineer added the server to the user-level config in the CI runner image, with the API token written into it. Security has flagged the stored token. On-call engineers also rerun reviews from a fresh checkout on their laptops. There the tracker tools are missing. What is the <b>best change</b>?",
+   "options": [
+    {
+     "t": "Keep the server in the runner's <code>~/.claude.json</code> and inject the token from the CI secret store at job start.",
+     "why": "Works, but runner only. The stored token is gone, but user-level config does not travel with a checkout, so laptops still lack the tools.",
+     "trap": "runner only"
+    },
+    {
+     "t": "Commit a setup script that runs <code>claude mcp add</code> on each machine, with the token taken from its environment.",
+     "why": "Works, but an extra step. Each person must remember to run the script, and the server still lives in personal config. The shared home for a team server is <code>.mcp.json</code>.",
+     "trap": "extra step"
+    },
+    {
+     "t": "Replace the community server with a small tracker tool the team writes and keeps in the repository.",
+     "why": "Works, but overbuilt. The team takes on code to maintain for a standard integration that a community server already covers, and still has to configure it.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Move the definition into a root <code>.mcp.json</code>, with the credential set as <code>${TRACKER_TOKEN}</code> there.",
+     "why": "Best. Project-level <code>.mcp.json</code> is committed, so every checkout gets the server, and the variable keeps the secret out of the repository and the image."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "On-call engineers also rerun reviews from a fresh checkout on their laptops.",
+   "explanation": "Shared MCP servers go in project-level <code>.mcp.json</code>; personal or experimental ones in <code>~/.claude.json</code>. Environment variable expansion lets a committed config carry no secret.",
+   "eli5": {
+    "question": "A tool connection lives in one machine's personal settings, with a password written in. Security dislikes the password, and laptops don't get the tool. The clue: people rerun reviews from a <i>fresh checkout</i>.",
+    "answer": "Think of a shared office printer. If its setup is written on one person's desk note, only that desk can print. Pin the setup to the office wall (the committed <code>.mcp.json</code>) and leave a blank where the password goes (<code>${TRACKER_TOKEN}</code>), which each machine fills in. <b>Rule: a server the team shares goes in .mcp.json, with secrets as environment variables.</b>",
+    "options": [
+     "Fixes the password on one desk. Laptops still don't know the printer exists.",
+     "Everyone must remember to run the setup, and it still ends up on personal notes.",
+     "Building your own printer when a good one is already on the market.",
+     "Correct. Setup on the wall, password filled in by each machine."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the problem is only the stored token</b>. Removing it from the image fixes Security's finding but not the laptops. Where a server is declared decides who gets it: user-level config stays on one machine, project-level <code>.mcp.json</code> travels with every checkout.",
+    "diagram": "~/.claude.json (runner image)   → runner only\n.mcp.json (committed)           → every checkout\n  token: ${TRACKER_TOKEN}       → set by CI or laptop",
+    "mapTitle": "Where should this MCP server be declared?",
+    "map": {
+     "head": [
+      "Who needs the server",
+      "Where to declare it",
+      "Secret"
+     ],
+     "rows": [
+      [
+       "The whole team and CI",
+       "Root <code>.mcp.json</code>, committed",
+       "<code>${VAR}</code> expansion"
+      ],
+      [
+       "Only one person, or an experiment",
+       "User-level <code>~/.claude.json</code>",
+       "That person's environment"
+      ],
+      [
+       "Only the CI runner",
+       "Runner config, token injected at start",
+       "CI secret store"
+      ],
+      [
+       "A standard tool like a tracker",
+       "Community MCP server",
+       "Not hand-built code"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "An engineer added the server to the user-level config in the CI runner image, with the API token written into it",
+      "means": "Two faults: wrong scope and a stored secret."
+     },
+     {
+      "quote": "On-call engineers also rerun reviews from a fresh checkout on their laptops",
+      "means": "The decider. The server must come with the repository. Runner-only fixes (<b>[[0]]</b>) miss laptops; scripts (<b>[[1]]</b>) need someone to run them."
+     },
+     {
+      "quote": "through the tracker vendor's community MCP server",
+      "means": "A community server already exists, so writing one (<b>[[2]]</b>) is extra work. Declare it in <code>.mcp.json</code>: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Team-shared MCP servers go in a committed .mcp.json, with secrets as ${VARIABLES}.",
+    "guide": {
+     "obj": "2.4 Integrate MCP servers into Claude Code and agent workflows",
+     "quote": "Env var expansion in .mcp.json (e.g., ${GITHUB_TOKEN}) — no committed secrets."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-02",
+   "was": "m6-s5-02",
+   "sid": "s5",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.5 Edit vs Read + Write fallback",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The autofix job must change a timeout value in <code>ClientFactory.kt</code>, for the payments client only. The file holds one retry helper per client. The helper bodies are identical, line for line. Only the class name far above each copy differs. Claude's Edit call fails because the target text matches several places. What should Claude do <b>next</b>?",
+   "options": [
+    {
+     "t": "Lengthen <code>old_string</code> upward until it starts at the payments class name, then rerun Edit.",
+     "why": "Works, but fragile. The anchor becomes a long block that must match character for character, and one slip fails the Edit again.",
+     "trap": "fragile anchor"
+    },
+    {
+     "t": "Read the whole file, change the payments copy's value, and save it back with Write.",
+     "why": "Best. When Edit cannot find a unique match, reading the file and writing it back with the one change is the standard fallback."
+    },
+    {
+     "t": "Find the payments line number with Grep, then change that line with <code>sed</code> through Bash.",
+     "why": "Works, but wrong tool. It skips Edit's exact-match check, so a wrong line number changes another client silently.",
+     "trap": "wrong tool"
+    },
+    {
+     "t": "Stop and open an issue asking a developer to make the one-line change by hand.",
+     "why": "Works, but gives up too soon. The change is small and fully known, and a built-in fallback exists.",
+     "trap": "gives up too soon"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The helper bodies are identical, line for line.",
+   "explanation": "Edit makes targeted changes through a unique text match. When no unique anchor exists, Read the file and Write it back with the change.",
+   "eli5": {
+    "question": "Claude needs to change one number, but the same block of text appears several times, so its find-and-replace tool can't tell which copy is meant. The clue: the copies are <i>identical, line for line</i>.",
+    "answer": "Imagine a form with the same paragraph printed three times, and you must fix it only in the second one. Searching for the words finds all three. So you take the whole page, fix the right copy by eye, and hand in the whole page (<b>Read</b> then <b>Write</b>). <b>Rule: when Edit can't find a unique match, Read the file and Write it back.</b>",
+    "options": [
+     "Quoting a huge chunk of the page to point at one spot. Possible, but one typo and it fails again.",
+     "Correct. Take the whole page, fix the right copy, hand it back.",
+     "Counting lines and scribbling over line 214: no check that it's the right copy.",
+     "Asking someone else to do a fix you already know how to make."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a failed Edit means you need a cleverer anchor</b>. Edit finds text by unique match. When the copies are identical, the only unique text is far away, so the anchor grows huge. The exam guide's fallback is simpler: <b>Read the file, change it, Write it back</b>.",
+    "diagram": "class FlightsClient   ┐\n  retry helper (same) │ old_string matches\nclass PaymentsClient  │ every copy\n  retry helper (same) ┘\n→ Read whole file → change payments copy → Write",
+    "mapTitle": "Which built-in tool fits this change?",
+    "map": {
+     "head": [
+      "Situation",
+      "Tool",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Small change, unique text nearby",
+       "Edit",
+       "Targeted, exact match"
+      ],
+      [
+       "Text repeats but nearby lines differ",
+       "Edit with a slightly longer anchor",
+       "Short anchor becomes unique"
+      ],
+      [
+       "Identical copies, no unique nearby text",
+       "Read + Write",
+       "The standard fallback"
+      ],
+      [
+       "Find where something is used",
+       "Grep",
+       "Content search"
+      ],
+      [
+       "Find files by name pattern",
+       "Glob",
+       "Path search"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "for the payments client only",
+      "means": "Exactly one copy must change."
+     },
+     {
+      "quote": "The helper bodies are identical, line for line",
+      "means": "The decider. No short unique anchor exists, so stretching it (<b>[[0]]</b>) makes it long and fragile."
+     },
+     {
+      "quote": "Claude's Edit call fails because the target text matches several places",
+      "means": "This is the non-unique match case the guide names. Fallback: <b>[[1]]</b>. Line edits by sed (<b>[[2]]</b>) skip the match check."
+     }
+    ],
+    "rule": "Edit needs a unique match. When none exists, Read the file and Write it back.",
+    "guide": {
+     "obj": "2.5 Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob)",
+     "quote": "When Edit fails on non-unique match → Read + Write fallback."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-03",
+   "was": "m6-s5-03",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.3 Path-scoped rules across directories",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Database migration conventions sit in the root <code>CLAUDE.md</code>, so they load on every review. Most pull requests touch no migrations, so the section wastes context. Each service keeps its migrations in its own folder, such as <code>services/billing/db/migrations/</code>. There are many services. The team wants the conventions loaded only when a migration file is involved. Where should they <b>live</b>?",
+   "options": [
+    {
+     "t": "A <code>CLAUDE.md</code> in each service's migrations folder, with a CI check that keeps the copies identical.",
+     "why": "Works, but one copy per folder. Folder files load only there, which is right, but every service needs its own copy and a check to stop drift.",
+     "trap": "one copy per folder"
+    },
+    {
+     "t": "A <code>.claude/rules/</code> file whose <code>paths:</code> glob is <code>services/*/db/migrations/**</code>.",
+     "why": "Best. One rule file loads for any matching migration file, in every service, and stays out of other reviews."
+    },
+    {
+     "t": "A project skill in <code>.claude/skills/</code> that the review prompt calls when the diff has a migration.",
+     "why": "Works, but only when invoked. The conventions load only if the prompt decides to call the skill, which a path rule does by itself.",
+     "trap": "only when invoked"
+    },
+    {
+     "t": "A separate <code>docs/migrations.md</code> pulled into the root <code>CLAUDE.md</code> with an <code>@import</code> line.",
+     "why": "Works, but still loads everywhere. The file is tidier, but imported content loads on every review.",
+     "trap": "still loads everywhere"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "Each service keeps its migrations in its own folder",
+   "explanation": "<code>.claude/rules/</code> files with <code>paths:</code> globs load conventions only for matching files, and beat folder CLAUDE.md files when those files span many folders. <code>@import</code> organises content but does not make it conditional.",
+   "eli5": {
+    "question": "Rules about migration files load on every review, even when no migration changed. The clue: migrations sit in <i>a folder per service</i>, many folders.",
+    "answer": "Picture a sticky note that pops up only when you open a migration file, wherever it is. That's a <b>rule file with a path pattern</b> in <code>.claude/rules/</code>. A folder <code>CLAUDE.md</code> is a note stuck on one folder: you'd need one per service. <b>Rule: convention follows a file pattern across folders → path-scoped rule.</b>",
+    "options": [
+     "A note on every folder: many copies, and a check to keep them the same.",
+     "Correct. One note that pops up for migration files in any service.",
+     "A manual someone must remember to open.",
+     "Moving the note to a separate page that is still read every time."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>conventions belong in a CLAUDE.md next to the code</b>. That works for one folder. These files are spread across many service folders. A rule file with a <code>paths:</code> glob loads only when a matching file is in play, wherever it lives.",
+    "diagram": ".claude/rules/migrations.md\n  paths: services/*/db/migrations/**\nservices/billing/db/migrations/V3.sql → loaded\nservices/search/src/Api.kt            → not loaded",
+    "mapTitle": "Where does this convention live?",
+    "map": {
+     "head": [
+      "Where it applies",
+      "Best home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Files matching a pattern, in many folders",
+       "<code>.claude/rules/</code> with <code>paths:</code>",
+       "Loads by file, any folder"
+      ],
+      [
+       "Everything in one folder",
+       "That folder's <code>CLAUDE.md</code>",
+       "Loads when working there"
+      ],
+      [
+       "The whole project, always",
+       "Root <code>CLAUDE.md</code> or an @import",
+       "Loads every session"
+      ],
+      [
+       "A task run on request",
+       "A skill or command",
+       "Loads only when invoked"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "so they load on every review",
+      "means": "The goal is to stop loading them everywhere. An @import (<b>[[3]]</b>) still loads everywhere."
+     },
+     {
+      "quote": "Each service keeps its migrations in its own folder",
+      "means": "The decider. Folder files (<b>[[0]]</b>) need a copy per service."
+     },
+     {
+      "quote": "The team wants the conventions loaded only when a migration file is involved",
+      "means": "Loading tied to files, by itself: <b>[[1]]</b>. A skill (<b>[[2]]</b>) waits for someone to call it."
+     }
+    ],
+    "rule": "Conventions that follow a file pattern across folders → .claude/rules/ with a paths glob.",
+    "guide": {
+     "obj": "3.3 Path-specific rules for conditional convention loading",
+     "quote": "Glob-pattern rules beat directory CLAUDE.md for conventions spanning directories"
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-04",
+   "was": "m6-s5-04",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.2 Skill with context: fork",
+   "trap": "Wrong scope or wrong home",
+   "fam": 8,
+   "select": 1,
+   "question": "Developers and the release job both draft the changelog with a long procedure. It walks the git log since the last tag and groups commits by service. The procedure lives in the root <code>CLAUDE.md</code>, so every review run loads it too. In a developer's session it prints thousands of lines of log, and later answers get worse. It must stay versioned with the repository. Where should it <b>live</b>?",
+   "options": [
+    {
+     "t": "A project command at <code>.claude/commands/changelog.md</code>, run as a slash command by CI and developers.",
+     "why": "Works, but the log still floods. A project command is shared and on demand, but it runs inside the current conversation.",
+     "trap": "log still floods"
+    },
+    {
+     "t": "The root <code>CLAUDE.md</code>, with a line telling Claude to hand the git-log walk to the Explore subagent.",
+     "why": "Works, but still loads everywhere. The log is kept out of the session, but every review run still loads the procedure.",
+     "trap": "still loads everywhere"
+    },
+    {
+     "t": "A skill in each developer's <code>~/.claude/skills/</code> folder, with <code>context: fork</code> in its frontmatter.",
+     "why": "Works, but not shared. Forking keeps the log out, but personal skills are not in the repository, so CI and new developers lack it.",
+     "trap": "not shared"
+    },
+    {
+     "t": "A project skill in <code>.claude/skills/changelog/</code> whose <code>SKILL.md</code> sets <code>context: fork</code>.",
+     "why": "Best. A project skill is versioned and loads on demand, and <code>context: fork</code> runs it in its own context, keeping the log out of the session."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "In a developer's session it prints thousands of lines of log, and later answers get worse.",
+   "explanation": "CLAUDE.md holds always-loaded standards; skills are on-demand workflows, and <code>context: fork</code> runs one in an isolated sub-agent context.",
+   "eli5": {
+    "question": "A long changelog procedure sits in the file every session reads, and when it runs it floods the chat with log lines. The clue: <i>thousands of lines of log</i>.",
+    "answer": "Think of a messy job like sorting a big box of receipts. You don't keep the instructions taped to every desk, and you don't tip the box out on your work table. You keep the instructions in the team cupboard (a <b>project skill</b>) and do the sorting in a back room (<code>context: fork</code>), bringing back only the summary. <b>Rule: on-demand procedure with noisy output → project skill with context: fork.</b>",
+    "options": [
+     "Instructions in the cupboard, but you still tip the box out on your desk.",
+     "Back room for the sorting, but the instructions stay taped to every desk.",
+     "Back room, but the instructions are in your own drawer, not the team's.",
+     "Correct. Team cupboard, back room, summary returned."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>moving the procedure out of CLAUDE.md is the whole fix</b>. There are two problems: it loads everywhere, and its output floods the session. A slash command fixes the first only. A project skill with <code>context: fork</code> fixes both.",
+    "diagram": "/changelog skill (context: fork)\n  sub-context: git log ... 1000s of lines\n  returns: grouped summary → main session",
+    "mapTitle": "Where does a repeatable procedure live?",
+    "map": {
+     "head": [
+      "Need",
+      "Home",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Always-on standards",
+       "<code>CLAUDE.md</code>",
+       "Loads every session"
+      ],
+      [
+       "On demand, little output, shared",
+       "<code>.claude/commands/</code>",
+       "Runs in the current session"
+      ],
+      [
+       "On demand, noisy output, shared",
+       "<code>.claude/skills/</code> with <code>context: fork</code>",
+       "Output stays in its own context"
+      ],
+      [
+       "Personal workflow",
+       "<code>~/.claude/skills/</code>",
+       "Not in the repository"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Developers and the release job both draft the changelog",
+      "means": "Shared by people and CI, so personal skills (<b>[[2]]</b>) don't reach everyone."
+     },
+     {
+      "quote": "so every review run loads it too",
+      "means": "It should load only on demand. Keeping it in the root file (<b>[[1]]</b>) doesn't."
+     },
+     {
+      "quote": "In a developer's session it prints thousands of lines of log, and later answers get worse",
+      "means": "The decider. Output must be isolated, which a command (<b>[[0]]</b>) does not do. Forked skill: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Noisy on-demand procedures go in a project skill with context: fork.",
+    "guide": {
+     "obj": "3.2 Custom slash commands and skills",
+     "quote": "context: fork runs a skill in an isolated sub-agent context (no pollution of main conversation)."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-05",
+   "was": "m6-s5-05",
+   "sid": "s5",
+   "domain": "D3 · Claude Code Configuration",
+   "obj": "3.5 Test-driven iteration",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "A scheduled job asks Claude Code to fix a fare-rounding function that gives wrong totals for some currencies. The function has a test file with one case per currency, and several cases fail today. The job's runner can run the tests. The job runs with <code>-p</code>, with no one watching, and the fix touches one function. How should the prompt <b>direct the work</b>?",
+   "options": [
+    {
+     "t": "Have Claude run the suite, fix the code against what fails, and repeat until it all passes.",
+     "why": "Best. The failing tests are the spec and the feedback, and the full set catches breakage in other currencies."
+    },
+    {
+     "t": "List worked amounts, with the currency and the expected rounded total, for each failing case.",
+     "why": "Works, but less checking. Examples beat prose, but a handful of pairs cannot catch a fix that breaks another currency, and the tests already exist.",
+     "trap": "less checking"
+    },
+    {
+     "t": "Describe each currency's rounding rule in a short paragraph before asking for the fix.",
+     "why": "Works, but only usually works. Prose rules are easy to misread; examples and tests say the same thing exactly.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Start in plan mode, so Claude explores the rounding code and proposes an approach first.",
+     "why": "Works, but overbuilt. Plan mode suits large changes with many options; a one-function fix gains little, and nobody is there to approve.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "The function has a test file with one case per currency, and several cases fail today. The job's runner can run the tests.",
+   "explanation": "Concrete examples and test-driven iteration both beat prose. When runnable tests exist, iterating against them gives a checkable stop point.",
+   "eli5": {
+    "question": "An unattended job must fix a rounding bug. Which way of steering Claude gets a correct fix? The clue: <i>a test file exists, cases fail, and the runner can run it</i>.",
+    "answer": "Think of a student with a practice sheet and the answer key. The best way to learn is to try, check against the key, fix, and check again until all match. The failing tests are that key (<b>test-driven iteration</b>), and they also show if a fix breaks another currency. <b>Rule: when runnable tests exist, iterate against them.</b>",
+    "options": [
+     "Correct. Try, check against the key, fix, repeat.",
+     "A few worked answers help, but the full key is already there and checks more.",
+     "Explaining the rules in words: easier to misunderstand than the key.",
+     "Writing an essay plan for a one-line fix, with no teacher to read it."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the best prompt explains the rules well</b>. Explaining helps, and examples help more. But when a runnable test file already exists, <b>tests are examples that check themselves</b>. Claude can loop against them until they pass, and they catch side effects too.",
+    "diagram": "run tests → 3 fail\nchange code → run tests → 1 fails\nchange code → run tests → all pass → stop",
+    "mapTitle": "How do I tell Claude what correct looks like?",
+    "map": {
+     "head": [
+      "What you have",
+      "Best technique",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Runnable tests, some failing",
+       "Test-driven iteration",
+       "Checks itself and catches breakage"
+      ],
+      [
+       "No tests, a clear transformation",
+       "Concrete input/output examples",
+       "Clearer than prose"
+      ],
+      [
+       "Unclear requirements, a person present",
+       "Interview pattern",
+       "Claude asks first"
+      ],
+      [
+       "Large change, many approaches",
+       "Plan mode",
+       "Design before editing"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "The function has a test file with one case per currency, and several cases fail today",
+      "means": "The decider. The spec and the feedback already exist: <b>[[0]]</b>. Hand-picked pairs (<b>[[1]]</b>) check less."
+     },
+     {
+      "quote": "The job runs with -p, with no one watching",
+      "means": "No one approves a plan (<b>[[3]]</b>)."
+     },
+     {
+      "quote": "the fix touches one function",
+      "means": "Small and well scoped, so no planning step is needed."
+     }
+    ],
+    "rule": "Runnable failing tests exist → have Claude iterate against them until they pass.",
+    "guide": {
+     "obj": "3.5 Iterative refinement techniques",
+     "quote": "Test-driven iteration (write tests first, share failures)"
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-06",
+   "was": "m6-s5-06",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.1 Explicit criteria for a retained category",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "The reviewer's error-handling category causes most of the comments developers dismiss. A sample of dismissed comments shows two kinds. Some flag calls that the framework's error middleware already wraps. Others flag errors rethrown on purpose. The prompt only says “flag missing or inadequate error handling”. The category is a compliance control and must run on every pull request. What is the <b>most effective change</b>?",
+   "options": [
+    {
+     "t": "Switch the category off while a rewritten version is tested on past pull requests, then restore it.",
+     "why": "Works, but breaks the control. Pausing a noisy category restores trust, but this one must run on every pull request.",
+     "trap": "breaks the control"
+    },
+    {
+     "t": "Add a <code>detected_pattern</code> field to each finding, and tune the category from dismissal data.",
+     "why": "Works, but delays the fix. Pattern tracking finds unknown causes of noise; the sample has already named both.",
+     "trap": "delays the fix"
+    },
+    {
+     "t": "Redefine it as an exception caught and dropped, or a returned error left unused, with code samples.",
+     "why": "Best. Concrete criteria with code cut the false positives while the check keeps running."
+    },
+    {
+     "t": "Have a second, independent Claude instance confirm each finding in this category before it is posted.",
+     "why": "Works, but overbuilt. A second judge reading the same vague rule inherits its vagueness, at twice the cost.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "A sample of dismissed comments shows two kinds.",
+   "explanation": "Vague instructions produce false positives that erode trust. Replace them with categorical criteria and concrete code, not more review layers.",
+   "eli5": {
+    "question": "A review category gets dismissed a lot, and the team already knows the two reasons why. The clue: <i>the sample shows two kinds</i>, and the check can't be switched off.",
+    "answer": "Think of a smoke alarm that goes off when you make toast. You know the cause, so you move or tune the sensor; you don't unplug it, because it is required. Here, the vague rule is the badly placed sensor. Write down exactly what counts (<b>explicit criteria</b>) with code samples. <b>Rule: when the noise has known causes, rewrite the vague instruction as concrete criteria.</b>",
+    "options": [
+     "Unplugging a required alarm while you tune it.",
+     "Logging every false alarm to study later, when you already know it's the toaster.",
+     "Correct. Tell the alarm exactly what counts as smoke.",
+     "Hiring a second person to double-check every alarm, using the same vague idea of smoke."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a noisy category needs more checking or more data</b>. Here the cause is known: the instruction is vague, and the sample names both false-positive kinds. The fix is <b>categorical criteria with code examples</b>, which the exam guide puts ahead of review layers.",
+    "mapTitle": "A review category is noisy. What do I do?",
+    "map": {
+     "head": [
+      "Situation",
+      "Best move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Causes known, category must stay",
+       "Rewrite as explicit criteria with code",
+       "Fixes the cause in place"
+      ],
+      [
+       "Category optional, trust collapsing",
+       "Pause it, then fix it",
+       "Stops the damage first"
+      ],
+      [
+       "Causes unknown",
+       "Track <code>detected_pattern</code>",
+       "Finds the causes"
+      ],
+      [
+       "Errors are judgement, rule is clear",
+       "Independent review instance",
+       "A fresh eye helps"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "A sample of dismissed comments shows two kinds",
+      "means": "The decider. The causes are known, so gathering data (<b>[[1]]</b>) delays the fix."
+     },
+     {
+      "quote": "The prompt only says “flag missing or inadequate error handling”",
+      "means": "The vague rule is the cause. A second judge (<b>[[3]]</b>) reads the same vague rule."
+     },
+     {
+      "quote": "The category is a compliance control and must run on every pull request",
+      "means": "It can't be paused (<b>[[0]]</b>). Fix it in place: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Known false-positive causes → rewrite the instruction as explicit criteria with code examples.",
+    "guide": {
+     "obj": "4.1 Explicit criteria to improve precision / reduce false positives",
+     "quote": "High false-positive categories erode developer trust in accurate ones; define explicit severity criteria with concrete code examples."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-07",
+   "was": "m6-s5-07",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.2 Few-shot for actionable output",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job returns findings through <code>--json-schema</code>. Each finding has file, line, severity, issue and <code>suggested_fix</code>. Parsing has not failed in a month. The trouble is what <code>suggested_fix</code> says. Some entries show replacement code, but many say things like “consider refactoring”. The prompt already describes the wanted fix in a paragraph. What is the <b>most effective first step</b>?",
+   "options": [
+    {
+     "t": "Make <code>suggested_fix</code> an object with required <code>replacement_code</code> and <code>explanation</code> strings.",
+     "why": "Works, but shape, not content. A required string can still say “consider refactoring”; the schema already parses.",
+     "trap": "shape, not content"
+    },
+    {
+     "t": "Add three complete sample findings to the prompt, each with a code fix, one spanning several lines.",
+     "why": "Best. When written instructions give uneven output, a few targeted examples are the most effective way to get consistent, usable content."
+    },
+    {
+     "t": "Check each fix for a code block before posting, and re-prompt with that finding when one is missing.",
+     "why": "Works, but treats the symptom. A retry catches vague fixes after the fact and pays a second call, instead of fixing the first answer.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Send each finding to a second Claude instance that rewrites its fix as replacement code.",
+     "why": "Works, but overbuilt. It doubles calls on every run to repair output the first pass can be shown how to write.",
+     "trap": "overbuilt"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 0,
+   "decider": "The prompt already describes the wanted fix in a paragraph.",
+   "explanation": "Schemas govern shape, not whether a field's content is useful. Few-shot examples are the strongest first lever for consistent, actionable content once instructions exist.",
+   "eli5": {
+    "question": "The findings are well-formed, but the suggested fixes are often vague. The clue: <i>a paragraph already describes what's wanted</i>, and it isn't working.",
+    "answer": "Think of telling a new cook “make it look nice”. They try, but results vary. Show them three finished plates and they copy the standard. Examples in the prompt (<b>few-shot</b>) do that for Claude. <b>Rule: when instructions alone give uneven output, add 2–4 examples.</b>",
+    "options": [
+     "A stricter plate shape still lets the cook serve a vague dish.",
+     "Correct. Show three finished plates.",
+     "Sending back vague dishes works, but costs a second cook each time.",
+     "A second cook re-plates every dish: double the work."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a schema can force good content</b>. A schema controls shape: fields, types, required. It cannot tell a useful fix from “consider refactoring”. When a written description already exists and output is still uneven, <b>examples</b> are the next lever.",
+    "mapTitle": "Output is wrong. Which lever?",
+    "map": {
+     "head": [
+      "What is wrong",
+      "Lever",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Fields missing or JSON broken",
+       "Schema / <code>--json-schema</code>",
+       "Fixes shape"
+      ],
+      [
+       "Shape fine, content vague, instructions exist",
+       "Few-shot examples",
+       "Shows the standard"
+      ],
+      [
+       "Specific check fails after output",
+       "Validate and retry with the error",
+       "Safety net"
+      ],
+      [
+       "Judgement errors on hard cases",
+       "Independent review",
+       "Fresh eye"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Parsing has not failed in a month",
+      "means": "Shape is fine, so a tighter schema (<b>[[0]]</b>) targets the wrong thing."
+     },
+     {
+      "quote": "Some entries show replacement code, but many say things like “consider refactoring”",
+      "means": "The content is uneven."
+     },
+     {
+      "quote": "The prompt already describes the wanted fix in a paragraph",
+      "means": "The decider. Instructions alone aren't enough. Examples: <b>[[1]]</b>. Retries (<b>[[2]]</b>) and rewriters (<b>[[3]]</b>) come later, if at all."
+     }
+    ],
+    "rule": "Instructions exist but output is uneven → add a few targeted examples before adding checks.",
+    "guide": {
+     "obj": "4.2 Few-shot prompting for consistency and quality",
+     "quote": "Few-shot is the most effective technique for consistent, actionable output when instructions alone are inconsistent."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-08",
+   "was": "m6-s5-08",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.5 Batch suitability for non-blocking work",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "A new post-merge job scans each merged change for risky database migrations. It posts results to the on-call channel and blocks no merge. Finance wants to move it to the Message Batches API for the discount. On-call engineers must read each scan within 90 minutes, before the next deploy goes out. A late scan lets a risky change ship. How should the team <b>respond</b>?",
+   "options": [
+    {
+     "t": "Move the scan to batches, one request per merged change, with its commit SHA as the <code>custom_id</code>.",
+     "why": "Works, but no time limit. Batch results usually arrive sooner, but the API allows up to a day and promises no latency.",
+     "trap": "no time limit"
+    },
+    {
+     "t": "Move the scan to batches, and resend a change as a normal request when no result comes within 45 minutes.",
+     "why": "Works, but overbuilt. It adds a fallback path, eats half the window waiting, and pays full price for any change that falls back.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Keep normal requests, but scan all merges waiting for the next deploy together in one request.",
+     "why": "Works, but dilutes attention. Packing many changes into one request saves a little and weakens the scan of each.",
+     "trap": "dilutes attention"
+    },
+    {
+     "t": "Keep this scan on normal requests, and use batches for work read the next day, like the weekly report.",
+     "why": "Best. A 90-minute deadline needs a time guarantee the Batches API does not give, even for a job that blocks no merge."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "On-call engineers must read each scan within 90 minutes, before the next deploy goes out.",
+   "explanation": "The Batches API saves 50% but has up to a 24-hour window and no latency SLA. Fit depends on whether someone needs the result by a deadline, not on whether the job blocks a merge.",
+   "eli5": {
+    "question": "Finance wants the cheap, slow lane for a scan. The scan doesn't block merges, but people must read it within a set time. The clue: <i>within 90 minutes, before the next deploy</i>.",
+    "answer": "Think of cheap post that arrives “some time in the next day”. Fine for a weekly newsletter, bad for a ticket you need tonight. The <b>Message Batches API</b> is that cheap post: half price, up to 24 hours, no promise. <b>Rule: batch only work nobody needs by a deadline; “non-blocking” is not the same as “no deadline”.</b>",
+    "options": [
+     "Cheap post for something needed tonight. Usually fine, sometimes too late.",
+     "Cheap post plus a courier backup: more moving parts, and still a long wait.",
+     "Stuffing many letters in one envelope: each gets less care.",
+     "Correct. Normal post for the urgent letter, cheap post for the newsletter."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>non-blocking means batch-friendly</b>. The real test is whether someone needs the result by a deadline. Batches can take up to 24 hours with <b>no latency promise</b>, so a 90-minute need rules them out even though no merge waits.",
+    "diagram": "merge → scan → on-call reads → deploy (≤ 90 min)\nbatch: result in minutes ... or up to 24 h",
+    "mapTitle": "Should this job use the Message Batches API?",
+    "map": {
+     "head": [
+      "Job",
+      "Batch?",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Weekly report read next week",
+       "Yes",
+       "Nobody waits"
+      ],
+      [
+       "Overnight report read in the morning",
+       "Yes",
+       "Hours of slack"
+      ],
+      [
+       "Non-blocking, but read within a deadline",
+       "No",
+       "No latency promise"
+      ],
+      [
+       "Blocking pre-merge check",
+       "No",
+       "Someone waits now"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It posts results to the on-call channel and blocks no merge",
+      "means": "Non-blocking, which makes batch tempting (<b>[[0]]</b>)."
+     },
+     {
+      "quote": "On-call engineers must read each scan within 90 minutes, before the next deploy goes out",
+      "means": "The decider. A deadline needs a time guarantee. Fallback timers (<b>[[1]]</b>) patch around it."
+     },
+     {
+      "quote": "A late scan lets a risky change ship",
+      "means": "Lateness matters. Keep it synchronous and batch the weekly report: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "Batch only work with no deadline; non-blocking is not the same as latency-tolerant.",
+    "guide": {
+     "obj": "4.5 Efficient batch processing strategies",
+     "quote": "Message Batches API: 50% cost savings, up to 24-hour window, no latency SLA."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-09",
+   "was": "m6-s5-09",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.6 Cross-file integration pass",
+   "trap": "Right idea, wrong layer",
+   "fam": 4,
+   "select": 1,
+   "question": "The review job checks each changed file in its own pass, and it catches bugs inside a single file well. It runs in a fresh session, apart from the job that wrote the code. Yet bugs that span files keep slipping through. In one case, the settings loader renamed a config key, while two other files still read the old key. What change <b>fixes the cause</b>?",
+   "options": [
+    {
+     "t": "Keep per-file passes, then add one pass comparing each changed key or signature with its callers.",
+     "why": "Best. Per-file passes cannot see contracts between files; a separate cross-file pass is the pattern for these misses."
+    },
+    {
+     "t": "Add a second, independent reviewer for each file, and merge both reviewers' comments before posting.",
+     "why": "Works, but same blind spot. Independent review beats self-review, but the reviewer is already fresh, and a second per-file view still sees one file.",
+     "trap": "same blind spot"
+    },
+    {
+     "t": "List shared config keys and function signatures with their users in <code>CLAUDE.md</code>.",
+     "why": "Works, but goes stale. The list helps, but someone must keep it current, and per-file passes still never compare two changed files.",
+     "trap": "goes stale"
+    },
+    {
+     "t": "Replace the per-file passes with one pass over the whole diff, on a larger-context model.",
+     "why": "Works, but dilutes attention. One pass sees across files, but attention thins over many files, and a bigger window is not better attention.",
+     "trap": "dilutes attention"
+    }
+   ],
+   "answer": [
+    0
+   ],
+   "runnerUp": 1,
+   "decider": "Yet bugs that span files keep slipping through.",
+   "explanation": "Split large reviews into per-file local passes plus a cross-file integration pass. Independent instances fix self-review bias, a different failure.",
+   "eli5": {
+    "question": "Each file is reviewed well alone, but bugs between files are missed. The clue: the misses <i>span files</i>, and the reviewer is already independent.",
+    "answer": "Think of proofreading a book chapter by chapter. Each chapter reads fine, but chapter 2 renamed a character and chapter 5 still uses the old name. You need one extra read that checks names across chapters (a <b>cross-file integration pass</b>). <b>Rule: per-file passes for local bugs, plus one cross-file pass for contracts between files.</b>",
+    "options": [
+     "Correct. One more read that checks names across chapters.",
+     "A second proofreader per chapter still never compares chapters.",
+     "A list of character names helps, until someone forgets to update it.",
+     "Reading the whole book in one go: you see everything but notice less."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>missed bugs mean the reviewer needs fresh eyes</b>. Fresh eyes fix self-review bias, and this reviewer already has them. These misses live <b>between files</b>, which no per-file pass can see.",
+    "diagram": "pass 1: Settings.kt   ✓ (key renamed)\npass 2: Booking.kt    ✓ (reads old key)\npass 3: cross-file    ✗ key mismatch found",
+    "mapTitle": "Review misses bugs. Which fix?",
+    "map": {
+     "head": [
+      "Where the misses are",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Between files",
+       "Cross-file integration pass",
+       "Sees contracts across files"
+      ],
+      [
+       "Inside files, reviewer is the author's session",
+       "Independent review instance",
+       "No generation bias"
+      ],
+      [
+       "Inside files, large diff in one pass",
+       "Split into per-file passes",
+       "Attention dilution"
+      ],
+      [
+       "Project context missing",
+       "<code>CLAUDE.md</code> context",
+       "Background for every pass"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "it catches bugs inside a single file well",
+      "means": "Per-file passes work; keep them."
+     },
+     {
+      "quote": "It runs in a fresh session, apart from the job that wrote the code",
+      "means": "Already independent, so another per-file reviewer (<b>[[1]]</b>) adds little."
+     },
+     {
+      "quote": "Yet bugs that span files keep slipping through",
+      "means": "The decider. A cross-file pass: <b>[[0]]</b>. One big pass (<b>[[3]]</b>) dilutes attention."
+     }
+    ],
+    "rule": "Per-file passes plus a cross-file integration pass; independent review solves a different problem.",
+    "guide": {
+     "obj": "4.6 Multi-instance and multi-pass review architectures",
+     "quote": "Multi-pass: per-file local analysis + cross-file integration passes (avoid attention dilution, contradictions)."
+    }
+   }
+  },
+  {
+   "id": "m6p-s5-10",
+   "was": "m6-s5-10",
+   "sid": "s5",
+   "domain": "D4 · Prompt Engineering & Structured Output",
+   "obj": "4.4 Retry with specific feedback",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 2,
+   "question": "Some review findings cite a line outside every diff hunk, so the inline-comment API rejects them. Most are off by the hunk's starting line. The reviewer reads the raw diff and counts lines from each hunk header itself. A posting script already parses those headers. The team can afford an extra model call only on runs that need one. Which <b>two changes</b> fit best?",
+   "options": [
+    {
+     "t": "Number every diff line given to the reviewer with its new-file line, taken from the parsed headers.",
+     "why": "Best. The error is mechanical counting; giving Claude the numbers removes most of it at no extra call."
+    },
+    {
+     "t": "Send all findings to a second Claude instance that checks each cited line against the diff before posting.",
+     "why": "Works, but costs every run. It catches some errors, but spends a call on every run, and reading the same raw diff it can miscount too.",
+     "trap": "costs every run"
+    },
+    {
+     "t": "Check cited lines against the parsed ranges, and send one follow-up listing valid ranges for misses.",
+     "why": "Best. A code check with specific feedback fixes what is left, and spends the extra call only on runs that need it."
+    },
+    {
+     "t": "Add two sample findings to the prompt that cite the right line deep inside a long hunk.",
+     "why": "Works, but still counting. Examples show the format, but Claude still counts lines itself, so offset errors remain.",
+     "trap": "still counting"
+    }
+   ],
+   "answer": [
+    0,
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "The reviewer reads the raw diff and counts lines from each hunk header itself.",
+   "explanation": "Give the model the facts it is miscomputing, validate its output against them, and retry with the specific error. Spend extra calls only where validation shows a need.",
+   "eli5": {
+    "question": "Comments get rejected because Claude counts diff lines wrong. Which two changes fix it within budget? The clues: Claude <i>counts lines itself</i>, and an extra call is allowed <i>only when needed</i>.",
+    "answer": "Think of a reader giving page numbers from a book with no page numbers printed. They miscount. First, print the page numbers (<b>number the diff lines</b>). Then check each cited page and, if one is wrong, tell the reader exactly which pages are valid (<b>retry with specific feedback</b>). <b>Rule: supply the facts the model miscomputes, then validate and retry with the specific error.</b>",
+    "options": [
+     "Correct. Print the page numbers so nobody counts.",
+     "A second reader on every book costs every time, and may miscount too.",
+     "Correct. Check the numbers and send back only the wrong ones, with the valid range.",
+     "Showing good examples, while the reader still counts pages by hand."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>wrong output needs a second reviewer</b>. These errors are not judgement; they are <b>mechanical miscounts</b>. Give Claude the line numbers so it doesn't count, then check with code and retry with the specific error only when something is still wrong.",
+    "diagram": "diff → script adds line numbers → reviewer\nfindings → script checks ranges\n  miss → one follow-up: “line 88 not in hunk; valid 40–62”",
+    "mapTitle": "The model gets a mechanical fact wrong. What fixes it?",
+    "map": {
+     "head": [
+      "Cause",
+      "Fix",
+      "Cost"
+     ],
+     "rows": [
+      [
+       "Model computes a fact code knows",
+       "Give it the fact",
+       "No extra call"
+      ],
+      [
+       "Some errors remain",
+       "Code check + retry with the specific error",
+       "Extra call only on misses"
+      ],
+      [
+       "Judgement errors",
+       "Independent review instance",
+       "Extra call every run"
+      ],
+      [
+       "Format unclear",
+       "Few-shot examples",
+       "No extra call"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Most are off by the hunk's starting line",
+      "means": "A counting error, not a judgement error."
+     },
+     {
+      "quote": "The reviewer reads the raw diff and counts lines from each hunk header itself",
+      "means": "The decider. Hand it the numbers: <b>[[0]]</b>. Examples (<b>[[3]]</b>) leave it counting."
+     },
+     {
+      "quote": "A posting script already parses those headers",
+      "means": "Code knows the valid ranges, so it can check and give specific feedback: <b>[[2]]</b>."
+     },
+     {
+      "quote": "The team can afford an extra model call only on runs that need one",
+      "means": "A verifier on every run (<b>[[1]]</b>) breaks the budget."
+     }
+    ],
+    "rule": "Supply facts the model miscomputes; validate with code and retry with the specific error.",
+    "guide": {
+     "obj": "4.4 Validation, retry, and feedback loops for extraction quality",
+     "quote": "Retry-with-error-feedback: append specific validation errors on retry."
+    }
+   }
+  }
+ ]
+}
