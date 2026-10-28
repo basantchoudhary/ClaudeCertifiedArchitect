@@ -1,0 +1,347 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  },
+  {
+   "id": "s3",
+   "title": "Scenario 3 — Multi-Agent Research System",
+   "domains": "D1 · D2 · D5",
+   "brief": "A hospital's evidence team runs a research system on the Claude Agent SDK. A coordinator agent hands work to subagents through the Task tool: literature search, trial-registry search, document analysis, citation checking, synthesis and reporting. Journals and the trial registry are reached over MCP. Summaries go to guideline committees, and every claim must cite a paper and section."
+  },
+  {
+   "id": "s4",
+   "title": "Scenario 4 — Developer Productivity with Claude",
+   "domains": "D2 · D3 · D1",
+   "brief": "A language-learning company's platform team uses Claude Code on a large Ruby on Rails app with a React front end. Engineers read and change code with the built-in tools: Read, Write, Edit, Bash, Grep and Glob. MCP servers connect Claude to Linear and a staging Postgres database. Some engineers also script Claude with the Agent SDK for internal tools."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-tool-picker-1",
+   "sid": "s3",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Descriptions that separate similar tools",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The search subagent has two MCP tools, <code>search_journals</code> and <code>search_trial_registry</code>. Both descriptions read “Searches for studies on a drug.” Committees often ask about trials that are still running. The subagent sends these questions to <code>search_journals</code>, which holds only published papers, and reports that nothing was found. What is the most effective <b>first step</b>?",
+   "options": [
+    {
+     "t": "Add a routing step that sends questions about ongoing or recruiting trials to the registry tool.",
+     "why": "Works, but overbuilt. Keyword code catches the phrasings it was written for and misses the rest, and it has to be kept up as questions change.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Rewrite both descriptions: what each source holds, example queries, and when to use the other.",
+     "why": "Best. Descriptions are what Claude reads to choose a tool. Saying what each one covers, with examples and a boundary, fixes the cause in two edits."
+    },
+    {
+     "t": "Merge the two tools into one <code>search_studies</code> tool that queries both sources at once.",
+     "why": "Works, but more than a first step. Every question now pays for two searches, and the server and its callers have to change.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add five example questions to the subagent's prompt, each showing which search tool to call.",
+     "why": "Works, but misses the cause. Examples help on questions like the ones shown, add tokens to every call, and leave two identical descriptions in place.",
+     "trap": "only usually works"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 3,
+   "decider": "Both descriptions read “Searches for studies on a drug.”",
+   "explanation": "Tool descriptions are the primary way Claude chooses between tools. When two tools share a vague description, the first step is to say what each one covers, with input formats, example queries and boundaries.",
+   "eli5": {
+    "question": "Two drawers carry the same label, “Studies”. One holds published papers; the other holds trials still running. The helper keeps opening the wrong one.",
+    "answer": "Before you hire a sorter or knock the drawers together, <b>write better labels</b>: “Published papers: use for finished studies” and “Trials still running: use for ongoing or recruiting trials”. Claude picks tools by their descriptions the way you pick drawers by their labels. <b>Rule: similar tools, wrong picks → fix the descriptions first.</b>",
+    "options": [
+     "A sorter at the door helps, but only for the words it was told to look for.",
+     "Correct. Clear labels on both drawers.",
+     "One big drawer works, but you search everything every time and have to rebuild the cabinet.",
+     "Showing a few examples helps, but the labels still say the same thing."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>the model needs extra machinery to choose</b>: a router, a merged tool, or examples. Claude chooses a tool mainly from its description. Two tools with the same one-line description give it nothing to choose by, so the first fix is the descriptions themselves.",
+    "diagram": "question → Claude reads descriptions → picks a tool\n\"Searches for studies on a drug\" x2 → coin toss\nsay what each holds + when to use the other → right pick",
+    "mapTitle": "What fixes a wrong tool choice?",
+    "map": {
+     "head": [
+      "Cause",
+      "Fix",
+      "Size"
+     ],
+     "rows": [
+      [
+       "Similar tools, vague descriptions",
+       "Formats, examples, edge cases, boundaries in each description",
+       "Small, first step"
+      ],
+      [
+       "Descriptions are clear, choices still inconsistent",
+       "A few targeted examples in the prompt",
+       "Small, later step"
+      ],
+      [
+       "Too many tools for one agent",
+       "Give the agent only the tools its role needs",
+       "Medium"
+      ],
+      [
+       "One generic tool doing several jobs",
+       "Split it into purpose-specific tools",
+       "Medium"
+      ],
+      [
+       "Picking by keywords in code",
+       "Routing layer",
+       "Large; usually overbuilt"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Both descriptions read “Searches for studies on a drug.”",
+      "means": "The decider: Claude has nothing to tell the two tools apart. That is the cause, and examples in the prompt (<b>[[3]]</b>) work around it."
+     },
+     {
+      "quote": "which holds only published papers",
+      "means": "A boundary the description should state: running trials belong in the registry."
+     },
+     {
+      "quote": "What is the most effective first step?",
+      "means": "The cheapest change that fixes the cause: <b>[[1]]</b>. A router (<b>[[0]]</b>) and a merged tool (<b>[[2]]</b>) are bigger builds."
+     }
+    ],
+    "rule": "Claude picks the wrong one of two similar tools? Fix the descriptions first.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Include input formats, example queries, edge cases, boundaries."
+    }
+   }
+  },
+  {
+   "id": "tg-tool-picker-2",
+   "sid": "s1",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.1 Keyword wording that pulls the wrong tool",
+   "trap": "Disproportionate fix",
+   "fam": 2,
+   "select": 1,
+   "question": "The system prompt says: “When a customer mentions stopping deliveries, use <code>pause_subscription</code>.” Company policy is that cancellations go to a person through <code>escalate_to_human</code>. Customers who write “stop sending boxes, I want to cancel” now get a paused plan instead. They are billed again when the pause ends. The <code>pause_subscription</code> description says only “Pauses deliveries.” What is the best <b>fix</b>?",
+   "options": [
+    {
+     "t": "Keep the line and add three example chats where cancelling customers are sent to a person.",
+     "why": "Works, but only usually. The examples pull one way and the keyword line still pulls the other, so some cancellations keep getting paused.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "Add a <code>PreToolUse</code> hook that blocks a pause when the message mentions cancelling.",
+     "why": "Works, but overbuilt. Code now guesses intent from words, and it blocks customers who say “don't cancel, just pause”.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Add a <code>cancel_request</code> tool that hands cancellations to staff, described for that case.",
+     "why": "Works, but a new tool for a job <code>escalate_to_human</code> already does. Now three tools overlap instead of two.",
+     "trap": "new tool"
+    },
+    {
+     "t": "Drop the keyword line, and say in each tool's description which requests it is for.",
+     "why": "Best. The line ties a word to a tool, which is what causes the wrong pick. Clear descriptions with boundaries let Claude choose by what the customer wants."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "When a customer mentions stopping deliveries, use pause_subscription.",
+   "explanation": "Keyword-sensitive system-prompt wording creates unintended tool associations. Remove the association and put each tool's purpose and boundaries in its description.",
+   "eli5": {
+    "question": "A sign says “Anyone who says <i>stop</i>, send to the pause desk.” So people who say “stop, I'm leaving” end up paused, not cancelled.",
+    "answer": "Take the sign down, and label each desk by what it does: “Pause desk: a break from deliveries. Leaving for good? Go to the person at the front.” <b>Rule: a prompt line that ties a word to a tool causes misrouting → remove it and put the boundary in the tool descriptions.</b>",
+    "options": [
+     "Showing people the right desk helps, but the sign still points the wrong way.",
+     "A guard who stops anyone saying “cancel” also stops people who said “don't cancel”.",
+     "A new desk for leavers works, but the front desk already does that job.",
+     "Correct. Remove the misleading sign and label the desks."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a misrouting needs new code or a new tool</b>. Here the system prompt itself causes it: a keyword rule sends any mention of stopping to one tool. Remove the cause, and give each tool a description that says what it is for and what it is not for.",
+    "diagram": "\"stop ... cancel\" → prompt rule: stop = pause → paused\nrule gone + clear descriptions → escalate_to_human",
+    "mapTitle": "Where does the wrong pick come from?",
+    "map": {
+     "head": [
+      "Source of the misroute",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "A prompt line ties a keyword to a tool",
+       "Remove or reword it by intent",
+       "The line causes the pull"
+      ],
+      [
+       "Tool descriptions are one line",
+       "Add purpose, examples and boundaries",
+       "Descriptions drive the choice"
+      ],
+      [
+       "Two tools do the same job",
+       "Keep one, describe it clearly",
+       "Overlap causes misrouting"
+      ],
+      [
+       "An action must never run in some case",
+       "<code>PreToolUse</code> hook",
+       "Code for must-hold rules"
+      ],
+      [
+       "Clear descriptions, still inconsistent",
+       "A few targeted examples",
+       "A later step"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "When a customer mentions stopping deliveries, use pause_subscription",
+      "means": "The decider: a keyword rule in the prompt. Examples added beside it (<b>[[0]]</b>) still compete with it."
+     },
+     {
+      "quote": "cancellations go to a person through escalate_to_human",
+      "means": "A tool for this already exists, so a new one (<b>[[2]]</b>) adds overlap."
+     },
+     {
+      "quote": "The pause_subscription description says only “Pauses deliveries.”",
+      "means": "No boundary to choose by. A hook guessing intent from words (<b>[[1]]</b>) is code for a wording problem."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "Remove the keyword line and describe each tool clearly: <b>[[3]]</b>."
+     }
+    ],
+    "rule": "A prompt line ties a word to a tool? Remove it, and put the boundary in the tool descriptions.",
+    "guide": {
+     "obj": "2.1 Design effective tool interfaces with clear descriptions and boundaries",
+     "quote": "Ambiguous/overlapping descriptions cause misrouting; keyword-sensitive system-prompt wording creates unintended tool associations."
+    }
+   }
+  },
+  {
+   "id": "tg-tool-picker-3",
+   "sid": "s4",
+   "domain": "D2 · Tool Design & MCP",
+   "obj": "2.3 Too many tools for one agent",
+   "trap": "Treating the symptom",
+   "fam": 3,
+   "select": 1,
+   "question": "An Agent SDK script triages new bug reports in Linear. It was given every tool from both MCP servers, 18 in all, plus the built-in tools. Its job needs about five of them. It often calls <code>update_issue</code> when it should call <code>move_issue</code>. Sometimes it queries staging when no data is involved. Every tool already has a detailed description. What is the best <b>fix</b>?",
+   "options": [
+    {
+     "t": "Rewrite all the tool descriptions with sharper boundaries between issue and database tools.",
+     "why": "Works, but misses the cause. The descriptions are already detailed; the number of tools is what lowers the choice quality.",
+     "trap": "treats the symptom"
+    },
+    {
+     "t": "Add a classifier that reads each bug report and picks which tools to offer for it.",
+     "why": "Works, but overbuilt. The script does one job, so its tool set can be fixed once instead of chosen per report.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Give the triage script only the tools its job needs and leave the rest out.",
+     "why": "Best. Fewer tools make the choice more reliable, and a triage script has no reason to reach the database."
+    },
+    {
+     "t": "Merge <code>update_issue</code> and <code>move_issue</code> into one <code>change_issue</code> tool with a mode field.",
+     "why": "Works, but fixes one pair. The choice moves into a parameter, and the database calls still happen.",
+     "trap": "fixes one symptom"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 0,
+   "decider": "It was given every tool from both MCP servers, 18 in all, plus the built-in tools.",
+   "explanation": "Giving an agent many tools degrades selection reliability, and tools outside its role get misused. Scope each agent to the tools its job needs.",
+   "eli5": {
+    "question": "A helper sorting mail has been handed every tool in the building, and keeps grabbing the wrong one.",
+    "answer": "Better labels on 18 tools still leave 18 tools to pick from. Give the mail sorter the five things a mail sorter needs. <b>Rule: wrong picks among many tools, with good descriptions already → cut the agent's tool set to its job.</b>",
+    "options": [
+     "Clearer labels help, but the labels are already good and the pile is still too big.",
+     "A helper who hands out tools for each letter works, but the job never changes.",
+     "Correct. Give the sorter only the tools for sorting.",
+     "Gluing two tools together fixes one mix-up, not the pile."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>every wrong pick is a description problem</b>. Descriptions come first when they are vague. Here they are already detailed, and the agent holds far more tools than its job needs. Too many tools degrade the choice, and tools outside the role get misused.",
+    "diagram": "18 tools + built-ins → triage script → wrong picks\n5 triage tools → triage script → right picks",
+    "mapTitle": "Descriptions, or the tool set?",
+    "map": {
+     "head": [
+      "Symptom",
+      "Fix",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Similar tools, one-line descriptions",
+       "Better descriptions",
+       "Primary selection mechanism"
+      ],
+      [
+       "Many tools, good descriptions, wrong picks",
+       "Scope the tool set to the role",
+       "Too many tools degrade selection"
+      ],
+      [
+       "Agent uses tools outside its job",
+       "Remove them from its definition",
+       "Off-role tools get misused"
+      ],
+      [
+       "One role often needs one outside tool",
+       "Give a limited cross-role tool",
+       "Keeps the common case fast"
+      ],
+      [
+       "Tool must run first",
+       "Forced <code>tool_choice</code>",
+       "Fixes order, not choice"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "It was given every tool from both MCP servers, 18 in all, plus the built-in tools",
+      "means": "The decider: the tool count is the cause."
+     },
+     {
+      "quote": "Sometimes it queries staging when no data is involved",
+      "means": "A tool outside its job gets misused. Merging two issue tools (<b>[[3]]</b>) leaves this in place."
+     },
+     {
+      "quote": "Every tool already has a detailed description",
+      "means": "Rewriting them (<b>[[0]]</b>) does not reach the cause."
+     },
+     {
+      "quote": "What is the best fix?",
+      "means": "A fixed, smaller tool set for this one job: <b>[[2]]</b>. A per-report classifier (<b>[[1]]</b>) is more than a fixed job needs."
+     }
+    ],
+    "rule": "Good descriptions and still wrong picks among many tools? Give the agent only the tools its job needs.",
+    "guide": {
+     "obj": "2.3 Distribute tools across agents and configure tool choice",
+     "quote": "Too many tools (18 vs 4-5) degrades selection reliability."
+    }
+   }
+  }
+ ]
+}

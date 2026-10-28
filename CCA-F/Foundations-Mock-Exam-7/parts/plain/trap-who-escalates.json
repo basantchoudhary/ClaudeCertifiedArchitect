@@ -1,0 +1,339 @@
+{
+ "scenarios": [
+  {
+   "id": "s1",
+   "title": "Scenario 1 — Customer Support Resolution Agent",
+   "domains": "D1 · D2 · D5",
+   "brief": "A meal-kit company runs a customer support agent on the Claude Agent SDK. Its MCP tools are <code>get_customer</code>, <code>lookup_order</code>, <code>process_refund</code>, <code>escalate_to_human</code> and <code>pause_subscription</code>. The agent may refund up to $150 per box; larger refunds go to a human."
+  }
+ ],
+ "questions": [
+  {
+   "id": "tg-who-escalates-1",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Calibrating when to escalate",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "The agent's prompt says to “escalate when needed.” Upset customers with simple problems, such as one missing item, are often handed to a person. Calm customers who ask for something policy does not cover are usually handled by the agent alone. In some of those chats it promises refunds that policy does not allow. Which change best improves <b>when the agent escalates</b>?",
+   "options": [
+    {
+     "t": "Have the agent rate its confidence in each case and escalate when the rating is low.",
+     "why": "Works, but an unreliable signal. The agent is often most sure of itself on exactly the cases it gets wrong, such as the calm policy exceptions.",
+     "trap": "unreliable proxy"
+    },
+    {
+     "t": "Train a separate classifier on past tickets to decide which chats go to a person.",
+     "why": "Works, but overbuilt. It needs labelled history and retraining, and it learns past habits, including the bad ones described here.",
+     "trap": "overbuilt"
+    },
+    {
+     "t": "Escalate when a sentiment check finds the customer upset, and let the agent handle the rest.",
+     "why": "Works, but the wrong signal. Mood is not complexity: it sends more simple cases to people and still misses the calm exceptions.",
+     "trap": "unreliable proxy"
+    },
+    {
+     "t": "State escalation criteria in the prompt, with examples of escalate versus resolve.",
+     "why": "Best. The problem is an unclear boundary. Stating the triggers and showing a few cases on each side fixes that directly, at prompt cost."
+    }
+   ],
+   "answer": [
+    3
+   ],
+   "runnerUp": 0,
+   "decider": "Calm customers who ask for something policy does not cover are usually handled by the agent alone.",
+   "explanation": "When escalation is miscalibrated, define explicit escalation criteria and show few-shot examples of escalate versus resolve. Sentiment and self-reported confidence are unreliable proxies for complexity.",
+   "eli5": {
+    "question": "A new shop assistant calls the manager whenever a customer frowns, but quietly bends the rules for polite customers.",
+    "answer": "Don't hand them a mood meter or ask how sure they feel. Tell them <b>when to call the manager</b> (“anything the refund policy doesn't cover; anyone who asks for the manager”) and walk through a few real cases. <b>Rule: wrong escalations → clear criteria plus a few examples, not mood or self-confidence.</b>",
+    "options": [
+     "Asking “how sure are you?” fails: they feel surest when they're bending the rules.",
+     "Studying years of old cases works, but it's a big job and copies old mistakes.",
+     "A mood meter calls the manager for frowns, not for hard cases.",
+     "Correct. Say when to call the manager, and show a few cases."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>escalation needs a signal the model can't fake</b>: a mood score, a confidence number, a trained classifier. The real problem is that nobody told the agent where the line is. Upset is not the same as complex, and the model's own confidence is poorly calibrated.",
+    "diagram": "\"escalate when needed\" → mood decides → wrong cases\ncriteria + examples:\n  policy gap? asked for a person? → escalate\n  simple, even if upset → resolve",
+    "mapTitle": "Which signal tells you to escalate?",
+    "map": {
+     "head": [
+      "Signal",
+      "Reliable?",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Customer asks for a person",
+       "Yes: escalate at once",
+       "An explicit trigger"
+      ],
+      [
+       "Policy exception or gap",
+       "Yes: escalate",
+       "Needs a human decision"
+      ],
+      [
+       "Agent cannot make progress",
+       "Yes: escalate",
+       "Stuck is a trigger"
+      ],
+      [
+       "Customer sounds upset",
+       "No",
+       "Sentiment is not complexity"
+      ],
+      [
+       "Agent says it is unsure",
+       "No",
+       "Self-reported confidence is poorly calibrated"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "escalate when needed",
+      "means": "The cause: no criteria. The fix is to write them down and show examples: <b>[[3]]</b>."
+     },
+     {
+      "quote": "Upset customers with simple problems, such as one missing item, are often handed to a person",
+      "means": "Mood is already driving escalation. A sentiment check (<b>[[2]]</b>) makes that worse."
+     },
+     {
+      "quote": "Calm customers who ask for something policy does not cover are usually handled by the agent alone",
+      "means": "The decider: the hard cases look calm and feel easy, so neither mood nor self-rated confidence (<b>[[0]]</b>) catches them."
+     },
+     {
+      "quote": "Which change best improves when the agent escalates?",
+      "means": "The proportionate fix is in the prompt. A classifier (<b>[[1]]</b>) is a bigger build."
+     }
+    ],
+    "rule": "Escalating the wrong cases? Explicit criteria plus examples, not sentiment or self-rated confidence.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Sentiment-based escalation and self-reported confidence are unreliable proxies for complexity."
+    }
+   }
+  },
+  {
+   "id": "tg-who-escalates-2",
+   "sid": "s1",
+   "domain": "D1 · Agentic Architecture",
+   "obj": "1.4 Structured handoff summaries",
+   "trap": "Losing or fabricating information",
+   "fam": 7,
+   "select": 1,
+   "question": "When the agent escalates, staff pick up the case from a queue. Each case shows the line “Customer needs help” and a link to the chat. Staff spend several minutes reading each chat before they can act. Some of them ask the customer to explain the problem again. What should the agent <b>send with each escalation</b>?",
+   "options": [
+    {
+     "t": "The full chat transcript, pasted into the case in place of the link.",
+     "why": "Works, but staff still read the whole chat to find the facts. It saves a click, not the minutes.",
+     "trap": "delays the problem"
+    },
+    {
+     "t": "A paragraph written by the agent that describes the problem in its own words.",
+     "why": "Works, but free text varies. Some paragraphs leave out the box or the amount, and staff still have to hunt or ask.",
+     "trap": "only usually works"
+    },
+    {
+     "t": "A summary with set fields: customer ID, cause, refund amount, next step.",
+     "why": "Best. Staff see the facts they act on in the same place every time, without reading the chat."
+    },
+    {
+     "t": "The customer's account details and recent boxes, pulled fresh from <code>get_customer</code>.",
+     "why": "Works, but different problem. It gives staff data, not the diagnosis: what went wrong and what the agent recommends.",
+     "trap": "different problem"
+    }
+   ],
+   "answer": [
+    2
+   ],
+   "runnerUp": 1,
+   "decider": "Staff spend several minutes reading each chat before they can act.",
+   "explanation": "Escalations should carry a structured handoff summary (customer ID, root cause, refund amount, recommended action) so a human can act without reading the transcript.",
+   "eli5": {
+    "question": "A nurse hands a patient to the next shift by saying “they need help, read the file.”",
+    "answer": "Good handovers use a short card with the same boxes every time: who, what's wrong, what's been done, what to do next. The next nurse acts in seconds. <b>Rule: hand over to a human with a structured summary, not the transcript.</b>",
+    "options": [
+     "Handing over the whole file still means reading the whole file.",
+     "A free-written note helps, but each one leaves out something different.",
+     "Correct. The same short card, every time.",
+     "The patient's records are useful, but they don't say what's wrong today."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>more information makes a better handoff</b>. Staff don't need more; they need the few facts they act on, in a fixed place. A structured summary lets them act without reading the transcript.",
+    "diagram": "escalate_to_human(\n  customer_id, cause, refund_amount,\n  recommended_action )\n→ staff act without opening the chat",
+    "mapTitle": "What does a good handoff carry?",
+    "map": {
+     "head": [
+      "Handoff",
+      "What staff do",
+      "Result"
+     ],
+     "rows": [
+      [
+       "Link only",
+       "Read the whole chat",
+       "Minutes per case"
+      ],
+      [
+       "Full transcript",
+       "Read the whole chat",
+       "Minutes per case"
+      ],
+      [
+       "Free-text paragraph",
+       "Read, sometimes ask again",
+       "Facts vary"
+      ],
+      [
+       "Account data only",
+       "Work out the problem",
+       "No diagnosis"
+      ],
+      [
+       "Structured summary with set fields",
+       "Act on it",
+       "Fast and consistent"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "Each case shows the line “Customer needs help” and a link to the chat",
+      "means": "The handoff carries no facts, only a pointer to them."
+     },
+     {
+      "quote": "Staff spend several minutes reading each chat before they can act",
+      "means": "The decider: the cost is reading. Pasting the transcript in (<b>[[0]]</b>) keeps that cost."
+     },
+     {
+      "quote": "Some of them ask the customer to explain the problem again",
+      "means": "Facts are missing. Free text (<b>[[1]]</b>) sometimes misses them too; account data (<b>[[3]]</b>) has no diagnosis."
+     },
+     {
+      "quote": "What should the agent send with each escalation?",
+      "means": "Fixed fields staff act on: <b>[[2]]</b>."
+     }
+    ],
+    "rule": "Handing a case to a human? Send a structured summary they can act on without the transcript.",
+    "guide": {
+     "obj": "1.4 Implement multi-step workflows with enforcement and handoff patterns",
+     "quote": "compile structured handoff summaries (customer ID, root cause, refund amount, recommended action) for humans without the transcript."
+    }
+   }
+  },
+  {
+   "id": "tg-who-escalates-3",
+   "sid": "s1",
+   "domain": "D5 · Context Management & Reliability",
+   "obj": "5.2 Several customer matches",
+   "trap": "Unreliable proxy",
+   "fam": 6,
+   "select": 1,
+   "question": "A customer writes in from a new email address and gives only their name. <code>get_customer</code> returns two active accounts with that name. The agent picks the account with the most recent order and carries on. Last week this sent a refund to the wrong customer. How should the agent handle a lookup that returns <b>more than one customer</b>?",
+   "options": [
+    {
+     "t": "Escalate each lookup with several matches to a person, who checks which account it is.",
+     "why": "Works, but costs resolution. A person checks what the customer could confirm in one reply, and the queue grows.",
+     "trap": "escalates what it could resolve"
+    },
+    {
+     "t": "Ask the customer for an identifier, such as a box number or postcode, first.",
+     "why": "Best. The customer knows which account is theirs. One question settles it, and the agent can then resolve the case itself."
+    },
+    {
+     "t": "Pick the match whose postcode and recent boxes fit the chat best, and note the choice.",
+     "why": "Works, but still a guess. Better clues pick right more often, and a wrong pick still refunds a stranger.",
+     "trap": "unreliable proxy"
+    },
+    {
+     "t": "Have Claude rate how sure it is of the match, and ask the customer when it is unsure.",
+     "why": "Works, but an unreliable signal. Claude was already sure enough to refund the wrong account.",
+     "trap": "unreliable proxy"
+    }
+   ],
+   "answer": [
+    1
+   ],
+   "runnerUp": 2,
+   "decider": "get_customer returns two active accounts with that name.",
+   "explanation": "When a lookup returns several customers, ask the customer for an identifier rather than choosing by heuristic. A guess, however good, sometimes acts on the wrong account.",
+   "eli5": {
+    "question": "Two people called Sam Lee have parcels at the post office. The clerk hands over the newer parcel to whoever says “Sam Lee”.",
+    "answer": "The clerk should ask “what's your postcode?” One question, and the right Sam gets the right parcel. <b>Rule: several matches → ask for an identifier, don't pick.</b>",
+    "options": [
+     "Calling a supervisor works, but the customer could answer it in one line.",
+     "Correct. Ask for something only the right Sam knows.",
+     "A smarter guess is still a guess.",
+     "The clerk felt sure last time too."
+    ]
+   },
+   "deep": {
+    "premise": "It is tempting to think <b>a smarter rule can pick the right account</b>. Any rule is a proxy, and the cost of a wrong pick is a refund to a stranger. The customer has the missing fact, so ask them.",
+    "diagram": "get_customer(\"Priya Shah\") → 2 accounts\n  ask: box number or postcode? → 1 account → resolve",
+    "mapTitle": "Unsure who or what? Ask, guess, or escalate?",
+    "map": {
+     "head": [
+      "Situation",
+      "Agent's move",
+      "Why"
+     ],
+     "rows": [
+      [
+       "Several customer matches",
+       "Ask for an identifier",
+       "The customer knows; don't guess"
+      ],
+      [
+       "Request is unclear",
+       "Ask a clarifying question",
+       "Cheap and exact"
+      ],
+      [
+       "Policy exception or gap",
+       "Escalate",
+       "Needs a human decision"
+      ],
+      [
+       "Customer asks for a person",
+       "Escalate at once",
+       "Explicit trigger"
+      ],
+      [
+       "Agent feels unsure",
+       "Not a trigger by itself",
+       "Self-rated confidence is unreliable"
+      ]
+     ]
+    },
+    "evidence": [
+     {
+      "quote": "get_customer returns two active accounts with that name",
+      "means": "The decider: the lookup is ambiguous, and both accounts are live."
+     },
+     {
+      "quote": "The agent picks the account with the most recent order",
+      "means": "A heuristic. Better clues (<b>[[2]]</b>) or a confidence rating (<b>[[3]]</b>) are still guesses."
+     },
+     {
+      "quote": "Last week this sent a refund to the wrong customer",
+      "means": "A wrong guess costs money, so guessing better is not enough."
+     },
+     {
+      "quote": "How should the agent handle a lookup that returns more than one customer?",
+      "means": "Ask the customer, then resolve it: <b>[[1]]</b>. Escalating (<b>[[0]]</b>) hands over a case one question would settle."
+     }
+    ],
+    "rule": "Several matches? Ask the customer for an identifier; never pick by heuristic.",
+    "guide": {
+     "obj": "5.2 Escalation and ambiguity resolution patterns",
+     "quote": "Multiple customer matches → ask for identifiers (not heuristic selection)."
+    }
+   }
+  }
+ ]
+}
