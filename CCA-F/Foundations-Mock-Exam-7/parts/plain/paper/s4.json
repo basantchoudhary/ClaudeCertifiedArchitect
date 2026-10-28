@@ -834,14 +834,14 @@
        "Keeps every earlier finding"
       ],
       [
-       "Continue, but files have changed since",
+       "Continue, but many files changed, or you can't tell which",
        "New session + structured summary",
-       "Old tool results are stale"
+       "Most old tool results are now wrong; starting clean is safer"
       ],
       [
-       "Resume after a few known changes",
+       "Continue, and only one or two files changed that you can name",
        "Resume and tell Claude what changed",
-       "Keeps context, corrects it"
+       "Most findings still hold; Claude re-reads just those files"
       ],
       [
        "Try two approaches from one point",
