@@ -1,0 +1,451 @@
+{
+  "n": 1,
+  "slug": "D1-Solution-Design",
+  "name": "Solution Design &amp; Architecture",
+  "weight": "17%",
+  "intro": "Domain 1 is about turning a business problem into a Claude design and defending it. Questions give you a goal and its constraints, then ask for the simplest architecture, pattern or split of work that meets them, and for the business value it serves.",
+  "sections": [
+    {
+      "id": "1.1",
+      "guide": "Translate business problems into Claude-based AI solutions",
+      "oneliner": "Start from the business outcome and its limits, then choose the simplest Claude design that meets them, and leave to plain code the parts that need no model.",
+      "explain": [
+        "Translating a business problem means turning a sponsor's goal (“cut loan-review time in half”) into a design: what goes in, what Claude does, what comes out, and how you will know it worked. The architect starts with the <b>outcome</b> and the <b>constraints</b>: volume, latency, budget, risk, data sensitivity and who must approve the result.",
+        "Next, split the problem into parts and ask of each part whether it needs a language model at all. Claude is strong at reading unstructured text, making judgements, drafting and summarising. A database query, a fixed rule or a calculation is cheaper, faster and exact, so those parts stay in ordinary code.",
+        "Then choose the <b>simplest design that meets every constraint</b>: often a single well-prompted call, sometimes with retrieval or a tool. Add more only when a stated requirement forces it. An answer that is impressive but ignores a constraint in the stem (cost, a human sign-off, data residency) is wrong however clever it is."
+      ],
+      "flow": ["Business goal", "Constraints and success measure", "Split into parts", "Model or plain code, per part", "Simplest design that fits"],
+      "know": [
+        "Begin with the measurable outcome the sponsor wants, not with a model or a pattern.",
+        "Constraints (volume, latency, budget, risk, compliance) rule designs in or out before quality is compared.",
+        "Use Claude for unstructured language and judgement; use code, rules or queries for exact lookups and arithmetic.",
+        "A design should state its success measure up front so it can be evaluated later.",
+        "High-impact or regulated decisions usually keep a human approval step, and the design should say where it sits.",
+        "The simplest design that meets every stated constraint beats a more advanced one that misses any of them."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["Part of the task is an exact lookup or calculation", "Plain code, a query or a tool", "Exact, cheap and testable, with no model guesswork"],
+          ["The task is reading messy text and making a judgement", "A Claude call with a clear prompt", "This is where a language model adds value"],
+          ["The answer depends on private or changing documents", "Claude plus retrieval (an augmented LLM)", "The model needs the facts at request time"],
+          ["The decision is high-impact or regulated", "Claude drafts, a person approves", "Keeps accountability with a person"],
+          ["The steps cannot be known in advance", "An agent", "Only then does the extra autonomy pay for itself"]
+        ]
+      },
+      "example": {
+        "situation": "A logistics company wants to cut the time staff spend answering “where is my parcel?” emails. Tracking status lives in a database; customers write in free text, often in several languages.",
+        "decision": "Claude reads each email and extracts the tracking number and the question; code looks up the status in the database; Claude drafts the reply in the customer's language. Emails it cannot interpret go to a human queue.",
+        "why": "Each part uses the right tool: language work for Claude, the exact status from the database. Letting Claude answer about status without the lookup would invent facts, and a fully autonomous agent would add cost and unpredictability the task does not need."
+      },
+      "rule": "If a part of the problem is exact (a lookup, a rule, a sum), give it to code; if it is language or judgement, give it to Claude, and stop at the simplest design that meets every stated constraint.",
+      "questions": [
+        {
+          "stem": "An insurer wants to speed up claims intake. Each claim email, written in free text, must be sorted into one of twelve claim types, and the claimed amount must be checked against the policy's coverage limit, which is stored in the policy database. Which design best meets this requirement?",
+          "select": 1,
+          "options": [
+            "Claude classifies the email, then reads the policy wording and judges whether the amount is covered.",
+            "A rules engine classifies each email by keywords and checks the limit, with no model involved.",
+            "Claude classifies the email and extracts the amount; code compares it with the stored limit.",
+            "An autonomous agent with database access decides the claim type and coverage in one loop."
+          ],
+          "key": [2],
+          "why": "Deciding facts: the emails are free text (a language task for Claude) and the limit sits in a database (an exact comparison for code). Each part goes to the tool that does it best.",
+          "traps": [
+            "Works, but it asks the model to judge a number that code can compare exactly; it would fit if limits existed only in prose policy wording.",
+            "Works, but keyword rules struggle with free-text emails; it would fit if claims arrived on a fixed form.",
+            null,
+            "Works, but a fixed two-step task does not need an agent's autonomy, cost or unpredictability."
+          ]
+        },
+        {
+          "stem": "A retail bank's sponsor asks for “an AI agent” to answer branch staff questions about internal procedures. The procedures run to 400 pages and change monthly, and answers must cite the procedure section. Staff ask one question at a time, and the assistant changes nothing in any system. What should the architect propose?",
+          "select": 1,
+          "options": [
+            "A single Claude call with retrieval over the procedures, answering with section citations.",
+            "A multi-step agent that browses the procedure library and decides what to read next.",
+            "A prompt that includes all 400 pages on every request and asks Claude to cite sections.",
+            "A keyword search engine that returns the matching procedure sections, with no model."
+          ],
+          "key": [0],
+          "why": "Deciding facts: single questions, read-only, and answers drawn from changing documents with citations. That is an augmented LLM (one call plus retrieval), the simplest design that fits, even though the sponsor said “agent”.",
+          "traps": [
+            null,
+            "Works, but one question with one lookup does not need an agent loop; it would win if answers needed open-ended investigation across sources.",
+            "Works, but it pays for 400 pages on every question and dilutes attention; it would fit a short, stable document.",
+            "Works, but staff asked for answers, not a list of sections to read themselves."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1.2",
+      "guide": "Design end-to-end architectures (input → processing → output → feedback loops)",
+      "oneliner": "Design all four stages, input, processing, output and feedback, so the system can be checked and improved after launch, not just built.",
+      "explain": [
+        "An end-to-end architecture follows a request from start to finish. <b>Input</b> covers where data comes from, how it is validated and cleaned, and what is rejected. <b>Processing</b> is the model call with its prompts, tools and retrieval. <b>Output</b> covers the format, the checks (for example validation against a schema, which is a formal description of the required fields and types) and how the result reaches a person or another system.",
+        "The fourth stage, the <b>feedback loop</b>, is the one most often missing. It captures what happened after the output: user corrections, ratings, escalations and business outcomes. Those signals feed an evaluation set (a fixed collection of test cases with known good answers), monitoring dashboards and the next round of prompt or retrieval changes.",
+        "Without feedback, quality can drift silently: documents change, users ask new kinds of questions, and nobody notices until someone complains. Checks between stages matter too. Validating input early is cheaper than repairing bad output later, and an output check catches format errors before they reach a downstream system."
+      ],
+      "flow": ["Input: collect and validate", "Processing: prompt, tools, retrieval", "Output: check and deliver", "Feedback: corrections and outcomes", "Evals and improvements"],
+      "know": [
+        "Every design should name all four stages; an option that leaves out feedback is usually incomplete.",
+        "Validate and clean input before it reaches the model, and reject what the system cannot handle.",
+        "Check output in code (schema, required fields, allowed values) before it is delivered to another system.",
+        "Human corrections are the richest feedback: store the original output beside the corrected one.",
+        "Feedback should flow into the evaluation set, so each later change is tested against real failures.",
+        "Monitoring watches the live system and evaluation tests a change before release; a full loop needs both."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["Quality drifted after launch and nobody noticed", "Add the feedback loop and monitoring", "Nothing was measuring quality in production"],
+          ["Blank or unsupported files cause invented answers", "Validate at the input stage", "Cheaper to reject early than to repair later"],
+          ["A downstream system breaks on bad formats", "Validate output against a schema in code", "Catches errors before delivery"],
+          ["Users fix outputs by hand every day", "Capture the corrections as labelled data", "Turns daily work into eval cases"],
+          ["One known case fails because the prompt is plainly wrong", "Fix the prompt, then add the case to the evals", "A direct defect is fixed directly; the loop stops it coming back"]
+        ]
+      },
+      "example": {
+        "situation": "A contract-summary tool went live six months ago. Legal staff now edit most summaries by hand, but the team only learned this from a manager's complaint.",
+        "decision": "Store each generated summary with its edited version, turn the differences into eval cases, track the edit rate as a quality metric with an alert, and test every prompt change against the eval set before release.",
+        "why": "The defect is the missing loop, not one bad prompt. Tuning the prompt once more would help for a while, but the next drift would again go unseen."
+      },
+      "rule": "If quality drifts unseen, add the feedback loop; if bad data gets in, validate input; if bad formats get out, validate output in code.",
+      "questions": [
+        {
+          "stem": "A support-reply assistant has been live for four months. Human agents rewrite many of its drafts before sending them, but the team has no data on which kinds of ticket go wrong. Leadership wants quality to keep improving over time. What should the architect add first?",
+          "select": 1,
+          "options": [
+            "A switch to a stronger model, chosen because it scores higher on public benchmarks.",
+            "A weekly review in which a senior agent reads twenty randomly chosen drafts.",
+            "A longer system prompt that lists the mistakes leadership has heard about.",
+            "Storage of each draft beside the reply actually sent, with the gaps fed into evals."
+          ],
+          "key": [3],
+          "why": "Deciding fact: agents already correct the drafts, but nothing captures it. Saving draft and sent pairs creates a feedback loop that turns daily corrections into eval cases and a quality metric.",
+          "traps": [
+            "Works, but it is a one-off change chosen without evidence, and the next drift would again go unseen.",
+            "Works, but twenty drafts a week is a thin signal when every rewrite is already available; it fits when no corrections are recorded at all.",
+            "Works, but it tunes the prompt once from anecdotes and still adds no feedback path.",
+            null
+          ]
+        },
+        {
+          "stem": "An invoice pipeline extracts fields from uploaded supplier invoices and posts them to the finance system. Two problems recur: blank or unreadable scans produce invented field values, and some posts fail because a date arrives in the wrong format. Which two changes fix these problems?",
+          "select": 2,
+          "options": [
+            "Check each upload for readable content first, and send unreadable ones to a person.",
+            "Move to the most capable model so that it reads poor scans more accurately.",
+            "Add a form so that finance staff can rate each posted invoice afterwards.",
+            "Add few-shot examples showing the correct date format to the extraction prompt.",
+            "Validate extracted fields against a schema before posting, and flag any failures."
+          ],
+          "key": [0, 4],
+          "why": "Deciding facts: one problem starts at input (unreadable scans), the other at output (formats that break the finance system). Input validation stops the model inventing values from nothing, and schema validation in code catches bad formats before delivery.",
+          "traps": [
+            null,
+            "Works for faint scans, but a blank page has nothing to read, and the model may still invent values.",
+            "Works as feedback, but it finds bad posts after they reach finance rather than stopping them.",
+            "Works to reduce date errors, but examples are probabilistic; a schema check stops every bad post.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1.3",
+      "guide": "Select appropriate architectural patterns (workflow, agentic, augmented LLM)",
+      "oneliner": "Pick the least autonomy that solves the problem: an augmented LLM for one-step tasks, a workflow when the steps are known, and an agent only when they are not.",
+      "explain": [
+        "Anthropic's guidance on building effective agents describes a ladder of patterns. The base is the <b>augmented LLM</b>: one model call enhanced with retrieval, tools or memory. Many products need nothing more, for example answering a question from company documents.",
+        "A <b>workflow</b> runs model calls along paths fixed in code. Common shapes are <b>prompt chaining</b> (each step feeds the next, with checks between), <b>routing</b> (classify the input, then send it to a specialised prompt or model), <b>parallelisation</b> (split independent parts, or run the same task several times and compare), <b>orchestrator-workers</b> (a central model breaks a task into subtasks it decides at run time, then combines the results) and <b>evaluator-optimizer</b> (one call drafts, another critiques against clear criteria, and the loop repeats until the draft passes).",
+        "An <b>agent</b> lets the model choose its own steps and tools in a loop, using feedback from each step, until the goal is met. Agents suit open-ended problems where the number and order of steps cannot be predicted. They cost more, take longer and are harder to predict and test, so use them only when the task needs that flexibility, and give them stopping conditions such as a step limit, plus guardrails."
+      ],
+      "flow": ["Augmented LLM: one call plus tools", "Workflow: paths fixed in code", "Agent: the model picks its steps"],
+      "know": [
+        "Augmented LLM: a single call with retrieval, tools or memory; the building block of every other pattern.",
+        "Workflow: the code decides the steps, so it is predictable, testable and cheaper.",
+        "Agent: the model decides the steps in a loop, so it is flexible but costlier and less predictable.",
+        "Routing fits inputs that fall into distinct categories that are better handled separately.",
+        "Evaluator-optimizer fits tasks with clear quality criteria where a critique measurably improves the next draft.",
+        "Orchestrator-workers differs from parallelisation because its subtasks are decided at run time, not fixed in advance.",
+        "Start with the simplest pattern, and add autonomy only when evaluation shows the simpler one falls short."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["One question, answered from documents", "Augmented LLM with retrieval", "There is no sequence of steps to manage"],
+          ["Every item goes through the same known steps", "Workflow: prompt chaining", "A fixed order is predictable and testable"],
+          ["Inputs fall into distinct types that need different handling", "Workflow: routing", "Each type gets its own tuned prompt or model"],
+          ["A draft must meet clear criteria, and critique helps", "Workflow: evaluator-optimizer", "Repeated refinement against a checkable standard"],
+          ["The next step depends on what was just found", "Agent", "Only a model-directed loop can change the path as it goes"]
+        ]
+      },
+      "example": {
+        "situation": "A software firm wants help with two jobs: translating release notes into five languages, and investigating customer-reported bugs whose cause could be anywhere in the codebase.",
+        "decision": "Release notes use a workflow: translate into the five languages in parallel, then run a terminology check. Bug investigation uses an agent with read access to the code, logs and tests, and a step limit.",
+        "why": "The translation steps are known in advance, so an agent would add cost and unpredictability. Bug investigation cannot be scripted because each finding decides the next step, so a fixed workflow would miss causes."
+      },
+      "rule": "Pick the least autonomy that solves the problem: one answer from documents gets an augmented LLM, fixed steps get a workflow, and open-ended work gets an agent.",
+      "questions": [
+        {
+          "stem": "A marketing team writes product descriptions that must meet a written brand checklist: length, banned phrases, required features and tone. First drafts often miss one or two checklist items, and reviewers have found that pointing out the missed items reliably makes the next draft pass. Which pattern fits best?",
+          "select": 1,
+          "options": [
+            "Prompt chaining: outline first, then draft, then polish, in that fixed order.",
+            "Evaluator-optimizer: one call drafts, a second checks it against the checklist.",
+            "Routing: classify each product by type and send it to a type-specific prompt.",
+            "An autonomous agent that researches each product and decides how to write about it."
+          ],
+          "key": [1],
+          "why": "Deciding facts: clear criteria exist, and feedback on the misses reliably fixes the next draft. That is exactly when the evaluator-optimizer loop pays off.",
+          "traps": [
+            "Works for structured writing, but nothing in the chain checks the draft against the checklist.",
+            null,
+            "Works when product types need different handling, but the misses here are checklist items, not type differences.",
+            "Works for open-ended research, but the steps here are known; an agent adds cost and unpredictability."
+          ]
+        },
+        {
+          "stem": "An IT team wants Claude to resolve incidents reported in chat. Some incidents need a single log search; others need checks across several services, config reads and tested hypotheses, and the path differs each time because it depends on what each check finds. Which pattern should the team build?",
+          "select": 1,
+          "options": [
+            "A workflow that runs the same five diagnostic steps for every incident.",
+            "An augmented LLM that answers from the runbook with one retrieval call.",
+            "An agent that chooses its next check from what it finds, within a step limit.",
+            "Routing that sends each incident to one of four fixed diagnostic scripts by type."
+          ],
+          "key": [2],
+          "why": "Deciding fact: the path depends on what each check finds. Only a model-directed loop can adapt its steps, and the step limit keeps cost and runaway behaviour in check.",
+          "traps": [
+            "Works when every incident follows the same steps; here the path changes each time.",
+            "Works for simple how-to questions, but one retrieval cannot investigate across services.",
+            null,
+            "Works when incidents fall into a few known types; here the path is not known in advance."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1.4",
+      "guide": "Design multi-agent systems and orchestration strategies",
+      "oneliner": "Use several agents only when the work splits into independent or specialist parts; then use a coordinator, give each agent narrow tools and pass it its context explicitly.",
+      "explain": [
+        "A <b>multi-agent system</b> uses more than one model-driven agent, each with its own instructions, tools and context. The usual shape is <b>hub-and-spoke</b>: a coordinator (also called an orchestrator) breaks the goal down, hands subtasks to <b>subagents</b>, and combines their results. Subagents do not share the coordinator's memory; they see only what they are given.",
+        "Multi-agent designs pay off in two cases. <b>Parallel breadth</b>: many independent threads, such as researching ten competitors at once, where each subagent explores in its own fresh context window. <b>Specialisation</b>: parts that need different tools, permissions or instructions, such as a code reviewer that must not have deploy rights. The costs are real: many more tokens, extra latency for coordination, and more places for things to go wrong.",
+        "So the default is <b>one agent with good tools</b>, and multi-agent is chosen when the stem shows parallel or specialist value. When you do choose it, scope each subagent's tools to its role, put the background and the required output format in each subagent's brief, have the coordinator check results before merging, and trace every call across agents so a failure can be located."
+      ],
+      "flow": ["Coordinator receives the goal", "Splits it into subtasks", "Subagents work in parallel with scoped tools", "Coordinator checks and merges", "Final answer"],
+      "know": [
+        "Hub-and-spoke: one coordinator assigns work and merges results; subagents do not talk to each other directly.",
+        "Subagents start with fresh context, so anything they need must be passed in their task description.",
+        "Multi-agent systems use many more tokens than a single agent, so the value of the task must justify the cost.",
+        "Parallel subagents suit breadth-first work with independent parts; tightly linked steps suit one agent.",
+        "Scoping each subagent's tools to its role is also a security boundary.",
+        "Trace calls across all agents with one request ID, or failures cannot be located."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["One user goal, a handful of tools, steps that depend on each other", "A single agent", "Coordination would add cost with no gain"],
+          ["Many independent research threads", "Coordinator with parallel subagents", "Breadth runs in parallel, in separate contexts"],
+          ["One part needs permissions the others must not have", "A separate specialist subagent", "Isolates tools and access by role"],
+          ["Subagents return inconsistent or repetitive results", "Fuller briefs plus a coordinator check", "Subagents know only what they are told"]
+        ]
+      },
+      "example": {
+        "situation": "A consulting firm writes due-diligence reports on acquisition targets: financials, legal cases, news, patents and leadership, each from different sources. Analysts wait two days for each report.",
+        "decision": "A coordinator splits the report into five research areas and launches one subagent per area, each with only that area's search tools and a clear brief and output format. The coordinator then checks and merges the findings.",
+        "why": "The five areas are independent and benefit from parallel work in separate contexts. A single agent would work through them one by one and fill its context. The extra token cost is justified by a two-day wait on a high-value report."
+      },
+      "rule": "If the work splits into independent or specialist parts, use a coordinator with scoped subagents and full briefs; if the steps depend on each other, keep one agent with good tools.",
+      "questions": [
+        {
+          "stem": "A research assistant uses a coordinator agent that hands topics to subagents and merges their reports. In testing, the subagents return reports in different shapes, and they spend many tokens rediscovering background the coordinator already had. Which two changes address these problems?",
+          "select": 2,
+          "options": [
+            "Let the subagents message each other directly so they can share background as they work.",
+            "Give each subagent a full brief that includes the known background and the output format.",
+            "Replace the subagents with one agent that works through every topic in a single context.",
+            "Move every subagent to the most capable model so that it can infer the expected format.",
+            "Have the coordinator check each report against the format and re-request any that fail."
+          ],
+          "key": [1, 4],
+          "why": "Deciding fact: subagents see only what they are given. Passing background and format explicitly fixes both the rediscovery and the shapes, and a coordinator check catches any report that still fails.",
+          "traps": [
+            "Works in mesh designs, but it adds coordination paths and still gives no one the coordinator's background.",
+            null,
+            "Works for a few tightly linked topics, but it gives up parallel research in separate contexts.",
+            "Works partly, but no model can reliably infer a format nobody stated.",
+            null
+          ]
+        },
+        {
+          "stem": "A bank's customer-chat assistant answers balance questions, explains fees, sends statements and freezes lost cards, using four tools. Conversations are short, and each step depends on what the customer says next. An engineer proposes splitting it into four agents, one per tool, behind a coordinator, for modularity. What should the architect recommend?",
+          "select": 1,
+          "options": [
+            "Keep one agent with the four well-described tools and a clear system prompt.",
+            "Adopt the four-agent design, since each agent can then be tested in isolation.",
+            "Adopt the four-agent design and run all four agents in parallel on every message.",
+            "Use a routing workflow that sends each message to a separate prompt per topic."
+          ],
+          "key": [0],
+          "why": "Deciding facts: short conversations with linked steps and just four tools. Nothing here needs parallel or specialist agents, so a coordinator would add tokens, latency and debugging effort for no gain.",
+          "traps": [
+            null,
+            "Works when parts are independent or need different permissions, but these steps depend on each other.",
+            "Works for independent research threads, but here three of the four agents would do wasted work on every message.",
+            "Works when each message falls cleanly into one topic, but these conversations move between topics turn by turn."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1.5",
+      "guide": "Apply decomposition techniques for complex problem solving",
+      "oneliner": "Break a large task into smaller steps you can check one at a time, using a fixed plan when the steps are known and an adaptive plan when they are not.",
+      "explain": [
+        "<b>Decomposition</b> means splitting a complex task into smaller subtasks, each with a focused prompt and a clear output. One huge prompt that extracts, analyses and writes at once tends to do each part less well, and when it fails you cannot tell which part broke.",
+        "<b>Fixed decomposition</b> is used when the steps are known in advance. Prompt chaining runs them in order, with a check between steps (often called a gate) so a bad intermediate result is caught early. For large inputs, a common fixed shape is <b>per-item passes, then an integration pass</b>: review each file or section on its own, then run one pass that looks across all of them, for example for contradictions or knock-on effects.",
+        "<b>Adaptive decomposition</b> is used when the steps depend on what is found. The model makes a first plan, works on it, and revises the plan as findings arrive, as in orchestrator-workers or an agent. Either way, each step's output should be small and checkable, and later steps should receive exactly the context they need."
+      ],
+      "flow": ["Complex task", "Split into focused steps", "Run one step", "Check its output", "Pass it to the next step", "Integrate the results"],
+      "know": [
+        "A focused prompt per step usually beats one long prompt that does everything.",
+        "Checks between steps catch bad intermediate output before it spreads.",
+        "Per-item passes plus an integration pass give each item full attention and still catch issues that cross items.",
+        "Fixed decomposition suits known, repeatable steps; adaptive decomposition suits investigation.",
+        "Decomposition makes failures easier to locate, because each step can be evaluated on its own.",
+        "More steps add latency and cost, so split only where a step needs separate focus or checking."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["One prompt does extraction, analysis and writing, and quality is uneven", "A prompt chain with checks between steps", "Each step gets full attention and can be tested"],
+          ["Reviewing a forty-file change misses issues", "Per-file passes, then an integration pass", "Depth on each file plus a cross-file view"],
+          ["The plan depends on what the first findings show", "Adaptive decomposition", "A fixed chain cannot follow new leads"],
+          ["A simple task is already done well by one prompt", "Keep the single prompt", "Extra steps would only add latency and cost"]
+        ]
+      },
+      "example": {
+        "situation": "A pharma team asks Claude to review 60 clinical-trial site reports and produce one risk summary. A single prompt over all 60 reports misses issues in the middle and gives shallow comments.",
+        "decision": "Run one pass per site report with a fixed checklist and structured output, validate each result, then run an integration pass over the structured results to find patterns across sites and write the summary.",
+        "why": "Per-report passes give each report full attention, and the integration pass still catches patterns across sites. A bigger context window would hold all 60 reports but would not fix the spread-thin attention."
+      },
+      "rule": "If the steps are known, chain focused prompts with a check between each; if one input is too big to review well, do per-item passes and then an integration pass; if the steps depend on findings, decompose adaptively.",
+      "questions": [
+        {
+          "stem": "A legal team uses one long prompt that reads a contract, extracts key terms, compares them with the company's standard positions and writes a negotiation memo. The memos read well but often miss non-standard clauses, and the team cannot tell at which point the misses happen. What should the architect change?",
+          "select": 1,
+          "options": [
+            "Add more detail to the single prompt about which clauses matter most.",
+            "Use a model with a larger context window for the contract and the memo together.",
+            "Ask the model to state its confidence for each clause at the end of the memo.",
+            "Split the work into extract, compare and write steps, checking the extraction."
+          ],
+          "key": [3],
+          "why": "Deciding facts: one prompt does several jobs, and nobody can locate the failure. A chain of focused steps gives each job full attention and lets the extraction be checked before the comparison relies on it.",
+          "traps": [
+            "Works for small gaps, but every job stays in one prompt, so the misses still cannot be located.",
+            "Works when the contract does not fit, but nothing says it is too long; the problem is focus, not space.",
+            "Works as a signal, but self-reported confidence does not show which step failed.",
+            null
+          ]
+        },
+        {
+          "stem": "An engineering team reviews pull requests with Claude. Small changes are reviewed well, but changes that touch thirty or more files get shallow comments and miss bugs where a change in one file breaks another file. Which approach best fixes both problems?",
+          "select": 1,
+          "options": [
+            "Review each file in its own pass and post the combined comments directly.",
+            "Review each file in its own pass, then run one more pass for cross-file issues.",
+            "Review the whole change in one pass with the most capable model and extended thinking.",
+            "Ask authors to split large changes into several smaller pull requests."
+          ],
+          "key": [1],
+          "why": "Deciding fact: there are two failures, shallow depth per file and missed cross-file bugs. Per-file passes give the depth, and the integration pass catches the interactions.",
+          "traps": [
+            "Works for depth, but no pass looks across files, so cross-file bugs stay hidden.",
+            null,
+            "Works for moderate changes, but one pass over thirty files still spreads attention thin.",
+            "Works as team practice, but the review still fails on large changes that cannot be split."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "1.6",
+      "guide": "Align solutions to business value pillars (efficiency, transformation, productivity, cost, performance SLAs)",
+      "oneliner": "Justify each design by the business value the sponsor cares about most, and measure that value, not just technical quality.",
+      "explain": [
+        "Sponsors fund AI for different reasons. The guide names five <b>value pillars</b>. <b>Efficiency</b>: the same work done faster or with less effort. <b>Transformation</b>: something that was not possible before, such as a new service. <b>Productivity</b>: people achieve more in the same time. <b>Cost</b>: a lower cost per outcome. <b>Performance SLAs</b>: meeting agreed service levels (an SLA, or service-level agreement, is a promised target) for latency, availability or quality.",
+        "The pillar shapes the design. A cost-focused sponsor wants the cheapest configuration that meets a quality bar, perhaps a smaller model with prompt caching and batch processing. An SLA-focused sponsor wants predictable latency, perhaps a fast model and streaming on the live path. A transformation goal can justify a more capable, more expensive design, because the value is something new, such as new revenue.",
+        "Then choose a <b>metric for that pillar</b> and record a baseline before launch: cost per resolved ticket, handling time, cases per analyst per day, or p95 latency (the time within which 95 percent of requests finish). Technical metrics such as accuracy still matter, but as guardrails: a design must not save money by breaking quality."
+      ],
+      "know": [
+        "Efficiency: the same output with less time or effort.",
+        "Transformation: a new capability, product or service that was not feasible before.",
+        "Productivity: more output per person, often by assisting rather than replacing the work.",
+        "Cost: a lower cost per unit of outcome, always paired with a quality floor.",
+        "Performance SLAs: agreed targets for latency, availability or quality, usually measured at a percentile.",
+        "Measure a baseline before launch so the value can be shown afterwards."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["The goal is a lower cost per ticket", "The cheapest configuration that meets the quality floor", "Serves the cost pillar directly"],
+          ["Answers must arrive within an agreed time", "A fast model and streaming on the live path", "Meets the performance SLA"],
+          ["The goal is a service customers could not get before", "A more capable design, judged by adoption and revenue", "Transformation can justify a higher cost"],
+          ["Analysts want to handle more cases each day", "Assisted drafting, with a person finishing", "Productivity: more output per person"],
+          ["The sponsor's stated priority is the highest possible accuracy", "The most accurate option, even at higher cost", "Here the expensive option serves the right pillar"]
+        ]
+      },
+      "example": {
+        "situation": "A telecom sponsor wants to cut the cost per resolved support chat by 30 percent while keeping customer satisfaction at today's level. The team favours the most capable model with extended thinking on every chat.",
+        "decision": "Route simple chats to a smaller, cheaper model and send only complex ones to the capable model; cache the shared policy prompt. Track cost per resolved chat against a baseline, with satisfaction as a guardrail metric.",
+        "why": "The pillar is cost with a quality floor. The team's favourite design might score slightly higher on quality, but it would raise the cost per chat and miss the sponsor's goal."
+      },
+      "rule": "If the sponsor wants lower cost, pick the cheapest design that meets the quality floor; if they want an SLA, design for the latency target; if they want something new, judge it by adoption; and always measure that pillar against a baseline.",
+      "questions": [
+        {
+          "stem": "A hospital network's sponsor gives one goal for a discharge-summary assistant: nurses should complete more discharges per shift without extra staff. Two candidate designs score the same on accuracy. Which success measure should the architect put at the centre of the business case?",
+          "select": 1,
+          "options": [
+            "Cost per summary, compared with the current transcription service.",
+            "The p95 time to generate a summary, against a two-second target.",
+            "Discharges completed per nurse per shift, against a baseline.",
+            "The number of new patient services the hospital can now offer."
+          ],
+          "key": [2],
+          "why": "Deciding fact: the goal is more output per nurse, which is the productivity pillar. The measure must match that pillar and have a baseline so the gain can be shown.",
+          "traps": [
+            "Works for a cost goal, but the sponsor did not ask to save money.",
+            "Works for a performance SLA, but fast summaries do not show nurses are doing more.",
+            null,
+            "Works for a transformation goal, but this sponsor wants more of today's work done."
+          ]
+        },
+        {
+          "stem": "A retailer's sponsor sets two goals for a product-question assistant: answers within two seconds for 95 percent of requests, as promised in a partner contract, and a lower cost per answer than today's human team. Which two design choices best serve these goals?",
+          "select": 2,
+          "options": [
+            "Send every answer through a second model call that verifies it before sending.",
+            "Use the most capable model with extended thinking on every request.",
+            "Process the questions in overnight batches at a discounted price.",
+            "Use a smaller, faster model that passes the eval, routing hard queries to a larger one.",
+            "Cache the long, unchanging product-policy prefix that every request shares."
+          ],
+          "key": [3, 4],
+          "why": "Deciding facts: a latency SLA plus a cost goal. A fast model that passes the eval serves both, and caching the shared prefix cuts both input cost and time to first token.",
+          "traps": [
+            "Works to raise accuracy, but a second call adds latency and cost, against both goals.",
+            "Works for hard reasoning, but it is slower and costlier, against both goals.",
+            "Works for cost, but overnight answers break the two-second promise.",
+            null,
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

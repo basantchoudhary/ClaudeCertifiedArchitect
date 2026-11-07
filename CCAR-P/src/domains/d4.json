@@ -1,0 +1,666 @@
+{
+  "n": 4,
+  "slug": "D4-Evaluation-Optimization",
+  "name": "Evaluation, Testing &amp; Optimization",
+  "weight": "16%",
+  "intro": "This domain is about proving that a Claude system works, finding out why it fails, and making it cheaper and faster without breaking it. Its questions ask you to pick the right metric, the right grading method, the right test, the first place to look when answers go wrong, and the optimisation lever that matches the bottleneck.",
+  "sections": [
+    {
+      "id": "4.1",
+      "guide": "Define evaluation metrics (accuracy, latency, cost, safety, security)",
+      "oneliner": "Before you build or change anything, write down what “good” means as numbers with targets, for accuracy, latency, cost, safety and security.",
+      "explain": [
+        "An <b>evaluation metric</b> is a number you can compute that tells you whether the system is doing its job. Without metrics, “the answers look good” is an opinion, and nobody can show whether a change helped or hurt. Anthropic's guidance is to define <b>success criteria</b> first: specific, measurable, achievable, and tied to what the business needs, such as “95% of invoices extracted with every field correct”.",
+        "<b>Accuracy</b> is task-specific. A classifier uses exact match. Extraction often uses <b>F1</b>, which balances precision (how many of the items found were right) and recall (how many of the right items were found). Open-ended text uses a rubric score from a human or a model judge. <b>Latency</b> is measured in percentiles: <b>p50</b> is the median request, and <b>p95</b> is the time that 95% of requests beat, which shows the slow tail that users complain about. <b>Time to first token</b> (TTFT) is how long until the first words appear, and it is what chat users feel. <b>Cost</b> is best measured per completed task, because an agent may make several calls and retries for one task.",
+        "<b>Safety</b> needs two rates: harmful outputs that get through, and legitimate requests that are wrongly refused. <b>Security</b> is measured by attacking the system: run a set of prompt-injection attempts and report the share that succeed, and test for data leakage. Keep each dimension separate with its own target. One blended score hides trade-offs, such as an accuracy gain that doubled the cost."
+      ],
+      "flow": [
+        "Business goal",
+        "Success criteria",
+        "One metric per dimension",
+        "Target for each",
+        "Measure on every change"
+      ],
+      "know": [
+        "Success criteria are written before building, and each one has a measurable target.",
+        "p95 and p99 latency show the slow tail; an average hides it.",
+        "Time to first token matters most for streamed chat; total time matters when a later step waits for the whole answer.",
+        "Cost per completed task is fairer than cost per call when an agent makes several calls or retries.",
+        "Safety is two rates that pull against each other: harmful outputs allowed and good requests refused.",
+        "Security metrics come from attack test sets, such as prompt-injection success rate.",
+        "A thumbs-up rate is a useful signal, but few users vote, so it cannot replace a task metric."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Streamed chat “feels slow” though average time meets target",
+            "Time to first token and p95 latency",
+            "Users feel the wait for the first words and remember the slow tail"
+          ],
+          [
+            "A nightly job nobody waits on",
+            "Throughput and cost per task",
+            "First-token speed does not matter when no one is watching"
+          ],
+          [
+            "An agent makes many calls per task",
+            "Success rate and cost per completed task",
+            "Per-call numbers hide retries and loops"
+          ],
+          [
+            "Open-ended answers with many good wordings",
+            "Rubric score from a judge or a person",
+            "Exact match would mark good paraphrases wrong"
+          ],
+          [
+            "The system reads content from outside the company",
+            "Add injection success rate and leakage rate",
+            "Accuracy metrics say nothing about attacks"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A bank's back-office assistant extracts fields from loan documents. The team says accuracy is “great”, but cannot say which fields fail or what a document costs.",
+        "decision": "Define field-level exact match, an all-fields-correct rate per document, p95 latency, cost per document, and a leakage rate on documents with planted personal data, each with a target.",
+        "why": "Separate metrics show which field and which dimension needs work. A single blended score or user feedback would not help here: back-office users rarely rate outputs, and a blend hides a cost or leakage problem behind good accuracy."
+      },
+      "rule": "If you cannot say what “good” is as a number, define the metric and target before changing anything; if a stem mentions perceived speed, think time to first token, and if it mentions outside content, add a security metric.",
+      "questions": [
+        {
+          "stem": "A telecom's support chat streams its answers, which are often long. Users say it feels slow, yet the average total response time is four seconds, inside the agreed target. The team wants a metric that reflects what users actually experience before trying fixes. Which metric should they add first?",
+          "select": 1,
+          "options": [
+            "Time to first token at the 95th percentile, per conversation turn.",
+            "Average output tokens per answer, tracked against a length budget.",
+            "Total response time at the 99th percentile, across all chat requests.",
+            "Customer satisfaction score from the survey sent after each chat."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding facts: answers are streamed, and the complaint is about feel. With streaming, users wait for the first words, so time to first token at a tail percentile is what they experience.",
+          "traps": [
+            null,
+            "Works, but it tracks a likely cause of cost, not the delay users feel; it fits once you know length is the problem.",
+            "Works, but total time is not what users wait for when answers stream; it would win if the answer were shown only when complete.",
+            "Works, but it is a lagging, blended signal that cannot show which part of the response is slow."
+          ]
+        },
+        {
+          "stem": "A manufacturer is adding an agent that reads incoming supplier emails and updates purchase orders. Accuracy and cost targets are already agreed. The security team points out that the emails come from outside the company and could contain hidden instructions. Which two metrics should be added to the evaluation?",
+          "select": 2,
+          "options": [
+            "Prompt-injection success rate on a set of crafted attack emails.",
+            "Time to first token for each email the agent processes.",
+            "Wrong-refusal rate on ordinary supplier emails that are legitimate.",
+            "Cost per purchase order updated, including any retries.",
+            "Rate of order changes that the email's content does not support."
+          ],
+          "key": [
+            0,
+            4
+          ],
+          "why": "The deciding fact is untrusted outside content that may carry instructions. Injection success rate measures attacks directly, and unsupported changes catch the harm an attack would cause.",
+          "traps": [
+            null,
+            "Works for chat, but this is a background job nobody watches, so first-token speed does not matter.",
+            "Works as a safety balance check, but it measures over-caution, not the attack the security team raised.",
+            "Works, but a cost target is already agreed; this adds nothing for the security concern.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4.2",
+      "guide": "Design evaluation datasets and test frameworks using mixed methodologies",
+      "oneliner": "Test on real, tricky and hostile examples, and grade each part with the cheapest method that grades it reliably: code, a calibrated model judge, or a person.",
+      "explain": [
+        "An <b>eval dataset</b> is a fixed set of inputs, each with a description of what a good output looks like. The trusted core is a <b>golden set</b>: examples sampled from real traffic and labelled by experts, so it matches what users actually send. Add <b>edge cases</b> (empty, very long, ambiguous or other-language inputs) and <b>adversarial cases</b> (injection attempts, requests the system must refuse). Keep a <b>held-out</b> part you never tune prompts against, so you notice when you have overfitted to the examples you stare at.",
+        "<b>Mixed methods</b> means each check uses the grader that suits it. <b>Code-graded</b> checks are fast, cheap and exact: valid JSON, required fields present, exact values, a citation included. <b>LLM-as-judge</b> means another model call scores the output against a written rubric; it scales to open-ended qualities like faithfulness and helpfulness. A judge must be <b>calibrated</b>: score a sample that humans have also labelled, and check that they agree, before trusting it. Judges have known biases, such as favouring longer answers, so the rubric should list specific criteria, and asking the judge to reason before giving its score helps.",
+        "<b>Human review</b> is the most trusted grader but slow and costly. Use it to label the golden set, to calibrate the judge, for high-stakes items, and for regular audits. Run the whole suite as a <b>regression suite</b> on every prompt, model or retrieval change, and add every production failure to it so the same bug cannot come back unnoticed."
+      ],
+      "flow": [
+        "Sample real traffic",
+        "Add edge and adversarial cases",
+        "Label with experts",
+        "Code checks, judge, human sample",
+        "Run on every change"
+      ],
+      "know": [
+        "A golden set drawn from real traffic beats invented examples because it has the real mix of requests.",
+        "More automatically graded cases usually beat a handful of hand-graded ones.",
+        "Use code-based grading for anything objective; it is exact and almost free.",
+        "An LLM judge needs a specific rubric and calibration against human labels, repeated whenever the rubric or judge model changes.",
+        "Judge biases include preferring longer answers and the first option shown; clear criteria and randomised order reduce them.",
+        "Every production failure becomes a new test case.",
+        "A held-out split shows whether prompt tuning has overfitted."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Output must be valid JSON with fixed fields",
+            "Code checks",
+            "Exact, instant and free"
+          ],
+          [
+            "Thousands of open-ended outputs a week",
+            "LLM-as-judge with a rubric, calibrated on human labels",
+            "Scales and still grades meaning"
+          ],
+          [
+            "Errors are costly (medical, legal)",
+            "Human expert review on top of automated checks",
+            "The stakes justify the cost"
+          ],
+          [
+            "The judge disagrees with experts",
+            "Fix the rubric and recalibrate before using it",
+            "An uncalibrated judge measures the wrong thing"
+          ],
+          [
+            "Low volume and rare changes",
+            "Human review alone can be enough",
+            "Automation is not worth building yet"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An insurer's assistant writes 5,000 claim summaries a week. Each must include the claim number and amount, and must not state anything the claim file does not say. Two senior adjusters can review about 50 a week.",
+        "decision": "Code checks for the claim number, amount and format; an LLM judge with a faithfulness rubric for every summary; adjusters label 50 a week, used to calibrate the judge and audit it.",
+        "why": "Each grader does what it is best at. Human review alone covers 1% of the volume, and an overlap score such as ROUGE rewards copying words, not being faithful."
+      },
+      "rule": "If a check is objective, grade it with code; if it is open-ended and high-volume, use a rubric judge calibrated on human labels; if it is high-stakes or low-volume, have a person review it.",
+      "questions": [
+        {
+          "stem": "A legal team's assistant writes about 8,000 contract summaries a month. Each must be valid JSON with five fixed fields, and its free-text “key risks” field must be faithful to the contract. Two lawyers can review about 100 summaries a month. Which evaluation design fits best?",
+          "select": 1,
+          "options": [
+            "Lawyers score a random 100 summaries a month by hand, field by field.",
+            "Code checks on the JSON, a rubric judge on key risks calibrated by lawyers.",
+            "An LLM judge scores each whole summary, structure included, on one rubric.",
+            "Compare each key-risks field to a lawyer's reference using ROUGE overlap."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding facts: one part is objective (JSON and fields) and one is open-ended at high volume, with little lawyer time. Code grades the first; a judge calibrated on the lawyers' scores scales the second.",
+          "traps": [
+            "Works, but it covers about 1% of output; it would win if volume were only a few hundred a month.",
+            null,
+            "Works, but a judge is slower, costlier and less exact than code for checking structure.",
+            "Works, but word overlap rewards copying, not faithfulness, and needs a reference for every case."
+          ]
+        },
+        {
+          "stem": "A team's LLM judge rates answer helpfulness using a rubric that says only “rate helpfulness from 1 to 10”. On 200 answers that support staff also scored, the judge agrees with staff 60% of the time and gives higher scores to longer answers. The team wants to use it on every release. What should they do first?",
+          "select": 1,
+          "options": [
+            "Switch the judge to the most capable model and rerun the 200 answers.",
+            "Combine the judge's score with a code-based penalty for long answers.",
+            "Rewrite the rubric with specific criteria and recalibrate on staff scores.",
+            "Drop the judge and have support staff score each release's answers."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding fact is a one-line rubric with no criteria. Vague rubrics cause low agreement and length bias, so fix the rubric, then check agreement again.",
+          "traps": [
+            "Works sometimes, but a stronger judge still has nothing specific to grade against; try it after the rubric is fixed.",
+            "Works as a patch for length bias, but leaves the vague rubric and the low agreement unsolved.",
+            null,
+            "Works, but it does not scale with every release; it fits if releases are rare and small."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4.3",
+      "guide": "Conduct A/B testing and iterative improvements",
+      "oneliner": "Prove a change offline on the eval set first, then test it on a share of live traffic against the current version, changing one thing at a time.",
+      "explain": [
+        "Improving an LLM system is a loop: find failures, form a guess about the cause, change one thing, measure, then keep or revert. <b>One variable at a time</b> matters because if you change the prompt and the model together and quality moves, you cannot tell which change caused it.",
+        "<b>Offline evaluation</b> runs the candidate on the fixed eval dataset. It is cheap, repeatable and safe, and it catches regressions before users see them, but it cannot show business outcomes such as sales or resolved tickets. <b>Online A/B testing</b> sends a random share of live traffic to the candidate (B) while the rest stays on the current version (A), and compares results over the same period. Split by user or conversation so one person does not flip between versions, and run until there is enough volume to tell a real difference from noise.",
+        "Decide before starting what you will compare: a <b>primary metric</b>, plus <b>guardrail metrics</b> such as cost, latency and safety that must not get worse, and the threshold to ship. Then ramp up gradually. When showing users a possibly worse answer is not acceptable, use a <b>shadow test</b>: the candidate runs on copies of live requests but users only see the current version's output. Shadow testing compares outputs, but it cannot measure how users react."
+      ],
+      "flow": [
+        "Hypothesis",
+        "Change one thing",
+        "Offline eval",
+        "A/B on a small share",
+        "Compare primary and guardrail metrics",
+        "Ramp up or revert"
+      ],
+      "know": [
+        "Change one variable per test, or the cause of any difference is unknown.",
+        "Run the offline eval before any live test; it catches regressions cheaply.",
+        "An A/B test needs a random split, the same time period, and enough volume.",
+        "Agree the primary metric, guardrail metrics and ship threshold before the test starts.",
+        "A win on quality that breaks a cost or safety guardrail is not a win.",
+        "Shadow testing shows outputs on live inputs without exposing users, but cannot measure user behaviour.",
+        "A few good-looking examples are an anecdote, not evidence."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "A new prompt looked better on a few examples",
+            "Run the full offline eval first",
+            "Anecdotes miss regressions"
+          ],
+          [
+            "Offline eval passed; the question is business impact",
+            "A/B test on a random share of live traffic",
+            "Only real users show conversions or resolutions"
+          ],
+          [
+            "Showing users a worse answer is unacceptable",
+            "Shadow test",
+            "Live inputs, no user exposure"
+          ],
+          [
+            "Prompt and model both changed at once",
+            "Test them separately",
+            "Otherwise the cause is unknown"
+          ],
+          [
+            "Traffic is too low for an A/B result in reasonable time",
+            "Offline eval, then staged rollout with close monitoring",
+            "An A/B test would never reach a clear answer"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An online retailer's product Q&amp;A assistant has a new prompt that adds size-guide advice. Offline it scores slightly higher. Marketing wants to know if it reduces returns.",
+        "decision": "Send 10% of shoppers, split by user, to the new prompt for four weeks; compare return rate as the primary metric, with cost per conversation and complaint rate as guardrails.",
+        "why": "Returns only show up in live behaviour, so the offline eval cannot answer the question. Comparing this month with last month on all users is tempting but confounded by season and promotions."
+      },
+      "rule": "If a change has not passed the offline eval, run it there first; if the question is business impact, A/B test one change on a random share of traffic with guardrails agreed up front.",
+      "questions": [
+        {
+          "stem": "A travel company's booking assistant has a new system prompt that passed the full offline eval with slightly better accuracy. The product owner now wants to know whether it increases completed bookings, which the offline eval cannot measure. The assistant handles about 50,000 conversations a day. What should the team do next?",
+          "select": 1,
+          "options": [
+            "Ship it to all users and compare this week's bookings with last week's.",
+            "Grow the offline eval with more cases until the accuracy gain is clearer.",
+            "Run it in shadow mode on live traffic and compare its outputs with today's.",
+            "Route a random share of conversations to it and compare booking rates."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding fact is that the question is about bookings, a user behaviour. Only a randomised live split over the same period measures that, and 50,000 a day gives enough volume.",
+          "traps": [
+            "Works as a rough check, but week-to-week changes (season, promotions) are mixed into the result.",
+            "Works for accuracy, but no amount of offline data measures bookings.",
+            "Works when user exposure is too risky, but users never see the new answers, so bookings cannot change.",
+            null
+          ]
+        },
+        {
+          "stem": "A team's A/B test changed both the prompt and the model at once. The new version scored higher on answer quality but cost 40% more per conversation. Nobody can say which change caused the quality gain, and leadership is arguing over whether the cost is acceptable. Which two practices would have made the result usable for a ship decision?",
+          "select": 2,
+          "options": [
+            "Running the test for twice as long to collect more conversations.",
+            "Testing the prompt change and the model change separately.",
+            "Using shadow mode so that users never saw the new version.",
+            "Agreeing guardrail metrics, such as cost, and a ship threshold up front.",
+            "Giving the new version a larger share of traffic to finish sooner."
+          ],
+          "key": [
+            1,
+            3
+          ],
+          "why": "Two facts decide it: two variables changed together, and no one agreed beforehand what cost was acceptable. Separate tests isolate the cause; pre-agreed guardrails turn the cost question into a rule.",
+          "traps": [
+            "Works when results are noisy, but more data cannot separate two changes made together.",
+            null,
+            "Works when exposure is risky, but it still mixes two changes and sets no cost limit.",
+            null,
+            "Works to reach volume faster, but it does not fix the mixed changes or the missing threshold."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4.4",
+      "guide": "Diagnose system issues (prompt failure, hallucinations, model mismatch)",
+      "oneliner": "When answers go wrong, check what went into the model first (the inputs and retrieved context), then the prompt, and only then the model.",
+      "explain": [
+        "There are three common failure types. A <b>prompt failure</b> means the instructions are unclear, incomplete or contradictory; signs are similar inputs handled differently, a drifting output format, or the model doing something reasonable that was not what you meant. A <b>hallucination</b> is a confident claim the context does not support; in a RAG system (retrieval-augmented generation, where documents are fetched and added to the prompt) it often happens because retrieval supplied wrong, stale or no relevant passages and the model filled the gap. A <b>model mismatch</b> means the model does not fit the task: either it is not capable enough (multi-step reasoning still fails with a clear prompt and the right context), or it is far more capable than a simple task needs, so you overpay.",
+        "Diagnose in order, because the cheap checks come first and most problems are upstream of the model. Open the <b>traces</b> (records of each step's inputs and outputs) for failing cases. If the needed fact is missing from the context, the problem is retrieval or data. If the fact is there but the answer ignores or contradicts it, look at the prompt: ask for quotes or citations, and explicitly allow “I don't know”. Only when the context is right and the prompt is clear should you run the failing cases on a more capable model.",
+        "Timing is a strong clue. A sudden change right after a document refresh, a deployment or a prompt edit points at that change. A pinned model version does not silently change. Lowering temperature reduces randomness, but it cannot supply a fact that is not in the context."
+      ],
+      "flow": [
+        "Collect failing cases",
+        "Inspect inputs and retrieved context",
+        "Check the prompt",
+        "Try a more capable model",
+        "Fix and add to the eval"
+      ],
+      "know": [
+        "Read the traces of real failures before changing anything.",
+        "Fact missing from the context points to retrieval or data; fact present but ignored points to the prompt.",
+        "Requiring supporting quotes and allowing “I don't know” reduce hallucinations.",
+        "Inconsistent handling of similar inputs is a sign of ambiguous instructions.",
+        "Confirm a model mismatch by running the same failing cases, with the same prompt and context, on a more capable model.",
+        "A sudden change usually follows something that changed: data, deployment or prompt.",
+        "Lower temperature makes output more consistent, not more correct."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Confident wrong answers right after a document refresh; model unchanged",
+            "Check retrieval and indexing",
+            "The data changed, the model did not"
+          ],
+          [
+            "Similar requests get different formats or handling",
+            "Fix the prompt (clear rules, examples)",
+            "Instructions are ambiguous"
+          ],
+          [
+            "The right passage was retrieved but the answer contradicts it",
+            "Ground the answer: quotes, citations, allow “I don't know”",
+            "Context is fine; the instruction to use it is weak"
+          ],
+          [
+            "Context right, prompt clear, multi-step reasoning still fails",
+            "Try a more capable model",
+            "Upstream causes are ruled out"
+          ],
+          [
+            "A simple task is accurate but expensive",
+            "Try a smaller, faster model",
+            "Mismatch the other way: overpaying"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An HR policy assistant gives wrong leave entitlements for staff in a country the company just expanded into. Answers for other countries are fine.",
+        "decision": "Open traces for the failing questions. They show no passages from the new country's policy, because it was uploaded to a folder the indexer does not read. Add the folder, re-index, and add the cases to the eval.",
+        "why": "The failure is limited to new data, which points upstream. Switching to a stronger model is the tempting move, but no model can cite a policy it never received."
+      },
+      "rule": "If answers are wrong, look at the inputs and retrieved context first, then the prompt, then the model; if the fact is missing, fix retrieval, and if it is present but ignored, fix the prompt.",
+      "questions": [
+        {
+          "stem": "A claims assistant extracts the coverage limit from policy documents. For one product line it often reports a limit that appears nowhere in the documents. Traces show the retrieved passages for these cases do contain the correct limit. The prompt and model have not changed since launch, and other product lines are fine. What should the team change first?",
+          "select": 1,
+          "options": [
+            "Require a supporting quote for each value, or “not found”.",
+            "Re-index that product line's documents using smaller, overlapping chunks.",
+            "Route that product line's requests to the most capable model available.",
+            "Set temperature to zero for requests from that product line."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding fact: the correct limit is already in the retrieved passages, so retrieval works. The model is not grounding its answer in them, which a supporting-quote requirement addresses directly.",
+          "traps": [
+            null,
+            "Works when the right passage is missing, but the traces show it was retrieved.",
+            "Works once the prompt is grounded and still fails; try it after the cheaper prompt fix.",
+            "Works to reduce randomness, but it does not stop the model stating an unsupported value."
+          ]
+        },
+        {
+          "stem": "A contract-review agent must follow obligations across several linked clauses. Traces show the right clauses are retrieved. The prompt has been rewritten twice with clear steps and two worked examples. Simple cases pass, but it still misses chained obligations on most multi-clause cases. It runs on a smaller, faster model. What should the team try next?",
+          "select": 1,
+          "options": [
+            "Add five more worked examples of chained obligations to the prompt.",
+            "Rerun the failing cases on a more capable model, nothing else changed.",
+            "Retrieve more clauses per question so the model sees a wider context window.",
+            "Split the contracts into smaller chunks and rebuild the search index."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding facts: retrieval is right and the prompt is already clear, yet the hard multi-step cases fail on a smaller model. That is the signature of a model mismatch, confirmed by a controlled test.",
+          "traps": [
+            "Works sometimes, but two rewrites with examples have already failed; more examples are a weaker next step.",
+            null,
+            "Works when clauses are missing, but the right ones are already retrieved; extra text can add noise.",
+            "Works for poor retrieval, but retrieval is not the problem here."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4.5",
+      "guide": "Optimize token usage, latency, and cost-performance trade-offs",
+      "oneliner": "Find where the time and money go, apply the lever that matches that bottleneck, and rerun the eval to prove quality held.",
+      "explain": [
+        "The big cost levers are these. <b>Prompt caching</b>: put the stable part of the prompt (system prompt, tool definitions, long documents) first and mark it for caching; later requests that reuse the identical prefix read it from the cache at a fraction of the normal input price, and get their first token sooner. <b>Model routing</b>: send simple steps to a smaller, faster model and only hard ones to the most capable model. The <b>Message Batches API</b>: submit many requests to be processed asynchronously at about half the normal price, with results within 24 hours (most finish much sooner), for work nobody is waiting on.",
+        "Tokens drive both cost and time. <b>Trim the context</b>: send only the relevant chunks and summarise old conversation history. <b>Cap the output</b> with <code>max_tokens</code> and ask for concise formats; output tokens cost more than input tokens and are generated one at a time, so long answers are slow and expensive. For latency: make <b>parallel calls</b> for steps that do not depend on each other, so the total wait is the longest step, not the sum. <b>Streaming</b> shows the first words sooner, which improves perceived speed, but it does not reduce total time or cost.",
+        "Measure first: is the cost in input or output tokens, and which step is slow? Then pick the matching lever. Every optimisation is a trade-off, so rerun the eval after each change; a cheaper system that fails the quality bar is not an improvement."
+      ],
+      "flow": [
+        "Measure where tokens and time go",
+        "Pick the matching lever",
+        "Rerun the eval",
+        "Ship if quality holds"
+      ],
+      "know": [
+        "The Message Batches API costs about half the normal price and returns results within 24 hours, so it suits only work nobody waits on.",
+        "Prompt caching needs an identical prefix; anything that changes per request must come after the cached part.",
+        "Cached content expires after a short period without use, unless a longer lifetime is chosen.",
+        "Output tokens are priced higher than input tokens, so capping output saves both cost and time.",
+        "Streaming improves perceived latency only; it does not cut cost or total generation time.",
+        "Parallel calls cut wall-clock time for independent steps but use the same tokens.",
+        "Every optimisation is confirmed on the eval before it ships."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "A large job nobody waits on",
+            "Message Batches API (plus a smaller model if the eval holds)",
+            "About half price; latency does not matter"
+          ],
+          [
+            "The same long instructions on every request",
+            "Prompt caching",
+            "The prefix is paid in full once, then read cheaply"
+          ],
+          [
+            "Independent steps run one after another",
+            "Parallel calls",
+            "Total wait becomes the longest step"
+          ],
+          [
+            "Chat feels slow and answers are long",
+            "Streaming and shorter outputs",
+            "First words sooner, less to generate"
+          ],
+          [
+            "A user needs the answer within seconds",
+            "Real-time calls with caching or a smaller model, not batch",
+            "Batch can take hours"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A logistics firm classifies 80,000 delivery notes every night with the most capable model in real time. Results are read by the morning shift. The bill has tripled.",
+        "decision": "Move the job to the Message Batches API, cache the shared instructions, and test a smaller model on the eval; switch to it only if it meets the accuracy target.",
+        "why": "Nobody waits during the night, so half-price asynchronous processing costs nothing in usefulness. Cutting the instructions in half is tempting, but it risks quality and saves less than the batch discount."
+      },
+      "rule": "If nobody waits for the result, batch it; if the same prefix repeats, cache it; if independent steps run in series, parallelise them; and if quality is not re-checked, do not ship the optimisation.",
+      "questions": [
+        {
+          "stem": "An insurer's pipeline sends each claim through four checks (fraud signals, policy match, document completeness and coverage). The checks do not depend on each other, but they run as four Claude calls one after another, about three seconds each. Adjusters wait roughly twelve seconds per claim. Cost is acceptable. Which change most reduces the wait?",
+          "select": 1,
+          "options": [
+            "Move the four checks to the Message Batches API to lower the price.",
+            "Cache the system prompt that the four calls share.",
+            "Run the four calls in parallel and combine their results.",
+            "Stream each call's output so adjusters see partial results sooner."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding fact: the checks are independent but run in series. Running them in parallel cuts the wait from the sum of the steps (about twelve seconds) to the longest one (about three).",
+          "traps": [
+            "Works for cost, but cost is acceptable and batch results can take hours.",
+            "Works to shave first-token time, but it saves far less than removing three sequential waits.",
+            null,
+            "Works for perceived speed in chat, but the decision needs all four results, so the full wait remains."
+          ]
+        },
+        {
+          "stem": "A media company tags 200,000 archived articles each weekend with topics from a fixed list. Every request repeats the same 6,000-token instruction and topic list, followed by one article. The job runs in real time and is over budget. Results are needed by Monday morning. Which two changes best cut cost, assuming the eval still passes?",
+          "select": 2,
+          "options": [
+            "Stream the responses so that each request finishes faster.",
+            "Run more requests in parallel so the job finishes sooner.",
+            "Submit the job through the Message Batches API.",
+            "Shorten the topic list by dropping rarely used topics.",
+            "Cache the shared instruction and topic-list prefix."
+          ],
+          "key": [
+            2,
+            4
+          ],
+          "why": "Two facts decide it: nobody needs results until Monday, so batch processing at about half price fits; and a 6,000-token prefix repeats on every request, so caching cuts the largest input cost.",
+          "traps": [
+            "Works for perceived speed, but streaming changes neither total time nor cost.",
+            "Works to finish sooner, but it uses the same tokens, so the cost is unchanged.",
+            null,
+            "Works to save tokens, but it changes the task: articles on dropped topics can no longer be tagged.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4.6",
+      "guide": "Monitor system performance using logging and observability tools",
+      "oneliner": "In production, log every request with its prompt and model version, watch latency, errors, tokens, cost and sampled quality, and alert when they cross thresholds.",
+      "explain": [
+        "Offline evals tell you a version was good before release. <b>Monitoring</b> tells you it is still good on real traffic, which changes over time: new topics, new documents, new user behaviour. This change is called <b>drift</b>. Good <b>logging</b> records, for each request: an ID, the time, the <b>prompt template version</b>, the <b>model version</b>, the document index version, input and output tokens (including cache reads), latency (time to first token and total), the stop reason, tool calls and errors. Personal data in logs must be handled properly: redacted or access-controlled, with a set retention period.",
+        "<b>Observability</b> means you can answer new questions from that data. <b>Traces</b> link every step of one request (retrieval, each model call, each tool call), so you can see which step failed or was slow. Dashboards show p50 and p95 latency, error and rate-limit rates, tokens and cost per task, and cache hit rate. Quality needs its own check: an LLM system often fails with a normal, successful response that simply contains a wrong answer. So sample production outputs and score them with the same code checks and judge used offline, alongside user feedback, and alert on thresholds and trends.",
+        "Versions matter most. When quality drops, you group the metrics by prompt and model version and look for the step change at a release. Without versions in the logs, every complaint becomes a manual investigation. Failures found in production go back into the eval dataset."
+      ],
+      "flow": [
+        "Log each request with versions",
+        "Trace each step",
+        "Dashboards and sampled quality scores",
+        "Alerts",
+        "Failures into the eval set"
+      ],
+      "know": [
+        "Log the prompt version, model version and index version on every request.",
+        "Pin a specific model version so model changes are deliberate and visible.",
+        "Score a sample of production outputs with the offline graders; error rates miss wrong-but-successful answers.",
+        "Track cache-read tokens and cache hit rate; a sudden drop often means the cached prefix started changing.",
+        "Traces show which step of a multi-step request failed or was slow.",
+        "Redact or restrict personal data in logs rather than stop logging.",
+        "Alert on thresholds and trends, not only on errors."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Quality dropped after a release; cause unknown",
+            "Group quality by prompt and model version",
+            "Shows which change caused the step"
+          ],
+          [
+            "An agent is slow and nobody knows which step",
+            "Per-step tracing",
+            "Finds the slow step directly"
+          ],
+          [
+            "Cost rising while traffic is flat",
+            "Tokens per request and cache hit rate",
+            "Points to bigger prompts or a broken cache"
+          ],
+          [
+            "Wrong answers but error rate normal",
+            "Sampled online quality scoring",
+            "Bad content still returns success"
+          ],
+          [
+            "A severe harmful output is live right now",
+            "Roll back first, then investigate with the logs",
+            "Stopping harm comes before diagnosis"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A pharmacy chain's assistant had three prompt updates and one model upgrade last month. Complaints rose, but the logs hold only request and response text.",
+        "decision": "Add prompt, model and index versions to every log record, score a daily sample with the offline judge, and chart quality per version with an alert on drops.",
+        "why": "The next drop can then be traced to its release in minutes. Rolling everything back is tempting, but it discards good changes without knowing which one was bad."
+      },
+      "rule": "If you cannot tell which change caused a drop, log prompt and model versions per request; if errors look normal but users complain, score sampled outputs for quality.",
+      "questions": [
+        {
+          "stem": "A retailer's support assistant cost 35% more per day over two weeks, while conversation volume and answer length stayed flat. The dashboard shows only total tokens and cost per day. Two weeks ago a prompt change added the current time to the very start of the system prompt, ahead of the long cached instructions. What should the team look at first?",
+          "select": 1,
+          "options": [
+            "The p95 latency of requests before and after the change.",
+            "The judge's quality scores, grouped by prompt version.",
+            "The daily number of retries and error responses.",
+            "The cache-read tokens and cache hit rate per request."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding fact: something that changes on every request now sits at the start of the prompt, before the cached instructions. That breaks the identical prefix, so the cache stops hitting and every request pays full input price.",
+          "traps": [
+            "Works as a related symptom, since lost caching also slows first tokens, but it does not explain cost directly.",
+            "Works for quality problems, but the issue here is cost, with quality not in question.",
+            "Works when retries inflate cost, but nothing points to errors, and the timing matches the prompt change.",
+            null
+          ]
+        },
+        {
+          "stem": "A bank's assistant answers account questions. Error rates and latency look normal, but complaints about wrong answers doubled this month. The logs store each request and response, but not which prompt template or model version served it. Three prompt updates shipped this month. What should the architect add first?",
+          "select": 1,
+          "options": [
+            "An alert for when the error rate goes above its normal range.",
+            "The prompt template version and model version on each logged request.",
+            "A weekly manual review of ten conversations chosen at random.",
+            "A rollback of all three of this month's prompt updates to last month's prompt."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding fact: three changes shipped and the logs cannot say which version served each answer. Versions per request let quality be grouped by release to find the bad change.",
+          "traps": [
+            "Works for outages, but wrong answers return normally, so error rates stay flat.",
+            null,
+            "Works as a spot check, but ten a week is too few, and without versions it cannot link problems to a change.",
+            "Works as an emergency step if harm were severe, but it discards two possibly good updates blind."
+          ]
+        }
+      ]
+    }
+  ]
+}

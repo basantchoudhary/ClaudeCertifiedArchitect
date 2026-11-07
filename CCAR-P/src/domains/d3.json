@@ -1,0 +1,857 @@
+{
+  "n": 3,
+  "slug": "D3-Integration",
+  "name": "Integration",
+  "weight": "19%",
+  "intro": "Integration is where Claude meets the rest of the organisation: tools, identities, data stores, monitoring and other agents. The questions give you a working system with one gap (too much access, too slow, impossible to debug, retrieving the wrong thing, wired up the wrong way) and ask which configuration or mechanism closes it with the least added complexity. It is the heaviest domain, so expect about twelve of the 63 questions.",
+  "sections": [
+    {
+      "id": "3.1",
+      "guide": "Evaluate tool/agent configuration for capability bloat",
+      "oneliner": "Give an agent only the tools and permissions its job needs, because every extra one is a risk and a distraction.",
+      "explain": [
+        "<b>Capability bloat</b> means an agent has been given more tools, permissions or data access than its role uses. It usually happens by accident: a team connects a whole MCP server or reuses an admin account because it is quicker.",
+        "Each extra capability is <b>attack surface</b>: something a prompt injection, a confused model or a misuse could trigger. It also makes the model's job harder, because more tools means more chances to pick the wrong one.",
+        "The fix is <b>least privilege</b>: list what the role actually does, and remove everything else. Removing a capability eliminates the risk; logging it or asking for confirmation only reduces or reveals it. Apply it in two places: the <b>tool list</b> the agent sees, and the <b>identity</b> (account or token) the tools run under, so that even a tool that slips through cannot do more than the role allows."
+      ],
+      "flow": [
+        "List the role's tasks",
+        "Map tasks to tools",
+        "Remove the rest",
+        "Scope permissions per tool",
+        "Review when the role changes"
+      ],
+      "know": [
+        "Least privilege: an agent gets the minimum tools and permissions its role needs.",
+        "Removing a capability is a preventive control; logging and confirmation prompts are detective or compensating controls.",
+        "Read-only and write tools should be separate, so a read-only role never holds write access.",
+        "Fewer, well-described tools also improve tool selection.",
+        "Restrict both the tools the agent can see and the permissions of the account those tools use.",
+        "A bigger or better model does not change what the agent is authorised to do."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "The role never uses a tool the agent has",
+            "Remove the tool",
+            "Eliminates the risk entirely"
+          ],
+          [
+            "The role needs the tool, but rarely, and the action is high-impact",
+            "Keep it behind human approval",
+            "Removing it would block real work"
+          ],
+          [
+            "The role needs a tool, but only part of it",
+            "Replace with a narrower tool",
+            "Keeps the job possible with less power"
+          ],
+          [
+            "The agent runs under a shared or admin account",
+            "Give it its own scoped identity",
+            "The permission layer is the backstop if a tool slips through"
+          ],
+          [
+            "Auditors need a record of what happened",
+            "Add logging as well",
+            "Logging supports, it never replaces, least privilege"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An internal HR assistant was connected to the full HR MCP server, which can read, edit and delete employee records. Staff only ask it policy questions and look up their own leave balance.",
+        "decision": "Give it a read-only policy search tool and a leave-balance tool scoped to the signed-in employee. Remove edit and delete entirely.",
+        "why": "Nothing in the role needs write access, so removing it closes the risk. Approval prompts on edits would still leave the capability one injected instruction away."
+      },
+      "rule": "If the role never uses a capability, remove it from both the tool list and the account; if it is rarely used but high-impact, keep it behind human approval.",
+      "questions": [
+        {
+          "stem": "A finance team's reporting agent reads ledger data and drafts monthly summaries. It was set up with the same service account as the payments system, which can also create and approve payments. The agent has never needed to move money. What should the architect change first?",
+          "select": 1,
+          "options": [
+            "Add an alert that notifies finance whenever the agent creates a payment.",
+            "Give the agent its own read-only account limited to ledger data.",
+            "Require a human to confirm any payment the agent tries to approve.",
+            "Add a system-prompt rule that the agent must never create payments."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding fact: the agent has never needed to move money. Least privilege removes the payment capability by giving it a read-only identity.",
+          "traps": [
+            "Works, but it only detects misuse after the payment exists.",
+            null,
+            "Works, but it keeps a capability the role never uses; it would fit if the role sometimes needed payments.",
+            "Works, but a prompt rule is probabilistic and the permission is still there."
+          ]
+        },
+        {
+          "stem": "A pharma research team's literature agent searches internal papers and summarises them. It is connected to the full document-management MCP server, whose 40 tools include upload, share externally, delete and change permissions, and it runs under an editor account. The agent only ever searches and reads. Which two changes best apply least privilege?",
+          "select": 2,
+          "options": [
+            "Log every delete and share call and review the log each week.",
+            "Require a human to approve any delete or external share.",
+            "Allowlist only the search and read tools for this agent.",
+            "Add a system-prompt rule to use search and read tools only.",
+            "Run the agent under its own read-only document account."
+          ],
+          "key": [
+            2,
+            4
+          ],
+          "why": "The deciding fact: the agent only ever searches and reads. Least privilege works in two layers: hide the tools the role never uses (which also makes tool choice easier) and narrow the account so nothing that slips through can write.",
+          "traps": [
+            "Works, but logging only reveals misuse after it has happened.",
+            "Works, but it keeps capabilities the role never uses; it fits when the role genuinely needs them now and then.",
+            null,
+            "Works, but a prompt rule is probabilistic and every tool is still connected.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.2",
+      "guide": "Analyze authentication and authorization requirements to identify security gaps",
+      "oneliner": "Know who is asking, then let the agent reach only what that person is allowed to reach, enforced in the data layer rather than the prompt.",
+      "explain": [
+        "<b>Authentication</b> answers “who is this?”: the user signs in, or a service proves its identity with a token. <b>Authorization</b> answers “what may they see or do?”: the permissions attached to that identity. Most agent security gaps are authorization gaps: everyone is properly signed in, but the agent reaches data on their behalf with far more access than they have.",
+        "The classic gap is the <b>shared service account</b>: the agent calls every system with one powerful identity and decides in its own logic, or in the prompt, whose data to fetch. Any user can then get any data by asking cleverly. This is a <b>confused deputy</b>: a trusted component tricked into using its own authority for someone who lacks it. The fix is <b>delegated access</b>: the agent acts with a token issued for the signed-in user (for example through OAuth), scoped to what that user may do, so the target system enforces the user's own permissions. Remote MCP servers follow the same idea; the MCP specification uses OAuth-based authorization for servers reached over HTTP.",
+        "Retrieval needs the same care. If a RAG index is built from documents with different access rules, store each chunk's <b>access-control list</b> (who may read it) as metadata and filter by the user's identity <b>at retrieval time</b>, so restricted text never reaches the model. A system-prompt rule or an output filter applied afterwards is too late: the data has already been read. Finally, keep secrets out of prompts, and log both the user and the agent on every action so audits can tell them apart."
+      ],
+      "flow": [
+        "User signs in",
+        "Agent gets a user-scoped token",
+        "Tool or data layer checks permissions",
+        "Retrieval filters by the user's access",
+        "Audit log records user and agent"
+      ],
+      "know": [
+        "Authentication proves identity; authorization decides access. Signing in users does not fix an authorization gap.",
+        "An agent using one shared, all-powerful account lets any user reach any data: act with the user's delegated, scoped token instead.",
+        "Enforce access in the tool or data layer; a prompt instruction is not an access control.",
+        "Permission-aware retrieval filters chunks by the user's access list before they reach the model.",
+        "Remote MCP servers use OAuth-based authorization, so tool calls can carry the user's own scoped access.",
+        "Credentials belong in a secrets store or environment, never in prompts or tool descriptions.",
+        "Audit logs should record which user and which agent performed each action."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "The agent acts for individual users in systems that already have per-user permissions",
+            "Delegated, user-scoped token",
+            "The system enforces what that user may do"
+          ],
+          [
+            "Users see answers from documents they could not open themselves",
+            "Filter retrieval by each chunk's access list",
+            "Restricted text never reaches the model"
+          ],
+          [
+            "Access rules are coarse and match teams cleanly (say, one index per legal entity)",
+            "Separate indexes per group",
+            "Simpler, and enough when permissions follow the split"
+          ],
+          [
+            "A background job with no user behind it (nightly batch)",
+            "Its own narrowly scoped service identity",
+            "There is no user to delegate from, so least privilege applies to the service"
+          ],
+          [
+            "Users are not signed in at all",
+            "Fix authentication first",
+            "Authorization needs a known identity to work from"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An internal assistant answers questions from an index built over the whole company document store, using a crawler account that can read everything. A salesperson asked about bonuses and got figures from an HR compensation file.",
+        "decision": "Index each document's access list with its chunks, and filter every search by the signed-in user's groups. Tools that fetch full documents call the store with the user's delegated token.",
+        "why": "The gap is authorization, not authentication: the salesperson was properly signed in. A prompt rule like “don't reveal salaries” would still let the model read the file and depends on the model obeying; filtering at retrieval stops the text from ever arriving."
+      },
+      "rule": "If users can reach data they could not open themselves, act with their delegated, scoped token and filter retrieval by their access; if users are not signed in at all, fix authentication first.",
+      "questions": [
+        {
+          "stem": "A consultancy's internal assistant answers questions from a vector index built over every project site. Staff sign in with single sign-on, and site permissions vary document by document. A junior analyst received figures from a board-only document. The system prompt already forbids sharing confidential material. What closes the gap?",
+          "select": 1,
+          "options": [
+            "Strengthen the system prompt with examples of content to withhold.",
+            "Add an output classifier that blocks answers about board topics.",
+            "Build a separate index per department and route by the user's team.",
+            "Filter retrieval by each chunk's access list and the user's groups."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding fact: permissions vary document by document. Only a per-chunk access filter at retrieval matches that, using the identity single sign-on already provides.",
+          "traps": [
+            "Works, but the model still reads the restricted text and the prompt is not an access control.",
+            "Works, but it catches leaks after retrieval and misses ones it doesn't recognise.",
+            "Works, but only when permissions follow departments; here they vary per document.",
+            null
+          ]
+        },
+        {
+          "stem": "An agent drafts replies in employees' mailboxes and books meetings in their calendars. It uses one admin account that can open every mailbox, choosing which mailbox from the name typed in the chat. Employees already sign in through the company identity provider with multi-factor authentication. What is the main gap, and the fix?",
+          "select": 1,
+          "options": [
+            "Authorization: act with each signed-in user's own delegated token.",
+            "Authentication: add a second sign-in step before the chat opens.",
+            "Secrets: move the admin credentials into a managed secrets vault.",
+            "Auditing: log which mailbox each request opened and alert on anomalies."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding fact: users already authenticate strongly, yet any of them can reach any mailbox. That is an authorization gap, fixed by acting with each user's own delegated permissions.",
+          "traps": [
+            null,
+            "Works, but sign-in is already strong; the problem is what the agent can reach after it.",
+            "Works as hygiene, but the stored account still opens every mailbox.",
+            "Works, but it detects misuse rather than preventing it."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.3",
+      "guide": "Evaluate accuracy-latency trade-offs and justify configuration decisions",
+      "oneliner": "Most things that make answers better also make them slower, so pick the configuration that meets the latency target with acceptable accuracy, and prove it with numbers.",
+      "explain": [
+        "A <b>latency SLA</b> (service-level agreement) is a promise such as “95% of replies start within one second”. The <b>p95</b> is the time 95% of requests beat; it matters more than the average because the slow tail is what users notice. Two timings matter: <b>time to first token</b> (when output starts) and total time (when it finishes).",
+        "Almost every accuracy lever costs time: a larger model, extended thinking, retrieving more chunks, a <b>reranker</b> (a second model that re-scores retrieved results), a verification pass, or more agents. Speed levers include a smaller, faster model, prompt caching, running independent calls in parallel, and doing work in advance.",
+        "The architect's moves are: <b>route</b> so only hard or high-stakes requests take the slow, accurate path; move checks <b>off the live path</b> (verify asynchronously when the result is not needed instantly); and <b>stream</b> output so a person sees text sooner. Streaming only improves perceived speed for a human reader; it does not help when a program needs the complete result or when the slow part happens before the first word. Justify the choice with a table of accuracy and p95 latency for each candidate configuration on the eval set."
+      ],
+      "flow": [
+        "Measure accuracy and p95 per configuration",
+        "Compare with the SLA",
+        "Route hard cases to the heavy path",
+        "Move checks off the live path",
+        "Re-measure"
+      ],
+      "know": [
+        "Larger models, extended thinking, reranking, more retrieval and verification passes raise accuracy and latency together.",
+        "Judge latency by percentiles (p95, p99) and time to first token, not the average.",
+        "Routing sends only hard or high-risk requests to the slower path, so most traffic stays fast.",
+        "Asynchronous verification fits when the checked result is used later, not in the live reply.",
+        "Streaming improves perceived speed for human readers only; it does not shorten total time.",
+        "Prompt caching cuts time to first token when a long prefix repeats.",
+        "Justify a configuration with measured accuracy and latency from the eval, not intuition."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Most requests are easy, a few are hard, and the SLA is tight",
+            "Route: fast path by default, heavy path for hard cases",
+            "Keeps p95 low and accuracy where it matters"
+          ],
+          [
+            "A check improves accuracy but the result is used later",
+            "Verify asynchronously, off the live path",
+            "Accuracy gain without user-facing delay"
+          ],
+          [
+            "A person reads a long answer and complains it feels slow",
+            "Stream the output",
+            "Perceived speed improves; nothing else changes"
+          ],
+          [
+            "Every request is high-stakes and the SLA is loose",
+            "The heavier, more accurate configuration everywhere",
+            "Latency has room, so take the accuracy"
+          ],
+          [
+            "A long, identical prefix is sent on every call",
+            "Prompt caching",
+            "Lower time to first token at no accuracy cost"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A bank's internal search assistant must answer within two seconds at p95. Adding a reranker raises answer accuracy from 81% to 90% on the eval but pushes p95 to 3.4 seconds. Accuracy matters most on regulatory questions, which are about 10% of traffic.",
+        "decision": "Use the reranker only for questions classified as regulatory; keep the fast path for the rest. Report accuracy and p95 for both paths.",
+        "why": "Routing keeps overall p95 inside the SLA while getting the accuracy gain where it counts. Turning the reranker on everywhere breaks the SLA; dropping it everywhere gives up accuracy on the questions that need it."
+      },
+      "rule": "If the SLA is tight and only some requests are hard, route those to the heavy path; if a check's result is used later, move it off the live path.",
+      "questions": [
+        {
+          "stem": "A pharmacy's voice agent must start speaking within one second for routine questions; for drug-interaction questions the pharmacy accepts a few seconds because accuracy is critical. A smaller, faster model answers in 600 ms and passes the eval on routine questions but fails often on interactions. The most capable model with a reranker takes three seconds. Which configuration fits?",
+          "select": 1,
+          "options": [
+            "The most capable model with reranking, streaming its words to speech.",
+            "The smaller model for every call, with a stronger, more detailed interaction prompt.",
+            "Smaller model for routine calls, heavy path for interaction questions.",
+            "The heavy path for every call, plus a cache of the commonest answers."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding fact: the SLA differs by question type. Routing gives routine calls the fast model and sends interaction questions, where slower is acceptable, to the accurate path.",
+          "traps": [
+            "Works, but reranking happens before the first word, so streaming can't bring routine replies under one second.",
+            "Works, but the eval already shows the smaller model failing on interactions; a prompt tweak is a guess.",
+            null,
+            "Works for repeated questions, but every cache miss still breaks the routine SLA."
+          ]
+        },
+        {
+          "stem": "An insurer's claims-intake assistant chats with customers live and extracts claim details into a record that adjusters review the next morning. A second model pass that verifies extracted fields raises field accuracy from 94% to 99%, but adds four seconds to each reply and breaks the two-second response SLA. What should the architect do?",
+          "select": 1,
+          "options": [
+            "Run verification after the reply, before adjusters open the record.",
+            "Drop the verification pass and accept 94% field accuracy.",
+            "Keep verification inline and stream the reply so text appears sooner.",
+            "Replace the separate pass with extended thinking on the extraction call."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding fact: adjusters use the record the next morning, so verification does not need to sit on the live path. Running it asynchronously keeps both the SLA and the accuracy.",
+          "traps": [
+            null,
+            "Works for the SLA, but gives up accuracy that is available for free off the live path.",
+            "Works when slow output is the problem, but here verification runs before the reply, so the first words are still late.",
+            "Works to raise accuracy, but extended thinking also adds latency to the live reply."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.4",
+      "guide": "Analyze observability challenges and select monitoring strategies at scale",
+      "oneliner": "When an answer is wrong, you must be able to see every model call, tool call and retrieval that produced it, and you need numbers, not log reading, at scale.",
+      "explain": [
+        "<b>Observability</b> means being able to tell what a system did and why from the data it records. LLM systems make this hard: the same input can give different outputs, one answer may come from many steps (several model calls, tool calls, retrievals, sometimes several agents), and “wrong” is often a quality judgement rather than an error code.",
+        "The backbone is <b>end-to-end tracing</b>: one request ID carried through every step, with each step recorded as a <b>span</b> (a timed record of one operation: its inputs, outputs, model, tokens and duration). Open standards such as OpenTelemetry are commonly used. With a trace you can open one bad answer and see which retrieval returned the wrong chunk or which tool returned an error.",
+        "On top of traces, track metrics per request and per step: input and output <b>tokens and cost</b>, latency <b>percentiles</b> (p50, p95, p99, because averages hide the slow tail), tool error rates, and the prompt and model version used. Quality cannot be read from metrics, so run <b>sampled quality evals</b>: score a random slice of live traffic with automated checks or an LLM judge, and alert when scores drop. Handle personal data in logs deliberately (redact or restrict access)."
+      ],
+      "flow": [
+        "Request ID assigned",
+        "Spans for each model, tool and retrieval step",
+        "Tokens, cost, latency per span",
+        "Sampled quality scoring",
+        "Dashboards and alerts"
+      ],
+      "know": [
+        "One request ID across every agent, model call, tool call and retrieval lets you find the failing step.",
+        "Record tokens and cost per request and per step; daily totals cannot show which feature or step is expensive.",
+        "Use latency percentiles (p95, p99); averages hide slow outliers.",
+        "Quality needs its own signal: sampled evals on live traffic, with alerts on drops.",
+        "Log the prompt version and model version with each request so regressions trace to a change.",
+        "Raising log verbosity without correlation gives more text, not more insight.",
+        "Prompts and responses can contain personal data: redact or restrict access to logs."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Can't tell which step in a multi-step system caused a bad answer",
+            "End-to-end tracing with one request ID",
+            "Shows each step's input and output in context"
+          ],
+          [
+            "Spend rose but volume didn't, or some users are very slow",
+            "Per-request, per-step token, cost and latency percentiles",
+            "Finds the expensive or slow path that totals and averages hide"
+          ],
+          [
+            "Quality may be drifting, but nothing errors",
+            "Sampled quality evals with alerts",
+            "Quality is invisible to system metrics"
+          ],
+          [
+            "The failing step is already known and needs detail",
+            "Richer logging on that step",
+            "Targeted detail is cheaper than logging everything"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A support platform runs a router, a retrieval step and two specialist agents. Customer satisfaction is falling, yet error rates and average latency look normal.",
+        "decision": "Add tracing with one request ID across all steps, record tokens, cost and p95 latency per step, and score a daily sample of conversations with an LLM judge calibrated on human ratings.",
+        "why": "Nothing is erroring, so system metrics alone won't show the cause; sampled evals reveal the quality drop and traces show which step is responsible. More verbose per-service logs would still leave engineers stitching steps together by hand."
+      },
+      "rule": "If you can't tell which step failed, trace every request under one ID; if spend or slowness hides in totals, measure per request and per step with percentiles; if quality may drift, score a live sample.",
+      "questions": [
+        {
+          "stem": "A travel company's booking assistant uses a planner agent, three sub-agents and eight tools. About 3% of itineraries have wrong dates. Each service writes its own plain-text logs, so engineers cannot tell which step introduced an error. What should the architect put in place first?",
+          "select": 1,
+          "options": [
+            "Raise every service's log level to debug and collect the files centrally.",
+            "Add a nightly LLM judge that scores a sample of finished itineraries.",
+            "Add a feedback button so customers can flag wrong itineraries.",
+            "Trace each request end to end under one ID across agents and tools."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding fact: engineers cannot tell which step failed. A shared request ID with a span per step lets them open a bad itinerary and see where the date went wrong.",
+          "traps": [
+            "Works for detail, but without a shared ID the steps still can't be joined into one story.",
+            "Works to measure how often dates are wrong, but not to show which step caused it.",
+            "Works to find bad cases, but still gives no view of the steps behind them.",
+            null
+          ]
+        },
+        {
+          "stem": "A legal-research product's monthly model spend doubled while request volume stayed flat. Average latency looks normal, but some users report very slow answers. The current dashboard shows only total daily tokens and mean latency. Which monitoring change best supports the diagnosis?",
+          "select": 1,
+          "options": [
+            "A budget alert that fires when monthly token spend passes a limit.",
+            "Tokens, cost and latency per request and step, with p95 and p99.",
+            "A weekly LLM-as-judge evaluation on a random sample of answers.",
+            "Full prompt and response text stored for every request."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding facts: totals and averages hide where the extra spend and the slow tail come from. Per-request, per-step figures with percentiles point to the expensive or slow path.",
+          "traps": [
+            "Works to warn about spend, but not to explain where it goes.",
+            null,
+            "Works for quality drift, which is not the symptom here.",
+            "Works for deep debugging of one case, but it is costly at scale and gives no aggregate view."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.5",
+      "guide": "Design a RAG pipeline with appropriate chunking and indexing strategies",
+      "oneliner": "Cut documents into pieces that each make sense on their own, label them with useful metadata, and keep the index in step with the source.",
+      "explain": [
+        "<b>RAG</b> (retrieval-augmented generation) finds relevant passages and gives them to the model with the question. Before retrieval can work, documents are split into <b>chunks</b>, each turned into an <b>embedding</b> (a list of numbers that captures meaning) and stored in an <b>index</b>. How you chunk decides what can be found: a chunk that cuts a clause in half can never be retrieved whole.",
+        "<b>Fixed-size chunking</b> (every 500 characters) is simple but ignores meaning. <b>Structure-aware chunking</b> splits on the document's own boundaries: headings, sections, clauses, list items, table rows kept together. A little <b>overlap</b> between neighbouring chunks protects ideas that cross a boundary. Chunk size is a trade-off: small chunks match precisely but lack context; large chunks carry context but dilute the match. A common pattern retrieves small chunks and then passes their larger parent section to the model.",
+        "Chunks often lose the context that made them meaningful (“the limit is 25 days” without saying which country). Two fixes. Attach <b>metadata</b> (source, section, date, version, region, access list) for filtering and citation. Use <b>contextual retrieval</b>, a technique Anthropic has described: before indexing, prepend each chunk with a short, model-written note situating it in its document, and index that for both embedding and keyword search. Finally, <b>re-index</b> when documents change: update changed files, delete removed ones, and embed queries with the same embedding model as the index."
+      ],
+      "flow": [
+        "Parse by structure",
+        "Chunk with overlap",
+        "Add context and metadata",
+        "Embed and index",
+        "Re-index on change"
+      ],
+      "know": [
+        "Structure-aware chunking (by section, clause or heading) beats fixed-size chunking for structured documents.",
+        "Overlap between chunks protects ideas that cross a boundary.",
+        "Small chunks match precisely but lack context; large chunks carry context but match loosely.",
+        "Metadata such as source, date, version, region and access list enables filtering and citations.",
+        "Contextual retrieval prepends a short document-aware summary to each chunk before embedding and keyword indexing.",
+        "Re-index when sources change, remove deleted documents, and use the same embedding model for queries and index.",
+        "Tables should stay whole, or be stored as structured data, rather than split mid-row."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "A clause or table is split across two chunks",
+            "Structure-aware chunking with overlap",
+            "Keeps each idea in one retrievable piece"
+          ],
+          [
+            "Chunks are correct text but from the wrong version, region or date",
+            "Metadata plus filters, or contextual retrieval",
+            "The chunk alone doesn't say where it belongs"
+          ],
+          [
+            "Short, unstructured documents such as chat messages or notes",
+            "Simple fixed-size or whole-document chunks",
+            "Little structure to exploit; simplicity wins"
+          ],
+          [
+            "Answers became wrong right after a document refresh",
+            "Check the re-index and embedding model",
+            "Stale or mismatched index, not the model"
+          ],
+          [
+            "Matches are precise but answers lack surrounding detail",
+            "Retrieve small chunks, pass the parent section",
+            "Precision for search, context for the answer"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A manufacturer's maintenance assistant indexes equipment manuals in fixed 1,000-character chunks. Technicians get half a procedure: step 4 onwards sits in a different chunk from steps 1 to 3, and warnings tables are split mid-row.",
+        "decision": "Re-chunk by heading and procedure, keep each procedure and each table whole, add modest overlap, and tag chunks with machine model and manual version.",
+        "why": "The failure is in how text was cut, so the fix is in chunking. Raising top-k might fetch both halves by luck but also floods the context with unrelated text; a bigger model cannot reason over steps it never received."
+      },
+      "rule": "If ideas are split across chunks, chunk by the document's structure with overlap; if chunks lose their context, add metadata and contextual notes; if sources change, re-index.",
+      "questions": [
+        {
+          "stem": "An insurer's policy assistant splits PDFs into fixed 500-character chunks. Answers often miss exclusions because a clause's condition and its exception land in different chunks. The policies use numbered sections and clauses throughout. What should the architect change?",
+          "select": 1,
+          "options": [
+            "Raise top-k from 5 to 20 so both halves of a clause are more likely retrieved.",
+            "Switch to a larger embedding model with more dimensions.",
+            "Chunk by section and clause, with some overlap and section metadata.",
+            "Shrink chunks to 200 characters so each one matches more precisely."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding facts: ideas are split by fixed cuts, and the documents have clear numbered structure. Chunking along that structure keeps each clause and its exception together.",
+          "traps": [
+            "Works sometimes, but by luck, and it adds unrelated text; the split remains.",
+            "Works for better meaning-matching, but it cannot join text that chunking separated.",
+            null,
+            "Works for precision on short facts, but here it splits clauses even more."
+          ]
+        },
+        {
+          "stem": "A global firm's HR knowledge base holds hundreds of near-identical policy documents, one per country and year. Retrieved chunks such as “Employees receive 25 days” are accurate text but often from the wrong country or an outdated year, and the chunks themselves name neither. Which two changes best fix retrieval?",
+          "select": 2,
+          "options": [
+            "Prepend each chunk with a short note naming its document, country and year.",
+            "Increase the overlap between neighbouring chunks.",
+            "Switch from semantic search to keyword-only search.",
+            "Store country and effective year as metadata and filter on them.",
+            "Raise top-k so more candidate chunks reach the model."
+          ],
+          "key": [
+            0,
+            3
+          ],
+          "why": "The deciding fact: the chunks name neither country nor year. Contextual notes put that context into what gets indexed, and metadata filters restrict results to the right country and current year.",
+          "traps": [
+            null,
+            "Works when ideas cross chunk boundaries, but the country and year are not in nearby text either.",
+            "Works for exact codes and names, but the chunks still don't contain the country or year to match.",
+            null,
+            "Works when the right chunk ranks just below the cut-off, but here more results bring more wrong-country text."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.6",
+      "guide": "Apply retrieval strategies matched to data shape and query pattern",
+      "oneliner": "Choose how to search by what the data looks like and how people ask: meaning, exact terms, filters, or a real query against structured data.",
+      "explain": [
+        "<b>Semantic (vector) search</b> compares embeddings, so it finds passages with similar meaning even when the words differ. It is weak on exact strings: product codes, error codes, part numbers and names can look alike in meaning space. <b>Keyword search</b>, usually with the <b>BM25</b> ranking method, scores documents by matching the exact terms, so it excels at codes and names but misses paraphrases.",
+        "<b>Hybrid search</b> runs both and merges the results, which suits collections where users mix exact identifiers with descriptions. <b>Metadata filters</b> (date, region, product version, owner) narrow the search before or during ranking. A <b>reranker</b> takes the top few dozen candidates and re-scores them with a more precise model, lifting the right passage from position 30 into the top 5 at some cost in latency.",
+        "Some data should not be embedded at all. Questions about totals, counts, trends or filters over tables (“revenue by region last quarter”) need exact computation over every row, so give the model a <b>query tool</b> over the database or warehouse, ideally one with defined metrics, and let it answer from the result. Retrieving the 20 most “similar” rows cannot add up two million."
+      ],
+      "know": [
+        "Vector search matches meaning; it is weak on exact identifiers such as codes, SKUs and names.",
+        "BM25 keyword search matches exact terms; it misses paraphrases and synonyms.",
+        "Hybrid search combines both for collections where users mix codes with descriptions.",
+        "Metadata filters handle date, region, version and owner constraints precisely.",
+        "A reranker improves precision when the right result is retrieved but ranked too low.",
+        "Aggregations and exact figures over structured data need a query tool, not embeddings.",
+        "A better embedding model still matches by meaning, so it does not fix exact-match failures."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Users describe problems in their own words",
+            "Vector (semantic) search",
+            "Matches meaning across different wording"
+          ],
+          [
+            "Queries contain exact codes, IDs or names, mixed with descriptions",
+            "Hybrid: vector plus BM25 keyword",
+            "Exact terms and meaning both count"
+          ],
+          [
+            "Queries contain only exact identifiers, such as a part-number lookup",
+            "Keyword search or a direct lookup",
+            "No meaning to match; exact is enough"
+          ],
+          [
+            "The right passage is retrieved but ranked too low",
+            "Add a reranker",
+            "Re-scores candidates for precision"
+          ],
+          [
+            "Questions need totals, counts or trends over tables",
+            "A query tool over the database",
+            "Exact computation over every row"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A retailer's merchandising assistant answers both “What do customers say about the waterproof jackets?” and “How many units of SKU 88213 sold in Germany in March?” from one vector index of reviews and sales rows.",
+        "decision": "Keep semantic search over reviews; route sales questions to a tool that queries the sales warehouse with filters for SKU, country and month.",
+        "why": "Reviews are text where meaning matters; sales are structured numbers that need exact aggregation. Hybrid search would help find the SKU in text, but no search method can sum the units correctly."
+      },
+      "rule": "If queries mix exact codes with descriptions, use hybrid search; if the right result ranks too low, rerank; if the question needs totals over tables, give Claude a query tool.",
+      "questions": [
+        {
+          "stem": "A sales team asks an assistant questions such as “What was total revenue by region last quarter?” The data sits in a warehouse table of two million order rows. The current design embeds each row as text and retrieves the 20 most similar rows. Answers sound plausible but the numbers are wrong. What should the architect use?",
+          "select": 1,
+          "options": [
+            "A tool that queries the warehouse and returns the aggregated figures.",
+            "Hybrid search combining vector and BM25 keyword matching over rows.",
+            "A reranker that re-scores the top 100 retrieved rows.",
+            "Metadata filters on region and quarter, applied before the vector search runs."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding fact: the questions need totals over millions of rows. Only an exact query can compute them; any retrieval method hands the model a small sample.",
+          "traps": [
+            null,
+            "Works for exact terms in text, but still returns a handful of rows, not a total.",
+            "Works to improve ranking, but 100 rows still cannot sum two million.",
+            "Works to narrow the rows, but the model still sees only a sample of them."
+          ]
+        },
+        {
+          "stem": "A software company's support search covers 50,000 troubleshooting articles. Customers paste exact error codes such as E-4021 and also describe symptoms in their own words. Vector search alone often returns articles about similar-looking codes, and the right article is usually in the top 50 but rarely in the top 5. Which two changes best fit?",
+          "select": 2,
+          "options": [
+            "Fine-tune a new embedding model on the article collection.",
+            "Add BM25 keyword search and merge its results with vector results.",
+            "Replace vector search with keyword search alone.",
+            "Filter articles by product-version metadata before searching.",
+            "Rerank the top 50 candidates and pass the best few to Claude."
+          ],
+          "key": [
+            1,
+            4
+          ],
+          "why": "Two deciding facts: queries mix exact codes with descriptions, which calls for hybrid search; and the right article is retrieved but ranked too low, which a reranker fixes.",
+          "traps": [
+            "Works to sharpen meaning-matching, but embeddings still blur exact codes.",
+            null,
+            "Works for codes, but loses the symptom descriptions customers also write.",
+            "Works when results come from the wrong version, which the stem doesn't mention.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.7",
+      "guide": "Evaluate connection protocols and select the appropriate integration mechanism (MCP, API/CLI, agent-to-agent)",
+      "oneliner": "Use MCP to share a capability with many AI clients, a direct API or CLI for one known call, and agent-to-agent when you hand a whole goal to someone else's agent.",
+      "explain": [
+        "The <b>Model Context Protocol (MCP)</b> is an open standard for exposing tools, data (<b>resources</b>) and reusable <b>prompts</b> to AI applications. A team builds one MCP server, and any MCP-capable client can use it: Claude Code, the Claude desktop app, agents built with the Claude Agent SDK, or the Claude API through its MCP connector. Servers can run locally or remotely. MCP pays off when the same capability is needed by <b>several clients or teams</b>, because it replaces one-off glue code with one shared, governed integration.",
+        "A <b>direct API call</b> is the lightest option: your application code calls a known service, or defines a tool in its own code that wraps that call. It fits <b>one application with a fixed integration</b>. A <b>CLI</b> (command-line tool) fits agents that have a shell, such as Claude Code: well-known tools like <code>git</code> or a cloud CLI are already familiar to the model and need no extra server. Building an MCP server for a single, fixed call inside one app adds moving parts for no reuse.",
+        "<b>Agent-to-agent</b> integration means delegating a <b>goal</b>, not a function call, to another autonomous agent that plans its own steps with its own tools and data, often owned by another team or company. Open protocols such as A2A define how agents describe themselves, accept tasks and return results. Choose it when the other side keeps its logic and systems private and runs a multi-step process itself. The general rule: pick the lightest mechanism that meets the reuse and ownership needs."
+      ],
+      "know": [
+        "MCP standardises how tools, resources and prompts are exposed, so one server serves many AI clients.",
+        "MCP pays off when several clients or teams need the same capability.",
+        "A direct API call is simplest for one application with a fixed, known integration.",
+        "Agents with a shell can use familiar CLIs directly, without building a server.",
+        "Agent-to-agent delegates a goal to an autonomous agent that runs its own multi-step process.",
+        "Agent-to-agent fits when the other party owns the logic and won't expose its underlying systems.",
+        "Pick the lightest mechanism that satisfies reuse, ownership and security needs."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "The same tool is needed by several AI clients or teams",
+            "An MCP server",
+            "Build once, reuse everywhere, govern centrally"
+          ],
+          [
+            "One backend calls a known service in a fixed way",
+            "Direct API call",
+            "Fewest moving parts; nothing to reuse"
+          ],
+          [
+            "A coding agent with a shell needs a well-known tool",
+            "The existing CLI",
+            "The model already knows it; no server needed"
+          ],
+          [
+            "A partner's agent handles a multi-step task with its own private systems",
+            "Agent-to-agent",
+            "You hand over a goal, not individual calls"
+          ],
+          [
+            "A partner offers simple, documented endpoints and no agent",
+            "Direct API or an MCP wrapper",
+            "There is no agent to delegate to"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A bank's ticketing data must be searchable from Claude Code by developers, from the desktop app by support leads, and by two internal agents. Separately, a nightly script sends each day's new tickets to Claude once for a summary.",
+        "decision": "Build one MCP server for ticket search and read, used by all four clients. Keep the nightly summary as a direct API call in the script.",
+        "why": "Four clients share one capability, so MCP removes duplicated glue. The nightly job is a single fixed call; wrapping it in MCP would add a server to run for no benefit."
+      },
+      "rule": "If many AI clients need the same capability, build an MCP server; if one app makes a fixed call, call the API directly; if another party's agent runs the whole task, delegate agent-to-agent.",
+      "questions": [
+        {
+          "stem": "Four teams want Claude to read the company's incident database: developers in Claude Code, analysts in the Claude desktop app, and two internal agents built on the Agent SDK. Each team has started writing its own integration code, and security wants one place to control access. Which mechanism fits?",
+          "select": 1,
+          "options": [
+            "A shared REST API that each client team wraps in its own tool definitions.",
+            "A command-line tool installed on every user's machine.",
+            "An incident agent that the other agents message with questions.",
+            "One MCP server exposing incident search and read to every client."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding fact: four different AI clients need the same capability. One MCP server serves them all and gives security one place to control access.",
+          "traps": [
+            "Works, but each team still writes and maintains its own wrapper; it fits when only one app needs it.",
+            "Works for developers with a shell, but not for the desktop app or hosted agents.",
+            "Works when incidents need multi-step investigation by their own agent, but here clients just read data.",
+            null
+          ]
+        },
+        {
+          "stem": "A travel company's assistant must rebook hotel stays with a partner chain. The partner runs its own booking agent that checks availability, applies loyalty rules and takes payment over several steps, and will not expose its internal systems. Which integration mechanism fits?",
+          "select": 1,
+          "options": [
+            "Call the partner's public availability API and apply loyalty rules ourselves.",
+            "Wrap the partner's public website in a browser-automation tool.",
+            "Hand the rebooking task to the partner's agent over an agent-to-agent protocol.",
+            "Build an MCP server that exposes each partner booking step as a tool."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding facts: the partner runs the multi-step process itself and keeps its systems private. Delegating the goal to its agent is the only option that respects both.",
+          "traps": [
+            "Works for availability, but it duplicates loyalty and payment logic the partner owns and won't share.",
+            "Works as a last resort, but it is brittle and bypasses the partner's intended interface.",
+            null,
+            "Works when the partner exposes its booking steps, which it refuses to do here."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "3.8",
+      "guide": "Evaluate progressive discovery vs. monolithic context strategy",
+      "oneliner": "Load everything up front only when it is small, stable and always needed; otherwise start with a short index and fetch detail when the task calls for it.",
+      "explain": [
+        "A <b>monolithic context</b> strategy loads everything into every request: all instructions, all reference documents, all tool definitions. It is simple, predictable, and works well with prompt caching. But as it grows it costs more tokens, slows responses, and dilutes attention: with hundreds of similar tool definitions, the model is more likely to pick the wrong one.",
+        "<b>Progressive discovery</b> (also called progressive disclosure) starts with a short catalogue and loads detail only when needed. Claude's mechanisms include <b>Skills</b>, where only each Skill's name and description sit in context until a task calls for it, then its instructions and any extra files are read; <b>tool search</b>, where tool definitions are deferred and Claude searches for the few it needs; <b>MCP resources</b>, data a server offers to be read on demand; and simply letting an agent browse files.",
+        "Neither is always right. Progressive discovery adds a lookup step and a small chance of missing something relevant. Monolithic wins when the content is <b>small, stable and needed on almost every request</b>; then caching makes it cheap. Progressive discovery wins when the content is <b>large, varied, and each task uses only a slice</b>."
+      ],
+      "flow": [
+        "Short catalogue in context",
+        "Task arrives",
+        "Claude finds what it needs",
+        "Detail loaded",
+        "Task done with a lean context"
+      ],
+      "know": [
+        "Monolithic context is simple and cache-friendly, but grows costly and dilutes attention as content grows.",
+        "Progressive discovery keeps a short index in context and loads detail on demand.",
+        "Skills load only their name and description until needed, then their full instructions and files.",
+        "Tool search lets Claude find relevant tools from a large set instead of loading every definition.",
+        "MCP resources expose data a client can read when needed rather than preloading it.",
+        "Monolithic wins when content is small, stable and needed every time; prompt caching then makes it cheap.",
+        "A bigger context window does not fix tool confusion or attention dilution."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "Hundreds of tools, each task uses a few, and wrong tools get picked",
+            "Tool search (deferred tool loading)",
+            "Only relevant definitions reach the model"
+          ],
+          [
+            "Long procedures, each needed only for certain tasks",
+            "Skills",
+            "Instructions load only when the task calls for them"
+          ],
+          [
+            "Small, stable content needed on nearly every request",
+            "Monolithic, with prompt caching",
+            "No lookup step; caching makes it cheap"
+          ],
+          [
+            "Large reference data read occasionally",
+            "MCP resources or file browsing",
+            "Fetched on demand instead of preloaded"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A platform-engineering agent carries 150 tool definitions from five MCP servers and a 30-page runbook in every request. Typical tasks use three tools and one runbook section; replies are slow and it sometimes calls a similar but wrong tool.",
+        "decision": "Defer tool definitions behind tool search, and split the runbook into Skills by procedure, each with a clear description.",
+        "why": "Each task uses a small slice of a large, varied set, which is where progressive discovery wins. Caching the full context would cut cost and time to first token but would leave all 150 tools competing for the model's attention."
+      },
+      "rule": "If content is large and each task uses a slice, discover it progressively with Skills, tool search or resources; if it is small, stable and always needed, load it up front and cache it.",
+      "questions": [
+        {
+          "stem": "A company's operations agent loads 180 tool definitions from six MCP servers and a 40-page runbook into every request. Each task uses only three to five tools and one runbook procedure. Responses are slow, costs are high, and the agent often picks a similar but wrong tool. What should the architect change?",
+          "select": 1,
+          "options": [
+            "Move to a model with a larger context window.",
+            "Load tools through tool search and split the runbook into Skills.",
+            "Cache the full tool list and runbook with prompt caching.",
+            "Merge the 180 tools into a dozen broad multi-purpose tools."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding fact: each task uses a small slice of a large set, and the agent confuses similar tools. Loading only what the task needs fixes cost, speed and tool choice together.",
+          "traps": [
+            "Works to fit more, but more room does not reduce cost or tool confusion.",
+            null,
+            "Works to cut cost and time to first token, but all 180 tools still compete for attention.",
+            "Works to shorten the list, but broad tools are vague and carry more power than each task needs."
+          ]
+        },
+        {
+          "stem": "A support bot for a single product uses a 3,000-token style guide and six tools in every conversation. Every reply needs all of them, and the content changes about once a quarter. A colleague proposes converting the guide into Skills and the tools to tool search to keep context lean. What should the architect recommend?",
+          "select": 1,
+          "options": [
+            "Adopt Skills and tool search so the starting context stays small.",
+            "Expose the style guide as MCP resources the bot reads when needed.",
+            "Index the style guide for retrieval and fetch sections per message.",
+            "Keep everything loaded up front and cache the stable prefix."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding facts: the content is small, stable, and needed on every reply. Loading it monolithically with prompt caching is cheap and avoids a lookup step that would run every time anyway.",
+          "traps": [
+            "Works when content is large and only sometimes needed; here it would load on every reply anyway.",
+            "Works for large reference data read occasionally, not a small guide used every time.",
+            "Works for big document sets, but risks missing style rules that every reply must follow.",
+            null
+          ]
+        }
+      ]
+    }
+  ]
+}

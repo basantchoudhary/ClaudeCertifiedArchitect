@@ -1,0 +1,331 @@
+{
+  "n": 7,
+  "slug": "D7-Developer-Productivity",
+  "name": "Developer Productivity &amp; Operational Enablement",
+  "weight": "7%",
+  "intro": "This domain is about rolling Claude out to engineering and operations teams: configuring Claude Code so a whole team shares the same setup and rules, using it to speed up everyday work, and letting it help with debugging and incidents safely. Its questions ask where a setting belongs, which workflow fits, and how much access Claude should have.",
+  "sections": [
+    {
+      "id": "7.1",
+      "guide": "Configure Claude tools and environments for teams (e.g., Claude Code)",
+      "oneliner": "Put shared team setup in the repository, put rules nobody may override in managed settings, and leave personal preferences in each person's own files.",
+      "explain": [
+        "Claude Code reads its configuration from several layers. <b>CLAUDE.md</b> files are memory: instructions loaded into context at the start of a session, such as coding standards, build and test commands, and architecture notes. A project CLAUDE.md is committed to the repository so the whole team shares it; a personal one in the user's home folder (<code>~/.claude/CLAUDE.md</code>) applies only to that person. CLAUDE.md is guidance the model reads, not enforcement.",
+        "Enforcement lives in settings. The committed <code>.claude/settings.json</code> holds <b>permission rules</b> (allow, ask or deny for tools, commands and file paths) and <b>hooks</b>: commands that run at fixed points, such as before a tool runs (and can block it) or after a file is edited (for example, to run the formatter). <code>.claude/settings.local.json</code> holds personal project settings and is not committed. A committed <code>.mcp.json</code> shares MCP server definitions with the team; secrets are referenced as environment variables so they never enter git. Shared slash commands and Skills in the repository give everyone the same workflows.",
+        "<b>Managed settings</b> are deployed by administrators to every machine and sit at the top of the order: users and projects cannot override them. Use them for organisation policy, such as denying access to secret files, blocking risky commands or limiting which MCP servers may be used. Below them come command-line options, then local project settings, then shared project settings, then user settings. A deny rule beats an allow rule."
+      ],
+      "flow": [
+        "Managed settings (organisation, cannot be overridden)",
+        "Project settings in the repo (team)",
+        "Personal settings (one developer)"
+      ],
+      "know": [
+        "CLAUDE.md is instructions the model reads; permissions and hooks are enforced by Claude Code itself.",
+        "<code>.claude/settings.json</code> is committed and shared; <code>.claude/settings.local.json</code> is personal and not committed.",
+        "A committed <code>.mcp.json</code> shares MCP servers; tokens are referenced through environment variables.",
+        "Managed settings have the highest precedence and cannot be overridden by users or projects.",
+        "Deny rules take precedence over allow rules.",
+        "Hooks run every time at their event; a hook before a tool call can block that call.",
+        "Shared slash commands and Skills in the repo give the team the same workflows."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "An organisation-wide rule nobody may loosen",
+            "Managed settings",
+            "Highest precedence; users cannot override"
+          ],
+          [
+            "A team convention, such as the test command or style",
+            "Project CLAUDE.md",
+            "Shared guidance that travels with the repo"
+          ],
+          [
+            "Something must happen or be blocked every time",
+            "Hook or permission rule in <code>.claude/settings.json</code>",
+            "Enforced, not just suggested"
+          ],
+          [
+            "The team shares an MCP server that needs a token",
+            "<code>.mcp.json</code> with an environment-variable reference",
+            "Shared setup, no secret in git"
+          ],
+          [
+            "One repository needs a restriction its own team owns",
+            "Deny rule in that project's settings",
+            "Managed settings are for organisation policy, not one team's choice"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A software company wants every developer to run tests the same way, auto-format edited files, and never let Claude Code read production credentials. Some developers like a terse output style.",
+        "decision": "Test commands and conventions go in the project CLAUDE.md; the formatter runs from a hook in <code>.claude/settings.json</code>; the credentials deny rule goes in managed settings; output style stays in each developer's user settings.",
+        "why": "Each need goes to the layer that matches who owns it and how firmly it must hold. Putting the credentials rule in CLAUDE.md is tempting, but it is only an instruction and a developer could remove it."
+      },
+      "rule": "If a rule must hold for everyone and nobody may loosen it, use managed settings; if it is the team's setup, commit it to the repo; if it must always run or be blocked, use a hook or permission rule, not CLAUDE.md.",
+      "questions": [
+        {
+          "stem": "A bank's security team requires that Claude Code never reads files matching <code>.env</code> or anything under <code>secrets/</code>, in any repository, and that individual developers cannot loosen this rule. About 400 developers use Claude Code across 60 repositories. Where should the rule be configured?",
+          "select": 1,
+          "options": [
+            "A deny rule in each repository's committed <code>.claude/settings.json</code>.",
+            "A deny rule in managed settings deployed to every developer's machine.",
+            "An instruction in each repository's CLAUDE.md not to open secret files.",
+            "A blocking hook in each developer's user settings that checks file paths."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding facts: the rule covers every repository, and developers must not be able to loosen it. Only managed settings apply everywhere and cannot be overridden.",
+          "traps": [
+            "Works for one team's repository, but it must be copied into 60 repos and any developer with commit access could change it.",
+            null,
+            "Works as guidance, but the model reads it as an instruction; nothing enforces it.",
+            "Works technically, but user settings are under each developer's control, so they could remove it."
+          ]
+        },
+        {
+          "stem": "A platform team wants Claude Code to use its internal ticketing MCP server whenever anyone works in the payments repository. The server needs an API token, and each developer already has a personal token in an environment variable. The setup should arrive automatically when someone clones the repository. What should the team do?",
+          "select": 1,
+          "options": [
+            "Ship a setup script that adds the server to each developer's user config.",
+            "Explain in the repo's CLAUDE.md how each developer should add the server.",
+            "Add the server to managed settings so it is set up on every machine.",
+            "Commit a <code>.mcp.json</code> that reads the token from that variable."
+          ],
+          "key": [
+            3
+          ],
+          "why": "The deciding facts: the server belongs to one repository and must arrive on clone, with no secret in git. A committed <code>.mcp.json</code> does both, using an environment-variable reference for the token.",
+          "traps": [
+            "Works, but it needs an extra manual step and applies the server to every project, not just payments.",
+            "Works as documentation, but each developer must still set it up by hand.",
+            "Works for an organisation-wide server, but this one belongs to a single repository.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7.2",
+      "guide": "Improve developer workflows using AI-assisted tooling",
+      "oneliner": "Use Claude for the repetitive first pass (reviews, tests, docs, migrations, onboarding), keep humans approving the result, and measure whether delivery actually improved.",
+      "explain": [
+        "AI assistance helps most where work is repetitive, well defined and checkable: a <b>first-pass code review</b> on every pull request, <b>test generation</b>, <b>documentation</b>, large <b>refactors and migrations</b> (such as moving from one library version to another across hundreds of files), and <b>onboarding</b>, where a new developer asks Claude to explain an unfamiliar codebase.",
+        "For team-wide consistency, run Claude Code in <b>CI</b> (continuous integration, the pipeline that runs on every change) rather than relying on each developer. In CI it runs <b>non-interactively</b>: given a prompt, it does the work and exits, with no one typing. It can return <b>structured output</b> such as JSON so the pipeline can post findings as comments in a fixed format. The review criteria live in the repository, so every pull request is checked against the same list. Anthropic also provides a GitHub Actions integration for this pattern.",
+        "Two guardrails keep this safe and worthwhile. Humans still <b>approve</b> merges; Claude's review is a first pass, not the decision. And <b>measure impact</b> with outcome metrics such as cycle time (from first commit to merge) and escaped defects (bugs found after release), compared with before the rollout. Activity counts, such as lines generated, show usage, not value."
+      ],
+      "flow": [
+        "Pick a repetitive, checkable task",
+        "Run Claude in CI or as a shared command",
+        "Human approves",
+        "Measure cycle time and defects"
+      ],
+      "know": [
+        "In CI, Claude Code runs non-interactively from a prompt and can return JSON for the pipeline to use.",
+        "Shared review criteria in the repo make every pull request get the same first-pass check.",
+        "Humans keep approval of merges; an AI review is a first pass.",
+        "Good targets: code review, tests, docs, migrations and onboarding.",
+        "Measure outcomes (cycle time, escaped defects), not activity (lines generated, sessions).",
+        "Large migrations work best split into many small, verifiable changes, each checked by tests."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "A consistent automated review on every pull request",
+            "Claude Code in CI, non-interactive, structured output",
+            "Runs the same way every time without relying on people"
+          ],
+          [
+            "A developer wants help before they push",
+            "Local Claude Code with a shared review command",
+            "Fast feedback for one person"
+          ],
+          [
+            "Leadership asks if it is worth the cost",
+            "Cycle time and escaped defects before and after",
+            "Outcomes, not usage"
+          ],
+          [
+            "Hundreds of files need the same library upgrade",
+            "Claude-driven migration in small batches, tests on each",
+            "Repetitive and checkable"
+          ],
+          [
+            "Someone suggests auto-merging what Claude approves",
+            "Keep human approval",
+            "The first pass is not the decision"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "A fintech's 30 engineers spend days on review, and new joiners take a month to become productive.",
+        "decision": "Add a Claude Code review step in CI that checks each pull request against the team's checklist and posts findings; give new joiners a shared onboarding command that explains the codebase. Track review turnaround and time to first merged change.",
+        "why": "Both are repetitive and benefit everyone the same way. Asking each engineer to review with Claude locally is tempting, but results depend on who remembers to do it."
+      },
+      "rule": "If the team wants the same check on every change, run Claude in CI with structured output; if someone asks whether it pays off, measure cycle time and defects, and always keep humans approving.",
+      "questions": [
+        {
+          "stem": "A 40-person engineering team wants every pull request to get the same first-pass review against its own checklist, with findings posted as PR comments in a fixed format. Engineers will still approve every merge. Which setup fits best?",
+          "select": 1,
+          "options": [
+            "Run Claude Code in CI on each pull request, non-interactively, with JSON output.",
+            "Ask engineers to review with Claude Code locally before opening a pull request.",
+            "Put the checklist in CLAUDE.md so Claude applies it whenever engineers use it.",
+            "Have Claude Code approve and merge pull requests that pass the whole checklist."
+          ],
+          "key": [
+            0
+          ],
+          "why": "The deciding facts: every pull request, the same check, a fixed comment format. Only an automated CI step guarantees all three; JSON output lets the pipeline post findings consistently.",
+          "traps": [
+            null,
+            "Works for fast personal feedback, but it depends on each engineer remembering to do it.",
+            "Works as guidance during interactive use, but nothing runs it on every pull request.",
+            "Works for some low-risk changes elsewhere, but the stem keeps engineers approving every merge."
+          ]
+        },
+        {
+          "stem": "Three months ago an engineering director rolled out Claude Code for test generation and library migrations. The CFO now asks whether it is worth its licence cost compared with the time before rollout. Which two measures give the most useful evidence?",
+          "select": 2,
+          "options": [
+            "Cycle time from first commit to merge, before and after the rollout.",
+            "Lines of code produced by Claude Code each week across the team.",
+            "A developer survey asking how much they enjoy using the tool.",
+            "Escaped defects found after release, before and after the rollout.",
+            "Number of Claude Code sessions each developer starts per week."
+          ],
+          "key": [
+            0,
+            3
+          ],
+          "why": "The deciding fact: the CFO asks about value against a before-and-after baseline. Delivery speed and quality outcomes answer that; activity and sentiment do not.",
+          "traps": [
+            null,
+            "Works as a usage signal, but more lines can mean worse code, so it says nothing about value.",
+            "Works for adoption and morale, but enjoyment is not a business outcome.",
+            null,
+            "Works to track adoption, but usage is not value."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7.3",
+      "guide": "Support debugging and operational issue resolution",
+      "oneliner": "Let Claude read logs, metrics, traces and runbooks to investigate and explain problems, but keep changes to production behind human approval.",
+      "explain": [
+        "In <b>debugging</b>, Claude Code can read the code, run the failing test, add logging, and reproduce the problem before proposing a fix. The habit to insist on is finding the <b>root cause</b>, the real reason for the failure, rather than masking the symptom, for example by adding a retry around a flaky test. Asking Claude to reproduce the failure and explain it before editing code keeps fixes honest.",
+        "In <b>operations</b>, Claude helps on-call engineers by reading observability data: logs, metrics, traces, recent deployments and runbooks (step-by-step guides for known problems). These are usually connected through <b>MCP</b> servers (Model Context Protocol, the standard way to give Claude tools and data). Read-only tools let Claude correlate signals, match the incident to a runbook and draft a summary and a proposed fix, far faster than people pasting log excerpts into a chat.",
+        "Investigation is low risk; changes to production are not. So the tools Claude uses to investigate are <b>read-only</b>, and any remediation (restarting a service, changing a setting, rolling back) goes through <b>human approval</b>, using the normal change process so it is logged. Teams may later automate a few low-risk, well-tested runbook steps, but that is a deliberate decision, not a default."
+      ],
+      "flow": [
+        "Alert or failing test",
+        "Claude reads logs, metrics, runbooks",
+        "Finds likely cause with evidence",
+        "Proposes a fix",
+        "Engineer approves and applies"
+      ],
+      "know": [
+        "Give Claude read-only access to logs, metrics, traces and runbooks, often through MCP servers.",
+        "Remediation actions in production need human approval and go through the normal, logged change process.",
+        "Ask Claude to reproduce a bug and explain the cause before it edits code.",
+        "Masking a symptom (retries, skipped tests) is not a fix.",
+        "Separate read tools from write tools so investigation never holds write access.",
+        "A clear incident summary with evidence and a proposed fix speeds up the human decision."
+      ],
+      "compare": {
+        "head": [
+          "When the stem says…",
+          "Pick",
+          "Why"
+        ],
+        "rows": [
+          [
+            "On-call wants help triaging incidents",
+            "Read-only MCP access to logs, metrics and runbooks",
+            "Fast investigation with no production risk"
+          ],
+          [
+            "Claude proposes a production change",
+            "Engineer approves and applies it through the change process",
+            "High-impact actions need a human and a record"
+          ],
+          [
+            "A test fails intermittently",
+            "Reproduce, find the root cause, then fix",
+            "Retries hide the bug"
+          ],
+          [
+            "A low-risk, well-tested runbook step runs many times a week",
+            "Consider approved automation for that step only",
+            "Approval for every repeat adds little safety"
+          ],
+          [
+            "Engineers paste logs into a chat by hand",
+            "Connect the sources through MCP",
+            "Faster and complete, with less copying"
+          ]
+        ]
+      },
+      "example": {
+        "situation": "An e-commerce site's checkout errors spike at night. On-call engineers spend the first 30 minutes of each incident collecting logs and searching for the runbook.",
+        "decision": "Connect read-only MCP servers for logs, metrics, deployment history and the runbook wiki. Claude drafts the triage summary and proposed fix; the on-call engineer approves and runs any change.",
+        "why": "Claude removes the slow gathering work while people keep control of production. Giving Claude write access to apply fixes itself is tempting at 3 a.m., but one wrong action could widen the outage."
+      },
+      "rule": "If Claude is investigating, give it read-only access to logs, metrics and runbooks; if it proposes a change to production, a human approves and applies it; if a bug is intermittent, find the root cause before fixing.",
+      "questions": [
+        {
+          "stem": "An on-call team wants Claude to help with incidents: read recent logs, metrics and traces, find the matching runbook, and propose a fix. The SRE lead insists that nothing in production changes without an engineer's approval. Which setup fits best?",
+          "select": 1,
+          "options": [
+            "Give Claude read access to the log platform only, and let engineers find runbooks and metrics themselves.",
+            "Have on-call engineers paste log excerpts and runbook sections into a chat with Claude during incidents.",
+            "Connect read-only MCP tools for logs, metrics and runbooks, and have an engineer apply any fix.",
+            "Let Claude apply runbook fixes automatically in production and notify the on-call engineer afterwards."
+          ],
+          "key": [
+            2
+          ],
+          "why": "The deciding facts: Claude must see logs, metrics and runbooks together, and every production change needs approval. Read-only tools for all three, with engineers applying fixes, meets both.",
+          "traps": [
+            "Works and is safe, but Claude cannot correlate metrics or match runbooks, which is the help the team asked for.",
+            "Works, but it is slow and depends on people choosing the right excerpts mid-incident.",
+            null,
+            "Works for some low-risk auto-remediation, but it breaks the stated rule that nothing changes without approval."
+          ]
+        },
+        {
+          "stem": "A developer asks Claude Code to fix a test that fails in CI about one run in five. Claude's first attempt wrapped the failing check in a retry, and the test now passes. The team's standard is that flaky tests are fixed at their root cause. What should the developer do next?",
+          "select": 1,
+          "options": [
+            "Keep the retry, since the test now passes and the build is green again.",
+            "Have Claude rerun the test repeatedly, read CI logs and explain the cause.",
+            "Mark the test as skipped in CI and open a ticket to investigate it later.",
+            "Add a CLAUDE.md rule against retries in tests, then ask Claude to try once more."
+          ],
+          "key": [
+            1
+          ],
+          "why": "The deciding fact: the standard is a root-cause fix, and a retry only hides the failure. Reproducing it and explaining the cause comes before any code change.",
+          "traps": [
+            "Works to unblock the build, but it masks the bug and breaks the team's standard.",
+            null,
+            "Works as a temporary measure under deadline pressure, but it postpones the fix the standard requires.",
+            "Works to prevent repeats, but on its own it still skips the diagnosis and Claude may mask the bug another way."
+          ]
+        }
+      ]
+    }
+  ]
+}

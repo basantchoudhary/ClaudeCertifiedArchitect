@@ -289,6 +289,16 @@ CSS = """
 .line dd { margin: 0; }
 .line dd.win { background: var(--mint-w); padding: 2px 6px; border-radius: 6px; }
 .line dd.trap { background: var(--rose-w); padding: 2px 6px; border-radius: 6px; }
+.line { padding: 16px 18px; margin: 22px 0; }
+.line h4 { font-size: 1rem; margin: 1em 0 .3em; }
+.line .one { font-size: 1.05rem; background: var(--peri-w); border-radius: 8px; padding: 6px 10px; }
+.line .ex { background: var(--grey-w); border-radius: 8px; padding: 6px 10px; }
+.line .ex p { margin: .3em 0; }
+.line table { font-size: .9rem; }
+.line .more { margin: .6em 0 0; font-weight: 600; }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.flow span.b { border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--mint-w); font-size: .9rem; }
+.flow span.a { color: var(--muted); }
 .sample ol { margin: .3em 0; padding-left: 1.4em; }
 .sample li.key { font-weight: 600; }
 nav.toc a { margin-right: 10px; white-space: nowrap; }
@@ -296,14 +306,54 @@ nav.toc a { margin-right: 10px; white-space: nowrap; }
 """
 
 
-def line_html(l):
+def load_sections():
+    """Detailed teaching per line, from the domain pages' data (src/domains/d<n>.json)."""
+    import json
+    found, slugs = {}, {}
+    for f in sorted((Path(__file__).parent / "domains").glob("d*.json")):
+        d = json.loads(f.read_text())
+        slugs[d["n"]] = d["slug"]
+        for s in d["sections"]:
+            found[s["id"]] = s
+    return found, slugs
+
+
+SECTIONS, SLUGS = load_sections()
+
+
+def detail_html(s, n):
+    explain = "".join(f"<p>{p}</p>" for p in s["explain"])
+    flow = ""
+    if s.get("flow"):
+        flow = '<div class="flow">' + '<span class="a">→</span>'.join(
+            f'<span class="b">{b}</span>' for b in s["flow"]) + "</div>"
+    know = "".join(f"<li>{k}</li>" for k in s["know"])
+    c = s["compare"]
+    head = "".join(f"<th>{h}</th>" for h in c["head"])
+    rows = "".join("<tr>" + "".join(f"<td>{x}</td>" for x in r) + "</tr>" for r in c["rows"])
+    e = s["example"]
+    return f"""<p class="one"><b>In plain words:</b> {s['oneliner']}</p>
+  {explain}{flow}
+  <h4>Know this</h4><ul>{know}</ul>
+  <h4>Mind map: which answer wins when</h4><div class="tablewrap"><table><tr>{head}</tr>{rows}</table></div>
+  <h4>Worked example</h4><div class="ex"><p><b>Situation:</b> {e['situation']}</p><p><b>Decision:</b> {e['decision']}</p><p><b>Why:</b> {e['why']}</p></div>"""
+
+
+def line_html(l, n):
     i, guide, means, stem, win, trap = l
+    s = SECTIONS.get(i)
+    body = detail_html(s, n) if s else f"<p>{means}</p>"
+    rule = f'<div class="box butter rule"><b>Rule to remember:</b> {s["rule"]}</div>' if s and s.get("rule") else ""
+    practice = (f'<p class="more"><a href="../{SLUGS[n]}/#s{i}">Practise {i}: two exam-style questions, with answers →</a></p>'
+                if n in SLUGS else "")
     return f"""<div class="line" id="l{i}">
   <blockquote><span class="id">{i}</span>“{guide}”</blockquote>
-  <p>{means}</p>
+  {body}
+  <h4>How the exam tests it</h4>
   <dl><dt>Stem looks like</dt><dd>{stem}</dd>
   <dt>✅ Correct answer</dt><dd class="win">{win}</dd>
   <dt>❌ Trap</dt><dd class="trap">{trap}</dd></dl>
+  {rule}{practice}
 </div>"""
 
 
@@ -317,13 +367,14 @@ def sample_html(n):
 
 
 def domain_html(d):
-    lines = "\n".join(line_html(l) for l in d["lines"])
+    lines = "\n".join(line_html(l, d["n"]) for l in d["lines"])
+    study = f'<p><a href="../{SLUGS[d["n"]]}/"><b>Domain {d["n"]} study page</b></a>: the same lines with {2 * len(d["lines"])} practice questions.</p>' if d["n"] in SLUGS else ""
     sample = sample_html(d["sample"]) if "sample" in d else ""
     return f"""<h2 id="d{d['n']}">Domain {d['n']}: {d['name']} <span class="chip butter">{d['weight']}</span></h2>
 {lines}
 <div class="box butter"><b>Domain {d['n']} rule:</b> {d['rule']}</div>
 <p><b>From CCA-F:</b> {d['bridge']}</p>
-{sample}"""
+{sample}{study}"""
 
 
 def build():
@@ -347,9 +398,9 @@ def build():
 <main>
   <div class="crumbs"><a href="../">CCA-P start here</a> · Guide walkthrough</div>
   <h1>CCA-P exam guide, line by line</h1>
-  <p class="lede">Every objective in the official guide (v1.0, effective July 2026), in order. For each one: what it means, what the question stem tends to look like, the answer that wins, and the trap that looks almost as good.</p>
+  <p class="lede">Every objective in the official guide (v1.0, effective July 2026), in order. For each one: what it means in plain words, a picture, what to know, a mind map of which answer wins when, a worked example, how the exam tests it, and a rule to remember.</p>
   <p><span class="chip peri">{n_lines} lines · 7 domains</span><span class="chip">63 questions · 120 min · pass 720</span><span class="chip mint">Guide v1.0: for exams before 7 Dec 2026</span></p>
-  <div class="box butter"><b>How to use it:</b> read the guide line, cover the bottom three rows, and guess the winning answer and the trap before you look. The guide's own words are in quotes; the line numbers (1.1 to 7.3) are ours, as the guide uses plain bullets.</div>
+  <div class="box butter"><b>How to use it:</b> read the guide line, then the explanation and mind map. Before reading "How the exam tests it", guess the winning answer and the trap yourself. Each line links to two practice questions on its domain page. The guide's own words are in quotes; the line numbers (1.1 to 7.3) are ours, as the guide uses plain bullets.</div>
   <nav class="toc"><b>Domains:</b> {toc}</nav>
   <div class="box peri"><b>What wins, across the whole exam</b> (the three official samples agree): fix the cause, not the symptom. Remove a capability rather than log its use. Cache a stable prefix rather than cut content. Check retrieval before blaming the model. Choose the simplest design that meets the stated constraint.</div>
 {body}

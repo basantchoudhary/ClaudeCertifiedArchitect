@@ -1,0 +1,380 @@
+{
+  "n": 5,
+  "slug": "D5-Governance-Safety-Risk",
+  "name": "Governance, Safety &amp; Risk Management",
+  "weight": "14%",
+  "intro": "Domain 5 is about keeping a Claude system safe, lawful and fair once real users and real data touch it. Questions describe a risk (a leak, an injection, a costly mistake, a regulated dataset, an unfair outcome) and ask which control fixes it at the cause. The winning answer is usually a control enforced in code, permissions or process, placed where the risk is, rather than a line added to the prompt.",
+  "sections": [
+    {
+      "id": "5.1",
+      "guide": "Implement guardrails and safety controls",
+      "oneliner": "Put several independent checks around the model, and enforce anything that must always hold in code or permissions, not in the prompt.",
+      "explain": [
+        "A <b>guardrail</b> is any control that keeps an AI system inside safe limits. The key idea is <b>defence in depth</b>: several layers, each catching what the others miss, so that no single failure causes harm. A system prompt that says “do not share customer data” is one layer, but it is probabilistic: the model usually follows it, not always.",
+        "There are four common layers. <b>Input checks</b> run before the model sees a request: detecting prompt-injection attempts, masking personal data (PII, personally identifiable information such as names, emails and ID numbers), and rejecting off-topic or oversized inputs. <b>Constrained tools</b> limit what the model can do: least privilege, <b>allowlists</b> (a fixed list of permitted values, such as approved email domains) and parameters checked by the tool's own code. <b>Output checks</b> run after the model answers: schema validation, policy classifiers and redaction of anything that must not leave. <b>Hard limits</b> in code cap the damage: refund ceilings, rate limits, maximum loop iterations and spending caps.",
+        "The deciding question is usually: <b>must this always hold?</b> If yes, it belongs in code, permissions or infrastructure, where it is deterministic. The prompt is still useful for guiding behaviour and tone and for making failures rarer, but it is never the only barrier against real harm. Untrusted content (web pages, uploaded files, emails, tool results) is treated as data to read, never as instructions to follow, and the tools are scoped on the assumption that an injection will sometimes get through."
+      ],
+      "flow": ["Input checks (injection, PII)", "Model with system prompt", "Constrained tools (allowlists, least privilege)", "Output checks (schema, redaction)", "Hard limits (caps, rate limits)"],
+      "know": [
+        "Defence in depth means several independent layers, so a failure in one is caught by another.",
+        "Prompt instructions reduce how often something goes wrong; code and permissions decide whether it can go wrong at all.",
+        "Indirect prompt injection arrives through content the model reads (a web page, a document, a tool result), not from the user typing.",
+        "An allowlist (only these values are permitted) is stronger than a blocklist (these values are forbidden), because attackers find values the blocklist missed.",
+        "Validate tool parameters inside the tool's code, so even a manipulated model call cannot exceed the limit.",
+        "Rate limits and spending caps stop runaway loops and abuse from turning into large bills or mass actions.",
+        "Output redaction is a last layer for data that must never leave; keeping that data out of the context in the first place is stronger."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["A rule that must always hold (a refund ceiling, approved recipients)", "Enforce it in tool code or permissions", "Deterministic; a prompt is followed most of the time, not always"],
+          ["Untrusted content reaches the model (web pages, emails, uploads)", "Treat it as data and limit what the tools can do", "Some injection will get through, so limit the damage it can cause"],
+          ["A tone, style or scope preference that does little harm if missed", "Guide it in the system prompt", "Here the prompt wins: code enforcement would be heavy for a soft rule"],
+          ["Sensitive data must never appear in responses", "Keep it out of the context, and redact output as a backstop", "Data the model never sees cannot leak"],
+          ["Cost or volume could spiral", "Rate limits, loop caps and budget limits in code", "A hard ceiling stops runaway behaviour"]
+        ]
+      },
+      "example": {
+        "situation": "A travel company's booking agent reads supplier web pages to compare hotel prices, and it can send confirmation emails. In testing, a supplier page with hidden text told the agent to email the customer list to an outside address, and it tried to.",
+        "decision": "Treat page content as untrusted data, give the agent no access to the customer list at all, and restrict the email tool in code so it can only write to the customer in the current booking.",
+        "why": "Injection through web content cannot be fully prevented, so the fix is to make the harmful action impossible. A system-prompt line telling the agent to ignore instructions in pages is the tempting answer; it helps, but it leaves the email tool one successful injection away from a leak."
+      },
+      "rule": "If a rule must always hold, enforce it in code or permissions; if it is a soft preference, guide it in the prompt; and assume untrusted content will sometimes inject, so limit what the tools can do.",
+      "questions": [
+        {
+          "stem": "A bank's support assistant can issue goodwill credits to customers through a tool. Policy says no single credit may exceed $50, and the system prompt states this limit clearly. In red-team testing, a carefully worded message persuaded the assistant to issue a $400 credit. What is the best fix?",
+          "select": 1,
+          "options": [
+            "Make the credit tool itself reject any amount above $50.",
+            "Repeat the $50 limit at the end of the system prompt as well.",
+            "Route every credit, whatever its size, to staff for approval.",
+            "Add an input classifier that blocks manipulative-looking messages."
+          ],
+          "key": [0],
+          "why": "The deciding fact: the $50 ceiling is a hard rule and the prompt already failed to hold it. Enforcing the limit in the tool's code makes a larger credit impossible, however the model is persuaded.",
+          "traps": [
+            null,
+            "Works, but it is still a prompt instruction, which is what just failed; it makes the failure rarer, not impossible.",
+            "Works, but it removes automation from the small credits policy allows; it would fit if every credit were high-risk.",
+            "Works as an extra layer, but attackers find wordings a classifier misses, and the limit itself is still not enforced."
+          ]
+        },
+        {
+          "stem": "A law firm's research agent browses public websites, summarises findings, and can update case records in the firm's case-management system. The security team assumes that some hidden instruction in a web page will eventually get through to the model. Which two controls most directly limit what such an instruction could do?",
+          "select": 2,
+          "options": [
+            "Use the most capable model, as it resists injected instructions better.",
+            "Give the browsing step no write access; a separate step saves the summary.",
+            "Add a system-prompt line telling the agent to ignore page instructions.",
+            "Log every record update so that suspicious changes can be found later.",
+            "Check writes in code: only the summary field of the current case allowed."
+          ],
+          "key": [1, 4],
+          "why": "The deciding fact: the team assumes an injection will get through, so the controls must limit its effect. Separating untrusted reading from privileged writing, and narrowing what a write can touch in code, both cap the damage whatever the model is told.",
+          "traps": [
+            "Works to make injection less likely, but the stem assumes one gets through, and the write access would still be there.",
+            null,
+            "Works to make injection less likely, but it is probabilistic and does not limit what a successful injection can do.",
+            "Works for detection and audit, but it only reveals a harmful change after it has happened.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5.2",
+      "guide": "Identify risks, limitations, and failure modes of LLM systems",
+      "oneliner": "Know the ways an LLM system fails, and give each one its matching control, often handing what the model is bad at to a tool or code.",
+      "explain": [
+        "An LLM predicts likely text. That makes it excellent at language and reasoning, but it has built-in limits. <b>Hallucination</b>: it can state things confidently that are not true or not in its sources. <b>Non-determinism</b>: the same input can give different outputs on different runs. <b>Knowledge cutoff</b>: its training data stops at a date, so it does not know recent facts unless you give them to it. It is also not a calculator or a system of record: exact arithmetic over many figures, and facts that must be current, should come from tools.",
+        "Other failures come from the system around the model. <b>Prompt injection</b> is <i>direct</i> when a user types instructions to override the rules, and <i>indirect</i> when instructions hide in content the model reads. <b>Data leakage</b> happens when the model can see data the current user should not, or when sensitive data ends up in logs. <b>Tool misuse</b> means calling the wrong tool, or the right tool with harmful parameters. <b>Runaway loops</b> are agents that keep calling tools without finishing, burning time and money. <b>Bias</b> means outcomes that differ unfairly across groups of people.",
+        "The last failure is human: <b>over-reliance</b>, where users or reviewers trust output without checking because it is usually right and always fluent. On the exam, name the failure from the symptom, then pick the control that addresses its cause: tools for exact work and current facts, retrieval with citations for grounding, permissions for leakage, caps for loops, and a design that keeps people checking."
+      ],
+      "know": [
+        "Hallucination is fluent, confident output that the sources do not support; ground answers in retrieved text, require citations and allow “I don't know”.",
+        "Exact calculations, counts and lookups belong in code or a tool; the model decides what to compute and explains the result.",
+        "Because of the knowledge cutoff, current prices, rates, news or policies must be supplied at request time through retrieval or a tool.",
+        "Non-determinism means one good test run proves little; evaluate on many cases and enforce critical formats in code.",
+        "Direct injection comes from the user; indirect injection comes from content the model reads.",
+        "Runaway loops are stopped with iteration limits, timeouts and per-task budgets enforced in code.",
+        "Over-reliance is a design problem: show sources, flag uncertainty and sample outputs for review."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["Exact maths over many figures is sometimes wrong", "A calculation tool or code", "Asking for precision or step-by-step reasoning makes errors rarer, not impossible"],
+          ["Answers about recent events or today's prices are out of date", "Retrieval or a live-data tool", "The model's knowledge stops at its training cutoff"],
+          ["Answers contain facts that are not in the documents", "Ground in retrieved text, require citations, allow “I don't know”", "Targets hallucination at its cause"],
+          ["The judgement, not the arithmetic, is what goes wrong", "Chain-of-thought or extended thinking", "Here the runner-up wins: a calculator cannot fix a wrong judgement"],
+          ["An agent repeats tool calls for hours", "Iteration and budget caps in code", "Stops runaway cost whatever the model decides"]
+        ]
+      },
+      "example": {
+        "situation": "An insurance assistant explains policy coverage and quotes premiums. Users report that totals with several add-ons are sometimes a few dollars off, and that it once quoted last year's rates.",
+        "decision": "Move premium calculation into a pricing tool that reads the current rate table. The model gathers the customer's choices, calls the tool and explains the result in plain words.",
+        "why": "Two failure modes share one fix: exact arithmetic and current facts are both things the model should not own. Adding chain-of-thought is the tempting option; it helps when reasoning is the problem, but it does not make arithmetic exact or rates current."
+      },
+      "rule": "If the output must be exact or current, get it from a tool or code; if it must be grounded, require sources; if an agent can loop, cap it in code.",
+      "questions": [
+        {
+          "stem": "A travel booking assistant tells customers what a hotel price will cost in their home currency. It converts using the model's own knowledge of exchange rates, and finance has found the rates it uses are often months out of date. Rates move throughout the day. What is the best change?",
+          "select": 1,
+          "options": [
+            "Paste a table of the day's exchange rates into the system prompt each morning.",
+            "Tell the model to say that converted prices are only approximate estimates.",
+            "Give the assistant a tool that returns the live rate and does the conversion.",
+            "Use the most capable model, which was trained on the most recent data."
+          ],
+          "key": [2],
+          "why": "The deciding facts: the rates come from the model's training knowledge, and they move throughout the day. A knowledge cutoff is fixed by fetching current data at request time, and the tool also makes the arithmetic exact.",
+          "traps": [
+            "Works if rates were fixed once a day; here they move throughout the day, so a morning table goes stale within hours.",
+            "Works as honest disclosure, but the prices would still be wrong by months, not slightly approximate.",
+            null,
+            "Works only briefly: every model has a training cutoff, so its rates would still be out of date."
+          ]
+        },
+        {
+          "stem": "A consulting firm's research agent searches the web and writes reports, and its reports are usually good. One weekend, a single run got stuck retrying a failing search with slightly different wording and made thousands of calls, costing more than the team's monthly budget. What should the architect add first?",
+          "select": 1,
+          "options": [
+            "A system-prompt instruction telling it to stop after several failed searches.",
+            "A weekly cost report emailed to the team lead every Monday morning.",
+            "A larger model that is better at noticing when it is stuck in a loop.",
+            "Hard per-run caps on tool calls and spend, enforced in the agent loop."
+          ],
+          "key": [3],
+          "why": "The deciding fact: one run made thousands of calls with nothing to stop it. A hard cap in code ends the run whatever the model decides, which is exactly what was missing.",
+          "traps": [
+            "Works most of the time, but it relies on the model noticing it is stuck, which is what failed here.",
+            "Works for visibility, but it reports the damage after the weekend, when the money is already spent.",
+            "Works to make loops rarer, but nothing would still stop the run if the larger model got stuck too.",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5.3",
+      "guide": "Apply human-in-the-loop validation strategies",
+      "oneliner": "Put people where the risk is: approval for irreversible or high-impact actions, review for uncertain cases, and random audits of the rest.",
+      "explain": [
+        "<b>Human-in-the-loop</b> (HITL) means a person checks or approves some of the AI's work before it takes effect. Reviewing everything does not scale and soon turns into box-ticking; reviewing nothing leaves no control at all. The skill is deciding <b>which</b> items a person sees.",
+        "Route by <b>risk</b> and by <b>confidence</b>. Risk is about consequences: an action that is irreversible (deleting data, paying money, emailing a customer), high-value or affecting someone's rights needs approval before it happens. Confidence is about how likely the output is to be right: cases that fail a check, fall outside known patterns or lack evidence go to a reviewer. Everything else runs automatically, with a <b>random sample</b> audited so you learn the real error rate, including errors the system was confident about. A confidence score the model reports about itself is a weak signal on its own; prefer signals you can check, such as validation failures, missing evidence or two passes disagreeing.",
+        "Design the review step so it really works. Show the reviewer the evidence and a short structured summary, not a wall of text. Watch for <b>rubber-stamping</b>: reviewers approving almost everything without really checking, so the review stops being a control. Warning signs are approval rates near 100%, very short review times and errors later found in approved items. Feed reviewers' corrections back into the eval set."
+      ],
+      "flow": ["AI proposes an output or action", "Check risk and confidence", "High risk or uncertain: a person decides", "Low risk and checked: runs automatically", "Random sample audited", "Corrections feed the eval set"],
+      "know": [
+        "Irreversible or high-impact actions need approval before they happen, not a review afterwards.",
+        "Low-risk, high-volume work runs automatically, with random sampling to measure the real error rate.",
+        "Routing thresholds (amount, category, failed checks) are enforced in code, not left to the model.",
+        "A model's self-reported confidence is a weak signal alone; combine it with signals you can check.",
+        "Rubber-stamping (approving without really checking) turns review into a false sense of safety.",
+        "Reviewers work faster and better when the evidence sits next to a structured summary.",
+        "Reviewer corrections are valuable eval data; capture them."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["The action cannot be undone or is high-value", "Human approval before it executes", "A later audit cannot reverse the harm"],
+          ["High volume, low impact, mostly correct", "Automate, and audit a random sample", "Reviewing everything would not scale"],
+          ["The case failed a check or lacks evidence", "Send that case to a reviewer", "Focuses human time where errors are likely"],
+          ["Reviewers approve 99% of items in seconds", "Redesign the review: smaller risk-based queue, evidence shown, spot checks", "Rubber-stamping means the control has stopped working"],
+          ["Every output carries legal or safety weight", "Human review of every item", "Here the runner-up wins: the risk justifies the cost"]
+        ]
+      },
+      "example": {
+        "situation": "An accounts-payable agent matches supplier invoices to purchase orders and schedules payments. It handles 5,000 invoices a week, and most are small and match exactly.",
+        "decision": "Auto-schedule exact matches under a set amount. Send mismatches, new suppliers, changed bank details and amounts above the threshold to a person, with the matched documents side by side. Audit a random 2% of automatic payments each week.",
+        "why": "Payments are hard to reverse, so risk decides the route. Reviewing all 5,000 is the tempting “safest” answer, but at that volume reviewers would start rubber-stamping and the extra review would add little."
+      },
+      "rule": "If an action is irreversible or high-impact, require approval first; if a case fails a check, send it to review; if it is low-risk, automate it and audit a random sample.",
+      "questions": [
+        {
+          "stem": "An insurer's claims assistant drafts settlement decisions, and every draft goes to an adjuster for approval. After three months, adjusters approve 99.5% of drafts with a median review time of eight seconds, and an audit found several approved drafts with clear errors. What is the best change?",
+          "select": 1,
+          "options": [
+            "Retrain adjusters on the approval policy and remind them to read each draft.",
+            "Give adjusters a smaller risk-based queue with evidence; audit a sample.",
+            "Replace the adjusters' review with a second model that checks every draft.",
+            "Require adjusters to type a short reason before approving each draft."
+          ],
+          "key": [1],
+          "why": "The deciding facts: 99.5% approval in eight seconds, with clear errors missed, shows rubber-stamping caused by volume. A smaller queue chosen by risk, with the evidence shown, gives adjusters time to really check, and sampling covers the rest.",
+          "traps": [
+            "Works briefly, but the volume that caused rubber-stamping is unchanged, so the habit returns.",
+            null,
+            "Works as an extra automated check, but settlements are consequential and still need an accountable person.",
+            "Works to add friction, but under the same volume reasons quickly become copied boilerplate."
+          ]
+        },
+        {
+          "stem": "A retailer's support agent can issue refunds. About 90% of refund requests are under $30 and almost always valid; a few each week are for several thousand dollars. Leadership wants as much automation as possible without letting a large mistaken refund through. Which design fits best?",
+          "select": 1,
+          "options": [
+            "Auto-approve refunds under a set amount; larger ones need staff approval.",
+            "Auto-approve all refunds and have staff audit a random sample each week.",
+            "Send every refund to staff, sorted so that small ones are quick to approve.",
+            "Auto-approve refunds when the model reports high confidence they are valid."
+          ],
+          "key": [0],
+          "why": "The deciding fact: the risk sits in a few large refunds. An amount threshold enforced in code automates the 90% and puts approval exactly where a mistake is expensive.",
+          "traps": [
+            null,
+            "Works if every refund were small, but an audit finds a large mistaken refund only after the money has gone.",
+            "Works as a control, but it gives up the automation leadership asked for on the low-risk 90%.",
+            "Works as one signal, but self-reported confidence is weak and ignores the refund's size, which is where the risk is."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5.4",
+      "guide": "Ensure compliance with regulations (e.g., GDPR, HIPAA, FedRAMP)",
+      "oneliner": "Find out which regulation applies to the data and the customer, then design for its demands from the start: what data is sent, where it goes, who can see it and how long it is kept.",
+      "explain": [
+        "Regulations attach to the <b>data</b> and the <b>customer</b>, not to the technology. Three appear by name in the guide. <b>GDPR</b> (the EU General Data Protection Regulation) covers personal data about people in the EU. <b>HIPAA</b> (the US Health Insurance Portability and Accountability Act) covers protected health information, or <b>PHI</b>, handled by healthcare providers, health insurers and the vendors working for them. <b>FedRAMP</b> (the US Federal Risk and Authorization Management Program) is the security authorisation a cloud service needs before US federal agencies can use it.",
+        "<b>GDPR</b> asks for a lawful basis for each use of personal data; <b>data minimisation</b> (collect and send only what is needed); <b>purpose limitation</b> (data collected for one purpose is not reused for an unrelated one); limits on how long data is kept; and people's rights to access and erase their data. It restricts transfers of personal data outside the EU unless safeguards are in place, which is why <b>data residency</b> (where data is stored and processed) comes up. Health data is a special category that needs extra care. <b>HIPAA</b> requires a <b>Business Associate Agreement</b> (BAA), a contract in which a vendor that handles PHI commits to protect it; using only the <b>minimum necessary</b> PHI; access controls; and audit logs of who accessed what. <b>FedRAMP</b> means a US federal workload must run on a deployment that holds the appropriate FedRAMP authorisation, which often means a government cloud environment.",
+        "The architect's part is design, not legal advice. Choose a deployment and vendor terms that fit the regime; vendors offer agreements such as BAAs only for specific products and configurations, so check what is covered rather than assume. Minimise what reaches the model, control retention (including logs, prompt caches and eval datasets, which often hold copies of sensitive data), keep data in the required region, enforce access per user, and keep audit trails. A disclaimer, or removing a name or two, does not make a system compliant. Confirm the specifics with the customer's legal and compliance teams, because details depend on the contract and the jurisdiction."
+      ],
+      "know": [
+        "GDPR: lawful basis, data minimisation, purpose limitation, storage limits, and rights of access and erasure for people in the EU.",
+        "GDPR restricts transfers outside the EU without safeguards, so where data is processed is a design decision.",
+        "HIPAA: a BAA with every vendor that handles PHI, minimum necessary use, access control and audit logs.",
+        "Removing names alone is not de-identification under HIPAA; the recognised methods are much stricter, and dates and diagnoses can still be PHI.",
+        "FedRAMP: US federal workloads need a deployment with the appropriate FedRAMP authorisation.",
+        "Logs, prompt caches, traces and eval datasets can hold regulated data and fall under the same rules.",
+        "Check which products, regions and agreements a vendor currently covers for a regime; do not assume every deployment qualifies."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["EU customers' personal data", "Minimise, keep to the stated purpose, honour access and erasure, control region and retention", "GDPR's core demands"],
+          ["Patient records at a US hospital", "A deployment covered by a BAA, minimum necessary PHI, access control, audit logs", "HIPAA's core demands"],
+          ["A US federal agency workload", "A deployment with the appropriate FedRAMP authorisation", "Federal use requires the authorisation"],
+          ["A person asks for their data to be erased", "Erase it everywhere, including logs and eval copies", "Erasure covers every copy, not just the main database"],
+          ["The task works on aggregate or properly de-identified data", "Use that data instead of raw records", "Here the lighter path wins: data that is not personal or PHI carries far fewer obligations"]
+        ]
+      },
+      "example": {
+        "situation": "A German online retailer wants Claude to summarise customer complaint emails for its quality team. The emails contain names, addresses, order numbers and sometimes health details that customers mention.",
+        "decision": "Strip names, addresses and contact details before the model call and keep order numbers as pseudonymous keys. Process in an EU region under suitable vendor terms, keep summaries for a defined period, and make sure an erasure request removes the email, its summary and any eval copies.",
+        "why": "The quality team needs the complaint, not the customer's identity, so minimisation removes most of the risk; the health details are special-category data, which is another reason to send as little as possible. Relying on a privacy notice is the tempting shortcut; it informs customers but does not meet minimisation, residency or erasure."
+      },
+      "rule": "If the data is EU personal data, minimise it and control purpose, region, retention and erasure; if it is US health data, use a BAA-covered deployment with minimum necessary PHI and audit logs; if it is US federal work, use a FedRAMP-authorised deployment.",
+      "questions": [
+        {
+          "stem": "A US clinic network wants an assistant that summarises patient visit notes for doctors. The plan is to use a general-purpose AI service the team already has an account with, after removing patient names from each note. The notes still include visit dates, diagnoses and medication lists. What should the architect require before any notes are sent?",
+          "select": 1,
+          "options": [
+            "A disclaimer on every summary saying it is AI-generated and may contain errors.",
+            "Encryption of the notes in transit and at rest within the clinic's own systems.",
+            "Removal of dates and diagnoses too, so no health information is left at all.",
+            "A deployment covered by a signed BAA, with access controls and audit logging."
+          ],
+          "key": [3],
+          "why": "The deciding fact: the notes still contain dates, diagnoses and medications, so they are still PHI without the names. HIPAA requires a BAA with the vendor that handles PHI, plus access control and audit logs.",
+          "traps": [
+            "Works for transparency with doctors, but it does nothing to meet HIPAA's requirements for the data sent.",
+            "Works and is needed, but it protects data at the clinic; it does not cover the vendor that will receive the PHI.",
+            "Works if the task needed no health information, but the summaries are about diagnoses and medications, so this defeats the purpose.",
+            null
+          ]
+        },
+        {
+          "stem": "A European bank wants Claude to draft replies to customer emails. Its data protection officer raises three points: the emails contain personal data the replies do not need, customers can ask for their data to be erased, and the bank keeps full prompts and responses in debug logs indefinitely. Which two design choices best address these points?",
+          "select": 2,
+          "options": [
+            "Mask account numbers and personal details that the reply does not need.",
+            "Add a footer to each reply telling customers that AI helped to draft it.",
+            "Bring debug logs and eval copies into erasure, with a set retention period.",
+            "Use the most capable model so that fewer drafts need human correction.",
+            "Ask each customer to tick a consent box before their email is processed."
+          ],
+          "key": [0, 2],
+          "why": "The deciding facts are the three points raised. Masking unneeded details is data minimisation, and bringing logs and eval copies into erasure with a retention limit handles the erasure right and the indefinite logs.",
+          "traps": [
+            null,
+            "Works for transparency, but none of the officer's three points is about disclosure.",
+            null,
+            "Works for quality and cost, but it does not change what personal data is sent, kept or erased.",
+            "Works in some cases, but consent is only one lawful basis, often not the best fit for an existing customer relationship, and it does not touch minimisation or the logs."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "5.5",
+      "guide": "Address ethical AI considerations (bias, fairness, transparency)",
+      "oneliner": "Fairness is measured, not prompted: test outcomes across groups, remove protected attributes and their proxies, tell people when AI is involved, and keep a named person accountable for decisions.",
+      "explain": [
+        "<b>Bias</b> in an AI system means it treats people or groups differently in ways that are unfair, for example scoring CVs lower when they mention a women's college. It can come from the model's training data, from your prompts and examples, or from the historical data you give it, which may already reflect past unfair decisions. <b>Fairness</b> is the goal that outcomes do not differ without good reason across groups such as gender, ethnicity, age or disability.",
+        "You cannot tell whether a system is fair by asking it to be fair. You <b>measure</b>: run a representative test set and compare outcomes (approval rates, scores, error rates) across groups. Remove <b>protected attributes</b> (characteristics the law protects from discrimination) from the inputs, and watch for <b>proxies</b>: other fields that stand in for them, such as postcode for ethnicity, a career gap for parental leave, or graduation year for age. Removing the attribute is not enough if a proxy remains. Keep measuring in production, because inputs change over time.",
+        "<b>Transparency</b> means people know when they are dealing with AI, can see the sources or reasons behind an output, and know how to reach a person. <b>Accountability</b> means a named person or team owns consequential decisions such as hiring, lending, medical or legal outcomes: the AI recommends, the person decides. Some laws add specific rules for automated decisions in areas like hiring and credit, so involve legal counsel early."
+      ],
+      "flow": ["Choose groups and outcomes to compare", "Build a representative test set", "Measure outcomes by group", "Remove attributes and proxies, fix causes", "Monitor in production", "A person owns the decision"],
+      "know": [
+        "Fairness is checked by measuring outcomes across groups on representative data, not by an instruction in the prompt.",
+        "Proxies (postcode, school, career gaps, names) can bring back a protected attribute that was removed.",
+        "Historical decisions used as examples or training data can carry past bias forward.",
+        "Transparency: disclose AI involvement, show sources or reasons, and offer a route to a person.",
+        "Consequential decisions keep a named person accountable; the AI supports, the person decides.",
+        "Fairness checks belong in the eval suite and in production monitoring, so they run on every change."
+      ],
+      "compare": {
+        "head": ["When the stem says…", "Pick", "Why"],
+        "rows": [
+          ["Leadership worries the system may be biased", "Measure outcomes across groups on a representative test set", "Evidence first; you cannot fix what you have not measured"],
+          ["A protected attribute was removed but outcomes still differ", "Look for proxies, then mask and re-measure", "Other fields can stand in for the attribute"],
+          ["People do not realise a reply was AI-generated", "Disclose AI use, say who decides, offer a person", "Transparency builds trust and prevents false beliefs"],
+          ["The decision affects someone's job, credit or care", "A named person makes and owns the decision", "Accountability cannot sit with a model"],
+          ["A low-stakes internal draft, such as meeting notes", "Light disclosure; no group-outcome study", "Here the lighter option wins: little to measure and little harm"]
+        ]
+      },
+      "example": {
+        "situation": "A lender uses Claude to summarise small-business loan applications and suggest a risk band for underwriters. The team removed applicants' gender and ethnicity, but a test shows suggested bands differ sharply by region.",
+        "decision": "Treat region and postcode as possible proxies: test outcomes with them removed or coarsened, add a group-outcome check to the eval suite, keep the underwriter as the decision-maker, and tell applicants that AI assists the review.",
+        "why": "Removing the protected attributes did not remove the effect, which points to proxies. Adding “do not discriminate” to the prompt is the tempting fix; it changes nothing that can be measured."
+      },
+      "rule": "If fairness is in doubt, measure outcomes across groups and hunt for proxies; if a decision is consequential, a named person owns it; if people meet the AI, tell them and offer a person.",
+      "questions": [
+        {
+          "stem": "A recruitment firm uses an assistant to score CVs against job descriptions. Names, gender and age are removed before scoring. An audit now shows applicants from two particular universities score markedly lower, and both universities have mostly female student bodies. What should the architect do next?",
+          "select": 1,
+          "options": [
+            "Add a system-prompt instruction to score applicants without gender bias.",
+            "Have recruiters manually review every CV scored below the average.",
+            "Treat university as a likely proxy: mask it and re-measure group outcomes.",
+            "Calibrate the rubric with examples of the firm's successful past hires."
+          ],
+          "key": [2],
+          "why": "The deciding fact: gender was already removed, yet outcomes track universities with mostly female students. That points to university acting as a proxy, so mask it and measure whether the gap closes.",
+          "traps": [
+            "Works as a light nudge, but it changes nothing measurable and gender was never visible to the model anyway.",
+            "Works as a compensating control, but it leaves the biased scores in place and loads recruiters with extra review.",
+            null,
+            "Works to align scores with the firm's needs, but past hiring decisions can carry the same bias forward."
+          ]
+        },
+        {
+          "stem": "A city council's assistant answers residents' questions about housing benefits and pre-fills applications. By law, eligibility is decided by council officers. A review found many residents did not realise replies came from an AI, and some believed the assistant had already approved their claim. What should change?",
+          "select": 1,
+          "options": [
+            "Have an officer check every reply before the assistant sends it to a resident.",
+            "Label replies as AI, say officers make the decision, and offer a contact.",
+            "Ground the answers in the official benefit rules with retrieval and citations.",
+            "Publish a detailed page about the model and its limits on the council website."
+          ],
+          "key": [1],
+          "why": "The deciding fact: residents did not know they were talking to an AI and misunderstood who decides. Clear disclosure at the point of contact, a statement that officers decide, and a route to a person fix that misunderstanding.",
+          "traps": [
+            "Works to catch wrong replies, but it is costly at volume and residents would still not know the reply came from AI.",
+            null,
+            "Works to improve accuracy, but the problem found is about who residents think they are dealing with, not wrong answers.",
+            "Works as general transparency, but residents reading a reply will not see it, so the misunderstanding remains."
+          ]
+        }
+      ]
+    }
+  ]
+}
