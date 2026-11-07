@@ -1,0 +1,238 @@
+[
+  {
+    "id": "p1-d2-01",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.1 Model selection trade-offs",
+    "trap": "Live proxy when an eval set exists",
+    "fam": 6,
+    "select": 1,
+    "question": "A new model in the same family is released at a lower price per token. A legal team's clause extractor meets its 97 percent target on a labelled set of 800 contracts with the current model. Finance asks to switch now to save money. What should the architect do?",
+    "options": [
+      {"t": "Switch now, since a model from the same family should handle the same extraction task.", "why": "Works often, but it assumes the result instead of testing it, and a family resemblance does not guarantee the same accuracy on this task.", "trap": "Assumes instead of testing"},
+      {"t": "Move a tenth of live traffic to the new model and compare user complaints for a month.", "why": "Works when no labelled set exists, but complaints are slow and incomplete, and it exposes real contracts to an untested model.", "trap": "Live proxy when an eval set exists"},
+      {"t": "Run the 800-contract set on the new model, and switch if it meets 97 percent.", "why": "Best. The team already has a labelled set and a target, so the decision can be made quickly and on evidence before any user sees the new model."},
+      {"t": "Keep the current model, because it already meets the target and any change adds risk.", "why": "Works when nothing would be gained, but a cheaper model that passes the same eval is a real saving left on the table.", "trap": "Ignores a saving it could test"}
+    ],
+    "answer": [2],
+    "runnerUp": 1,
+    "decider": "meets its 97 percent target on a labelled set of 800 contracts",
+    "explanation": "Model choice is decided by your own eval set, not by reputation, family or price alone. Re-run the eval whenever a candidate model appears. A live trial would be the right step if there were no labelled set to test against.",
+    "eli5": {
+      "question": "A cheaper version of the tool came out. The team already has a test with 800 marked answers and a pass mark. The clue: the test and the pass mark already exist.",
+      "answer": "Before swapping your car's tyres for cheaper ones, you run them on the test track you already own. <b>Rule: re-run your own eval set before switching models.</b>",
+      "options": [
+        "Switch now; it's the same family.",
+        "Try it on some real customers and count complaints.",
+        "Run the existing 800-contract test and switch if it passes.",
+        "Never switch; it works already."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-02",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.2 System prompts, templates and guardrails",
+    "trap": "Chasing phrases one by one",
+    "fam": 3,
+    "select": 1,
+    "question": "An investment platform's assistant has a system-prompt rule listing banned words such as “guaranteed” and “risk-free”. A compliance review finds that it avoids those words but now writes phrases with the same meaning, such as “you cannot lose money here”. Which change best addresses this?",
+    "options": [
+      {"t": "Add the newly found phrases to the banned list, and repeat the compliance review every month.", "why": "Works for the phrases already found, but the model will find new wordings, so the list is always one review behind.", "trap": "Chasing phrases one by one"},
+      {"t": "Keep the list and add its reason: no reply may imply an investment return is assured.", "why": "Best. The model avoids the words but not the meaning, so it needs the purpose behind the rule to apply it to wordings the list never named."},
+      {"t": "Add a code filter that blocks any reply containing one of the banned words.", "why": "Works for exact words, but the model already avoids those; the problem is new phrasing a word filter cannot see.", "trap": "Word match misses paraphrase"},
+      {"t": "Move to a more capable model that follows the banned-word list more closely.", "why": "Works when a model ignores instructions, but this one follows the list exactly; the list itself is too narrow.", "trap": "The model already obeys the list"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "it avoids those words but now writes phrases with the same meaning",
+    "explanation": "Explaining why a rule exists lets Claude generalise it to cases the rule did not list. A longer list fixes yesterday's examples only. For a regulated line, an output check in code can be added as a second layer, but the prompt must first say what is actually forbidden.",
+    "eli5": {
+      "question": "The assistant was told not to say certain words, so it says the same thing in other words. The clue: it avoids the words but keeps the meaning.",
+      "answer": "If you tell a child “don't say stupid”, they say “not clever”. Tell them why: be kind. <b>Rule: give the reason behind a rule so it covers cases you didn't list.</b>",
+      "options": [
+        "Add the new phrases to the list.",
+        "Explain the reason: never suggest returns are certain.",
+        "Block replies that contain the listed words.",
+        "Use a bigger model."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-03",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.3 Prompt engineering techniques",
+    "trap": "An extra call for a format fix",
+    "fam": 2,
+    "select": 1,
+    "question": "A lender asked Claude to reason step by step before giving a loan-eligibility verdict as JSON. Accuracy rose by eight points, but the downstream parser now fails because the reasoning text comes before the JSON object. The team wants to keep the accuracy gain. What should the architect change?",
+    "options": [
+      {"t": "Put the reasoning in thinking tags and the JSON in answer tags; parse only the answer.", "why": "Best. The reasoning text comes before the JSON, and tags separate the two in the same call, so code extracts the verdict and the gain stays."},
+      {"t": "Drop the step-by-step instruction, and add examples of the JSON format instead.", "why": "Works to fix parsing, but it throws away the reasoning that produced the eight-point gain.", "trap": "Gives up the accuracy gain"},
+      {"t": "Ask for the JSON first and the reasoning afterwards, so the parser meets the object first.", "why": "Works for the parser, but reasoning written after the verdict cannot improve it, so the gain is likely lost.", "trap": "Reasoning after the verdict"},
+      {"t": "Add a second call that turns each full response into clean JSON for the parser.", "why": "Works, but it adds a call, latency and cost, and a chance to alter the verdict, to fix what tags fix in one call.", "trap": "An extra call for a format fix"}
+    ],
+    "answer": [0],
+    "runnerUp": 3,
+    "decider": "the reasoning text comes before the JSON object",
+    "explanation": "Chain-of-thought works because the reasoning comes before the answer; separating the two with tags lets code read only the answer. A second clean-up call also works, and would be reasonable if the output could not be structured, but it costs more for the same result.",
+    "eli5": {
+      "question": "Thinking out loud made the answers better, but now the computer can't find the answer among the thinking. The clue: the thinking comes before the answer.",
+      "answer": "In a maths exam you show your working, then draw a box around the final answer so the marker finds it. <b>Rule: keep the reasoning, and tag the answer so code can pick it out.</b>",
+      "options": [
+        "Put the thinking and the answer in separate labelled boxes.",
+        "Stop thinking out loud; show format examples.",
+        "Answer first, explain after.",
+        "Ask a second helper to tidy up every reply."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-04",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.3 Prompt engineering techniques",
+    "trap": "Drops examples instead of fixing them",
+    "fam": 3,
+    "select": 1,
+    "question": "A government agency uses Claude to tag public consultation responses with one of six themes. The prompt includes three examples, and all three are short, formal and about the same theme. The model now over-uses that theme and mislabels long, informal responses. What should the architect change?",
+    "options": [
+      {"t": "Remove the examples, and rely on clear written definitions of the six themes.", "why": "Works when the task is clear without examples, but it gives up the help examples bring on format and borderline cases.", "trap": "Drops examples instead of fixing them"},
+      {"t": "Ask the model to reason about each of the six themes before it picks one.", "why": "Works for multi-step logic, but the fault here is a biased example set, not missing reasoning.", "trap": "Reasoning for an example problem"},
+      {"t": "Add a rule telling the model not to over-use the theme that the examples show.", "why": "Works a little, but it treats the symptom and can push the model away from correct uses of that theme.", "trap": "Patches the symptom"},
+      {"t": "Replace them with varied examples that span the themes, lengths and writing styles.", "why": "Best. All three examples share one theme, length and tone, so the model copied that surface pattern; varied examples teach the real rule."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "all three are short, formal and about the same theme",
+    "explanation": "Few-shot examples should differ from one another so Claude learns the rule, not one surface pattern. Going zero-shot would remove the bias too, and would be the right call if the themes were simple and examples added nothing, but here the fix is better examples.",
+    "eli5": {
+      "question": "Claude was shown three examples, all alike, and now copies them too much. The clue: the three examples are all short, formal and on the same theme.",
+      "answer": "If every picture of a dog you show a child is a small white poodle, they think big black dogs are something else. <b>Rule: use varied examples so the model learns the rule, not the look.</b>",
+      "options": [
+        "Remove the examples.",
+        "Ask Claude to think about each theme first.",
+        "Tell Claude not to over-use that one theme.",
+        "Show different kinds of examples across themes, lengths and styles."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-05",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.4 Context windows and token usage",
+    "trap": "Summary loses the exact alarms",
+    "fam": 7,
+    "select": 1,
+    "question": "A telecom's network-operations assistant pastes the last 24 hours of alarm logs, about 150,000 tokens, into every request. Answers are slow, costly and sometimes miss key alarms. Each question names one site and a time window, and the logs refresh every few minutes. A vendor offers a model with a larger context window. What should the architect do first?",
+    "options": [
+      {"t": "Adopt the larger-context model so the full day of logs fits with room to spare.", "why": "Works to raise the limit, but it leaves the cost, the delay and the diluted attention exactly as they are.", "trap": "Bigger window, same problem"},
+      {"t": "Filter the logs in code to the named site and time window before they reach Claude.", "why": "Best. Each question names one site and a time window, so code can cut the input to the exact rows needed, which lowers cost and delay and sharpens attention."},
+      {"t": "Have a smaller model summarise the full day of logs, and send Claude that summary instead.", "why": "Works to shrink the context, but a summary can drop the very alarm the question is about, and it adds a call.", "trap": "Summary loses the exact alarms"},
+      {"t": "Enable prompt caching on the log block that sits at the start of each prompt.", "why": "Works for a stable prefix, but these logs change every few minutes, so the cache would rarely be reused.", "trap": "Caching content that changes"}
+    ],
+    "answer": [1],
+    "runnerUp": 2,
+    "decider": "Each question names one site and a time window",
+    "explanation": "Send only the context the task needs, and when the filter is exact (site and time), do it in code. A summary would be the right tool if questions spanned the whole network, but here it risks losing the alarm that matters.",
+    "eli5": {
+      "question": "Every question gets a whole day of logs from everywhere, but asks about one place and one time. The clue: each question names one site and a time window.",
+      "answer": "If you ask about Tuesday's weather in Delhi, you don't need the whole world's weather for the week. <b>Rule: cut the context to what the question needs before Claude sees it.</b>",
+      "options": [
+        "Use a model that can read even more.",
+        "Keep only the logs for that site and time.",
+        "Ask a small model to summarise the whole day.",
+        "Save the log block for reuse."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-06",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.4 Context windows and token usage",
+    "trap": "Cheaper copy of text that is not needed",
+    "fam": 5,
+    "select": 2,
+    "question": "An asset manager's research agent makes about forty tool calls per task. Each fetched web page enters the context as full HTML, mostly menus and markup. The 300-page fund prospectus is also in the system prompt on every turn, although each task uses only a few of its sections. Cost and latency are high. Which two changes reduce them most?",
+    "options": [
+      {"t": "Strip each fetched page down to its main text before it enters the context.", "why": "Best. The pages are mostly menus and markup, so trimming tool output at the source removes tokens from every later turn."},
+      {"t": "Cache the full prospectus so that later turns read it at the lower cached price.", "why": "Works to cut its price, but each task needs only a few sections, so the agent still carries hundreds of unneeded pages on every turn.", "trap": "Cheaper copy of text that is not needed"},
+      {"t": "Retrieve only the prospectus sections that the current step needs.", "why": "Best. Each task uses only a few sections, so retrieval sends those and drops the rest of the 300 pages from every turn."},
+      {"t": "Move to a model with a larger context window for these long tasks.", "why": "Works to avoid hitting the limit, but it does nothing for cost or latency.", "trap": "Bigger window, same cost"},
+      {"t": "Ask the agent to restate its findings so far at the start of each turn.", "why": "Works to keep the agent on track, but it adds tokens on every turn rather than removing them.", "trap": "Adds tokens every turn"}
+    ],
+    "answer": [0, 2],
+    "runnerUp": 1,
+    "decider": "although each task uses only a few of its sections",
+    "explanation": "Both wastes are text the task does not use: markup in tool results and unused prospectus sections. Trim and retrieve. Caching would be the right call for a short, stable text that every request needs in full.",
+    "eli5": {
+      "question": "A research helper carries piles of web-page clutter and a whole 300-page book, but uses only a few pages. The clue: each task needs only a few sections of the book.",
+      "answer": "Don't carry the whole library in your backpack; take the pages you need and tear off the adverts. <b>Rule: trim tool output and retrieve only what the step needs.</b>",
+      "options": [
+        "Keep only the real text from each web page.",
+        "Keep the whole book, but at a discount.",
+        "Fetch only the book sections the step needs.",
+        "Use a bigger backpack.",
+        "Repeat everything found so far on every turn."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-07",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.5 Prompt reuse strategies",
+    "trap": "Caching a tiny shared part",
+    "fam": 9,
+    "select": 1,
+    "question": "A translation service sends each customer document, about 30,000 tokens, with a 300-token instruction block. Each request carries a different document that is translated once. Finance asks whether prompt caching would cut the monthly bill. What should the architect advise?",
+    "options": [
+      {"t": "Cache each document, since it is the largest part of every request.", "why": "Works when the same document is asked about again, but each is translated once, and writing to the cache costs a little more than normal input.", "trap": "Caching content never reused"},
+      {"t": "Cache the instruction block, since every request repeats it word for word.", "why": "Works in principle, but 300 tokens is a tiny share of each request, so the saving is negligible.", "trap": "Caching a tiny shared part"},
+      {"t": "Place the instructions after the document so the document becomes the cached prefix.", "why": "Works when the document repeats, but here it never does, so reordering only breaks what little could be shared.", "trap": "Reorders the wrong part"},
+      {"t": "Say caching will save little here, and compare model tiers or batch pricing instead.", "why": "Best. Each request carries a different document translated once, so almost nothing repeats; the real cost levers are the model tier and, if timing allows, batch pricing."}
+    ],
+    "answer": [3],
+    "runnerUp": 1,
+    "decider": "Each request carries a different document that is translated once",
+    "explanation": "Caching pays off only for a large prefix that repeats often. When the bulk of each request is new, there is little to reuse. Caching the instructions would be worth it if they were long, such as a big glossary or style guide sent with every document.",
+    "eli5": {
+      "question": "Every job is a brand-new document, with a short note attached. The clue: each document is translated once and never comes back.",
+      "answer": "A photocopier saves time only if you copy the same page many times; for a new page each time, it doesn't help. <b>Rule: caching helps only when a big part of the prompt repeats.</b>",
+      "options": [
+        "Save each document for reuse.",
+        "Save the short instruction note for reuse.",
+        "Put the note after the document.",
+        "Tell finance caching won't save much; look at model choice or batch instead."
+      ]
+    }
+  },
+  {
+    "id": "p1-d2-08",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.5 Prompt reuse strategies",
+    "trap": "Model-chosen loading where code already knows",
+    "fam": 8,
+    "select": 2,
+    "question": "An underwriting assistant sends a 7,000-token shared policy and twelve product-line guides of about 4,000 tokens each on every request. Each application needs only its own product line's guide, and the product line is a required field on every application form. Costs are high. Which two changes cut cost without losing needed instructions?",
+    "options": [
+      {"t": "Package each product-line guide as a Skill that Claude loads when it judges one relevant.", "why": "Works when relevance must be judged from the task, but here code already knows the product line, so leaving the choice to the model adds a chance of loading the wrong guide.", "trap": "Model-chosen loading where code already knows"},
+      {"t": "Build each prompt in code from the shared policy plus the guide for the form's product line.", "why": "Best. The product line is a required form field, so code can pick the one right guide every time and drop the other eleven."},
+      {"t": "Merge the twelve guides into one 6,000-token digest that is sent with every request.", "why": "Works to cut tokens, but a digest drops the detail that each product line's applications need.", "trap": "Loses detail to save tokens"},
+      {"t": "Retrieve guide passages by semantic search over the applicant's free-text answers.", "why": "Works when the right source is unknown, but a fuzzy search can miss sections when an exact key is already on the form.", "trap": "Fuzzy search for a known key"},
+      {"t": "Place the shared policy first in every prompt and cache it as a stable prefix.", "why": "Best. The 7,000-token policy is identical on every request, so as the first block it is read from the cache at a lower price and with a faster first token."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 0,
+    "decider": "the product line is a required field on every application form",
+    "explanation": "Modular prompts assembled in code give one source of truth per module and send only the module the request needs; the shared module goes first and is cached. Skills are the right reuse tool when the model must decide what expertise applies; here a form field already decides it.",
+    "eli5": {
+      "question": "The assistant gets all twelve product manuals every time, though each job needs one, and the job form says which. The clue: the form always names the product line.",
+      "answer": "If the order slip says “pizza”, the cook grabs the pizza recipe card; they don't read all twelve cards or guess. <b>Rule: when code knows which module is needed, code picks it; cache the shared part.</b>",
+      "options": [
+        "Let Claude pick a manual when it thinks one fits.",
+        "Code picks the one right manual using the form.",
+        "Squash all twelve manuals into one short one.",
+        "Search the manuals using the applicant's answers.",
+        "Put the shared policy first and save it for reuse."
+      ]
+    }
+  }
+]

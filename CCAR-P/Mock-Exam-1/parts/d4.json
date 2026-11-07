@@ -1,0 +1,296 @@
+[
+ {
+  "id": "p1-d4-01",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.1 Define evaluation metrics",
+  "trap": "Diagnostic count, not the outcome",
+  "fam": 6,
+  "select": 1,
+  "question": "A logistics firm's agent prepares customs filings. Each filing takes a variable number of Claude calls, because the agent retries whenever the customs portal rejects a field. The dashboard shows cost per call and per-call accuracy, both on target. Yet finance reports the monthly bill rising, and brokers are redoing some filings by hand. Which metric should become the main measure?",
+  "options": [
+   {"t": "Cost per Claude call, split into input and output tokens.", "why": "Works, but it is the per-call view that already looks fine; it hides how many calls a filing needs. It fits a single-call system.", "trap": "Per-call view hides retries"},
+   {"t": "The p95 latency of each step in the filing workflow.", "why": "Works, but nobody reported slowness; the problems are cost and redone filings. It fits when users wait on the agent.", "trap": "Speed metric for a cost problem"},
+   {"t": "Cost and success rate per completed filing.", "why": "Best. Because each filing takes a variable number of calls, only a per-filing measure captures both the real cost (retries included) and whether the work was actually done."},
+   {"t": "The average number of Claude and tool calls made per filing.", "why": "Works, but it is a diagnostic: it explains rising cost without saying whether filings succeed. Useful next to the main measure, not as it.", "trap": "Diagnostic count, not the outcome"}
+  ],
+  "answer": [2],
+  "runnerUp": 3,
+  "decider": "Each filing takes a variable number of Claude calls, because the agent retries whenever the customs portal rejects a field.",
+  "explanation": "When an agent makes a variable number of calls per task, per-call metrics hide retries and loops; the unit the business pays for is the completed task. Calls per filing is a good diagnostic, but it does not tell you whether the filing was right, so it loses as the main measure.",
+  "eli5": {
+   "question": "A robot fills in customs forms. Sometimes it needs many tries per form. Each single try looks cheap and correct, but the bill grows and people redo some forms. The clue: each form takes a different number of tries.",
+   "answer": "If a taxi charges per kilometre, the price per kilometre tells you nothing about a driver who keeps going round the block. You measure the whole trip, and whether you arrived. <b>Rule: when tasks take many calls, measure cost and success per finished task.</b>",
+   "options": [
+    "Price per try: that is the number that already looks fine.",
+    "How slow each step is: nobody said it was slow.",
+    "What a whole form costs, and whether it came out right: this matches the problem.",
+    "How many tries per form: it explains the bill but not whether forms are right."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-02",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.2 Design evaluation datasets",
+  "trap": "More of the same mix",
+  "fam": 6,
+  "select": 1,
+  "question": "A utility's billing assistant scores 96% on an eval set of 400 questions sampled at random from last year's chats. Complaints in production come almost entirely from customers with solar-panel export credits, who are about 3% of accounts. The team wants the eval to catch these failures before each release. How should they change the eval set?",
+  "options": [
+   {"t": "Grow the random sample to 4,000 questions so rare cases show up more.", "why": "Works, but a bigger random sample keeps the same 3% share, so the failing group still barely moves the overall score. It fits when the whole set is too small to trust.", "trap": "More of the same mix"},
+   {"t": "Add a separately scored slice of real solar-credit questions.", "why": "Best. Complaints come almost entirely from a 3% group, so the eval needs a targeted slice of those cases, scored on its own so a failure there cannot hide in the average."},
+   {"t": "Have billing experts regrade the 400 questions in place of the code checks.", "why": "Works, but it changes who grades, not what is tested; the set still holds almost no solar-credit cases. It fits when the grader is the doubt.", "trap": "Fixes grading, not coverage"},
+   {"t": "Raise the release threshold on the current set from 96% to 99%.", "why": "Works, but a stricter bar on the same questions still cannot see a group the set barely contains.", "trap": "Stricter bar, same blind spot"}
+  ],
+  "answer": [1],
+  "runnerUp": 0,
+  "decider": "Complaints in production come almost entirely from customers with solar-panel export credits, who are about 3% of accounts.",
+  "explanation": "A random sample mirrors traffic, so a small group that causes most failures stays small in the score. Eval sets should add targeted slices for known hard cases and report them separately. A larger random sample would win only if the problem were too few examples overall.",
+  "eli5": {
+   "question": "A helper answers bill questions and passes its test. But nearly all complaints come from one small group: people with solar panels. The test barely includes them. The clue: the complaints come from one small group.",
+   "answer": "If a cook keeps burning only the fish, tasting a bigger random plate of everything won't help much. You test the fish on its own. <b>Rule: give known trouble cases their own scored slice in the eval.</b>",
+   "options": [
+    "A bigger random test: the solar group is still only a tiny part of it.",
+    "A separate, scored test of real solar-panel questions: this targets the problem.",
+    "Different graders: the same questions are still missing.",
+    "A higher pass mark: still the same blind spot."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-03",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.2 Design evaluation datasets",
+  "trap": "Synthetic when real cases exist",
+  "fam": 6,
+  "select": 2,
+  "question": "An accounting firm's assistant extracts figures from tax documents that clients upload. Its eval set holds 500 clean, typed PDFs, and it scores 98%. In production, a third of uploads are phone photos, and most errors are on those photos and on forms with handwritten amendments. Staff log every corrected production error. Which two additions would make the eval set reflect production?",
+  "options": [
+   {"t": "Real phone-photo uploads from the correction log, with corrected values.", "why": "Best. Phone photos are where errors happen, and the log already holds real ones with the right answers, so they make ready-labelled eval cases."},
+   {"t": "Another 500 typed PDFs covering a wider range of tax form types.", "why": "Works, but it adds more of the case that already scores 98%; it fits when unseen form types are the problem.", "trap": "More of the covered case"},
+   {"t": "Synthetic photos made by blurring and rotating the existing typed PDFs.", "why": "Works, but it guesses at what real photos look like, while real, labelled photos already sit in the log. It fits when no real examples exist.", "trap": "Synthetic when real cases exist"},
+   {"t": "Logged forms with handwritten amendments and their correct figures.", "why": "Best. Handwritten amendments are the second named source of errors, and the log provides real, labelled examples of them."},
+   {"t": "Crafted documents that hide instructions inside the form text.", "why": "Works, but it tests a security risk nobody reported here; it fits when untrusted content is the concern.", "trap": "Real risk, not this gap"}
+  ],
+  "answer": [0, 3],
+  "runnerUp": 2,
+  "decider": "Staff log every corrected production error.",
+  "explanation": "An eval set should look like production, especially where production fails, and real labelled failures are the best source. Synthetic variants are a fallback when real examples are scarce; here the correction log makes them unnecessary.",
+  "eli5": {
+   "question": "A helper reads numbers off tax forms. Its test uses only neat typed forms. Real customers send phone photos and forms with handwriting, and that is where it goes wrong. Staff already write down every mistake they fix. The clue: the real mistakes are already written down.",
+   "answer": "If you want to practise for a muddy race, you train on the muddy track you already have, not on a dry track you sprinkle with water. <b>Rule: build the eval from real production failures when you have them.</b>",
+   "options": [
+    "Real phone photos from the mistake log: yes, that's where it fails.",
+    "More neat typed forms: it already does well on those.",
+    "Fake photos made from neat forms: a guess when real ones exist.",
+    "Real handwritten forms from the log: yes, the other failing case.",
+    "Trick documents with hidden orders: a real risk, but not this problem."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-04",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.3 A/B testing and iterative improvement",
+  "trap": "A test that never concludes",
+  "fam": 2,
+  "select": 1,
+  "question": "A wealth-management firm's adviser assistant handles about 60 conversations a day. A new prompt passed the full offline eval with slightly better scores. The product owner wants an A/B test proving it raises adviser satisfaction, but analysts estimate the test would need about nine months of traffic to give a clear answer. What should the team do?",
+  "options": [
+   {"t": "Run the A/B test on half of the traffic for as long as it takes.", "why": "Works, but nine months is too long to wait on a small prompt change. With high traffic this would be the right way to measure satisfaction.", "trap": "A test that never concludes"},
+   {"t": "Shadow-test the new prompt on live inputs without showing its answers.", "why": "Works, but advisers never see shadow answers, so it cannot say anything about their satisfaction. It fits when exposure is the worry.", "trap": "Wrong question answered"},
+   {"t": "Let the five busiest advisers try both versions for a week and choose.", "why": "Works for early impressions, but five self-selected users is anecdote, not evidence.", "trap": "Small, biased sample"},
+   {"t": "Roll it out in stages, watching quality metrics and adviser feedback.", "why": "Best. Traffic is too low for an A/B test to finish in reasonable time, so rely on the passed offline eval and a staged rollout with close monitoring."}
+  ],
+  "answer": [3],
+  "runnerUp": 0,
+  "decider": "analysts estimate the test would need about nine months of traffic to give a clear answer",
+  "explanation": "A/B tests need enough traffic to reach a clear result; when they would take months, the offline eval plus a monitored staged rollout is the practical path. The A/B test wins when volume is high enough to answer in days or weeks.",
+  "eli5": {
+   "question": "A helper for a few advisers got a new set of instructions that tested well. The boss wants a fair head-to-head test, but so few people use it that the test would take nine months. The clue: nine months to get an answer.",
+   "answer": "If a shop sees three customers a day, it can't wait for a year-long survey before changing the menu; it changes a bit at a time and watches. <b>Rule: when traffic is too low for A/B, use the offline eval plus a careful staged rollout.</b>",
+   "options": [
+    "Head-to-head test however long it takes: far too slow here.",
+    "Run it hidden in the background: advisers never see it, so no satisfaction signal.",
+    "Ask five keen advisers: too few, too biased.",
+    "Roll it out step by step and watch closely: fits low traffic."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-05",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.3 A/B testing and iterative improvement",
+  "trap": "Exposes unapproved output",
+  "fam": 8,
+  "select": 1,
+  "question": "A hospital wants to move its discharge-summary assistant to a new model version. It passed the offline eval, but live notes are messier than the eval set, so the team wants evidence from real inputs. Hospital policy forbids showing clinicians output from any version that has not been signed off. What should the team do next?",
+  "options": [
+   {"t": "Run it in shadow on live notes and compare its outputs offline.", "why": "Best. Shadow testing uses real, messy inputs while clinicians keep seeing only the approved version, which is exactly what the policy requires."},
+   {"t": "A/B test it with 10% of clinicians and compare their edit rates.", "why": "Works where users may see a candidate version, and edit rates are a good signal. Here the policy forbids showing unapproved output to anyone.", "trap": "Exposes unapproved output"},
+   {"t": "Add another 500 historical notes to the offline eval and rerun it.", "why": "Works to widen coverage, but it is still not live input, which is the evidence the team said it lacks.", "trap": "Still not live inputs"},
+   {"t": "Deploy it to one ward first as a canary, with close monitoring.", "why": "Works for a normal rollout, but a canary still shows the unapproved version to that ward's clinicians.", "trap": "Canary still exposes users"}
+  ],
+  "answer": [0],
+  "runnerUp": 1,
+  "decider": "Hospital policy forbids showing clinicians output from any version that has not been signed off.",
+  "explanation": "A shadow test runs a candidate on live traffic without serving its output, so you get real-input evidence with no user exposure. A/B tests and canaries measure real user impact, but both put the candidate in front of users, which the policy rules out.",
+  "eli5": {
+   "question": "A hospital helper writes summaries. A new version looks good in tests, but real notes are messier. Doctors may not see anything from a version that is not approved. The clue: doctors must not see unapproved output.",
+   "answer": "A new chef can cook the same orders in the back kitchen so you can compare plates, without any of them going out to diners. <b>Rule: when users must not see a candidate, shadow-test it on live inputs.</b>",
+   "options": [
+    "Run it quietly on real notes and compare: real inputs, nobody sees it.",
+    "Show it to some doctors: breaks the hospital rule.",
+    "More old notes in the test: still not real live notes.",
+    "Try it on one ward: that ward's doctors would see it."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-06",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.4 Diagnose system issues",
+  "trap": "Model before prompt",
+  "fam": 4,
+  "select": 1,
+  "question": "A retailer's returns assistant treats similar requests differently: one customer gets a refund, another with the same facts gets store credit. Traces show the full returns policy is retrieved every time. The system prompt says only “handle returns in line with policy and customer goodwill”. The model has not changed since launch. What should the team change first?",
+  "options": [
+   {"t": "Re-chunk the policy so each returns rule sits in a single chunk.", "why": "Works when retrieval returns partial rules, but traces show the full policy arrives every time.", "trap": "Retrieval already works"},
+   {"t": "Lower the temperature so similar requests get the same handling.", "why": "Works to reduce random variation, but the instruction itself leaves room for both outcomes, so answers stay inconsistent.", "trap": "Steadier, still ambiguous"},
+   {"t": "State the refund and store-credit rules in the prompt, with examples.", "why": "Best. The context is right and the instruction is vague (“customer goodwill”), so the fix is a clear rule and examples in the prompt."},
+   {"t": "Move return requests to a more capable model and compare results.", "why": "Works when context and prompt are clear and reasoning still fails. Here the prompt has not yet been ruled out.", "trap": "Model before prompt"}
+  ],
+  "answer": [2],
+  "runnerUp": 3,
+  "decider": "The system prompt says only “handle returns in line with policy and customer goodwill”.",
+  "explanation": "Diagnose from the inputs inward: context first, then prompt, then model. Retrieval is fine and the instruction is ambiguous, so similar requests are handled differently; clarifying the prompt comes before trying a different model.",
+  "eli5": {
+   "question": "A returns helper gives one person a refund and another, with the same story, store credit. It always sees the full rules. Its instruction just says “follow policy and be kind”. The clue: the instruction is vague.",
+   "answer": "If you tell two new staff “be fair”, they will each decide differently; write down exactly when to refund and show examples. <b>Rule: inconsistent handling with good context means fix the prompt before the model.</b>",
+   "options": [
+    "Split the rules up differently: the helper already sees all of them.",
+    "Make it less random: still a vague instruction.",
+    "Write the exact rules and examples into the instruction: fixes the cause.",
+    "Use a smarter model: try that only after the instruction is clear."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-07",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.4 Diagnose system issues",
+  "trap": "Stops guessing, still no answer",
+  "fam": 3,
+  "select": 1,
+  "question": "A government benefits assistant gives confident but invented eligibility rules for a new childcare benefit. Answers about older benefits are accurate. Traces show that for these questions retrieval returns passages about older benefits only, because the new benefit's guidance is on a site the indexer does not crawl. What should the team fix first?",
+  "options": [
+   {"t": "Tell the model to answer only from passages and say when none apply.", "why": "Works, and is worth adding, but it only turns invented answers into “I don't know”; citizens still get no answer about the new benefit.", "trap": "Stops guessing, still no answer"},
+   {"t": "Add the site with the new benefit's guidance to the indexed sources.", "why": "Best. The cause is missing content: the guidance is on a site the indexer does not crawl, so indexing it lets retrieval supply the right passages."},
+   {"t": "Switch to a more capable model for questions about new benefits.", "why": "Works for reasoning failures, but no model can know rules it was never given.", "trap": "Model blamed for missing data"},
+   {"t": "Add worked examples of correct eligibility answers to the prompt.", "why": "Works when the format or reasoning is weak; here the facts themselves are absent from the context.", "trap": "Prompt fix for a data gap"}
+  ],
+  "answer": [1],
+  "runnerUp": 0,
+  "decider": "because the new benefit's guidance is on a site the indexer does not crawl",
+  "explanation": "Hallucinations often start upstream: if the right content never reaches the model, it fills the gap. Fixing the source is the root-cause fix; a grounding instruction is a good safeguard and would be the first move if the guidance did not exist yet.",
+  "eli5": {
+   "question": "A helper makes up rules for a brand-new benefit. It is fine on the old ones. The new rules sit on a website the helper's library never collects. The clue: the new rules never get into the library.",
+   "answer": "If a student keeps guessing on one chapter, check whether that chapter is even in their textbook before blaming the student. <b>Rule: when the right content is missing, fix the source first.</b>",
+   "options": [
+    "Tell it to say “I don't know”: safer, but people still get no answer.",
+    "Put the new rules into the library: fixes the cause.",
+    "A smarter helper: it still has never seen the rules.",
+    "Show it good examples: the facts are still missing."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-08",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.5 Optimize token usage, latency and cost",
+  "trap": "Batch where users wait",
+  "fam": 8,
+  "select": 1,
+  "question": "A bank's fraud analysts ask an assistant about each flagged case and wait on screen for the reply, which must arrive within seconds. Every request repeats the same 12,000-token fraud-policy prefix before a short case summary. Leadership wants lower cost, and quality must not change at all. Which change best fits?",
+  "options": [
+   {"t": "Send the requests through the Message Batches API at a lower price.", "why": "Works for large jobs nobody waits on, at about half price, but batch results can take hours and analysts need replies in seconds.", "trap": "Batch where users wait"},
+   {"t": "Move the routine cases to a smaller, faster model.", "why": "Works when the eval shows quality holds, but leadership said quality must not change at all, and a model switch risks exactly that.", "trap": "Cost cut that risks quality"},
+   {"t": "Condense the policy prefix to 2,000 tokens with a summary.", "why": "Works to cut tokens, but it removes policy detail the model uses, so quality may change.", "trap": "Cuts content the model uses"},
+   {"t": "Cache the policy prefix so later requests read it cheaply.", "why": "Best. The same long prefix repeats on every request, so prompt caching cuts its cost (and speeds the first token) without changing what the model sees."}
+  ],
+  "answer": [3],
+  "runnerUp": 0,
+  "decider": "wait on screen for the reply, which must arrive within seconds",
+  "explanation": "Match the lever to the constraint: a repeated long prefix calls for prompt caching, which keeps inputs identical and so leaves quality unchanged. Batch processing is the bigger discount, but only for work nobody waits on.",
+  "eli5": {
+   "question": "Bank staff ask a helper about each case and wait for the answer. Every question starts with the same very long rulebook. The bank wants to pay less without changing answer quality. The clue: people are waiting for each answer.",
+   "answer": "If you read the same long safety briefing before every flight, you keep a bookmarked copy instead of reprinting it each time. <b>Rule: repeated long prefixes plus live users means prompt caching, not batch.</b>",
+   "options": [
+    "Cheaper overnight batches: answers could take hours.",
+    "A smaller model: might change the quality.",
+    "Shorten the rulebook: drops details the helper uses.",
+    "Reuse the rulebook from a cache: cheaper and nothing changes."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-09",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.5 Optimize token usage, latency and cost",
+  "trap": "Cascade nobody needs",
+  "fam": 2,
+  "select": 1,
+  "question": "A media company uses the most capable model to decide whether each reader comment is published or held for review, at high volume. On a labelled set of 1,000 comments, a smaller, faster model matches its accuracy within half a point in every category. Moderators need decisions instantly. What should the architect recommend?",
+  "options": [
+   {"t": "Move to the smaller model through a staged rollout, watching accuracy.", "why": "Best. The smaller model matches accuracy within half a point in every category, so the large model is a mismatch the other way: paying more for no gain."},
+   {"t": "Keep the current model and send comments in nightly batches.", "why": "Works for cost on work nobody waits on, but moderators need decisions instantly.", "trap": "Batch for a live need"},
+   {"t": "Send only the comments the smaller model is unsure about to the large one.", "why": "Works when the smaller model lags on hard cases, but it matches in every category, so the extra routing adds cost and complexity for no measured gain.", "trap": "Cascade nobody needs"},
+   {"t": "Keep the current model and cache its moderation instructions.", "why": "Works when a long prefix repeats, but it keeps paying the large model's price for every comment it does not need.", "trap": "Small saving, wrong lever"}
+  ],
+  "answer": [0],
+  "runnerUp": 2,
+  "decider": "a smaller, faster model matches its accuracy within half a point in every category",
+  "explanation": "When the eval shows a smaller model matches quality, use it, rolled out in stages. Routing between models pays off only when the small model fails on a definable slice; here no such slice exists.",
+  "eli5": {
+   "question": "A news site uses its most expensive helper to sort comments. A cheaper, faster helper scored almost the same on every type of comment. Decisions are needed right away. The clue: the cheaper helper is just as good everywhere.",
+   "answer": "If a junior colleague gets every kind of task as right as the senior one, you don't keep the senior one as a checker for nothing. <b>Rule: when the eval says a smaller model is as good, switch in stages.</b>",
+   "options": [
+    "Switch to the cheaper helper bit by bit: it's just as good.",
+    "Do it all overnight: decisions are needed right away.",
+    "Send hard ones to the big helper: there are no hard ones it fails.",
+    "Keep the big helper, cache its instructions: still paying too much per comment."
+   ]
+  }
+ },
+ {
+  "id": "p1-d4-10",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.6 Monitor with logging and observability",
+  "trap": "Content without timing or scores",
+  "fam": 6,
+  "select": 2,
+  "question": "An insurer's claims agent calls five tools per claim. Over the past month, p95 time per claim has doubled and adjusters report more claims routed to the wrong team, yet the error rate is flat. Logs record only each request's total time and HTTP status. Which two additions best help the team find and track both problems?",
+  "options": [
+   {"t": "Logging of the full prompt and response text of every request.", "why": "Works for reading individual failures, but it neither times the steps nor scores routing, so neither problem can be tracked.", "trap": "Content without timing or scores"},
+   {"t": "Per-step traces timing each model call and tool call.", "why": "Best. Logs hold only total time, so tracing each step shows which of the five tools or model calls made claims slower."},
+   {"t": "An alert that fires when the error rate rises above 1%.", "why": "Works for crashes and failed calls, but the error rate is flat: wrong routing returns success.", "trap": "Error rate is already flat"},
+   {"t": "Daily totals of tokens and cost for each claim.", "why": "Works for tracking spend, but neither problem here is about cost.", "trap": "Cost view, not these problems"},
+   {"t": "Sampled scoring of routing decisions against adjuster corrections.", "why": "Best. Wrong routing still returns success, so only a sampled quality score shows whether it is getting better or worse."}
+  ],
+  "answer": [1, 4],
+  "runnerUp": 0,
+  "decider": "Logs record only each request's total time and HTTP status.",
+  "explanation": "Agents need per-step tracing to find slow steps, and quality problems that return success need sampled online scoring. Full request logging is useful raw material, but without timings or scores it does not make either problem measurable.",
+  "eli5": {
+   "question": "A claims robot uses five tools per claim. It has got slower and sends more claims to the wrong team, but it reports no errors. The logs only say how long the whole thing took and whether it 'worked'. The clue: the logs only have total time and success.",
+   "answer": "If a delivery is late, a stopwatch for each leg shows which leg was slow; and to know parcels went to the right house, you have to check some of them. <b>Rule: trace each step for speed, sample and score outputs for quality.</b>",
+   "options": [
+    "Save all the text: you can read it, but it doesn't time or score anything.",
+    "Time every step: finds the slow one.",
+    "Alarm on errors: there are no errors to catch.",
+    "Daily cost totals: the problems aren't about cost.",
+    "Check a sample of routing against adjusters: shows the wrong-team problem."
+   ]
+  }
+ }
+]

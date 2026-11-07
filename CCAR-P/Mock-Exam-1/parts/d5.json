@@ -1,0 +1,267 @@
+[
+  {
+    "id": "p1-d5-01",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.1 Guardrails and safety controls",
+    "trap": "Hard control for a soft rule",
+    "fam": 2,
+    "select": 1,
+    "question": "A news publisher's drafting assistant writes first drafts of sports match reports, and an editor always revises each draft before it is published. The house style prefers short paragraphs and avoids a list of clichés. When the assistant misses a style point, the editor fixes it in under a minute. How should the architect enforce the house style?",
+    "options": [
+      {"t": "Add a code check that rejects any draft containing a listed cliché.", "why": "Works, but a hard gate for a preference that costs a minute to fix adds friction and false rejections. It would win if a banned phrase carried legal or safety risk.", "trap": "Hard control for a soft rule"},
+      {"t": "Put the style in the system prompt with two short example paragraphs.", "why": "Best. A miss is cheap and an editor already reads every draft, so prompt guidance with examples is proportionate: it makes misses rarer without adding machinery."},
+      {"t": "Run a second model that reviews each draft for style before the editor.", "why": "Works, but it doubles cost and latency to catch errors the editor already fixes in under a minute.", "trap": "Overbuilt review layer"},
+      {"t": "Replace free drafting with a fixed template filled from the match data.", "why": "Works, but it gives up readable prose to guarantee a style point that is cheap to fix. It would fit if reports had to follow an exact regulated format.", "trap": "Rigid template over prompting"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "When the assistant misses a style point, the editor fixes it in under a minute.",
+    "explanation": "Enforce in code what must always hold; guide in the prompt what does little harm when missed. A style preference with a human editor downstream is a soft rule, so the system prompt with examples is the right layer. The code check would win only if a missed phrase caused real harm.",
+    "eli5": {
+      "question": "A helper writes rough sports reports, and an editor always tidies them up. Sometimes the helper uses a tired phrase, and the editor fixes it in a minute. The clue: a mistake is cheap and a person already checks every draft.",
+      "answer": "If a new cook sometimes forgets the parsley, you tell them the recipe again; you don't install a lock on the kitchen door. <b>Rule: a soft preference with little harm when missed belongs in the prompt; hard enforcement is for rules that must always hold.</b>",
+      "options": [
+        "A machine blocks any draft with a banned phrase: strong, but too heavy for something an editor fixes in a minute.",
+        "Explain the style with a couple of examples in the instructions: right-sized for a cheap, soft rule.",
+        "A second robot checks every draft first: double the cost to catch what the editor already catches.",
+        "Fill in a rigid form instead of writing: guarantees style but the reports read badly."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-02",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.1 Guardrails and safety controls",
+    "trap": "Patching the last layer",
+    "fam": 3,
+    "select": 1,
+    "question": "A telecom's support agent looks up customer accounts through a tool that returns the full account record, including each customer's national ID number. The agent never needs the ID number to answer questions. An output filter masks ID numbers, but testing showed it missed one when the model wrote the digits with spaces. What is the best fix?",
+    "options": [
+      {"t": "Extend the output filter to catch ID numbers written with spaces or dashes.", "why": "Works, but it patches the last layer against one format; the model can still find another. It would win if the agent needed the ID in context, for example to verify identity.", "trap": "Patching the last layer"},
+      {"t": "Tell the agent in its system prompt never to repeat any ID number it sees.", "why": "Works, but a prompt rule reduces how often the leak happens; it does not stop it.", "trap": "Prompt instead of enforcement"},
+      {"t": "Send every reply containing a long run of digits to a human reviewer first.", "why": "Works, but it adds delay to many harmless replies and still relies on catching the leak after the data is in context.", "trap": "Review instead of prevention"},
+      {"t": "Change the lookup tool so the ID number is left out of what it returns.", "why": "Best. The agent never needs the ID, so removing it from the tool result means the model never sees it and cannot leak it. The output filter stays as a backstop."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "The agent never needs the ID number to answer questions.",
+    "explanation": "Data the model never sees cannot leak, so keeping it out of the context is stronger than redacting the output. Output filters are a last layer and will always miss some format. A better filter would be the right move only if the agent genuinely needed the ID in context.",
+    "eli5": {
+      "question": "A helper reads out customer files, and each file has a secret ID number the helper never uses. A filter tries to hide the number when the helper talks, but it missed one. The clue: the helper never needs the number at all.",
+      "answer": "If a receptionist keeps blurting out the safe code, don't teach them to mumble it; just don't tell them the code. <b>Rule: keep data the task does not need out of the context; output redaction is only a backstop.</b>",
+      "options": [
+        "Make the filter smarter: helps, but there will always be another way to write the number.",
+        "Ask the helper nicely not to say it: usually works, but not every time.",
+        "Have a person check replies with lots of digits: slow, and the secret is still in the helper's hands.",
+        "Stop handing the helper the number in the first place: then it cannot leak."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-03",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.2 Risks, limitations and failure modes",
+    "trap": "More context when nothing exists",
+    "fam": 5,
+    "select": 1,
+    "question": "A shipping company's contract assistant answers questions such as 'What is our liability cap with this carrier?' by retrieving clauses from the signed contract. Reviewers found it sometimes states a cap and a clause number that do not exist. Every such case was a contract that has no liability-cap clause at all. What is the best change?",
+    "options": [
+      {"t": "Require a verbatim supporting quote, checked in code, and allow 'not stated'.", "why": "Best. The clause does not exist, so the model is filling a gap. Requiring a quote that code confirms is in the contract, and allowing 'the contract does not say', removes the pressure to invent an answer."},
+      {"t": "Retrieve more clauses per question so the right clause is less likely missed.", "why": "Works, but there is no right clause to find in these contracts. It would win if the clause existed and retrieval kept missing it.", "trap": "More context when nothing exists"},
+      {"t": "Switch to the most capable model, which makes up legal details less often.", "why": "Works, but a stronger model reduces invention without removing it, and the gap in the sources is unchanged.", "trap": "Bigger model as the fix"},
+      {"t": "Turn on extended thinking so it reasons through the contract before answering.", "why": "Works, but more reasoning does not create a missing clause; the failure is grounding, not judgement.", "trap": "Reasoning for a grounding gap"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "Every such case was a contract that has no liability-cap clause at all.",
+    "explanation": "Hallucination is fluent output the sources do not support, and it is most likely when the honest answer is 'not there'. Grounding with checked quotes and an allowed 'not stated' answer targets that cause. Retrieving more would help only if the clause existed and was being missed.",
+    "eli5": {
+      "question": "A helper answers questions about contracts. When a contract has no answer, the helper makes one up instead of saying so. The clue: the wrong answers only happen when the thing truly is not in the contract.",
+      "answer": "A student who must answer every question will guess on the ones not in the book; let them write 'not in the book' and show the page for the rest. <b>Rule: ground answers in quoted sources and allow 'I don't know'.</b>",
+      "options": [
+        "Show your quote from the contract and say 'not stated' when it is missing: fixes the guessing.",
+        "Hand the helper more pages: no use when the answer is on none of them.",
+        "Hire a smarter helper: guesses less often, but still guesses.",
+        "Make the helper think longer: thinking cannot find a clause that is not there."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-04",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.2 Risks, limitations and failure modes",
+    "trap": "Temperature zero as a guarantee",
+    "fam": 9,
+    "select": 2,
+    "question": "A car manufacturer's agent turns free-text defect reports from dealers into JSON records for the quality database. The team approved it after a single clean run of 20 sample reports. In production, about 3% of records are rejected by the database loader for missing or malformed fields, and those reports are lost. Which two changes best address this?",
+    "options": [
+      {"t": "Set the temperature to zero so the agent gives the same output every time.", "why": "Works, but it lowers variation without guaranteeing valid fields, and new kinds of reports still produce new outputs.", "trap": "Temperature zero as a guarantee"},
+      {"t": "Validate each record against the schema in code, retry, then queue failures.", "why": "Best. Non-determinism means some outputs will be malformed; a schema check in code catches every one, and the queue means no report is lost."},
+      {"t": "Add a firm instruction to the prompt to always return every required field.", "why": "Works, but a prompt instruction makes errors rarer, not impossible, and failures would still be dropped.", "trap": "Prompt where code is needed"},
+      {"t": "Switch to the most capable model so that formatting mistakes become rarer.", "why": "Works, but it lowers the rate without catching the remaining failures, at higher cost per report.", "trap": "Bigger model as the fix"},
+      {"t": "Build a test set of several hundred varied real reports and run it repeatedly.", "why": "Best. One clean run of 20 proves little for a non-deterministic system; a large, varied set run many times shows the real error rate before each release."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 0,
+    "decider": "The team approved it after a single clean run of 20 sample reports.",
+    "explanation": "LLM output varies between runs and across inputs, so one passing run is weak evidence, and formats that downstream systems depend on must be enforced in code. Temperature zero is the tempting fix, but it reduces variation rather than guaranteeing a valid record.",
+    "eli5": {
+      "question": "A helper copies car fault reports into a neat form. It got 20 right once, so everyone trusted it. Now a few forms come out broken and get thrown away. The clue: one good try was taken as proof.",
+      "answer": "A new typist who did one perfect page still needs a spell-checker and a proper trial week. <b>Rule: test a non-deterministic system on many varied cases, and enforce critical formats in code.</b>",
+      "options": [
+        "Turn the randomness down to zero: makes answers steadier, but does not promise a correct form.",
+        "Check each form with a program, retry, and keep the ones that still fail: nothing broken gets through or gets lost.",
+        "Tell the helper firmly to fill every box: helps, but not every time.",
+        "Hire a smarter helper: fewer mistakes, but the remaining ones are still thrown away.",
+        "Test on hundreds of real reports, many times: shows how often it really goes wrong."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-05",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.3 Human-in-the-loop by risk and confidence",
+    "trap": "Self-reported confidence as the gate",
+    "fam": 6,
+    "select": 1,
+    "question": "A national tax agency uses Claude to sort 20,000 incoming letters a day into processing queues. A misrouted letter loses about a day. In testing, the model's stated confidence was just as high on misrouted letters as on correct ones. Each taxpayer's account type, held in agency records, limits which queues are possible. Which routing design fits best?",
+    "options": [
+      {"t": "Send letters to staff when the model's stated confidence falls below a threshold.", "why": "Works where confidence tracks accuracy, but here it was just as high on wrong routings, so the threshold would let the errors through.", "trap": "Self-reported confidence as the gate"},
+      {"t": "Have staff confirm the queue for every letter before it is routed onward.", "why": "Works, but reviewing 20,000 letters a day does not scale for an error that costs about a day.", "trap": "Reviewing everything at volume"},
+      {"t": "Send to staff when the queue does not fit the account type; audit a sample.", "why": "Best. The account type is a signal that can be checked in code, unlike the model's confidence, so staff time goes to likely errors and sampling measures the rest."},
+      {"t": "Route every letter automatically and let the receiving teams return wrong ones.", "why": "Works when misrouting costs almost nothing, but here each error loses a day and nothing catches it early.", "trap": "No check before routing"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "the model's stated confidence was just as high on misrouted letters as on correct ones",
+    "explanation": "Route cases to people using signals you can verify, and audit a random sample of the automated rest. A model's self-reported confidence is only useful if it tracks accuracy, and the testing showed it does not here.",
+    "eli5": {
+      "question": "A helper sorts thousands of letters a day into trays. It always says it is very sure, even when it is wrong. But each sender's record says which trays are even possible. The clue: the helper's 'I'm sure' tells you nothing.",
+      "answer": "A friend who says 'definitely' about every answer gives you no clue which ones to double-check; a fact you can look up does. <b>Rule: route to humans on checkable signals, not on the model's own confidence, and sample the rest.</b>",
+      "options": [
+        "Check the letters where the helper says it is unsure: it never says it is unsure, so errors slip by.",
+        "A person checks every letter: safe but far too many letters.",
+        "A person checks letters whose tray does not match the sender's record, plus a random few: catches likely mistakes cheaply.",
+        "Let the wrong tray send it back: fine if delays were free, but each one costs a day."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-06",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.3 Human-in-the-loop by risk and confidence",
+    "trap": "Review after an irreversible action",
+    "fam": 4,
+    "select": 2,
+    "question": "A mobile network operator's agent proposes and applies configuration changes. Changes to a single cell site roll back automatically within minutes if its metrics worsen. Changes to core routing affect millions of customers and cannot be quickly rolled back. Leadership wants changes made fast with no avoidable outage. Which two controls fit best?",
+    "options": [
+      {"t": "An engineer approves each core routing change before it runs, seeing its impact.", "why": "Best. Core changes are high-impact and hard to undo, so a person must decide before they execute, with the evidence in front of them."},
+      {"t": "Core routing changes run at once, and an engineer reviews each within an hour.", "why": "Works for reversible changes, but an outage across millions of customers has already happened by the time the review starts.", "trap": "Review after an irreversible action"},
+      {"t": "The agent asks for approval whenever its own risk assessment rates a change high.", "why": "Works as an extra signal, but the gate should be a fixed rule in code, not the model's judgement of its own risk.", "trap": "Model decides its own gate"},
+      {"t": "Single-site changes run automatically with rollback, and engineers audit a sample.", "why": "Best. These changes are low-impact and undo themselves, so automating them keeps speed, and sampling measures the real error rate."},
+      {"t": "Every change, whether site or core, waits for an engineer's approval first.", "why": "Works, but it slows the many reversible site changes for no real gain, against leadership's wish for speed.", "trap": "Approval on reversible work"}
+    ],
+    "answer": [0, 3],
+    "runnerUp": 1,
+    "decider": "Changes to core routing affect millions of customers and cannot be quickly rolled back.",
+    "explanation": "Put human approval before irreversible or high-impact actions, and automate low-impact, reversible work with sampled audits. A prompt review after the fact suits reversible changes, but it cannot undo a core outage.",
+    "eli5": {
+      "question": "A robot changes settings on phone towers. A change to one tower undoes itself if things get worse. A change to the central system hits millions and cannot be undone quickly. The clue: one kind of change can be undone, the other cannot.",
+      "answer": "You let a child rearrange their own room freely, but you check before they repaint the whole house. <b>Rule: approve before irreversible, high-impact actions; automate reversible ones and spot-check them.</b>",
+      "options": [
+        "A person says yes before each big central change: right, because it cannot be undone.",
+        "Make the big change, then check within the hour: too late if millions are already offline.",
+        "Let the robot decide when to ask: the robot should not set its own safety rules.",
+        "Let small tower changes run on their own, and spot-check some: fast and safe because they undo themselves.",
+        "A person approves every change, big or small: safe but needlessly slow."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-07",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.4 Compliance with regulations",
+    "trap": "Pseudonymised data is still personal",
+    "fam": 8,
+    "select": 1,
+    "question": "A French university uses Claude to give students feedback on draft essays, and it stores the essays and the feedback. Students were told the essays are collected only to give them feedback. The analytics team now wants to reuse two years of stored essays to predict which students may drop out. What should the architect require before the reuse?",
+    "options": [
+      {"t": "Replace student names with ID codes before the analytics team receives the essays.", "why": "Works as a safeguard, but pseudonymised essays are still personal data, and the new purpose still needs its own lawful basis. It would fit once the reuse has been approved.", "trap": "Pseudonymised data is still personal"},
+      {"t": "Delete all stored essays and feedback so that no student data is kept any longer.", "why": "Works for storage limits, but it ends the feedback service's records and blocks a reuse that might be made lawful.", "trap": "Over-correcting by deletion"},
+      {"t": "Move the stored essays to a data centre inside the EU before analysis starts.", "why": "Works for transfer rules, but where the data sits does not answer whether it may be used for a new purpose.", "trap": "Residency, not purpose"},
+      {"t": "Treat dropout prediction as a new purpose and have it assessed with the DPO first.", "why": "Best. GDPR purpose limitation means data collected only for feedback cannot simply be reused for profiling; the new purpose needs its own lawful basis and assessment, involving the data protection officer."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "Students were told the essays are collected only to give them feedback.",
+    "explanation": "Under GDPR, personal data is collected for a stated purpose, and a new purpose such as predicting dropout needs its own lawful basis and review. Replacing names with codes is pseudonymisation, which reduces risk but leaves the data personal, so it cannot stand in for that review.",
+    "eli5": {
+      "question": "A university promised students their essays were only for giving feedback. Now another team wants to use the same essays to guess who might drop out. The clue: the students were told one purpose only.",
+      "answer": "If a friend lends you their car to get groceries, you ask again before using it for a road trip, even if you change the number plate. <b>Rule: a new purpose for personal data needs its own legal basis and review first.</b>",
+      "options": [
+        "Swap names for codes: safer, but it is still the students' data being used for a new reason.",
+        "Delete everything: too drastic, and it does not answer the question asked.",
+        "Move the data to Europe: about where data lives, not what it may be used for.",
+        "Treat it as a new use and get it checked by the privacy officer first: respects the promise made."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-08",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.4 Compliance with regulations",
+    "trap": "Access control at an uncovered vendor",
+    "fam": 8,
+    "select": 1,
+    "question": "A US hospital's assistant drafts discharge summaries on a Claude deployment covered by the hospital's business associate agreement (BAA). To debug quality issues, engineers connected a third-party tracing tool that stores every full prompt and response. The tracing vendor has not signed a BAA. What should the architect require first?",
+    "options": [
+      {"t": "Keep patient data out of that tool: redact traces or use one under a BAA.", "why": "Best. Traces holding full prompts contain PHI, and a vendor that handles PHI needs a BAA. Redacting or switching to a covered tool closes the gap."},
+      {"t": "Limit the tracing tool to two named engineers, with access logging turned on.", "why": "Works inside a covered environment, but the PHI is still sitting with a vendor that has no BAA.", "trap": "Access control at an uncovered vendor"},
+      {"t": "Set the tracing tool to delete stored traces automatically after 30 days.", "why": "Works as a retention control, but PHI still reaches an uncovered vendor for those 30 days.", "trap": "Shorter retention, same exposure"},
+      {"t": "Move the assistant to a deployment that also holds FedRAMP authorisation.", "why": "Works for US federal workloads, but FedRAMP is a different regime and does not cover the tracing vendor.", "trap": "Wrong regime"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "The tracing vendor has not signed a BAA.",
+    "explanation": "Logs, traces and caches that hold regulated data fall under the same rules as the main system, so HIPAA requires a BAA with every vendor handling PHI. Access control and retention are good HIPAA safeguards, but they apply after the basic question of whether that vendor may hold the data at all.",
+    "eli5": {
+      "question": "A hospital's writing helper is set up under a signed privacy agreement. But engineers copy every conversation, with patient details, into another company's tool, and that company never signed. The clue: the second company has no agreement.",
+      "answer": "If you lock the front door but leave copies of the files at a stranger's house, a better lock at home does not help. <b>Rule: every place regulated data goes, including logs and traces, must be covered.</b>",
+      "options": [
+        "Strip out the patient details, or use a tool that has signed: fixes the real gap.",
+        "Let only two engineers look: the stranger still holds the files.",
+        "Delete the copies after a month: they still sit with the stranger for a month.",
+        "Get a government security badge: the wrong rulebook, and it does not cover the other company."
+      ]
+    }
+  },
+  {
+    "id": "p1-d5-09",
+    "domain": "D5 · Governance, Safety & Risk",
+    "obj": "5.5 Ethical AI: bias, fairness, transparency",
+    "trap": "Prompting for fairness",
+    "fam": 1,
+    "select": 1,
+    "question": "A housing association uses Claude to rate tenants' repair requests as urgent or routine. The prompt's examples were copied from past staff ratings. An audit found that requests written in non-standard English are rated routine far more often for the same fault, and past staff ratings show the same gap. What should the architect do first?",
+    "options": [
+      {"t": "Add a system-prompt instruction to rate the fault, not the quality of the writing.", "why": "Works a little, but the examples still teach the old pattern, and fairness is shown by measurement, not asserted in a prompt.", "trap": "Prompting for fairness"},
+      {"t": "Have staff re-check every request the assistant rates as routine before closing.", "why": "Works when reviewers are unbiased, but past staff ratings show the same gap, so the review would repeat it.", "trap": "Reviewers share the bias"},
+      {"t": "Replace the examples with ones rated against a written rubric, then re-measure.", "why": "Best. The bias comes from historical ratings used as examples; rubric-based examples remove the source, and re-measuring by group shows whether the gap closed."},
+      {"t": "Remove tenants' names and addresses from requests before the assistant sees them.", "why": "Works for attributes like name or area, but the gap follows the writing style, which is still there.", "trap": "Removing the wrong attribute"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "past staff ratings show the same gap",
+    "explanation": "Historical decisions used as examples carry past bias forward, so the fix is to replace the source and measure outcomes across groups again. A prompt instruction is the tempting shortcut, but it leaves the biased examples in place and proves nothing without measurement.",
+    "eli5": {
+      "question": "A helper decides which repairs are urgent. It learned from old staff decisions, and the old staff often marked badly written requests as not urgent. The helper copied the same habit. The clue: the old examples have the same unfairness.",
+      "answer": "If a new chef learns from a recipe book with a typo, telling them 'cook it right' does not help; fix the book and taste again. <b>Rule: replace biased examples at the source and re-measure outcomes by group.</b>",
+      "options": [
+        "Tell the helper to be fair: nice, but it still copies the old examples.",
+        "Have staff re-check routine ones: the staff had the same habit.",
+        "Swap in examples judged by a clear rulebook, then check the results again: fixes the cause and proves it.",
+        "Hide names and addresses: the unfairness comes from the writing, not the name."
+      ]
+    }
+  }
+]

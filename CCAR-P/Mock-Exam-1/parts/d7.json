@@ -1,0 +1,192 @@
+[
+  {
+    "id": "p1-d7-01",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.1 Configure Claude tools for teams",
+    "trap": "Organisation policy for one team",
+    "fam": 8,
+    "select": 1,
+    "question": "A hospital group's data-platform team wants Claude Code never to run <code>terraform apply</code> in their infrastructure repository, because changes there must go through their pipeline. Other teams run that command routinely in their own repositories. The rule should arrive automatically for anyone who clones this repository. Where should it be configured?",
+    "options": [
+      {
+        "t": "A deny rule in managed settings pushed to every developer's machine.",
+        "why": "Works for organisation-wide rules nobody may loosen, but it would block a command other teams use routinely in their own repositories.",
+        "trap": "Organisation policy for one team"
+      },
+      {
+        "t": "A deny rule in the repository's committed <code>.claude/settings.json</code>.",
+        "why": "Best. The restriction belongs to this one repository and its team, and committed project settings arrive with every clone and are enforced, not just suggested."
+      },
+      {
+        "t": "A line in the repository's CLAUDE.md telling Claude never to run it.",
+        "why": "Works as guidance that travels with the repo, but CLAUDE.md is read by the model, not enforced by Claude Code.",
+        "trap": "Guidance, not enforcement"
+      },
+      {
+        "t": "A deny rule in each team member's own <code>.claude/settings.local.json</code>.",
+        "why": "Works for one person, but local settings are personal and not committed, so a new cloner gets nothing.",
+        "trap": "Personal, not shared"
+      }
+    ],
+    "answer": [
+      1
+    ],
+    "runnerUp": 0,
+    "decider": "Other teams run that command routinely in their own repositories.",
+    "explanation": "Enforced rules owned by one repository's team belong in that project's committed settings, where deny rules are applied by Claude Code for everyone who clones it. Managed settings would win if the rule had to apply across the whole organisation and individuals must not be able to loosen it.",
+    "eli5": {
+      "question": "One workshop wants its own machine locked, but other workshops use that machine every day. The clue: other teams use it routinely.",
+      "answer": "You put a lock on your own workshop's door, not on the whole factory's front gate. <b>Rule: one team's enforced rule goes in its project settings; organisation rules go in managed settings.</b>",
+      "options": [
+        "Lock the machine for the whole company, blocking the other workshops too.",
+        "Put the lock in this workshop's shared rules, which come with the workshop.",
+        "Hang a polite sign asking people not to use it.",
+        "Ask each worker to lock it on their own, one by one."
+      ]
+    }
+  },
+  {
+    "id": "p1-d7-02",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.1 Configure Claude tools for teams",
+    "trap": "Right fix, too late",
+    "fam": 4,
+    "select": 1,
+    "question": "A media company's web team finds that files edited by Claude Code often fail the formatting check in CI. The project CLAUDE.md already tells Claude to run the formatter after editing, and it usually does. The team lead wants every edited file formatted before a developer even reviews the change. What should the team add?",
+    "options": [
+      {
+        "t": "Stronger CLAUDE.md wording, with a worked example of running the formatter.",
+        "why": "Works to raise how often Claude follows it, but it is still an instruction the model usually, not always, follows.",
+        "trap": "Firmer prompt, still a prompt"
+      },
+      {
+        "t": "A CI step that formats the changed files and pushes a fix-up commit.",
+        "why": "Works to clean up formatting in the end, but only after the push, when developers have already reviewed unformatted changes.",
+        "trap": "Right fix, too late"
+      },
+      {
+        "t": "A shared <code>/format</code> slash command that developers run before committing.",
+        "why": "Works when people remember to run it, but it moves the reliability problem from Claude to people.",
+        "trap": "Relies on people remembering"
+      },
+      {
+        "t": "A committed hook that runs the formatter after every Claude Code edit.",
+        "why": "Best. Claude usually, not always, follows the CLAUDE.md line; a hook after each edit runs every time, before anyone reviews."
+      }
+    ],
+    "answer": [
+      3
+    ],
+    "runnerUp": 1,
+    "decider": "The project CLAUDE.md already tells Claude to run the formatter after editing, and it usually does.",
+    "explanation": "When something must happen every time, it belongs in a hook or permission rule that Claude Code enforces, not in CLAUDE.md guidance the model reads. A CI auto-format step is a real fix at a later layer and would be enough if the team only cared about what gets merged, not what reviewers see.",
+    "eli5": {
+      "question": "A helper was told to tidy up after each job and usually remembers, but not always. The boss wants it tidy every single time, before anyone inspects it. The clue: \"usually\" is not \"every time\".",
+      "answer": "Instead of reminding someone to switch off the lights, fit a sensor that switches them off. <b>Rule: if it must happen every time, use a hook, not an instruction.</b>",
+      "options": [
+        "Remind the helper more firmly.",
+        "Tidy up later, after inspectors have already seen the mess.",
+        "Give people a button they must remember to press.",
+        "Fit an automatic tidier that runs after every job."
+      ]
+    }
+  },
+  {
+    "id": "p1-d7-03",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.2 AI-assisted developer workflows",
+    "trap": "Green tests replace owner approval",
+    "fam": 2,
+    "select": 2,
+    "question": "A logistics company must move 600 internal services from a retired logging library to its replacement. The change is mechanical and similar in every service, and each service has its own tests. Each service's owning team must approve changes to its code. Which two practices fit best for using Claude Code on this migration?",
+    "options": [
+      {
+        "t": "Migrate in small batches, with each service's own tests run on its change.",
+        "why": "Best. A repetitive, checkable change suits small verifiable batches; tests catch a bad migration in one service before it spreads."
+      },
+      {
+        "t": "Auto-merge each pull request as soon as its service's tests have passed.",
+        "why": "Works where tests are the only gate, but each owning team must approve changes to its code, so green tests cannot merge on their own.",
+        "trap": "Green tests replace owner approval"
+      },
+      {
+        "t": "Make one large pull request so every service changes in exactly the same way.",
+        "why": "Works for consistency, but no owning team can sensibly review a change spanning 600 services, and one failure blocks everything.",
+        "trap": "Unreviewable big bang"
+      },
+      {
+        "t": "Script Claude Code headless per service, opening a PR for its owners.",
+        "why": "Best. Running Claude Code headless from a script repeats the same change across services, and per-service pull requests give each owner their approval."
+      },
+      {
+        "t": "Track progress by the number of lines Claude Code changes each week.",
+        "why": "Works as an activity count, but it measures output, not how many services are safely migrated.",
+        "trap": "Activity, not outcome"
+      }
+    ],
+    "answer": [
+      0,
+      3
+    ],
+    "runnerUp": 1,
+    "decider": "Each service's owning team must approve changes to its code.",
+    "explanation": "Large migrations go best as many small changes, each verified by tests, run repeatably with Claude Code in non-interactive mode and reviewed by humans. Auto-merging on green tests would be reasonable if tests were the agreed gate; here the owning teams' approval is the requirement.",
+    "eli5": {
+      "question": "600 houses all need the same new lock, each house has its own test, and each owner must say yes before the lock goes in. The clue: every owner must approve.",
+      "answer": "A locksmith does a few houses at a time, tests each lock, and gets each owner's signature. <b>Rule: small tested batches, run the same way each time, with the owner approving.</b>",
+      "options": [
+        "Do a few houses at a time and test each lock.",
+        "Fit the lock as soon as it tests fine, without asking the owner.",
+        "Change all 600 houses in one go.",
+        "Use the same routine at each house and ask each owner to sign off.",
+        "Count how many screws were turned each week."
+      ]
+    }
+  },
+  {
+    "id": "p1-d7-04",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.3 Debugging and operational issue resolution",
+    "trap": "Approval that adds little safety",
+    "fam": 2,
+    "select": 1,
+    "question": "A telecom's on-call engineers use Claude with read-only tools to triage night-time alerts. Most incidents end with the same runbook step: restarting a stateless cache service, which has run hundreds of times without a problem. Each restart still waits for an engineer to wake up and approve it. Other remediations vary and carry more risk. What should the architect propose?",
+    "options": [
+      {
+        "t": "Keep engineer approval for every remediation, the cache restart included.",
+        "why": "Works as the safe default for production changes, but for a low-risk step proven hundreds of times, approval on every repeat adds delay and little safety.",
+        "trap": "Approval that adds little safety"
+      },
+      {
+        "t": "Give Claude write access to production so it can apply any runbook fix.",
+        "why": "Works to remove waiting, but it hands over every risky remediation along with the safe one.",
+        "trap": "Capability bloat"
+      },
+      {
+        "t": "Pre-approve automated cache restarts only, and gate everything else.",
+        "why": "Best. The restart is low-risk and has run hundreds of times without a problem, so approved automation for that one step removes the wait while every other change keeps its approval."
+      },
+      {
+        "t": "Page two engineers on every incident so one of them approves sooner.",
+        "why": "Works to shorten the wait a little, but it doubles the night-time load for a step that needs no judgement.",
+        "trap": "Faster human, same toil"
+      }
+    ],
+    "answer": [
+      2
+    ],
+    "runnerUp": 0,
+    "decider": "which has run hundreds of times without a problem",
+    "explanation": "Production changes normally need human approval, but a low-risk, well-tested step repeated many times a week can be given approved automation for that step alone. Keeping approval on everything would be right if the step were high-impact or unproven.",
+    "eli5": {
+      "question": "Every night the same safe switch gets flipped, it has never caused trouble, and still someone is woken up to say yes each time. The clue: hundreds of times without a problem.",
+      "answer": "A night guard may reset a tripped fuse without calling the manager, but must call for anything else. <b>Rule: automate only the proven low-risk step; keep humans on the rest.</b>",
+      "options": [
+        "Keep waking someone up for every switch, even the safe one.",
+        "Let the helper flip any switch in the building.",
+        "Let the helper flip only the safe switch, write it down, and ask about everything else.",
+        "Wake two people instead of one."
+      ]
+    }
+  }
+]

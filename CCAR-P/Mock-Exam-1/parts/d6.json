@@ -1,0 +1,428 @@
+[
+ {
+  "id": "p1-d6-01",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.1 Structured discovery",
+  "trap": "Discovery past its value",
+  "fam": 2,
+  "select": 1,
+  "question": "An insurer's claims director has signed off the goal (first replies on motor claims within four hours, down from two days), the users, the budget and the success measures. Discovery included interviews with claims handlers, and the data team has confirmed that a year of claims emails is clean and available. A new project manager proposes another round of interviews. What should the architect do?",
+  "options": [
+   {
+    "t": "Run the interviews to check that no requirement has been missed.",
+    "why": "Works when users or their workflow are still unclear, but handlers were already interviewed and everything is signed off.",
+    "trap": "Discovery past its value"
+   },
+   {
+    "t": "Move to design and prototype against the signed-off target.",
+    "why": "Best. Goal, users, measures, budget and data are all settled, so more discovery would only delay the project."
+   },
+   {
+    "t": "Commission a full data-quality audit of the claims emails first.",
+    "why": "Works when nobody has checked the data, but the data team has already confirmed it.",
+    "trap": "Repeats a finished check"
+   },
+   {
+    "t": "Build a business case to reconfirm the budget with finance.",
+    "why": "Works when funding is uncertain, but the budget is already signed off.",
+    "trap": "Reopens a settled decision"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 0,
+  "decider": "Discovery included interviews with claims handlers, and the data team has confirmed that a year of claims emails is clean and available.",
+  "explanation": "Discovery ends when goal, users, success measures, constraints and data are known and agreed. Past that point, more interviews add delay, not information; they would be right only if the users had not yet been heard.",
+  "eli5": {
+   "question": "Everyone has agreed the goal, the users, the money and how to measure success. The staff were already interviewed and the data was checked. A new manager wants more interviews. The clue: interviews and data checks are already done.",
+   "answer": "Once the family has agreed where to go on holiday, how much to spend and who is coming, you book it; you don't hold the same meeting again. <b>Rule: when discovery is signed off, move to design.</b>",
+   "options": [
+    "More interviews: already done.",
+    "Start designing and build a first version: everything is agreed.",
+    "Check the data again: already checked.",
+    "Ask finance about the budget again: already approved."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-02",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.1 Structured discovery",
+  "trap": "Prototype before constraints",
+  "fam": 8,
+  "select": 1,
+  "question": "A tax agency wants an assistant that answers citizens' questions about their own returns. The goal and success target are agreed, and call-centre logs already show the top 50 questions. Nobody knows yet whether agency rules allow personal tax data to be sent to an outside model provider. The sponsor wants a prototype on real data next week. What should the architect do first?",
+  "options": [
+   {
+    "t": "Build the prototype on real questions to show the sponsor value early.",
+    "why": "Works when data-handling rules are known, and early prototypes are good practice; here real data may not be allowed to leave the agency.",
+    "trap": "Prototype before constraints"
+   },
+   {
+    "t": "Interview call-centre staff about which questions are hardest to answer.",
+    "why": "Works for understanding users, but the logs already cover the common questions; the open gap is a constraint, not a requirement.",
+    "trap": "Gap already covered"
+   },
+   {
+    "t": "Compare candidate models on cost and accuracy for the expected volume.",
+    "why": "Works as an early design step, but which providers are allowed at all is still unknown.",
+    "trap": "Design before constraints"
+   },
+   {
+    "t": "Get legal and security sign-off on how personal data may be handled.",
+    "why": "Best. Whether personal tax data may go to an outside provider is unknown, and it decides what can be prototyped, with which data, and where."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "Nobody knows yet whether agency rules allow personal tax data to be sent to an outside model provider.",
+  "explanation": "Structured discovery covers constraints and risks, not just goals and users, and a hard data-handling constraint must be settled before real data is used. The prototype would come first if the rules were already known.",
+  "eli5": {
+   "question": "A tax office wants a helper for citizens. The goal is agreed and the common questions are known. Nobody has checked whether people's tax data is allowed to go to an outside company. The boss wants a demo on real data next week. The clue: nobody knows if the data may leave.",
+   "answer": "Before you lend your neighbour your car, you check your insurance covers other drivers. <b>Rule: settle hard data rules before touching real data.</b>",
+   "options": [
+    "Build the demo on real data now: the data may not be allowed to leave.",
+    "Talk to call-centre staff: the common questions are already known.",
+    "Compare models: we don't know which ones are allowed yet.",
+    "Get legal and security to agree the data rules: the missing piece."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-03",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.2 Communicate decisions and trade-offs",
+  "trap": "Knowledge kept in one head",
+  "fam": 8,
+  "select": 1,
+  "question": "An architect at a logistics firm decided to run its shipment assistant only in the firm's home region, which ruled out a cheaper option. The decision has been questioned three times this year, each time by a manager who joined after it was made, and each time the original reasons took days to piece together. What should the architect do?",
+  "options": [
+   {
+    "t": "Write a decision record: context, options weighed, choice and consequences.",
+    "why": "Best. The question keeps coming from people who joined after the decision, so the reasons must live in a written record that outlasts any one person."
+   },
+   {
+    "t": "Brief each new manager in person on the reasons when they join.",
+    "why": "Works for one conversation, but the reasons still live in one person's head and are lost when the architect moves on.",
+    "trap": "Knowledge kept in one head"
+   },
+   {
+    "t": "Re-run the cost comparison so that new managers can see the current numbers.",
+    "why": "Works if the numbers are what is doubted, but the gap is the reasons behind the choice.",
+    "trap": "Refreshes numbers, not reasons"
+   },
+   {
+    "t": "Ask the sponsor to email all managers that the decision is final.",
+    "why": "Works to stop debate for a while, but it gives authority instead of reasons, so the next newcomer asks again.",
+    "trap": "Authority instead of reasons"
+   }
+  ],
+  "answer": [
+   0
+  ],
+  "runnerUp": 1,
+  "decider": "each time by a manager who joined after it was made",
+  "explanation": "An architecture decision record (ADR) keeps the context, the options considered and the reasons after the people involved move on. Personal briefings help, but they do not scale with turnover and leave nothing behind.",
+  "eli5": {
+   "question": "A choice was made a while ago. New managers keep asking why, and every time it takes days to remember the reasons. The clue: the people asking weren't there when it was decided.",
+   "answer": "Families write down why grandma's recipe uses salted butter, so the next generation doesn't have to call her each time. <b>Rule: decisions that get re-asked belong in a written decision record.</b>",
+   "options": [
+    "Write it down: context, options, choice, effects. Lasts.",
+    "Tell each new manager in person: the reasons stay in one head.",
+    "Redo the cost numbers: the question is why, not how much.",
+    "Have the boss say it's final: no reasons, so people ask again."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-04",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.2 Communicate decisions and trade-offs",
+  "trap": "Comparing ruled-out options",
+  "fam": 2,
+  "select": 1,
+  "question": "A health insurer's steering committee asks for a paper on where its member-claims assistant should run. The company has three approved platforms, but its contract with members requires that their data is processed only in-country, and just one of the three can do that. The committee meets once a month. What should the paper present?",
+  "options": [
+   {
+    "t": "All three platforms compared on cost, latency and features, recommending one.",
+    "why": "Works when several options meet the hard constraints. Here two are ruled out, so comparing them spends the committee's time on choices it cannot make.",
+    "trap": "Comparing ruled-out options"
+   },
+   {
+    "t": "The two cheaper platforms, with a request to relax the residency rule.",
+    "why": "Works for a rule the company sets itself, but this is a contract with members, not a preference.",
+    "trap": "Pushing to bend a hard rule"
+   },
+   {
+    "t": "The one compliant platform, and the residency rule that rules out the others.",
+    "why": "Best. Just one platform meets the contract, so the paper states the constraint and that single option clearly."
+   },
+   {
+    "t": "A pilot on each platform so the committee can judge them next month.",
+    "why": "Works when the choice is open, but piloting platforms that cannot be used delays a choice already decided by the contract.",
+    "trap": "Delays a settled choice"
+   }
+  ],
+  "answer": [
+   2
+  ],
+  "runnerUp": 0,
+  "decider": "just one of the three can do that",
+  "explanation": "Present real options with trade-offs when there is a real choice. When a hard constraint leaves one option, state the constraint and that option; a full comparison of ruled-out platforms adds length, not a decision.",
+  "eli5": {
+   "question": "A committee wants to know where to run the helper. There are three choices, but a promise to members says data must stay in the country, and only one choice does that. The clue: only one choice keeps the promise.",
+   "answer": "If only one restaurant in town serves food your guest can eat, you don't send everyone a menu comparison of all three. <b>Rule: when a hard rule leaves one option, say the rule and the option.</b>",
+   "options": [
+    "Compare all three: two of them can't be used.",
+    "Ask to break the promise: it's a contract.",
+    "Present the one that keeps the promise, and why: the honest answer.",
+    "Trial all three: wastes time on ones that can't be used."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-05",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.3 Expectation alignment",
+  "trap": "Chasing perfection",
+  "fam": 2,
+  "select": 2,
+  "question": "A pharmacy chain's operations VP says the prescription-query assistant cannot launch unless it is “never wrong”. On 500 past queries it answered 96% correctly; pharmacists answering the same queries scored 93%. A wrong answer about a dose could harm a patient. Which two actions should the architect propose?",
+  "options": [
+   {
+    "t": "Delay launch until more prompt tuning brings accuracy as close to 100% as possible.",
+    "why": "Works to raise accuracy somewhat, but no system or person reaches “never wrong”, so the launch would wait forever.",
+    "trap": "Chasing perfection"
+   },
+   {
+    "t": "Launch now, since the assistant already beats the pharmacists.",
+    "why": "Works when errors are cheap, but it skips agreement with the VP and leaves dose errors unchecked.",
+    "trap": "Ignores the harm case"
+   },
+   {
+    "t": "Agree a measured accuracy target with the VP, using the pharmacists' score.",
+    "why": "Best. Pharmacists scored 93% on the same queries, so the baseline turns “never wrong” into a target the VP can agree to and track."
+   },
+   {
+    "t": "Add a notice telling patients to confirm any dose with their doctor.",
+    "why": "Works as extra caution, but it shifts the risk to patients instead of handling it.",
+    "trap": "Disclaimer for a real harm"
+   },
+   {
+    "t": "Have a pharmacist check every dose-related answer before it is sent.",
+    "why": "Best. A dose error could harm a patient, so error handling must cover every dose answer, even at the cost of some automation."
+   }
+  ],
+  "answer": [
+   2,
+   4
+  ],
+  "runnerUp": 0,
+  "decider": "pharmacists answering the same queries scored 93%",
+  "explanation": "Perfection is not achievable; a measured target compared with today's human baseline, plus a plan for errors, is. Where errors could cause serious harm, the plan must check every such output.",
+  "eli5": {
+   "question": "A boss says the pharmacy helper must never be wrong. It got 96 in 100 right; real pharmacists got 93. A wrong dose answer could hurt someone. The clue: the pharmacists themselves score 93.",
+   "answer": "Nobody bans a new doctor for not being perfect; you compare them with other doctors and have someone double-check the risky prescriptions. <b>Rule: agree a measured target against the human baseline, and check every high-harm output.</b>",
+   "options": [
+    "Wait for 100%: it will never come.",
+    "Launch now: skips the boss and leaves dose mistakes unchecked.",
+    "Agree a target using the pharmacists' score: a fair, real goal.",
+    "Tell patients to double-check: pushes the risk onto them.",
+    "Pharmacist checks every dose answer: covers the dangerous mistakes."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-06",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.3 Feedback loops",
+  "trap": "Collects, doesn't close the loop",
+  "fam": 3,
+  "select": 1,
+  "question": "A news publisher's drafting assistant is used by 200 journalists, who post complaints in a team chat channel. Engineers read the channel when they have time. Several errors that journalists reported in the spring came back after the June release, and editors are losing trust. What should the architect set up?",
+  "options": [
+   {
+    "t": "A fortnightly review with editors that turns reported errors into eval cases.",
+    "why": "Best. Reported errors came back after a release, so each must become an eval case that every release is tested against, reviewed regularly with the people who report them."
+   },
+   {
+    "t": "A thumbs-up and thumbs-down button on every draft, with a comment box.",
+    "why": "Works to collect feedback more neatly, but collecting is not the gap: nothing stops reported errors coming back.",
+    "trap": "Collects, doesn't close the loop"
+   },
+   {
+    "t": "A quarterly satisfaction survey of journalists, reported to the editor-in-chief.",
+    "why": "Works to track trust over time, but it measures the mood rather than fixing the repeated errors.",
+    "trap": "Measures mood, fixes nothing"
+   },
+   {
+    "t": "An engineer on rota to reply to every message in the channel within a day.",
+    "why": "Works to make journalists feel heard, but replies do not stop old errors returning in the next release.",
+    "trap": "Faster replies, same regressions"
+   }
+  ],
+  "answer": [
+   0
+  ],
+  "runnerUp": 1,
+  "decider": "Several errors that journalists reported in the spring came back after the June release",
+  "explanation": "A feedback loop is closed only when feedback changes what is tested and shipped. Better collection tools help, but regressions stop when reported failures become eval cases reviewed with stakeholders.",
+  "eli5": {
+   "question": "Journalists complain in a chat room. Engineers read it sometimes. Old mistakes came back after the summer update. The clue: mistakes that were already reported came back.",
+   "answer": "If a teacher marks the same spelling mistake every term, the fix is to add those words to the weekly test, not a nicer complaint box. <b>Rule: turn reported failures into eval cases, reviewed regularly.</b>",
+   "options": [
+    "Regular review that adds reported mistakes to the tests: stops them coming back.",
+    "Like/dislike buttons: tidier complaints, same repeats.",
+    "A survey: measures the mood, fixes nothing.",
+    "Faster replies: feels nicer, mistakes still return."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-07",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.4 Document and hand over",
+  "trap": "Full pack for a dead prototype",
+  "fam": 2,
+  "select": 1,
+  "question": "A consultancy ran a three-week prototype testing whether Claude could draft product descriptions for a retailer. The retailer has decided not to go ahead this year, and the prototype will be switched off. The consultancy's standard handoff pack includes runbooks, decision records, an ownership table and the eval suite. What should the consultancy hand over?",
+  "options": [
+   {
+    "t": "The standard pack in full, in case the retailer revives the project.",
+    "why": "Works for a system someone will run, but nobody will operate this prototype, so most of the pack is wasted effort.",
+    "trap": "Full pack for a dead prototype"
+   },
+   {
+    "t": "The code repository with a README explaining how to run it.",
+    "why": "Works to preserve the code, but it says how to run it, not what was learned or what proceeding would need.",
+    "trap": "How to run, not what was learned"
+   },
+   {
+    "t": "Runbooks only, since those are the hardest to recreate later.",
+    "why": "Works for a team taking over operations, but nothing will be operated.",
+    "trap": "Ops docs nobody will use"
+   },
+   {
+    "t": "A short note of what was tested, the results and next steps.",
+    "why": "Best. The prototype will be switched off, so the useful handover is what was learned, recorded briefly for whoever picks it up later."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "the prototype will be switched off",
+  "explanation": "Documentation should match what the receiver will do next. A system someone will run needs runbooks, owners and evals; a stopped prototype needs a short record of findings and what proceeding would take.",
+  "eli5": {
+   "question": "A short trial is over and the shop decided not to go ahead. The trial will be switched off. The usual handover pack is big. The clue: nobody will run it.",
+   "answer": "When you return a car you only test-drove, you write down what you thought of it; you don't hand over a full service manual. <b>Rule: match the handover to what happens next; a stopped prototype needs a short findings note.</b>",
+   "options": [
+    "The full pack: nobody will run it.",
+    "Just the code: doesn't say what was learned.",
+    "Only the how-to-run guides: nothing will run.",
+    "A short note of what we tried and found: what's actually useful."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-08",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.5 Lifecycle phases",
+  "trap": "Caution the evidence doesn't need",
+  "fam": 2,
+  "select": 1,
+  "question": "An education company's tutoring assistant runs on a pinned model version. A newer version passed the full eval suite, scoring better on every metric while costing less. The product owner wants to switch all traffic tonight. The compliance lead asks for a three-month parallel run, though no regulation or policy requires one. What should the architect recommend?",
+  "options": [
+   {
+    "t": "Switch all traffic tonight, since the eval evidence is clear.",
+    "why": "Works most of the time, but switching everything at once leaves no early warning if live traffic behaves differently from the eval.",
+    "trap": "All at once, no safety net"
+   },
+   {
+    "t": "A staged rollout over days, watching live metrics, with rollback ready.",
+    "why": "Best. The new version scores better on every metric while costing less, so moving fast is right, but still in stages with a way back."
+   },
+   {
+    "t": "The three-month parallel run, then switch if results stay ahead.",
+    "why": "Works when a regulator requires it or the eval is weak; here neither applies, and the company pays more for three months.",
+    "trap": "Caution the evidence doesn't need"
+   },
+   {
+    "t": "Teacher review of 1,000 new-version answers before any rollout.",
+    "why": "Works when the eval suite lacks human judgement, but it repeats evidence the full suite already gave.",
+    "trap": "Re-proving a passed eval"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 2,
+  "decider": "The compliance lead asks for a three-month parallel run, though no regulation or policy requires one.",
+  "explanation": "New model versions are adopted through the eval suite and a staged rollout. When the eval shows a clear win and nothing requires a long trial, stage the rollout quickly rather than waiting months.",
+  "eli5": {
+   "question": "A newer brain for the tutoring helper beat the old one on every test and costs less. One person wants to switch everyone tonight; another wants three months of side-by-side running, though no rule asks for it. The clue: it won every test.",
+   "answer": "When a new bus route is clearly faster, you open it line by line over a week, not overnight and not after a year of study. <b>Rule: clear eval win, staged rollout, fast.</b>",
+   "options": [
+    "Switch everyone tonight: no early warning if something odd happens.",
+    "Move over in steps across a few days, ready to undo: fast and safe.",
+    "Three months side by side: nothing requires it and it costs more.",
+    "Teachers check 1,000 answers first: the tests already showed it."
+   ]
+  }
+ },
+ {
+  "id": "p1-d6-09",
+  "domain": "D6 · Stakeholders & Lifecycle",
+  "obj": "6.5 Lifecycle phases",
+  "trap": "Informs, doesn't prevent",
+  "fam": 3,
+  "select": 2,
+  "question": "A telecom's billing-dispute assistant quoted customers wrong refund amounts for a week, because it misread a new promotion's terms. A customer complaint revealed it, and the team has now fixed the prompt. Which two steps would best stop this failure returning and catch similar failures sooner?",
+  "options": [
+   {
+    "t": "Add the failing dispute cases to the eval suite run before each release.",
+    "why": "Best. The fix could be undone by a later change; as eval cases, these disputes are retested on every release."
+   },
+   {
+    "t": "Move dispute handling to a more capable model to reduce misreadings.",
+    "why": "Works when reasoning is the limit, but the prompt fix already solved this case, and a model change does not guard against its return.",
+    "trap": "Model swap for a fixed bug"
+   },
+   {
+    "t": "Monitor sampled refund quotes against the billing system, with alerts.",
+    "why": "Best. A customer complaint revealed the failure after a week, so a production check that compares quotes with billing would catch the next one sooner."
+   },
+   {
+    "t": "Write a post-incident report for the sponsor and the customer team.",
+    "why": "Works to keep stakeholders informed, and is good practice, but it neither retests the fix nor detects the next failure.",
+    "trap": "Informs, doesn't prevent"
+   },
+   {
+    "t": "Freeze all prompt changes for the next quarter while trust is rebuilt.",
+    "why": "Works to avoid new regressions, but it also blocks the fixes and promotions the business needs.",
+    "trap": "Blocks fixes too"
+   }
+  ],
+  "answer": [
+   0,
+   2
+  ],
+  "runnerUp": 3,
+  "decider": "A customer complaint revealed it",
+  "explanation": "The lifecycle loop after an incident is: fix it, add it to the eval suite so it cannot quietly return, and improve monitoring so the next one is caught by you, not a customer. A post-incident report is useful communication but changes neither.",
+  "eli5": {
+   "question": "A billing helper told customers the wrong refund for a week. A customer noticed first. The team fixed it. The clue: a customer found it, not the team.",
+   "answer": "After a leak, you fix the pipe, add it to the yearly inspection list, and fit a water alarm so next time you hear it before the neighbours do. <b>Rule: after a failure, add it to the evals and add monitoring that would catch it.</b>",
+   "options": [
+    "Add the bad cases to the tests: it can't sneak back.",
+    "A smarter model: the problem is already fixed.",
+    "Check a sample of refunds against billing: you spot the next one first.",
+    "Write a report: informs people, but prevents nothing.",
+    "Ban all changes: blocks good changes too."
+   ]
+  }
+ }
+]

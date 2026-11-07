@@ -1,0 +1,325 @@
+[
+  {
+    "id": "p1-d1-01",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.1 Business problem to Claude solution",
+    "trap": "Documents where live data is needed",
+    "fam": 7,
+    "select": 1,
+    "question": "A water utility wants Claude to answer customer billing questions in its app. Most questions ask for the current balance or the due date, and balances must reflect payments made earlier the same day. The rest are free-text complaints about disputed charges, which staff will keep handling. Which design best serves the balance questions?",
+    "options": [
+      {"t": "Load a nightly export of all account balances into the prompt and let Claude find the customer's row.", "why": "Works, but a nightly export misses today's payments, and it puts every customer's data in front of the model.", "trap": "Stale bulk data in the prompt"},
+      {"t": "Index each customer's monthly statements and let Claude retrieve and quote the most recent one.", "why": "Works, but a statement is a snapshot, so it misses payments made since. Retrieval would win if the question were about past bills.", "trap": "Documents where live data is needed"},
+      {"t": "Give Claude a read-only tool that fetches the signed-in customer's live balance and due date.", "why": "Best. Balances must reflect same-day payments, so the figure has to come from the billing system at request time, exactly, through a narrow read-only tool."},
+      {"t": "Have Claude work out the balance from the last statement minus any payments the customer mentions.", "why": "Works, but it asks the model to do arithmetic on partial facts, so it can invent a wrong balance.", "trap": "Model guesses an exact figure"}
+    ],
+    "answer": [2],
+    "runnerUp": 1,
+    "decider": "balances must reflect payments made earlier the same day",
+    "explanation": "An exact value that changes during the day is a lookup, not a language task: code fetches it and Claude phrases the answer. Retrieving statements is the right idea for document questions, but a monthly statement cannot show a payment made this morning.",
+    "eli5": {
+      "question": "Customers ask the app what they owe. The amount changes when they pay, even today. The clue: the answer must include this morning's payment.",
+      "answer": "If you want to know what is in your bank account right now, you check the live app, not last month's paper statement. <b>Rule: exact, changing values come from a live lookup tool; Claude only words the answer.</b>",
+      "options": [
+        "Give Claude last night's list of everyone's balances.",
+        "Let Claude read the customer's last monthly bill.",
+        "Let Claude ask the billing system for the live number.",
+        "Let Claude do the sums from what the customer says."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-02",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.1 Business problem to Claude solution",
+    "trap": "Automates a decision that must be signed",
+    "fam": 8,
+    "select": 1,
+    "question": "A city planning office wants to halve its backlog of building-permit applications. Each application is a bundle of forms, drawings and letters, and officers spend most of their time checking that nothing is missing. By law, every permit decision must be signed by a licensed officer. Which design best meets the goal?",
+    "options": [
+      {"t": "Claude checks each bundle for missing items and drafts a findings note that an officer reviews and signs.", "why": "Best. It removes the slow completeness check, where most time goes, while every permit decision must be signed by a licensed officer and still is."},
+      {"t": "Claude approves bundles that pass every completeness check and sends only the incomplete ones to officers.", "why": "Works, but it lets the system make decisions the law reserves for a licensed officer. It would win if low-risk permits could be issued automatically.", "trap": "Automates a decision that must be signed"},
+      {"t": "A rules engine checks the form fields, and officers keep reading the drawings and letters themselves.", "why": "Works for the structured fields, but the drawings and letters are where the reading time goes, so the backlog barely moves.", "trap": "Leaves the main effort manual"},
+      {"t": "Claude drafts a decision for every bundle, and officers check and sign a random one in ten.", "why": "Works as quality sampling elsewhere, but here every single decision needs an officer's signature.", "trap": "Sampling where each case needs sign-off"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "every permit decision must be signed by a licensed officer",
+    "explanation": "Claude takes the high-volume reading work, and the legally reserved decision stays with a person at a clearly placed approval step. Auto-approving clean bundles would cut the backlog most, but it crosses the legal line the stem states.",
+    "eli5": {
+      "question": "Permit forms pile up because staff spend ages checking if anything is missing. The clue: the law says a licensed officer must sign every decision.",
+      "answer": "A helper can sort the paperwork and point out what is missing, but only the judge signs the ruling. <b>Rule: Claude prepares; a person signs where the law requires it.</b>",
+      "options": [
+        "Claude checks for missing papers and writes a note; the officer signs.",
+        "Claude approves complete applications on its own.",
+        "A simple rule checker reads the forms; people still read everything else.",
+        "Claude decides everything; officers check one in ten."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-03",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.2 End-to-end architecture and feedback loops",
+    "trap": "Fixed test set instead of live monitoring",
+    "fam": 4,
+    "select": 1,
+    "question": "A freight forwarder uses Claude to suggest customs tariff codes. Brokers review each suggestion and correct it in the customs system before filing. After a tariff schedule update, suggestion quality fell, and the team learned of it only from an audit three months later. What should the architect add so that a drop like this is caught quickly?",
+    "options": [
+      {"t": "A monthly rerun of the launch eval set, with an alert if its accuracy falls below target.", "why": "Works for testing changes, but the launch set was labelled before the schedule update and does not watch live traffic, so it can stay green while real suggestions fail.", "trap": "Fixed test set instead of live monitoring"},
+      {"t": "A thumbs-up or thumbs-down button on each suggestion, for brokers to rate as they work.", "why": "Works where no signal exists, but brokers already correct every code, so this adds effort and gives a sparser signal.", "trap": "Asks for a signal that already exists"},
+      {"t": "A second Claude call that rates each suggestion and flags the low-confidence codes to brokers.", "why": "Works as a triage aid, but a model's rating of its own field is not ground truth and can miss a schedule change entirely.", "trap": "Model self-rating as a proxy"},
+      {"t": "A daily check of suggested codes against filed codes, alerting when the override rate rises.", "why": "Best. Brokers correct each suggestion before filing, so the filed code is a free, daily ground truth; tracking overrides catches a drop in days, and the overrides become new eval cases."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "Brokers review each suggestion and correct it in the customs system before filing",
+    "explanation": "Monitoring watches the live system; evaluation tests a change before release, and a full loop needs both. Here the problem was a live drop nobody saw, and the human corrections already in the process are the best live quality signal.",
+    "eli5": {
+      "question": "Claude suggests customs codes, brokers fix wrong ones, and nobody noticed for three months when the codes got worse. The clue: brokers already fix every wrong code before filing.",
+      "answer": "If the teacher already marks every homework, just count the red marks each day instead of setting a new test. <b>Rule: turn the corrections people already make into a live quality alarm.</b>",
+      "options": [
+        "Re-run the old test every month.",
+        "Ask brokers to click thumbs up or down.",
+        "Ask Claude how sure it is about each code.",
+        "Compare Claude's code with the one actually filed, every day."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-04",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.2 End-to-end architecture and feedback loops",
+    "trap": "Self-reported confidence as a proxy",
+    "fam": 6,
+    "select": 2,
+    "question": "An insurer's claim-notes summariser has been live for a year. Leadership sets two goals: learn within a day if summary quality drops in production, and make sure each prompt change does not break cases fixed before. Adjusters edit summaries they disagree with, and every edit is stored. Which two additions meet these goals?",
+    "options": [
+      {"t": "A weekly review in which a senior adjuster reads twenty summaries and scores them.", "why": "Works as a spot check, but it reports weekly and sees only twenty cases, so it misses the one-day target.", "trap": "Too slow and too small"},
+      {"t": "A daily edit-rate metric on live summaries, with an alert when it rises above its usual range.", "why": "Best. Edits are stored already, so the edit rate is a daily production quality signal that meets the within-a-day goal."},
+      {"t": "Pin the model version and freeze the prompt so that no change can cause a regression.", "why": "Works to avoid regressions, but it also stops every improvement, and it does nothing to detect a drop.", "trap": "Stops improvement to avoid risk"},
+      {"t": "An instruction for Claude to add a confidence score to each summary, alerting when the average dips.", "why": "Works as a rough signal, but the model's own confidence is an unreliable measure of quality, while real edits are already available.", "trap": "Self-reported confidence as a proxy"},
+      {"t": "A regression eval set built from past edited summaries, run against every prompt change before release.", "why": "Best. Past edits are real failures with corrected answers, so testing each change against them stops fixed cases breaking again."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 3,
+    "decider": "learn within a day if summary quality drops in production, and make sure each prompt change does not break cases fixed before",
+    "explanation": "The two goals map to the two halves of a feedback loop: monitoring for the live system and evaluation before release. The stored edits feed both. A confidence score feels like monitoring, but it measures the model's opinion, not the adjusters' corrections.",
+    "eli5": {
+      "question": "A summary tool has two jobs to get better at: spotting bad days quickly and not breaking old fixes. The clue: every edit an adjuster makes is already saved.",
+      "answer": "A restaurant counts the dishes sent back each night (alarm), and tests new recipes against past complaints before serving them (test). <b>Rule: monitoring watches live work; evaluation checks changes; both use real corrections.</b>",
+      "options": [
+        "A senior person reads twenty summaries each week.",
+        "Count edits every day and alarm when they go up.",
+        "Never change anything.",
+        "Ask Claude to grade how confident it feels.",
+        "Test every prompt change on past corrected summaries."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-05",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.3 Architectural patterns",
+    "trap": "Serial steps for independent checks",
+    "fam": 4,
+    "select": 1,
+    "question": "A news publisher wants every article checked before publication for three things: legal risk, house style and factual claims. The three checks do not depend on each other, and editors want all the findings within one minute of submitting. Each check needs its own detailed instructions. Which pattern fits best?",
+    "options": [
+      {"t": "Prompt chaining: the legal check runs first, then style, then facts, each on the last step's output.", "why": "Works when each step needs the previous result, but these checks are independent, so running them in a line only adds waiting time.", "trap": "Serial steps for independent checks"},
+      {"t": "Parallelisation: three focused calls run at the same time, and code merges their findings.", "why": "Best. The three checks do not depend on each other, so they run side by side, each with its own instructions, and finish together within the minute."},
+      {"t": "A single augmented call that performs all three checks within one long prompt.", "why": "Works for light checks, but three detailed specialist jobs in one prompt compete for attention and are harder to test separately.", "trap": "One prompt for three specialist jobs"},
+      {"t": "An agent that decides which checks each article needs and runs them in the order it chooses.", "why": "Works when the steps vary, but every article gets the same three checks, so autonomy adds cost and unpredictability.", "trap": "Autonomy for a fixed task"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "The three checks do not depend on each other",
+    "explanation": "Parallelisation (sectioning) fits independent subtasks that each deserve focused instructions, and it also cuts latency. Chaining is the right workflow when one step's output feeds the next; here it would only stack the waits.",
+    "eli5": {
+      "question": "Three different checkers must look at each article, and none needs the others' results. The clue: the checks do not depend on each other.",
+      "answer": "Three doctors who check eyes, ears and teeth can see you at the same time in three rooms; nobody needs to wait for the eye doctor. <b>Rule: independent tasks run in parallel.</b>",
+      "options": [
+        "Do the checks one after another.",
+        "Do the three checks at the same time and combine the results.",
+        "Do all three checks in one big instruction.",
+        "Let an agent decide which checks to do."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-06",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.3 Architectural patterns",
+    "trap": "Autonomy where the steps are fixed",
+    "fam": 2,
+    "select": 1,
+    "question": "A manufacturer onboards about forty new suppliers a week. Every supplier goes through the same five steps in the same order: read the application form, check a sanctions list, verify the tax ID, score the risk and draft a welcome letter. A sponsor has asked for an autonomous agent. Which pattern should the architect recommend?",
+    "options": [
+      {"t": "Routing: a first call sorts suppliers by country and sends each group to its own tuned prompt.", "why": "Works when inputs fall into types that need different handling, but every supplier here follows the same steps.", "trap": "Routing without distinct categories"},
+      {"t": "An agent with the five tools and a step limit, which chooses its next action as it goes.", "why": "Works when the path depends on what each step finds, but here the path never changes, so an agent adds cost and less predictable runs.", "trap": "Autonomy where the steps are fixed"},
+      {"t": "A workflow: code runs the five steps in order, calling Claude to read the form and draft the letter.", "why": "Best. Every supplier goes through the same five steps in the same order, so code can own the sequence and Claude does only the language work."},
+      {"t": "Evaluator-optimizer: one call builds the supplier file, and a second critiques it until it passes.", "why": "Works when critique measurably improves a draft, but the main need here is a fixed sequence of checks, not repeated refinement.", "trap": "Refinement loop with no need for it"}
+    ],
+    "answer": [2],
+    "runnerUp": 1,
+    "decider": "Every supplier goes through the same five steps in the same order",
+    "explanation": "Choose the least autonomy that solves the problem: known, fixed steps are a workflow, which is cheaper, testable and predictable. The agent the sponsor asked for would win only if the next step depended on what the last one found.",
+    "eli5": {
+      "question": "Every new supplier gets the same five checks in the same order. The clue: the steps never change.",
+      "answer": "A car wash runs every car through the same stations in order; you don't need a driver deciding where to go next. <b>Rule: fixed steps are a workflow; agents are for paths you can't know in advance.</b>",
+      "options": [
+        "Sort suppliers by country first.",
+        "Let an agent decide each next step.",
+        "Code runs the five steps in order; Claude reads and writes.",
+        "Draft, then criticise, then redraft."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-07",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.4 Multi-agent systems and orchestration",
+    "trap": "Prompt rule where separation is needed",
+    "fam": 1,
+    "select": 1,
+    "question": "A bank's research assistant prepares briefings for relationship managers. It searches the public web for news about client companies and also reads the bank's confidential client files. The security team warns that a malicious web page could tell the assistant to put client details into its next search query. Which design change best addresses this risk?",
+    "options": [
+      {"t": "Add a system-prompt rule that web content is data and must not be followed as instructions.", "why": "Works as one layer, but a prompt rule is probabilistic, and the same context still holds both the untrusted page and the client files.", "trap": "Prompt rule where separation is needed"},
+      {"t": "Log every outbound search query and have the security team review the log each week.", "why": "Works for audit, but it detects a leak days after the client data has already left.", "trap": "Detects the leak afterwards"},
+      {"t": "Remove web search and have relationship managers paste in the news articles they find.", "why": "Works to close the path, but it removes a capability the role needs, and pasted pages can still carry the same injected text.", "trap": "Removes a needed capability"},
+      {"t": "Give web search to a subagent with no client-file access, and let a coordinator merge results.", "why": "Best. The agent that reads untrusted pages never holds client data, so an injected page has nothing to leak into its queries."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "a malicious web page could tell the assistant to put client details into its next search query",
+    "explanation": "When one part of the work touches untrusted content and another needs privileged access, a separate subagent with scoped tools is a structural boundary. Marking web content as data is still worth doing, but on its own it leaves both capabilities in one context.",
+    "eli5": {
+      "question": "One helper reads strangers' web pages and also holds the bank's secrets. The clue: a web page could trick it into leaking those secrets.",
+      "answer": "The person who opens the post from strangers should not also hold the safe key. <b>Rule: keep the agent that reads untrusted content away from private data.</b>",
+      "options": [
+        "Tell the helper in its instructions to ignore web-page commands.",
+        "Write down every search and check the list weekly.",
+        "Stop web searching; people paste articles in.",
+        "One helper searches the web without the secrets; a boss combines the results."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-08",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.4 Multi-agent systems and orchestration",
+    "trap": "Trims cost but keeps a needless design",
+    "fam": 2,
+    "select": 1,
+    "question": "A retail chain built a weekly competitor-price report with a coordinator and twelve parallel subagents. It costs about fifteen times as much per run as a single-agent version, and three managers read it on Monday mornings. On the team's scoring rubric, the single-agent version scored almost the same. What should the architect recommend?",
+    "options": [
+      {"t": "Keep the coordinator, but run all twelve subagents on a smaller, cheaper model.", "why": "Works to cut the bill, but it keeps a multi-agent design whose extra quality the rubric did not show.", "trap": "Trims cost but keeps a needless design"},
+      {"t": "Move the weekly report to the single-agent version and keep the rubric for later checks.", "why": "Best. The single-agent version scored almost the same, so the multi-agent cost buys nothing measurable for a weekly report with three readers."},
+      {"t": "Keep the design, and cache the shared instructions that every subagent receives.", "why": "Works to shave cost, but it optimises a design that the evaluation says is not needed.", "trap": "Optimises the wrong design"},
+      {"t": "Cut the subagents from twelve to four, each covering three of the competitors.", "why": "Works to reduce spend, but it is still a multi-agent design with no proven gain over one agent.", "trap": "A smaller copy of the same cost"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "the single-agent version scored almost the same",
+    "explanation": "Multi-agent systems use far more tokens, so the value of the task must justify them. When the evaluation shows no real quality gain, the simpler design wins. A cheaper model for subagents would be the right move if the multi-agent version had clearly scored higher.",
+    "eli5": {
+      "question": "A team of twelve helpers writes a weekly report that one helper writes nearly as well, at a fifteenth of the price. The clue: the single helper scored almost the same.",
+      "answer": "If one cook makes the soup as well as a kitchen of twelve, you don't hire cheaper cooks for the twelve; you let the one cook do it. <b>Rule: use many agents only when they measurably beat one.</b>",
+      "options": [
+        "Keep twelve helpers but pay them less.",
+        "Use the one helper who scored almost the same.",
+        "Keep twelve helpers and reuse their shared instructions.",
+        "Use four helpers instead of twelve."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-09",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.5 Decomposition techniques",
+    "trap": "Splitting a task that already passes",
+    "fam": 2,
+    "select": 1,
+    "question": "An airline uses one prompt to rewrite flight-disruption notices in plain language. It passes 98 percent of a 500-case eval set against a 95 percent target, and notices must reach passengers within thirty seconds. An engineer proposes a four-step chain with a check between each step, for robustness. What should the architect recommend?",
+    "options": [
+      {"t": "Keep the single prompt, and add the cases it fails to the eval set for future changes.", "why": "Best. It passes 98 percent against a 95 percent target, so extra steps would add latency and cost without a needed gain; the failures still feed the eval set."},
+      {"t": "Split it into two steps: one call extracts the flight facts, and a second writes the notice.", "why": "Works when one prompt does uneven work, but this prompt already beats its target, so the split adds a call for little benefit.", "trap": "Splitting a task that already passes"},
+      {"t": "Adopt the four-step chain, but run its checks on a smaller, faster model to save time.", "why": "Works to soften the cost, but it still builds a pipeline the evaluation does not call for.", "trap": "Overbuilt, then patched for speed"},
+      {"t": "Run the single prompt three times and send the version that most of the runs agree on.", "why": "Works to smooth rare errors, but it triples cost and time for a task already above target.", "trap": "Triples cost for little gain"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "It passes 98 percent of a 500-case eval set against a 95 percent target",
+    "explanation": "Decompose where a step needs separate focus or checking; each extra step adds latency and cost. When one prompt already meets the target, keep it and let the eval set guard it. A two-step split would be the right move if extraction errors were dragging quality below target.",
+    "eli5": {
+      "question": "One instruction already does the job well, above the target. Someone wants four steps instead. The clue: it already passes 98 percent against a 95 percent goal.",
+      "answer": "If a single bus already gets everyone to school on time, you don't add three changes of bus. <b>Rule: split a task only when a step needs its own focus or check.</b>",
+      "options": [
+        "Keep the one instruction and save its misses as test cases.",
+        "Use two steps: find the facts, then write.",
+        "Use four steps with quicker checkers.",
+        "Run it three times and pick the most common answer."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-10",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.6 Business value pillars",
+    "trap": "Cost case for a new service",
+    "fam": 8,
+    "select": 1,
+    "question": "A bank wants to offer small businesses same-day loan decisions, a service it could not offer before. The design that meets the underwriting accuracy bar costs more per application than a cheaper design that falls short. The board must approve the budget. How should the architect frame the business case?",
+    "options": [
+      {"t": "As cost: show a lower cost per application than today's manual underwriting process.", "why": "Works when the goal is cheaper processing, but the chosen design is the costlier one, and the value here is a service that did not exist.", "trap": "Cost case for a new service"},
+      {"t": "As efficiency: show the underwriter hours saved on each loan application.", "why": "Works for speeding up existing work, but it undersells a new product and invites a comparison with the cheaper design.", "trap": "Efficiency case for a new product"},
+      {"t": "As transformation: show the new same-day loans issued and the revenue they bring.", "why": "Best. It is a service the bank could not offer before, so the case rests on new business, which can justify the higher cost per application."},
+      {"t": "As productivity: show more applications handled by each underwriter every day.", "why": "Works when staff are assisted to do more, but the sponsor's aim is a new customer offer, not more output per person.", "trap": "Productivity case for a new offer"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "a service it could not offer before",
+    "explanation": "Match the business case to the pillar the sponsor is buying. A new capability is transformation, measured by adoption and revenue, which can justify a higher unit cost. A cost framing would win if the bank were only trying to make existing underwriting cheaper.",
+    "eli5": {
+      "question": "A bank wants to give a brand-new kind of fast loan it never offered. The better design costs more. The clue: it is a service the bank could not offer before.",
+      "answer": "A bakery that starts home delivery sells the idea by new orders and sales, not by how cheaply it bakes. <b>Rule: new capability is judged by the new business it brings.</b>",
+      "options": [
+        "Say it is cheaper per application.",
+        "Say it saves underwriters' hours.",
+        "Say it brings new same-day loans and revenue.",
+        "Say each underwriter handles more."
+      ]
+    }
+  },
+  {
+    "id": "p1-d1-11",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.6 Business value pillars",
+    "trap": "Technical quality instead of the value",
+    "fam": 6,
+    "select": 2,
+    "question": "A national tax office will pilot a Claude assistant that drafts replies to taxpayer letters for case officers. The sponsor's goal is that each officer clears more letters per week, with no rise in taxpayer complaints. The pilot starts next month. Which two measures should the architect set up before it starts?",
+    "options": [
+      {"t": "Today's letters cleared per officer per week, recorded as the baseline for the pilot.", "why": "Best. The goal is more letters per officer, and without today's figure the pilot cannot show any gain."},
+      {"t": "Draft accuracy on a 200-letter eval set, scored by senior case officers.", "why": "Works as a release check, but it measures draft quality, not whether officers clear more letters.", "trap": "Technical quality instead of the value"},
+      {"t": "Token cost per drafted reply, tracked weekly on a spending dashboard.", "why": "Works when the goal is cost, but the sponsor named output per officer, not spend.", "trap": "Cost pillar, not the stated goal"},
+      {"t": "The complaint rate per thousand replies, tracked as a guardrail during the pilot.", "why": "Best. The goal says no rise in complaints, so this is the quality floor that the productivity gain must not break."},
+      {"t": "Time to first token for each draft, measured at the 95th percentile.", "why": "Works when there is a latency SLA, but no response-time target was set here.", "trap": "SLA metric for a productivity goal"}
+    ],
+    "answer": [0, 3],
+    "runnerUp": 1,
+    "decider": "each officer clears more letters per week, with no rise in taxpayer complaints",
+    "explanation": "A productivity goal is shown by output per person against a baseline taken before launch, with a guardrail metric for the condition the sponsor attached. Eval accuracy is still needed to release safely, but it does not prove the business value the sponsor asked for.",
+    "eli5": {
+      "question": "A tax office wants each officer to answer more letters, without more complaints. The clue: the goal is letters per officer, with complaints kept flat.",
+      "answer": "To prove a new bike makes you faster, time your ride before you get it, and check you don't fall off more. <b>Rule: measure the sponsor's goal against a baseline, plus a guardrail.</b>",
+      "options": [
+        "Count today's letters per officer per week.",
+        "Score draft quality on a test set.",
+        "Track what each reply costs.",
+        "Track complaints per thousand replies.",
+        "Track how fast drafts start appearing."
+      ]
+    }
+  }
+]

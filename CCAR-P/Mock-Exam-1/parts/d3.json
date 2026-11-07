@@ -1,0 +1,572 @@
+[
+  {
+    "id": "p1-d3-01",
+    "domain": "D3 · Integration",
+    "obj": "3.1 Capability bloat",
+    "trap": "Approval instead of narrowing",
+    "fam": 4,
+    "select": 1,
+    "question": "A parcel carrier's dispatch agent updates shipments when drivers report delays. It was given the general update-shipment tool, which can change any field, including the delivery address, billing account and customs declaration. The agent only ever changes the estimated arrival time and a status note. Dispatchers need these updates to flow without delay. What should the architect change?",
+    "options": [
+      {
+        "t": "Keep the tool, and have a dispatcher approve each update before it is saved.",
+        "why": "Works, but it keeps power the role never uses and slows every update. Approval fits when a role needs a powerful action only rarely.",
+        "trap": "Approval instead of narrowing"
+      },
+      {
+        "t": "Remove the update-shipment tool so the agent can no longer write to shipments.",
+        "why": "Works, but the role does write: it changes arrival times and notes. Removal would win only if the agent never wrote at all.",
+        "trap": "Removes a needed capability"
+      },
+      {
+        "t": "Replace it with a tool that can change only the arrival time and status note.",
+        "why": "Best. The agent only ever changes two fields, so a narrower tool keeps the job working and removes the power to touch addresses, billing or customs."
+      },
+      {
+        "t": "Keep the tool, and log every changed field for a weekly audit by operations.",
+        "why": "Works, but logging only reveals a bad change after it happened; the capability stays.",
+        "trap": "Detective control only"
+      }
+    ],
+    "answer": [
+      2
+    ],
+    "runnerUp": 0,
+    "decider": "The agent only ever changes the estimated arrival time and a status note.",
+    "explanation": "When a role needs a tool but only part of it, least privilege means replacing it with a narrower tool. Human approval is a compensating control that leaves the unused power in place and slows a high-volume flow; it would fit a rare, high-impact action the role genuinely needs.",
+    "eli5": {
+      "question": "A helper only ever changes two boxes on a delivery form, but it holds a pen that can rewrite the whole form, including the address and the bill. The clue: it only ever changes two boxes.",
+      "answer": "If a cleaner only needs the kitchen, give them the kitchen key, not the master key with a guard checking every door. <b>Rule: when a role needs part of a tool, give it a narrower tool.</b>",
+      "options": [
+        "Keep the big pen, but a person checks every change.",
+        "Take the pen away completely, so even the two boxes can't be filled.",
+        "Swap it for a pen that can only write in those two boxes.",
+        "Keep the big pen and read a list of changes once a week."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-02",
+    "domain": "D3 · Integration",
+    "obj": "3.2 Authentication and authorization gaps",
+    "trap": "No user to delegate from",
+    "fam": 8,
+    "select": 1,
+    "question": "A state benefits agency runs a nightly agent that reads the day's new applications and flags any with missing documents. No user is involved when it runs. It currently uses the personal token of the engineer who built it, who holds supervisor rights across every region. The engineer moves to another team next month. What should the architect change?",
+    "options": [
+      {
+        "t": "Give the job its own identity, scoped to reading applications and adding flags.",
+        "why": "Best. No user is involved, so there is nobody to delegate from; the job needs its own identity scoped to exactly what it does, independent of any person."
+      },
+      {
+        "t": "Switch the job to delegated OAuth tokens so each action carries a caseworker's identity.",
+        "why": "Works, but only when an agent acts for a signed-in person. A nightly job has no user behind it, so there is no token to delegate.",
+        "trap": "No user to delegate from"
+      },
+      {
+        "t": "Move the engineer's token into a secrets manager and rotate it every month.",
+        "why": "Works, but it stores the secret well while keeping a personal identity with supervisor rights across every region.",
+        "trap": "Good storage, wrong identity"
+      },
+      {
+        "t": "Record every application the job reads and flags in a tamper-proof audit log.",
+        "why": "Works, but an audit log records what happened; it does not reduce what the job can reach.",
+        "trap": "Detective control only"
+      }
+    ],
+    "answer": [
+      0
+    ],
+    "runnerUp": 1,
+    "decider": "No user is involved when it runs.",
+    "explanation": "Delegated, user-scoped tokens are the right pattern when an agent acts for a signed-in person. A background job has no person behind it, so least privilege applies to a dedicated service identity scoped to the job's own tasks, which also removes the dependence on one engineer's account.",
+    "eli5": {
+      "question": "A night-time robot checks paperwork while everyone sleeps, using a manager's own badge that opens every office. The clue: nobody is there when it works.",
+      "answer": "A night cleaner gets their own badge for the rooms they clean, not a borrowed manager's badge. <b>Rule: a job with no user behind it gets its own narrowly scoped identity.</b>",
+      "options": [
+        "Give the robot its own badge that opens only the paperwork room.",
+        "Make the robot borrow a staff member's badge for each task, but nobody is awake to lend one.",
+        "Keep the manager's badge, just lock it in a safer drawer.",
+        "Keep the manager's badge and write down every door it opens."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-03",
+    "domain": "D3 · Integration",
+    "obj": "3.2 Authentication and authorization gaps",
+    "trap": "Slowing guessing, not stopping it",
+    "fam": 3,
+    "select": 2,
+    "question": "A university's student-records chatbot on its public website answers questions about grades and fees. Students identify themselves by typing their student number. The bot then fetches records through a registrar service account that can read every student's file. A student reported seeing another student's grades. Which two changes close the security gaps?",
+    "options": [
+      {
+        "t": "Tell the bot in its system prompt to show only the record matching the number typed.",
+        "why": "Works, but it is a prompt, not an access control, and the typed number still proves nothing about who is asking.",
+        "trap": "Prompt as access control"
+      },
+      {
+        "t": "Require sign-in through the university's single sign-on before the bot answers.",
+        "why": "Best. Typing a number is not authentication; sign-in proves who the student is, which the authorization fix needs."
+      },
+      {
+        "t": "Rate-limit lookups per session so nobody can try many student numbers quickly.",
+        "why": "Works, but it only slows guessing; one known number still opens someone else's record.",
+        "trap": "Slowing guessing, not stopping it"
+      },
+      {
+        "t": "Fetch records using each signed-in student's own delegated token.",
+        "why": "Best. The all-powerful service account is the authorization gap; a user-scoped token lets the records system enforce own-record-only access."
+      },
+      {
+        "t": "Log each lookup with the typed number so the registrar can audit unusual access.",
+        "why": "Works, but it reveals leaks after they happen and does not prevent them.",
+        "trap": "Detective control only"
+      }
+    ],
+    "answer": [
+      1,
+      3
+    ],
+    "runnerUp": 2,
+    "decider": "Students identify themselves by typing their student number.",
+    "explanation": "There are two gaps: no real authentication (a typed number is a claim, not proof) and over-broad authorization (one account that reads everyone). Sign-in fixes the first and a delegated, user-scoped token fixes the second; rate limiting only makes guessing slower while leaving any known number usable.",
+    "eli5": {
+      "question": "Anyone can say \"I'm student 1234\" and the front desk, holding a key to every file, hands over 1234's file. The clue: saying a number is the only check.",
+      "answer": "A bank asks for your card and PIN, then only opens your own account. <b>Rule: first prove who someone is, then let the system limit them to their own data.</b>",
+      "options": [
+        "Ask the desk politely to only hand over the matching file.",
+        "Make students show their real ID before the desk helps.",
+        "Let each person ask only a few times a minute.",
+        "Use the student's own key, which opens only their own file.",
+        "Write down every file handed out and check the list later."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-04",
+    "domain": "D3 · Integration",
+    "obj": "3.3 Accuracy-latency trade-offs",
+    "trap": "Routing with no easy cases",
+    "fam": 2,
+    "select": 1,
+    "question": "A manufacturer's legal team gets an overnight review of the day's supplier contracts and reads the results each morning. A missed indemnity clause is costly in any contract. A heavier configuration, the most capable model with extended thinking, raises clause recall from 89% to 96% and still finishes hours before the team arrives. Which configuration fits?",
+    "options": [
+      {
+        "t": "Route long or unusual contracts to the heavier setup and the rest to the fast one.",
+        "why": "Works, but routing pays when latency is tight and easy cases are low-risk. Here a miss is costly in any contract and there is time to spare.",
+        "trap": "Routing with no easy cases"
+      },
+      {
+        "t": "Keep the fast setup and add a verification pass on clauses it marks as uncertain.",
+        "why": "Works, but it only rechecks what the fast model already noticed; clauses it missed confidently stay missed.",
+        "trap": "Checks only what it saw"
+      },
+      {
+        "t": "Keep the fast setup and stream each review to the team as soon as it is ready.",
+        "why": "Works for a person waiting on a live reply, but nobody reads these until morning, so speed buys nothing.",
+        "trap": "Speed nobody needs"
+      },
+      {
+        "t": "Run every contract through the heavier setup with extended thinking.",
+        "why": "Best. Every contract is high-stakes and the batch has room in its deadline, so take the measured accuracy gain everywhere."
+      }
+    ],
+    "answer": [
+      3
+    ],
+    "runnerUp": 0,
+    "decider": "A missed indemnity clause is costly in any contract.",
+    "explanation": "Accuracy-latency trade-offs are justified by the actual SLA and risk. When every request is high-stakes and the deadline is loose, the heavier configuration everywhere is right; routing would win only if latency were tight and a large share of low-risk requests could safely take the fast path.",
+    "eli5": {
+      "question": "A careful checker finds more mistakes but is slower. The work is due tomorrow morning, it's done by dawn either way, and every missed mistake is expensive. The clue: every contract matters and there is time.",
+      "answer": "If the exam is untimed and every question counts, check every answer carefully. <b>Rule: when every request is high-stakes and latency has room, use the accurate setup everywhere.</b>",
+      "options": [
+        "Careful checker only on the odd-looking contracts.",
+        "Quick checker, then a second look only where it felt unsure.",
+        "Quick checker, sending each result the moment it's done to people who are asleep.",
+        "Careful checker on every contract."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-05",
+    "domain": "D3 · Integration",
+    "obj": "3.4 Observability at scale",
+    "trap": "Finds the step, not the drop",
+    "fam": 6,
+    "select": 1,
+    "question": "An energy utility's billing assistant was updated last month. Error rates, p95 latency and token cost all look normal on the dashboard. The only quality signal is a customer-satisfaction survey published once a month, and the latest one shows a sharp drop. The team wants to catch the next quality drop within days. What should the architect add?",
+    "options": [
+      {
+        "t": "End-to-end tracing that links every model call and tool call under one request ID.",
+        "why": "Works for finding which step produced a known bad answer, but it does not tell anyone that quality is falling.",
+        "trap": "Finds the step, not the drop"
+      },
+      {
+        "t": "Daily scored samples of live conversations, with an alert when scores drop.",
+        "why": "Best. Quality is invisible to error, latency and cost metrics, and a monthly survey is too slow; sampled live evals give a daily quality signal with alerts."
+      },
+      {
+        "t": "Full prompt and response logging at debug level for every billing conversation.",
+        "why": "Works as raw material, but more text is not a signal; someone still has to read it to notice a drop.",
+        "trap": "More text, not a signal"
+      },
+      {
+        "t": "Per-request cost and latency percentiles broken down by each conversation step.",
+        "why": "Works for finding slow or expensive paths, but those numbers already look normal and do not measure answer quality.",
+        "trap": "System metrics miss quality"
+      }
+    ],
+    "answer": [
+      1
+    ],
+    "runnerUp": 0,
+    "decider": "The only quality signal is a customer-satisfaction survey published once a month",
+    "explanation": "Quality needs its own monitored signal: sampled evaluations on live traffic with alerts. Tracing is the right first move when you already know an answer is wrong and need the failing step, but it does not detect a drift that system metrics cannot see.",
+    "eli5": {
+      "question": "A restaurant's kitchen runs on time and on budget, but the only taste test is a customer letter once a month, and the last one was bad. The clue: the only taste check comes monthly.",
+      "answer": "Have a cook taste a few dishes every day instead of waiting for letters. <b>Rule: quality drift needs sampled quality checks with alerts, not more system metrics.</b>",
+      "options": [
+        "Track each dish's path through the kitchen.",
+        "Taste a sample of dishes every day and shout if they get worse.",
+        "Write down every word said in the kitchen.",
+        "Measure how long and how much each step costs."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-06",
+    "domain": "D3 · Integration",
+    "obj": "3.4 Observability at scale",
+    "trap": "Prevents, but does not attribute",
+    "fam": 4,
+    "select": 1,
+    "question": "Five teams ship prompt changes to an insurer's shared claims-summary service several times a week, and the model is upgraded now and then. Every request is traced end to end, and sampled evaluations alert when summary quality falls. When an alert fires, engineers cannot tell which change caused the drop. What should the architect add first?",
+    "options": [
+      {
+        "t": "An offline eval suite in CI that blocks any prompt change scoring below baseline.",
+        "why": "Works to stop some regressions shipping, but drops that reach live traffic, including model upgrades, still cannot be traced to a change.",
+        "trap": "Prevents, but does not attribute"
+      },
+      {
+        "t": "One weekly release window so prompt changes from all five teams ship together.",
+        "why": "Works to slow the pace, but bundling changes makes it even harder to tell which one caused a drop.",
+        "trap": "Batching hides the cause"
+      },
+      {
+        "t": "The prompt version and the model version recorded on every request's trace.",
+        "why": "Best. Engineers cannot tell which change caused the drop; versions on each trace let them line up the quality drop with the exact change that shipped."
+      },
+      {
+        "t": "Debug-level logging of the full prompt text sent with each claims-summary request.",
+        "why": "Works as raw data, but comparing long prompt texts by hand is slow, and it adds personal data to logs.",
+        "trap": "Raw text, no change link"
+      }
+    ],
+    "answer": [
+      2
+    ],
+    "runnerUp": 0,
+    "decider": "engineers cannot tell which change caused the drop",
+    "explanation": "Logging the prompt and model version with each request is what lets a quality regression be traced to a change. A CI eval gate is valuable for prevention and would be the pick if the question were how to stop regressions shipping, but it does not explain a drop already seen in production.",
+    "eli5": {
+      "question": "Five cooks keep tweaking the recipe, the oven gets swapped sometimes, and a taster says the soup got worse, but nobody knows whose tweak did it. The clue: nobody can tell which change caused it.",
+      "answer": "Stamp each bowl with the recipe version and oven used, so a bad bowl points to its change. <b>Rule: record prompt and model versions on every request.</b>",
+      "options": [
+        "Test each recipe tweak in a practice kitchen before it goes out.",
+        "Let all five cooks change the recipe only once a week, all together.",
+        "Stamp every bowl with the recipe version and oven used.",
+        "Write the whole recipe out in full for every bowl."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-07",
+    "domain": "D3 · Integration",
+    "obj": "3.5 Chunking and indexing",
+    "trap": "Bigger chunks, looser matches",
+    "fam": 5,
+    "select": 1,
+    "question": "An airline's engineering assistant indexes maintenance standards in small 200-token chunks. Retrieval reliably finds the right paragraph for each question, but answers often miss conditions and definitions that appear elsewhere in the same section. Engineers like how precisely the right paragraph is found. What should the architect change?",
+    "options": [
+      {
+        "t": "Match on the small chunks, then pass Claude each match's parent section.",
+        "why": "Best. Retrieval reliably finds the right paragraph, so keep small chunks for precise search and hand Claude the surrounding section for context."
+      },
+      {
+        "t": "Re-chunk the standards into 1,500-token chunks so each one carries more context.",
+        "why": "Works to add context, but large chunks match more loosely and would give up the precise search that already works.",
+        "trap": "Bigger chunks, looser matches"
+      },
+      {
+        "t": "Add a 50-token overlap between neighbouring chunks so boundary text is shared.",
+        "why": "Works when an idea is split at a chunk boundary, but these conditions sit elsewhere in the section, not at the edge.",
+        "trap": "Fixes edges, not sections"
+      },
+      {
+        "t": "Add a reranker that reorders the top 20 matches before they reach Claude.",
+        "why": "Works when the right chunk is ranked too low, but here the right paragraph is already found.",
+        "trap": "Ranking is not the problem"
+      }
+    ],
+    "answer": [
+      0
+    ],
+    "runnerUp": 1,
+    "decider": "Retrieval reliably finds the right paragraph for each question",
+    "explanation": "Small chunks search precisely but lack context; retrieving on small chunks and passing the parent section gives both. Simply making chunks bigger would win if matching were already loose or the documents were short, but here it trades away precision that works.",
+    "eli5": {
+      "question": "A librarian always finds the right sentence, but you need the rules written around it on the same page. The clue: finding the sentence already works.",
+      "answer": "Use the index to find the exact line, then read the whole page it sits on. <b>Rule: search small, answer with the parent section.</b>",
+      "options": [
+        "Find the sentence, then hand over its whole section.",
+        "Cut the books into big chunks, so finding the exact sentence gets harder.",
+        "Let neighbouring pieces share a few lines at their edges.",
+        "Re-sort the search results, which were already right."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-08",
+    "domain": "D3 · Integration",
+    "obj": "3.6 Retrieval strategy",
+    "trap": "Hybrid with nothing to blend",
+    "fam": 2,
+    "select": 1,
+    "question": "An auto-parts retailer's counter assistant pulls fitment notes for a part. Staff only ever type the exact part number, such as BK-77120-A, copied from the customer's old part. Vector search sometimes returns notes for a neighbouring part number. A colleague proposes hybrid search with a reranker. What should the architect recommend?",
+    "options": [
+      {
+        "t": "Hybrid search that merges BM25 keyword results with the vector results.",
+        "why": "Works when queries mix exact codes with descriptions, but these queries contain only the code, so the vector half adds near misses.",
+        "trap": "Hybrid with nothing to blend"
+      },
+      {
+        "t": "A larger embedding model trained on automotive catalogue text.",
+        "why": "Works to match meaning better, but embeddings still match by similarity, and BK-77120-A looks like its neighbours.",
+        "trap": "Meaning, not exact match"
+      },
+      {
+        "t": "Vector search with a reranker over the top 50 candidate notes.",
+        "why": "Works when the right result is ranked too low, but it re-sorts similar-looking codes instead of matching exactly.",
+        "trap": "Re-sorting near misses"
+      },
+      {
+        "t": "A direct lookup of the fitment notes keyed on the part number.",
+        "why": "Best. Staff only ever type the exact part number, so there is no meaning to match; an exact lookup returns the right notes every time."
+      }
+    ],
+    "answer": [
+      3
+    ],
+    "runnerUp": 0,
+    "decider": "Staff only ever type the exact part number",
+    "explanation": "Match the retrieval method to the query pattern: exact identifiers alone call for a keyword or direct lookup. Hybrid search would win if staff also described parts in their own words, but with code-only queries it is extra machinery that still lets similar codes through.",
+    "eli5": {
+      "question": "Staff always type a precise code, and the search tool keeps fetching notes for codes that look similar. The clue: they only ever type the exact code.",
+      "answer": "If you know the exact locker number, you walk to that locker; you don't ask for lockers that look like it. <b>Rule: exact identifiers only means an exact lookup.</b>",
+      "options": [
+        "Mix exact-word search with meaning search.",
+        "Use a smarter meaning-matcher, which still thinks similar codes are close.",
+        "Re-sort a list of similar-looking codes.",
+        "Look the code up directly, like a locker number."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-09",
+    "domain": "D3 · Integration",
+    "obj": "3.6 Retrieval strategy",
+    "trap": "Reranking what was never retrieved",
+    "fam": 3,
+    "select": 2,
+    "question": "A news publisher's archive assistant answers journalists' questions such as “What did we report on the Rotterdam port strike in March 2019?” Vector search returns on-topic stories, but often from other years or about other ports. The right articles are often missing from the top 50 candidates. Every article carries a publication-date field. Which two changes best fix retrieval?",
+    "options": [
+      {
+        "t": "Filter candidates on the publication date that the question asks about.",
+        "why": "Best. Results come from other years and every article has a date field, so a metadata filter removes the wrong years precisely."
+      },
+      {
+        "t": "Rerank the top 50 candidates and pass only the best few to Claude.",
+        "why": "Works when the right article is retrieved but ranked low, but here it is often missing from the top 50, so there is nothing to promote.",
+        "trap": "Reranking what was never retrieved"
+      },
+      {
+        "t": "Switch to a larger embedding model to sharpen the semantic matching.",
+        "why": "Works for meaning, but one port strike means much the same as another; names and dates need exact handling.",
+        "trap": "Meaning, not names"
+      },
+      {
+        "t": "Raise the number of chunks sent to Claude from 10 to 40 per question.",
+        "why": "Works to widen the net a little, but it adds more wrong-year and wrong-port stories to the context.",
+        "trap": "More noise, not precision"
+      },
+      {
+        "t": "Add BM25 keyword search so exact place names count, and merge results.",
+        "why": "Best. Stories about other ports are close in meaning; keyword matching makes the exact name Rotterdam count."
+      }
+    ],
+    "answer": [
+      0,
+      4
+    ],
+    "runnerUp": 1,
+    "decider": "often from other years or about other ports",
+    "explanation": "Date constraints belong in metadata filters, and exact names need keyword matching alongside vectors. A reranker is the right fix when the correct passage is retrieved but ranked low; it cannot surface articles that never reach the candidate list.",
+    "eli5": {
+      "question": "You ask for one city's strike in one month, and get similar strikes from other cities and other years. The clue: wrong year, wrong place.",
+      "answer": "In a library, first go to the right year's shelf, then look for the city's name on the spine. <b>Rule: filter dates with metadata; match names with keywords.</b>",
+      "options": [
+        "Only look at stories from the date asked about.",
+        "Re-sort a pile that doesn't contain the right story.",
+        "Use a smarter meaning-matcher; but all strikes mean much the same.",
+        "Hand over a bigger pile of mostly wrong stories.",
+        "Also search for the exact word Rotterdam."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-10",
+    "domain": "D3 · Integration",
+    "obj": "3.7 Connection protocols (MCP, API/CLI, agent-to-agent)",
+    "trap": "A server with one client",
+    "fam": 2,
+    "select": 1,
+    "question": "A bank's platform engineers use Claude Code, which has a shell, to inspect and change cloud resources. The cloud provider's CLI is already installed and signed in on every engineer's laptop, and no other AI client needs this access. One engineer proposes building an MCP server that wraps the provider's API. What should the architect recommend?",
+    "options": [
+      {
+        "t": "Build the MCP server so access is standardised and ready for future AI clients.",
+        "why": "Works when several AI clients or teams need the same capability, but none does here, so it is a server to build and run for one client.",
+        "trap": "A server with one client"
+      },
+      {
+        "t": "Let Claude Code use the existing CLI, with permission rules on risky commands.",
+        "why": "Best. Claude Code has a shell and the CLI is already installed and signed in; using it needs nothing new, and permission rules govern the risky commands."
+      },
+      {
+        "t": "Write a small internal REST service that Claude Code calls for each resource type.",
+        "why": "Works to wrap access, but it is custom glue to maintain that duplicates the CLI already on every laptop.",
+        "trap": "Custom glue to maintain"
+      },
+      {
+        "t": "Connect Claude Code to the provider's own support agent over agent-to-agent.",
+        "why": "Works for handing a whole goal to another party's agent, but these are direct commands the engineers want to run themselves.",
+        "trap": "Delegating simple calls"
+      }
+    ],
+    "answer": [
+      1
+    ],
+    "runnerUp": 0,
+    "decider": "no other AI client needs this access",
+    "explanation": "Pick the lightest mechanism that meets reuse, ownership and security needs. An agent with a shell can use a well-known CLI directly; an MCP server would win if desktop users or other agents without a shell also needed the same capability.",
+    "eli5": {
+      "question": "Engineers already have a working remote control on every desk, and only one helper will use it. Someone wants to build a new universal remote. The clue: nobody else needs it.",
+      "answer": "If the only person using the TV already has its remote, you don't build a universal remote. <b>Rule: an agent with a shell uses the existing CLI unless many clients need the tool.</b>",
+      "options": [
+        "Build a universal remote in case others want it someday.",
+        "Use the remote already on the desk, with locks on the dangerous buttons.",
+        "Build your own home-made remote to maintain.",
+        "Phone the TV company's helper to press buttons for you."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-11",
+    "domain": "D3 · Integration",
+    "obj": "3.7 Connection protocols (MCP, API/CLI, agent-to-agent)",
+    "trap": "Reuse nobody needs",
+    "fam": 2,
+    "select": 1,
+    "question": "A car-leasing firm's quoting app uses Claude to read a customer's chat and pull out their registration plate. The backend then fetches the vehicle's details from a government registry's documented REST endpoint. Only this one application will ever use the registry, and the call is always the same lookup. Which integration mechanism fits?",
+    "options": [
+      {
+        "t": "An MCP server for the registry, so other teams' agents could reuse it later on.",
+        "why": "Works when several AI clients need the same capability, but only this one application will ever use it.",
+        "trap": "Reuse nobody needs"
+      },
+      {
+        "t": "An agent-to-agent hand-off to a registry agent that performs the lookup.",
+        "why": "Works when another party's agent runs a multi-step task with private systems, but this is one fixed call to a documented endpoint.",
+        "trap": "Delegating a fixed call"
+      },
+      {
+        "t": "A direct call from the backend to the registry endpoint after extraction.",
+        "why": "Best. One application making the same known call is the case for a direct API call: fewest moving parts and nothing to reuse."
+      },
+      {
+        "t": "A shell tool so Claude can call the registry with curl when it decides to.",
+        "why": "Works for exploratory coding agents, but it turns a fixed, always-needed step into a model decision and adds a shell to a customer-facing app.",
+        "trap": "Model-driven fixed step"
+      }
+    ],
+    "answer": [
+      2
+    ],
+    "runnerUp": 0,
+    "decider": "Only this one application will ever use the registry, and the call is always the same lookup.",
+    "explanation": "A direct API call is simplest for one application with a fixed, known integration. MCP earns its cost when the same capability is shared by many AI clients or teams; with a single consumer it is extra infrastructure.",
+    "eli5": {
+      "question": "One shop needs to look up one thing in one public register, always the same way. The clue: only this shop, always the same lookup.",
+      "answer": "If you only ever call one number, you just dial it; you don't build a switchboard. <b>Rule: one app, one fixed call means a direct API call.</b>",
+      "options": [
+        "Build a switchboard others might use one day.",
+        "Ask another robot to make the call for you.",
+        "Just dial the number from the back office.",
+        "Let the chatbot decide whether to dial, using a command line."
+      ]
+    }
+  },
+  {
+    "id": "p1-d3-12",
+    "domain": "D3 · Integration",
+    "obj": "3.8 Progressive discovery vs monolithic context",
+    "trap": "Caching content rarely needed",
+    "fam": 5,
+    "select": 2,
+    "question": "A food manufacturer's quality agent has a dozen tools, and most tasks use nearly all of them. Its context also carries 20 long inspection procedures, each needed only for one product line, and a very large ingredient specification it consults occasionally. Requests are slow and costly. Which two changes best fit?",
+    "options": [
+      {
+        "t": "Move the tools behind tool search so only relevant definitions are loaded.",
+        "why": "Works when there are many tools and each task uses a few, but here a dozen tools are nearly all used on every task.",
+        "trap": "Few tools, all used"
+      },
+      {
+        "t": "Keep everything in context and cache the stable prefix to cut the cost.",
+        "why": "Works when content is small and needed on nearly every request; here most of it is needed only sometimes, so it still dilutes attention and slows replies.",
+        "trap": "Caching content rarely needed"
+      },
+      {
+        "t": "Package each product line's inspection procedure as its own Skill.",
+        "why": "Best. Each procedure is needed only for one product line, and a Skill loads only its short description until the task calls for it."
+      },
+      {
+        "t": "Expose the ingredient specification as a resource read on demand.",
+        "why": "Best. Large reference data consulted occasionally should be fetched when needed rather than preloaded."
+      },
+      {
+        "t": "Move to a model with a larger context window so nothing has to be cut.",
+        "why": "Works to fit more in, but a bigger window does not fix slow, costly requests or diluted attention.",
+        "trap": "Bigger window, same dilution"
+      }
+    ],
+    "answer": [
+      2,
+      3
+    ],
+    "runnerUp": 1,
+    "decider": "each needed only for one product line",
+    "explanation": "Load small, stable, always-needed content up front, and fetch the rest on demand: Skills for task-specific procedures and resources for large, occasionally used reference data. Monolithic context with caching would win if the content were small and used on nearly every request, which here only the tools are.",
+    "eli5": {
+      "question": "A worker carries every product's manual and a giant ingredient book on every job, though each job needs one manual and the book only now and then. The clue: each manual is for one product line.",
+      "answer": "Keep your everyday tools on your belt; fetch the right manual and the big book from the shelf when the job calls for them. <b>Rule: preload what is always used, fetch the rest on demand.</b>",
+      "options": [
+        "Hide the tools in a drawer, though every job uses them.",
+        "Keep carrying everything, just more cheaply.",
+        "Put each product's manual on a shelf, fetched for that product's job.",
+        "Leave the big ingredient book on a shelf and look things up when needed.",
+        "Get a bigger bag so you can carry even more."
+      ]
+    }
+  }
+]
