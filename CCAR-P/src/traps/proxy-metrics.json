@@ -1,0 +1,141 @@
+{
+ "n": 8,
+ "slug": "proxy-metrics",
+ "title": "Measure the outcome, not a proxy",
+ "domain": "D4 · Evaluation, Testing &amp; Optimization",
+ "lines": [
+  "4.1",
+  "5.3",
+  "5.5"
+ ],
+ "glance": "A model's self-rated confidence, a thumbs-up rate or an overall average can look healthy while the real outcome is poor; measure the outcome directly, on the slice that matters.",
+ "story": [
+  "A <b>proxy</b> is a number that is easy to collect and that we hope moves with the thing we care about. Three proxies tempt teams. The model's <b>self-reported confidence</b> is just more model output: it can be high on a wrong answer. A <b>thumbs-up rate</b> comes from the few users who vote, and they are not a fair sample. An <b>average</b> hides what matters at the edges: the slow tail of response times, or one group of users who get worse results.",
+  "The fix is to measure the outcome itself. For correctness, that means a labelled test set of real cases with checked answers, scored on every change, plus sampled human checks in production. For speed, it means <b>p95</b> (the time 95 percent of requests beat) and, for streamed chat, <b>time to first token</b>. For fairness, it means outcome rates broken down by group on representative data, because an overall average can hide a gap.",
+  "The trap is that every proxy is a real number on a real dashboard. The deciding fact in the stem is what someone actually needs to know."
+ ],
+ "situation": "An online bank's assistant answers customer questions about fees. The team reports three numbers: the model's average self-rated confidence of 9 out of 10, a 92 percent thumbs-up rate from the 3 percent of users who vote, and an average response time of two seconds. Before approving a new prompt next week, leadership asks whether answers are actually correct. What should the architect add?",
+ "options": [
+  {
+   "id": "A",
+   "t": "A labelled set of real questions with checked answers, scored on every change."
+  },
+  {
+   "id": "B",
+   "t": "p95 latency and time to first token, reported in place of the average time."
+  },
+  {
+   "id": "C",
+   "t": "Accuracy broken down by customer group on a representative test set."
+  },
+  {
+   "id": "D",
+   "t": "A weekly random sample of live answers, checked by a person for errors."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "Leadership wants to know whether answers are correct before a prompt change ships next week.",
+   "winner": "A",
+   "why": "Correctness needs checked answers, and a fixed labelled set can score the old and new prompt side by side before release.",
+   "losers": {
+    "B": "Latency metrics say nothing about whether the answers are right.",
+    "C": "A breakdown by group is useful, but first there must be an accuracy measure to break down.",
+    "D": "A weekly live sample measures production drift, but it cannot test the new prompt before it ships."
+   }
+  },
+  {
+   "name": "It feels slow",
+   "fact": "Accuracy is already measured on a labelled set. Customers now complain that the chat feels slow, although the average is two seconds; answers are long and streamed.",
+   "winner": "B",
+   "why": "Users feel the wait for the first words and remember the slow tail. Time to first token and p95 show what the average hides.",
+   "losers": {
+    "A": "A labelled set already exists and measures correctness, not speed.",
+    "C": "The complaint is about speed, not about any one group.",
+    "D": "Checking answers for errors does not measure how long they take."
+   }
+  },
+  {
+   "name": "One group may be worse off",
+   "fact": "A labelled set shows 95 percent accuracy overall. Complaints suggest customers who write in simple or non-native English get wrong answers more often.",
+   "winner": "C",
+   "why": "An overall average can hide a gap between groups. Accuracy measured per group on representative data shows whether the gap is real and how big it is.",
+   "losers": {
+    "A": "The labelled set exists; its single average is what hides the problem.",
+    "B": "Speed is not in question.",
+    "D": "A small random sample may contain too few of these customers to show a gap."
+   }
+  }
+ ],
+ "signals": [
+  "“the model's confidence score” used as a quality measure",
+  "“thumbs-up rate” from a small share of users who vote",
+  "“the average is within target” but users still complain",
+  "“overall accuracy is high” while one group reports problems",
+  "leadership asks whether answers are “actually correct”"
+ ],
+ "remember": "Measure the outcome directly: checked answers for correctness, p95 and time to first token for speed, and per-group results for fairness. Confidence, votes and averages are signals, not measures.",
+ "practice": [
+  {
+   "stem": "A language-learning app's assistant marks learners' spoken-English answers. Agreement with expert markers is 94 percent overall, above target. Learners from two regions complain that their marks are harsh, and the team wants to know whether the complaint is real before changing anything. What should the architect measure?",
+   "select": 1,
+   "options": [
+    "Overall agreement against a higher target of 97 percent instead of 94.",
+    "The thumbs-up rate on marks, reported separately for each region.",
+    "The model's own confidence in each mark, averaged by region.",
+    "Agreement with expert markers per region, on a representative sample."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: a possible gap between groups behind a healthy overall number. Agreement measured per region, against experts, shows whether the gap is real.",
+   "traps": [
+    "Works to raise the bar overall, but an average can still hide one region's gap.",
+    "Works as a signal, but voters are few and unhappy learners vote differently.",
+    "Works as one input, but self-reported confidence is not a measure of accuracy.",
+    null
+   ]
+  },
+  {
+   "stem": "An IT helpdesk assistant has a 90 percent thumbs-up rate, from the 4 percent of users who vote. A rewritten prompt raised it to 93 percent in its first week. The team wants to know whether the new prompt really helps employees resolve their problems. Which measure should decide?",
+   "select": 1,
+   "options": [
+    "Resolution without reopening, for both prompts on the same labelled set.",
+    "The thumbs-up rate, since it rose three points in a week of live use.",
+    "The model's own rating of how helpful each answer was, per prompt.",
+    "Average handling time per conversation, as shorter chats mean faster help."
+   ],
+   "key": [
+    0
+   ],
+   "why": "The deciding fact: the goal is resolved problems, and votes come from a small, self-selected group. The outcome, compared on the same cases, decides.",
+   "traps": [
+    null,
+    "Works as a signal, but 4 percent of users is a biased sample, and one week is noisy.",
+    "Works for drafting, but the model grading itself is not an outcome.",
+    "Works for efficiency, but a short chat can also be one that gave up."
+   ]
+  },
+  {
+   "stem": "A retailer runs an overnight job that writes 20,000 product summaries for the site update at 6 a.m. Nobody watches it run, and summary quality is already scored on a labelled set. An engineer proposes live dashboards for time to first token and p95 latency per request. What should the architect track instead?",
+   "select": 1,
+   "options": [
+    "Time to first token for each summary, shown on a live dashboard.",
+    "p95 latency per request, with an alert when it passes two seconds.",
+    "Whether the job finishes before 6 a.m., and its cost per summary.",
+    "The average rating from site visitors who score the summaries."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: nobody waits on individual requests. What matters is finishing before the deadline and the cost per summary.",
+   "traps": [
+    "Works for streamed chat, but nobody is watching these summaries appear.",
+    "Works for interactive use, but one slow request does not matter here.",
+    null,
+    "Works as a signal, but few visitors rate, and quality is already scored."
+   ]
+  }
+ ]
+}

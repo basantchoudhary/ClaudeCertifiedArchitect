@@ -1,0 +1,143 @@
+{
+ "n": 1,
+ "slug": "remove-not-watch",
+ "title": "Remove it, don't watch it",
+ "domain": "D3 · Integration",
+ "lines": [
+  "3.1",
+  "5.1"
+ ],
+ "glance": "When an agent holds a tool its role never uses, the answer is to remove the tool, not to log it, alert on it or ask for confirmation before it runs.",
+ "story": [
+  "<b>Least privilege</b> means an agent gets the smallest set of tools and permissions its job needs. Agents often end up with more by accident: a team connects a whole MCP server, or reuses an account that can do everything, because it is quicker.",
+  "There are two kinds of control. A <b>preventive</b> control stops something from being possible: removing a tool, or narrowing what a tool accepts. A <b>detective</b> or <b>compensating</b> control lets it stay possible but watches it: a log, an alert, a confirmation step, a line in the prompt. If the role never needs the capability, a preventive control wins, because a capability that is not there cannot be misused by a confused model or a prompt injection.",
+  "The trap is that logging and approval sound responsible, and sometimes they are right. Approval wins when the role really does need a risky action now and then. Narrowing wins when the role needs a tool but only part of what it can do. The deciding fact is always the same question: does this role need this capability?"
+ ],
+ "situation": "A property company's tenant assistant answers questions about leases and records repair requests. It was connected to the property system's full toolset, which also includes a tool that cancels leases. Tenants chat with it directly through the company's app. Cancelling a lease is hard to undo. What should the architect change first?",
+ "options": [
+  {
+   "id": "A",
+   "t": "Log every lease cancellation the assistant makes, and have a manager review the log each week."
+  },
+  {
+   "id": "B",
+   "t": "Remove the lease-cancellation tool, so the assistant can look up leases and record repairs."
+  },
+  {
+   "id": "C",
+   "t": "Keep the cancellation tool, but have a staff member approve each cancellation before it runs."
+  },
+  {
+   "id": "D",
+   "t": "Replace the repair tool with one that files requests for the signed-in tenant's own unit."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "Tenants only ask about leases and report repairs. Cancellations go through a signed process at the office, so the assistant has never needed the cancellation tool.",
+   "winner": "B",
+   "why": "The role never uses the capability, so removing it eliminates the risk. Nothing the tenants do is blocked.",
+   "losers": {
+    "A": "A log only shows a wrong cancellation after it has happened, and a cancelled lease is hard to undo.",
+    "C": "Approval keeps a capability nobody needs one injected instruction away, and costs staff time on every attempt.",
+    "D": "Narrowing the repair tool is good hygiene, but it leaves the bigger risk, the cancellation tool, in place."
+   }
+  },
+  {
+   "name": "The role needs it, rarely",
+   "fact": "Leasing staff also use the assistant, and processing early terminations through it is part of their job, a few times a month. Cancellations are still hard to undo.",
+   "winner": "C",
+   "why": "The role does need the tool, so removing it would block real work. The action is rare and high-impact, so a person approves each one before it runs.",
+   "losers": {
+    "A": "A weekly log review finds a wrong cancellation days after the tenant has been affected.",
+    "B": "Removing the tool stops staff doing a task that is part of their job.",
+    "D": "Narrowing the repair tool does nothing about the irreversible cancellation."
+   }
+  },
+  {
+   "name": "The excess is inside a needed tool",
+   "fact": "The cancellation tool was never connected. The only extra power is that the repair tool accepts any unit number, and one tenant has filed repair requests against neighbours' flats.",
+   "winner": "D",
+   "why": "The role needs the repair tool, but only for the tenant's own unit. A narrower tool keeps the job possible and removes the extra power.",
+   "losers": {
+    "A": "Logging cancellations watches a tool that is not even connected, and does nothing about the repair tool.",
+    "B": "There is no cancellation tool to remove here; the excess sits inside a tool the role does need.",
+    "C": "There are no cancellations to approve; the problem is what the repair tool accepts."
+   }
+  }
+ ],
+ "signals": [
+  "“has never needed…” or “staff only ever…”",
+  "an agent connected to a full MCP server or a shared admin account",
+  "options that add logging, alerts or a confirmation step to a tool",
+  "“part of their job” or “a few times a month” (approval may win)",
+  "a tool that can act on any record when the role needs one"
+ ],
+ "remember": "If the role never needs a capability, remove it. Keep it behind human approval only when the role needs it and the action is high-impact, and narrow it when the role needs only part of it.",
+ "practice": [
+  {
+   "stem": "A museum's ticketing chatbot answers visitor questions and books timed-entry tickets. It calls the ticketing platform with the platform's admin key, which can also issue refunds, change prices and export the full visitor list. The chatbot has never needed to do any of those three things. Which change best reduces the risk?",
+   "select": 1,
+   "options": [
+    "Turn on alerts whenever the chatbot's key changes a price or exports visitor data.",
+    "Add a staff approval step before any refund, price change or export can run.",
+    "Give the chatbot a key limited to checking availability and booking tickets.",
+    "Add a system-prompt rule telling the chatbot not to refund, reprice or export."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: the chatbot has never needed refunds, price changes or exports. A narrowly scoped key removes those capabilities instead of watching them.",
+   "traps": [
+    "Works, but an alert fires after the price has changed or the list has left.",
+    "Works, but it keeps capabilities the role never uses; approval fits when the role sometimes needs the action.",
+    null,
+    "Works, but a prompt rule is followed most of the time, not always, and the key can still do all three."
+   ]
+  },
+  {
+   "stem": "A cloud-cost agent's documented job includes deleting old database snapshots, which saves the company a large sum each month. A deletion cannot be undone, and last month the agent picked a snapshot that auditors still needed. The finance team wants to keep the savings. What should the architect do?",
+   "select": 1,
+   "options": [
+    "Keep the delete tool, with an engineer approving each deletion before it runs.",
+    "Remove the delete tool and have engineers delete old snapshots by hand.",
+    "Keep the delete tool, and log each deletion for the team to review weekly.",
+    "Move the agent to a more capable model that applies the retention rules better."
+   ],
+   "key": [
+    0
+   ],
+   "why": "The deciding fact: deleting snapshots is part of the agent's job, and a deletion cannot be undone. Approval before the action keeps the savings and stops the wrong deletion.",
+   "traps": [
+    null,
+    "Works, but it blocks a task the role is meant to do; removal wins when the role never needs the tool.",
+    "Works, but a weekly review finds the lost snapshot after it is gone for good.",
+    "Works, but a better model still makes mistakes, and nothing checks the irreversible step."
+   ]
+  },
+  {
+   "stem": "A recruiting assistant reads interviewers' calendars and books interview slots. It was connected to the HR system with a full-access account that also reaches salary records and offer letters. The assistant has never needed salaries or offers. Which two changes best reduce the risk?",
+   "select": 2,
+   "options": [
+    "Add a weekly audit of every salary record the assistant opens.",
+    "Remove the salary and offer-letter tools from the assistant's configuration.",
+    "Ask a recruiter to confirm before the assistant opens any offer letter.",
+    "Run the assistant under its own account that can read calendars and book slots.",
+    "State in the system prompt that salary data is confidential and off limits."
+   ],
+   "key": [
+    1,
+    3
+   ],
+   "why": "The deciding fact: the role never needs salaries or offers. Least privilege works at two layers: remove the tools the agent can see, and scope the account those tools run under, so one slip is caught by the other.",
+   "traps": [
+    "Works, but an audit shows the exposure only after the data has been read.",
+    null,
+    "Works, but confirmation keeps a capability the role never uses.",
+    null,
+    "Works, but a prompt instruction is not an access control."
+   ]
+  }
+ ]
+}

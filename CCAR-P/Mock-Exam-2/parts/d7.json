@@ -1,0 +1,120 @@
+[
+  {
+    "id": "p2-d7-01",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.1 Configure Claude tools for teams",
+    "trap": "Imported is still loaded",
+    "fam": 9,
+    "select": 1,
+    "question": "A games studio's shared CLAUDE.md has grown to 1,500 lines. About 600 of them are the release procedure, which developers run about once a fortnight. Every session starts with a heavy context, and Claude sometimes overlooks everyday conventions. The procedure must stay shared and versioned with the repository. Where should it go?",
+    "options": [
+      {"t": "Into a separate file that CLAUDE.md imports with an <code>@</code> reference.", "why": "Works to tidy the file, but imported files are loaded at the start of every session, so the context stays just as heavy.", "trap": "Imported is still loaded"},
+      {"t": "Into each developer's personal <code>~/.claude/CLAUDE.md</code> file.", "why": "Works for one person's preferences, but it is not versioned with the repository and still loads every session.", "trap": "Personal scope, not shared"},
+      {"t": "Into the team wiki, pasted into a session whenever someone releases.", "why": "Works in a pinch, but it is a manual step outside the repository, and copies drift from the real procedure.", "trap": "Unversioned manual step"},
+      {"t": "Into a project Skill committed under <code>.claude/skills/</code>.", "why": "Best. A Skill loads its full instructions only when a release task calls for it, and committing it keeps it shared and versioned."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "which developers run about once a fortnight",
+    "explanation": "CLAUDE.md, including anything it imports, is always-on context, so it should hold what nearly every session needs. A rarely used procedure belongs in a committed Skill that loads on demand; an import only moves the text, it does not stop it loading.",
+    "eli5": {
+      "question": "The team's welcome sheet, read at the start of every shift, has a long section that's only needed twice a month. The clue: the procedure is used about once a fortnight.",
+      "answer": "Keep the welcome sheet short and put the twice-a-month manual on the shelf, where it's fetched when needed. <b>Rule: always-needed guidance in CLAUDE.md; occasional procedures in a committed Skill.</b>",
+      "options": [
+        "Move it to a stapled-on page, which still gets read every shift.",
+        "Give each person a private copy at home.",
+        "Keep it on the wiki and paste it in by hand.",
+        "Put it on the team's shelf as a manual fetched only when releasing."
+      ]
+    }
+  },
+  {
+    "id": "p2-d7-02",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.2 AI-assisted developer workflows",
+    "trap": "Smarter, still unchecked",
+    "fam": 5,
+    "select": 2,
+    "question": "A payments team uses Claude Code for medium-sized features. The changes compile, pass tests and read well, but about one in four is later reworked because Claude misread what the ticket asked for, which costs days. Developers already review every pull request. Which two practices would help most?",
+    "options": [
+      {"t": "Have Claude explore the code and propose a plan for approval before writing any.", "why": "Best. A short plan shows Claude's reading of the ticket before any code exists, so a misunderstanding costs minutes instead of days."},
+      {"t": "Switch to the most capable model with extended thinking for feature work.", "why": "Works to improve reasoning, but nobody checks Claude's understanding of the ticket until the code is finished.", "trap": "Smarter, still unchecked"},
+      {"t": "Have Claude turn the ticket's acceptance criteria into tests a developer checks first.", "why": "Best. Tests written from the acceptance criteria and checked by a developer pin down what the ticket means before implementation starts."},
+      {"t": "Split every feature into smaller pull requests so reviews go faster.", "why": "Works to speed review, but small changes built on a misread ticket are still the wrong changes.", "trap": "Smaller wrong changes"},
+      {"t": "Let Claude auto-accept edits so it can finish each feature in one long run.", "why": "Works to save developer time, but it reaches the wrong result faster and with fewer chances to notice.", "trap": "Faster to the wrong place"}
+    ],
+    "answer": [0, 2],
+    "runnerUp": 1,
+    "decider": "because Claude misread what the ticket asked for",
+    "explanation": "When the failure is misunderstanding, add an early checkpoint on intent: an approved plan and agreed tests surface the misreading before code is written. A stronger model would help if the problem were hard reasoning, but it still leaves the check until the end.",
+    "eli5": {
+      "question": "A builder builds neat, solid rooms, but one in four is the wrong room because they misread the order. The clue: the problem is misreading the order, not poor building.",
+      "answer": "Ask the builder to sketch the room and agree a checklist with you before laying a brick. <b>Rule: when the agent misreads the task, check its understanding before it builds.</b>",
+      "options": [
+        "Ask for a sketch to approve before building starts.",
+        "Hire a smarter builder, still checked only at the end.",
+        "Agree a checklist of what the finished room must do, before building.",
+        "Build in smaller pieces, still from the misread order.",
+        "Let the builder work nonstop without stopping to check."
+      ]
+    }
+  },
+  {
+    "id": "p2-d7-03",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.3 Debugging and operational issue resolution",
+    "trap": "More context, no proof",
+    "fam": 5,
+    "select": 1,
+    "question": "A logistics company's nightly route report crashes on some nights but not others. A developer asked Claude Code to fix it, and Claude proposed three fixes in a row, each based on reading the code alone; the crash came back after each one. Input files from failed nights are archived. What should the developer ask Claude to do next?",
+    "options": [
+      {"t": "Read the last month of production logs in full and explain the root cause.", "why": "Works to form a better theory, but it is still a theory; without reproducing the crash, a fix cannot be confirmed.", "trap": "More context, no proof"},
+      {"t": "Write a test that reproduces the crash from an archived input, then fix it.", "why": "Best. Three code-reading guesses failed, and the archived inputs allow a reproducing test, which turns guessing into a check that proves the fix."},
+      {"t": "Wrap the report in a retry and an alert so failed nights rerun automatically.", "why": "Works to keep reports flowing, but it hides the crash instead of fixing its cause.", "trap": "Hiding the crash"},
+      {"t": "Repeat the analysis on the most capable model with extended thinking turned on.", "why": "Works for hard reasoning, but more thinking over the same code is still guessing without evidence.", "trap": "More reasoning, same guessing"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "each based on reading the code alone",
+    "explanation": "Give Claude a way to verify its work: a failing test built from a real failed input makes the bug reproducible and the fix provable. Reading logs would be the right first step if no failing input existed; here the inputs do exist, so reproduce first.",
+    "eli5": {
+      "question": "A mechanic has guessed three times why a car stalls, just by looking at the engine, and was wrong each time. The fuel from a stalling day was kept. The clue: every fix so far came from looking, not testing.",
+      "answer": "Put the kept fuel in the car, make it stall on purpose, then fix it until it no longer does. <b>Rule: reproduce the failure with a test before fixing it.</b>",
+      "options": [
+        "Read a month of notes and make a better guess.",
+        "Make it stall on purpose with the kept fuel, then fix it.",
+        "Restart the car automatically every time it stalls.",
+        "Think harder about the engine without testing anything."
+      ]
+    }
+  },
+  {
+    "id": "p2-d7-04",
+    "domain": "D7 · Developer Productivity & Operations",
+    "obj": "7.1 Configure Claude tools for teams",
+    "trap": "Skipping checks beside live credentials",
+    "fam": 4,
+    "select": 1,
+    "question": "A media company runs Claude Code headless in CI each night to update API documentation from code changes. The job stalls because each shell command waits for a permission approval that nobody gives. An engineer proposes skipping all permission checks. The CI runner also holds credentials that can deploy to production. What should the team do?",
+    "options": [
+      {"t": "Skip permission checks for this job, as is common for unattended CI runs.", "why": "Works in an isolated container with nothing valuable inside, but this runner holds production deploy credentials, so any command could reach them.", "trap": "Skipping checks beside live credentials"},
+      {"t": "Skip permission checks, and add a CLAUDE.md rule never to run deploy commands.", "why": "Works most nights, but a CLAUDE.md rule is guidance, not enforcement, and the credentials stay reachable.", "trap": "Prompt where enforcement was needed"},
+      {"t": "Pre-allow just the commands and file paths the job needs in its settings.", "why": "Best. An allowlist lets the job run unattended while every other command, deploys included, stays blocked."},
+      {"t": "Move the job to a morning run where an engineer approves each command.", "why": "Works safely, but it puts a person into a routine nightly job that an allowlist can run on its own.", "trap": "Human in a routine loop"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "The CI runner also holds credentials that can deploy to production.",
+    "explanation": "Headless runs need permissions settled in advance: allow exactly what the job uses and nothing more. Skipping checks is reasonable only in a sandbox with no secrets or network reach; a runner with production credentials is the opposite.",
+    "eli5": {
+      "question": "A night cleaner keeps stopping to ask permission for each room, so someone suggests giving them every key. The building also holds the vault. The clue: the vault keys are on the same ring.",
+      "answer": "Give the cleaner a list of the rooms they may enter, not the master ring. <b>Rule: for unattended runs, pre-allow exactly what the job needs.</b>",
+      "options": [
+        "Hand over every key, as night cleaners usually get.",
+        "Hand over every key with a note saying 'not the vault'.",
+        "Give a pass for just the rooms the cleaner needs.",
+        "Make the cleaner work mornings and ask a manager at every door."
+      ]
+    }
+  }
+]

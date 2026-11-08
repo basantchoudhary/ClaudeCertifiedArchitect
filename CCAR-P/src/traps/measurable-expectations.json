@@ -1,0 +1,141 @@
+{
+ "n": 11,
+ "slug": "measurable-expectations",
+ "title": "Agree it in numbers",
+ "domain": "D6 · Stakeholders &amp; Lifecycle",
+ "lines": [
+  "6.3",
+  "1.6"
+ ],
+ "glance": "No LLM system is 100% right, and “fast and accurate” is not a target: agree numbers against today's baseline, with a plan for the errors, and match the design to the value the sponsor named.",
+ "story": [
+  "Sponsors often approve an AI project with words like “accurate”, “quick” or “never wrong”. Those words cannot be checked, so months later the sponsor and the team argue about whether the system is good enough, and nobody can settle it. The architect's job is to turn the words into <b>measurable targets</b>: an accuracy level on sampled real traffic, a reply time at a percentile (for example, 95% of replies within three seconds), and a cost per outcome.",
+  "Two habits make those targets fair. First, measure <b>today's process</b> on the same cases: people make mistakes too, and the honest question is whether the new system beats the current one. Second, every error target comes with an <b>error-handling plan</b>: who reviews, how mistakes are corrected and when cases are escalated.",
+  "The target also follows the <b>value pillar</b> the sponsor cares about (cost, productivity, speed, accuracy or a new capability). Once targets are agreed, pick the design that meets them for that pillar. The exception: when a single error could cause serious harm, a target is not enough, and every output is checked."
+ ],
+ "situation": "A water utility's sponsor will approve an assistant that drafts and sends replies to billing complaints, but only if it is “accurate and quick”. On 400 past complaints its replies were correct 92% of the time; agents writing from scratch were correct 89% of the time. The team says that is good enough; the sponsor is unsure. What should the architect do?",
+ "options": [
+  {
+   "id": "A",
+   "t": "Agree numeric targets with the sponsor, such as accuracy on sampled replies and a 95th-percentile reply time, using the agents' 89% as the baseline."
+  },
+  {
+   "id": "B",
+   "t": "Hold the launch until further prompt tuning removes the remaining errors on the 400 test complaints."
+  },
+  {
+   "id": "C",
+   "t": "Have an agent check every reply before it is sent, so that no error reaches a customer."
+  },
+  {
+   "id": "D",
+   "t": "Choose the design that meets the agreed targets at the lowest cost per resolved complaint."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "The only target is the sponsor's phrase “accurate and quick”. Nothing has been agreed in numbers.",
+   "winner": "A",
+   "why": "Until “accurate and quick” becomes numbers both sides accept, nobody can say whether 92% is good enough. The agents' 89% gives a fair baseline to set the target against.",
+   "losers": {
+    "B": "Zero errors on 400 test cases does not mean zero errors in use, and it delays a system that already beats today's process.",
+    "C": "A full check is error handling, but it does not settle the vague target, and it removes most of the time saving the sponsor wants.",
+    "D": "There are no agreed targets yet, so there is nothing to meet at the lowest cost."
+   }
+  },
+  {
+   "name": "Targets agreed; cost is the pillar",
+   "fact": "Targets are already agreed in numbers: at least 90% correct on a monthly sample and a reply within ten seconds for 95% of complaints. Two designs meet both, and the sponsor's stated priority is lower cost.",
+   "winner": "D",
+   "why": "With measurable targets in place and both designs meeting them, the sponsor's pillar decides: the cheaper design per resolved complaint wins.",
+   "losers": {
+    "A": "Already done. The open question is which design to pick, not what the target is.",
+    "B": "Both designs already clear the agreed bar; chasing zero errors spends money the sponsor wants saved.",
+    "C": "The agreed targets accept a managed error rate, and a full human check would add the cost the sponsor wants to cut."
+   }
+  },
+  {
+   "name": "An error causes serious harm",
+   "fact": "Each reply also confirms whether a customer stays on the priority register for medical equipment, which protects their supply from being cut off. A wrong reply could endanger someone.",
+   "winner": "C",
+   "why": "When a single error could cause serious harm, error handling must cover every case. A person checks every reply before it goes out, even at the cost of speed.",
+   "losers": {
+    "A": "A numeric target still accepts some wrong replies reaching customers, which is not acceptable when one could endanger a life.",
+    "B": "No amount of tuning makes the system error-free, so the harm would remain after launch.",
+    "D": "Picking the cheapest design that meets a target still lets errors through unchecked; here cost is not the deciding pillar."
+   }
+  }
+ ],
+ "signals": [
+  "“must be 100% accurate” or “never wrong”",
+  "“fast and accurate”, with no numbers",
+  "“nobody has measured how the current team does”",
+  "“the sponsor's priority is…” (cost, productivity, speed)",
+  "“an average reply time” against a promised percentile",
+  "“a wrong answer could cause serious harm”"
+ ],
+ "remember": "Turn every adjective into a number, set against today's measured baseline, and attach an error-handling plan. Only when a single error could cause serious harm does checking every output beat a managed error rate.",
+ "practice": [
+  {
+   "stem": "A logistics firm's operations head says a customs-code assistant must beat the clerks before it launches. On 600 past shipments it picks the right code 93% of the time. Nobody has measured how often the clerks pick the right code; the head believes they are “near perfect”. What should the architect do next?",
+   "select": 1,
+   "options": [
+    "Tune the prompt until the assistant reaches 99%, which must be above the clerks.",
+    "Launch with every code checked by a clerk, so the comparison no longer matters.",
+    "Present the 93% result with examples of the hardest codes it got right.",
+    "Measure the clerks on the same 600 shipments and agree a target from both."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: the clerks' accuracy is a belief, not a measurement. Measuring them on the same cases gives the fair baseline the target needs.",
+   "traps": [
+    "Works to raise accuracy, but 99% is a guess at an unmeasured bar, and tuning may never reach it.",
+    "Works when errors are severe, but it dodges the agreed question and gives up the time saving.",
+    "Works to show strengths, but examples do not answer whether it beats the clerks.",
+    null
+   ]
+  },
+  {
+   "stem": "A parcel company's contract with a partner says its tracking assistant must reply within three seconds for 95 percent of requests. The engineering dashboard shows an average reply time of 1.8 seconds, so the team reports the target as met. The partner says many replies take far longer. What should the architect do first?",
+   "select": 1,
+   "options": [
+    "Switch the live path to a smaller, faster model to bring every reply time down.",
+    "Report the 95th-percentile reply time from the same logs against the contract.",
+    "Turn on streaming so customers see the first words of each reply sooner.",
+    "Share the monthly average with the partner, backed by a month of daily figures."
+   ],
+   "key": [
+    1
+   ],
+   "why": "The deciding fact: the contract names a 95th percentile, and an average can hide a slow tail. Measuring the figure the contract uses settles who is right before anything changes.",
+   "traps": [
+    "Works if the tail is too slow, but it changes the system before anyone knows the real number.",
+    null,
+    "Works for how fast replies feel, but it does not change the measured reply time.",
+    "Works for showing a trend, but an average is not the figure the contract promises."
+   ]
+  },
+  {
+   "stem": "An immigration law firm's assistant fills in visa forms from client documents. On 300 past cases, 97% of forms were fully correct. One wrong field gets an application refused, losing the fee and months of the client's time, and it cannot be fixed after filing. Partners ask what quality plan to agree. What should the architect propose?",
+   "select": 1,
+   "options": [
+    "A 97% accuracy target, tracked on a monthly sample of the forms filed.",
+    "Measure the paralegals' own error rate first, then set a target above it.",
+    "A paralegal check of every form before filing, with errors added to the eval.",
+    "More prompt tuning until all 300 test cases come out with no errors."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: one error causes serious harm that cannot be undone after filing. Error handling must cover every form, so each is checked before it goes.",
+   "traps": [
+    "Works when errors can be caught and fixed later; here a sampled error is already filed and refused.",
+    "Works when errors are recoverable, but any accepted error rate still lets refusals through.",
+    null,
+    "Works to raise the score, but a clean test set does not make filed forms error-free."
+   ]
+  }
+ ]
+}

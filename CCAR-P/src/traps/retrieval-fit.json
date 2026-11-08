@@ -1,0 +1,143 @@
+{
+ "n": 6,
+ "slug": "retrieval-fit",
+ "title": "Match the search to the question",
+ "domain": "D3 · Integration",
+ "lines": [
+  "3.6",
+  "3.5"
+ ],
+ "glance": "Vector search matches meaning; exact codes need keyword search, totals need a database query, and wrong-version or wrong-place results need metadata filters.",
+ "story": [
+  "<b>Vector search</b> turns text into numbers that capture meaning, so “car won't start” can find “engine fails to turn over”. That is its strength and its weakness: an exact code such as RA-558201 has no meaning to match, so vector search returns things that look similar instead of the exact record. <b>Keyword search</b> (often BM25, a standard way of ranking documents by matching words) finds exact terms but misses paraphrases. <b>Hybrid search</b> runs both and merges the results.",
+  "Some questions are not search questions at all. “How many cars were out of service last month?” needs every row counted exactly, which is a job for a <b>query tool</b> over the database, not for the twenty most similar text chunks. And when results are the right kind of text from the wrong branch, region or year, the fix is <b>metadata</b>: tag each chunk with those fields and filter on them.",
+  "A <b>reranker</b> re-scores results that were already retrieved. It helps when the right result is found but ranked too low; it cannot help when the right result was never retrieved or was filtered wrongly."
+ ],
+ "situation": "A car-rental company's assistant answers branch staff's questions from one vector index built over rental agreements, fleet records and customer reviews. The failing questions ask for counts and totals, such as “How many cars at the airport branch were out of service last month?”, and get wrong numbers. Which retrieval change should the architect make?",
+ "options": [
+  {
+   "id": "A",
+   "t": "Add keyword (BM25) search alongside vector search and merge the two result lists."
+  },
+  {
+   "id": "B",
+   "t": "Give the assistant a query tool that runs SQL against the fleet database."
+  },
+  {
+   "id": "C",
+   "t": "Tag each chunk with its branch and date, and filter on them before searching."
+  },
+  {
+   "id": "D",
+   "t": "Add a reranker that re-scores the top 50 results and passes on the best five."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "The failing questions ask for counts and totals over fleet records.",
+   "winner": "B",
+   "why": "Counts and totals need exact computation over every row. A query tool does that; a handful of similar chunks cannot.",
+   "losers": {
+    "A": "Keyword search still returns a few matching chunks, not a count over all rows.",
+    "C": "Filters narrow the chunks, but the model would still be counting from a sample.",
+    "D": "Reranking orders the chunks better, but a total needs every row, not the best five."
+   }
+  },
+  {
+   "name": "Exact codes in the question",
+   "fact": "The failing questions quote agreement numbers such as RA-558201 alongside a description, and return agreements with similar wording instead of the one quoted.",
+   "winner": "A",
+   "why": "Queries mix exact codes with descriptions. Keyword search catches the code, vector search catches the meaning, and hybrid merges both.",
+   "losers": {
+    "B": "These are lookups of agreement text, not totals over a table.",
+    "C": "Branch and date filters do not help find one agreement number.",
+    "D": "If the exact agreement is not in the top 50 vector results, a reranker cannot bring it back."
+   }
+  },
+  {
+   "name": "Right text, wrong place",
+   "fact": "The failing answers quote the right kind of clause, but from another branch's agreement or an older year's terms.",
+   "winner": "C",
+   "why": "The text matches but belongs elsewhere. Branch and date metadata, filtered before the search, removes the wrong versions.",
+   "losers": {
+    "A": "Keyword search matches the same words in every branch's version.",
+    "B": "The questions are about agreement wording, not numbers in a table.",
+    "D": "Near-identical versions score alike, so reranking cannot reliably tell them apart."
+   }
+  }
+ ],
+ "signals": [
+  "exact codes, IDs, SKUs or citations in the query",
+  "“how many”, “total”, “by region” over table data",
+  "“right text but the wrong country, version or year”",
+  "“the correct passage was in the top 50 but not the top 5” (a reranker)",
+  "users describing needs in their own words (vector search fits)"
+ ],
+ "remember": "Pick the search by the shape of the question: meaning needs vectors, exact terms need keywords, numbers need a query, and place or version needs a filter.",
+ "practice": [
+  {
+   "stem": "A garden centre's assistant answers questions such as “What can I plant in a shady, damp corner?” from 3,000 plant-care guides. Customers rarely use plant names, and the guides describe growing conditions in many different words. A colleague proposes replacing vector search with keyword search to make results more exact. What should the architect do?",
+   "select": 1,
+   "options": [
+    "Replace vector search with keyword search across all of the plant-care guides.",
+    "Load the guides into a database and give the assistant a SQL query tool.",
+    "Filter every search by plant name before the results are ranked.",
+    "Keep vector search, because customers describe their needs in everyday words."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: questions describe needs in varied wording, without names or codes. Matching meaning is what vector search is for.",
+   "traps": [
+    "Works for exact identifiers, but here it would miss guides that use different words.",
+    "Works for counts and totals, but these questions need descriptive text.",
+    "Works when names are known, but customers rarely give one.",
+    null
+   ]
+  },
+  {
+   "stem": "An engineering firm's assistant searches 80,000 paragraphs of design standards. Logs show that for most poor answers, the correct paragraph was among the top 50 vector results but not in the top five passed to Claude. Queries are plain-language descriptions with no codes. What should the architect add?",
+   "select": 1,
+   "options": [
+    "Keyword search alongside vector search, with the two result lists merged.",
+    "A reranker that re-scores the top 50 results and passes on the best five.",
+    "A larger embedding model, followed by a full rebuild of the index.",
+    "A change that sends all 50 retrieved paragraphs to Claude on every query."
+   ],
+   "key": [
+    1
+   ],
+   "why": "The deciding fact: the right paragraph is retrieved but ranked too low. A reranker improves precision on results that are already there.",
+   "traps": [
+    "Works when queries contain exact terms, but these are plain descriptions.",
+    null,
+    "Works sometimes, but the right result is already found; the ranking is the gap.",
+    "Works partly, but ten times the text adds cost and dilutes attention."
+   ]
+  },
+  {
+   "stem": "A mobile operator's assistant handles two kinds of question: “What does my contract say about roaming?” and “How much data did I use each day last week?”. Both are answered from one vector index built over contract text and usage rows. Usage answers are often wrong. Which two changes fit best?",
+   "select": 2,
+   "options": [
+    "Embed the usage rows with a larger embedding model to improve the matches.",
+    "Add a reranker over the usage rows that vector search returns.",
+    "Keep vector search over contract text for the contract questions.",
+    "Paste the customer's full usage history into the prompt for every question.",
+    "Answer usage questions with a query tool over the usage table."
+   ],
+   "key": [
+    2,
+    4
+   ],
+   "why": "The deciding fact: two question shapes. Contract wording suits vector search; daily usage figures need exact values from the table, so a query tool.",
+   "traps": [
+    "Works for meaning, but a better embedding still cannot compute daily totals.",
+    "Works when the right result ranks low, not when exact figures are needed.",
+    null,
+    "Works for a short history, but it is wasteful on every question, including contract ones.",
+    null
+   ]
+  }
+ ]
+}

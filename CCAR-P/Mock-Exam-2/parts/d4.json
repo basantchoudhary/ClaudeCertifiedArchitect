@@ -1,0 +1,474 @@
+[
+ {
+  "id": "p2-d4-01",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.1 Define evaluation metrics",
+  "trap": "Optimises the cheap error",
+  "fam": 6,
+  "select": 1,
+  "question": "A pharmaceutical company's assistant screens incoming medical-information emails and flags those that report a possible side effect. About 2% of emails do. Missing a real side-effect report is a reportable compliance failure, while a false flag costs a safety reviewer two minutes. The team is choosing the main metric for release decisions. Which should it be?",
+  "options": [
+   {
+    "t": "Overall accuracy across all screened emails, compared release by release.",
+    "why": "Works, but with 2% positives an assistant that flags nothing scores 98%. It fits when classes are balanced and both errors cost the same.",
+    "trap": "Accuracy hides the rare class"
+   },
+   {
+    "t": "Recall on real side-effect reports, with a minimum each release must meet.",
+    "why": "Best. Misses are the costly error and false flags are cheap, so the release gate is the share of real reports caught."
+   },
+   {
+    "t": "Precision on flagged emails, so reviewers are not buried in false flags.",
+    "why": "Works, but it guards against the error that costs two minutes, not the one that is a compliance failure. It would win if reviewer time were the scarce resource.",
+    "trap": "Optimises the cheap error"
+   },
+   {
+    "t": "Agreement with an LLM judge on a weekly random sample of screened emails.",
+    "why": "Works for open-ended quality, but this is a yes/no task with countable labels, and a random sample holds very few real reports.",
+    "trap": "Proxy judge for a labelled task"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 2,
+  "decider": "Missing a real side-effect report is a reportable compliance failure, while a false flag costs a safety reviewer two minutes.",
+  "explanation": "Pick the metric that matches the cost of each error. When misses are expensive and false alarms are cheap, recall on the rare class is the release gate, with precision tracked alongside. Precision would lead only if reviewer workload were the binding constraint.",
+  "eli5": {
+   "question": "A helper sorts mail and must spot the rare letters that report a medicine side effect. Missing one gets the company in trouble; a wrong flag just costs a reviewer two minutes. The clue: missing is costly, false alarms are cheap.",
+   "answer": "A smoke alarm that sometimes beeps at toast is annoying; one that misses a fire is a disaster. You judge it by how many fires it catches. <b>Rule: when misses are costly and false alarms cheap, measure recall on the rare case.</b>",
+   "options": [
+    "Percent right overall: a helper that flags nothing still scores 98%.",
+    "Share of real side-effect letters caught: matches the costly mistake.",
+    "Share of flags that are real: guards the cheap mistake.",
+    "Agreement with another AI: a guess when you could count directly."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-02",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.1 Define evaluation metrics",
+  "trap": "Satisfaction as a safety proxy",
+  "fam": 6,
+  "select": 2,
+  "question": "An education company's homework tutor for students aged 11 to 14 has agreed targets for answer accuracy and cost per session. The school board will approve it only if unsuitable content is kept away from students. In the pilot, teachers also complained that it refused harmless biology-curriculum questions on puberty and reproduction. Which two metrics should be added to the evaluation?",
+  "options": [
+   {
+    "t": "Average time to first token for each student message in a session.",
+    "why": "Works when students complain of waiting, but nobody raised speed here.",
+    "trap": "Latency nobody asked about"
+   },
+   {
+    "t": "Students' thumbs-up rate per session, collected in the tutor app.",
+    "why": "Works as a product signal, but students may like unsuitable answers and dislike refusals alike; it measures neither safety nor wrong refusals directly.",
+    "trap": "Satisfaction as a safety proxy"
+   },
+   {
+    "t": "Rate of unsuitable replies on a red-team set of adversarial student prompts.",
+    "why": "Best. The board's condition is a safety metric, measured on prompts built to draw out unsuitable content."
+   },
+   {
+    "t": "Share of sessions that a teacher reviews afterwards, tracked each week.",
+    "why": "Works as an oversight count, but it measures activity, not whether replies were safe or refusals wrong.",
+    "trap": "Activity count, not an outcome"
+   },
+   {
+    "t": "Refusal rate on legitimate questions about sensitive curriculum topics.",
+    "why": "Best. Teachers complained of wrong refusals, so measure them on real curriculum questions; this stops the tutor being made safe by refusing everything."
+   }
+  ],
+  "answer": [
+   2,
+   4
+  ],
+  "runnerUp": 1,
+  "decider": "teachers also complained that it refused harmless biology-curriculum questions on puberty and reproduction",
+  "explanation": "Safety is measured from two sides: how often harmful content gets through on adversarial prompts, and how often legitimate requests are refused. Measuring only one invites tuning that wrecks the other. A thumbs-up rate is a useful product metric but not a safety measure.",
+  "eli5": {
+   "question": "A homework helper for kids must keep unsuitable stuff out, but teachers say it refuses normal biology questions. The clue: two problems were raised, unsafe answers and wrong refusals.",
+   "answer": "A bouncer is judged both on keeping troublemakers out and on letting ticket holders in. Count only one and he lets everyone in or no one. <b>Rule: measure harmful outputs and wrong refusals together.</b>",
+   "options": [
+    "How fast the first word appears: nobody said it was slow.",
+    "Whether students click thumbs up: kids may like the wrong things.",
+    "How often tricky test questions get unsuitable replies: the safety side.",
+    "How many sessions teachers check: counts checking, not safety.",
+    "How often fair biology questions get refused: the over-blocking side."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-03",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.2 Design evaluation datasets",
+  "trap": "Bigger set, same overfitting",
+  "fam": 6,
+  "select": 1,
+  "question": "A property firm's lease-abstraction assistant went through 40 prompt revisions, each one checked against the same 300 annotated leases, and it now scores 97% on them. Spot checks on leases signed last month show about 85%, though the new leases look much like the old ones. Which change to the evaluation would best catch this gap before release?",
+  "options": [
+   {
+    "t": "Annotate 200 more leases, add them to the 300, and keep tuning against the set.",
+    "why": "Works for a while, but tuning against every case again lets the prompt fit the bigger set too. It would win if the problem were too few cases rather than reuse.",
+    "trap": "Bigger set, same overfitting"
+   },
+   {
+    "t": "Replace the exact-match field scoring with an LLM judge that rates each abstract.",
+    "why": "Works when exact match is too strict, but the gap comes from what the prompt was tuned on, not from how answers are graded.",
+    "trap": "Changes the grader, not the data"
+   },
+   {
+    "t": "Have two annotators re-label the 300 leases and settle any disagreements.",
+    "why": "Works when labels are noisy, but nothing suggests that; clean labels on a tuned-to set still overstate quality.",
+    "trap": "Fixes labels, not overfitting"
+   },
+   {
+    "t": "Keep a separate annotated set of leases that is never used while tuning.",
+    "why": "Best. Forty revisions checked against the same 300 leases fitted the prompt to those leases; a held-out set measures performance on leases it was not tuned on."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "each one checked against the same 300 annotated leases",
+  "explanation": "Repeatedly tuning a prompt against the same cases overfits to them, so the score stops predicting production. A held-out set used only for release decisions gives an honest estimate. Adding cases helps only if the new ones stay out of the tuning loop.",
+  "eli5": {
+   "question": "A team tweaked its helper 40 times, testing each time on the same 300 leases. Now it aces those but does worse on new ones. The clue: every tweak was checked on the same 300.",
+   "answer": "If you practise with the same mock paper forty times, you learn its answers, not the subject. The real test needs a paper you have never seen. <b>Rule: keep a held-out test set that tuning never touches.</b>",
+   "options": [
+    "More practice papers, still all used for practice: same trap.",
+    "A different marker: the problem is the papers, not the marking.",
+    "Re-check the answer key: helps only if the key was wrong.",
+    "A fresh paper kept back for the real test: shows true skill."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-04",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.3 A/B testing and iterative improvement",
+  "trap": "Ships on a peeked result",
+  "fam": 6,
+  "select": 1,
+  "question": "A food-delivery app planned a two-week A/B test of a new support prompt against the current one. The product manager checked the dashboard daily and stopped the test on day three, when the new prompt was ahead on resolved chats. Weekend orders, which bring different problems, had not yet been included. What should the team do?",
+  "options": [
+   {
+    "t": "Rerun it with a sample size and end date fixed in advance, and judge it once.",
+    "why": "Best. Stopping on the first lead picks a random high point, and three days missed the weekend mix; a fixed plan judged once gives a fair result."
+   },
+   {
+    "t": "Ship the new prompt now, then watch resolved chats closely for two more weeks.",
+    "why": "Works if the planned test had finished; shipping on an early peek overstates the gain, and a rollback later costs real customers.",
+    "trap": "Ships on a peeked result"
+   },
+   {
+    "t": "Rerun it on 90% of traffic so that a clear result arrives within a few days.",
+    "why": "Works when traffic is the bottleneck, but a few days still miss the weekend, which is exactly the gap.",
+    "trap": "Speed over a full week"
+   },
+   {
+    "t": "Score both prompts on 500 past chats offline and ship the higher scorer.",
+    "why": "Works as a pre-check, but resolved chats are a live outcome an offline set cannot measure.",
+    "trap": "Offline can't show live outcome"
+   }
+  ],
+  "answer": [
+   0
+  ],
+  "runnerUp": 1,
+  "decider": "stopped the test on day three, when the new prompt was ahead on resolved chats",
+  "explanation": "Peeking at an A/B test and stopping on the first lead inflates false wins, and a short test misses weekly cycles in traffic. Fix sample size and duration in advance and decide once. Shipping with monitoring would be fine only if the planned test had run its course.",
+  "eli5": {
+   "question": "A team compared two support scripts and stopped after three days because the new one was ahead, before any weekend orders came in. The clue: they stopped as soon as it looked good.",
+   "answer": "Calling a football match at 1–0 in the tenth minute isn't a result. You play the full time agreed before kickoff. <b>Rule: fix an A/B test's length up front and judge it once at the end.</b>",
+   "options": [
+    "Run it again for the full planned time and judge once: a fair result.",
+    "Use the new one now and watch: based on an early peek.",
+    "Rush it with more traffic: still misses the weekend.",
+    "Test on old chats: can't show live results."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-05",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.3 A/B testing and iterative improvement",
+  "trap": "Patches the last failure",
+  "fam": 3,
+  "select": 1,
+  "question": "A tax authority's helpline assistant gave wrong answers about late-filing penalties. The team added a penalty rule to the prompt, reran only the 30 penalty cases in the eval suite, saw them all pass, and released. A week later, answers about payment plans had become worse. What practice should the team adopt for future prompt changes?",
+  "options": [
+   {
+    "t": "Give each topic its own prompt so that a fix in one cannot affect another.",
+    "why": "Works for very different tasks, but it multiplies prompts to maintain, and each still needs regression testing.",
+    "trap": "Overbuilt split of the prompt"
+   },
+   {
+    "t": "Add payment-plan cases and rerun them along with penalty cases next time.",
+    "why": "Works for this regression only; the next change may break a third topic that again goes unchecked.",
+    "trap": "Patches the last failure"
+   },
+   {
+    "t": "Run the full eval suite on every change and block release on any regression.",
+    "why": "Best. A prompt change can shift behaviour anywhere; rerunning only the cases for the fix missed a side effect the full suite would have caught."
+   },
+   {
+    "t": "Have staff review a sample of live answers on all topics after each release.",
+    "why": "Works as monitoring, but it finds regressions after residents have already received wrong answers.",
+    "trap": "Detects after the harm"
+   }
+  ],
+  "answer": [
+   2
+  ],
+  "runnerUp": 1,
+  "decider": "reran only the 30 penalty cases in the eval suite",
+  "explanation": "Prompt changes have side effects, so every change runs the whole eval suite as a regression gate before release. Adding the topic that just broke only patches this incident. Live sampling is valuable, but it catches problems after the harm.",
+  "eli5": {
+   "question": "A team fixed one kind of wrong answer, tested only that kind, and broke another kind without noticing. The clue: they reran only the 30 cases about the fix.",
+   "answer": "A mechanic who fixes the brakes still checks the lights before handing back the car. <b>Rule: run the whole test suite on every change, not just the part you fixed.</b>",
+   "options": [
+    "Separate helpers per topic: lots more to maintain.",
+    "Also test payment plans next time: covers only this break.",
+    "Run every test every time and stop on any drop: catches side effects.",
+    "Check live answers later: people already got bad answers."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-06",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.4 Diagnose system issues",
+  "trap": "Squeezes needed content",
+  "fam": 7,
+  "select": 1,
+  "question": "A bank's assistant drafts credit memos as JSON. About 8% fail to parse because they end mid-sentence. Every failed memo is for a borrower with many loan facilities, and for each one the API's stop reason shows the output token limit was reached. The prompt and model are unchanged since launch. What should the team change first?",
+  "options": [
+   {
+    "t": "Raise the output token limit, or build long memos one section at a time.",
+    "why": "Best. The stop reason says the reply was cut off by the output limit; these memos are genuinely long, so they need more room or splitting."
+   },
+   {
+    "t": "Tell the model to keep every memo short enough to finish within the limit.",
+    "why": "Works when the extra length is padding, but these borrowers really have many facilities, so squeezing risks dropping facility details.",
+    "trap": "Squeezes needed content"
+   },
+   {
+    "t": "Retry each failed memo automatically until the JSON parses correctly.",
+    "why": "Works for random glitches, but the same long memo hits the same limit every time.",
+    "trap": "Retrying a fixed cut-off"
+   },
+   {
+    "t": "Move memo drafting to the most capable model to handle complex borrowers.",
+    "why": "Works for reasoning failures, but this is a length setting that any model would hit.",
+    "trap": "Model blamed for a setting"
+   }
+  ],
+  "answer": [
+   0
+  ],
+  "runnerUp": 1,
+  "decider": "for each one the API's stop reason shows the output token limit was reached",
+  "explanation": "A max-tokens stop reason means the reply was truncated by the output limit, not that the model reasoned badly. Give the output more room or split it into parts. Asking for brevity would win only if the memos were padded; here the content is genuinely long.",
+  "eli5": {
+   "question": "A helper writes reports, but long ones stop mid-sentence. The system log says each one hit the length limit. The clue: the log says the limit was reached.",
+   "answer": "If a form has ten lines and someone has twelve things to list, you give them a bigger form, not a lecture on brevity. <b>Rule: when output hits the token limit, give it room or split it.</b>",
+   "options": [
+    "More room, or write long reports in parts: fixes the cut-off.",
+    "Ask it to be shorter: may drop needed facts.",
+    "Try again: the same report hits the same limit.",
+    "Smarter model: any model hits the same limit."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-07",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.4 Diagnose system issues",
+  "trap": "Patches wording, keeps the cue",
+  "fam": 3,
+  "select": 1,
+  "question": "A port authority's assistant extracts fields from scanned cargo manifests. On manifests where no vessel name appears, it often reports the vessel as 'MV Northern Star'. That name appears in the prompt's only worked example. Manifests that do show a vessel name are extracted correctly. What should the team change first?",
+  "options": [
+   {
+    "t": "Retrieve more pages of each manifest so that the real vessel name is found.",
+    "why": "Works when the name is on a page that was not retrieved, but these manifests truly have no vessel name.",
+    "trap": "Retrieval blamed, name absent"
+   },
+   {
+    "t": "Move extraction to a more capable model that is less likely to copy examples.",
+    "why": "Works for reasoning gaps, but this is a prompt design fault: any model leans on a lone example when the field is missing.",
+    "trap": "Model blamed for prompt design"
+   },
+   {
+    "t": "Add a prompt line telling the model not to copy values from the example.",
+    "why": "Works a little, but the single example still dominates, and the prompt still never shows what to return when the name is missing.",
+    "trap": "Patches wording, keeps the cue"
+   },
+   {
+    "t": "Use several varied examples, including one where the vessel name is absent.",
+    "why": "Best. The invented name is copied from the only example, and nothing shows what to do when the field is missing; varied examples with an empty case teach that 'not present' is valid."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 2,
+  "decider": "That name appears in the prompt's only worked example.",
+  "explanation": "When outputs repeat a value from the prompt's example, the example is the cause: one example teaches its content, and no example teaches how to handle a missing field. Varied examples including an empty case fix the root. A 'don't copy' line leaves the misleading cue in place.",
+  "eli5": {
+   "question": "A helper fills forms from shipping papers. When a paper has no ship name, it writes the ship name from its only practice example. The clue: that name comes from the one example it was shown.",
+   "answer": "Teach a child to fill a form using one sample that says 'John', and blank forms come back saying 'John'. Show several samples, including one left blank. <b>Rule: when outputs copy the example, fix the examples, including a 'missing' case.</b>",
+   "options": [
+    "Read more pages: the name isn't there to find.",
+    "Smarter model: the lone example is still the cue.",
+    "Tell it not to copy: the lone example still pulls it.",
+    "Varied examples, one with no name: teaches what to do when it's missing."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-08",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.5 Optimize token usage, latency and cost",
+  "trap": "Cuts input, but output dominates",
+  "fam": 4,
+  "select": 1,
+  "question": "An online marketplace assigns a category code to each new listing as sellers upload it, and sellers see the code within seconds. The prompt asks Claude to explain its reasoning step by step before giving the code, so replies average 500 tokens, and output tokens make up most of the bill. An eval shows accuracy is unchanged without the explanation. Which change most cuts cost?",
+  "options": [
+   {
+    "t": "Send the listings through the Message Batches API for its lower price per token.",
+    "why": "Works for jobs that can wait, but sellers expect the code within seconds.",
+    "trap": "Batch breaks the seconds target"
+   },
+   {
+    "t": "Return just the category code, dropping the step-by-step explanation.",
+    "why": "Best. Output tokens drive the bill and the eval shows the explanation adds nothing, so dropping it removes most of the cost with no loss of accuracy or speed."
+   },
+   {
+    "t": "Cache the instructions and category list that start every prompt.",
+    "why": "Works when a long repeated prefix drives cost, but here most of the bill is output tokens.",
+    "trap": "Cuts input, but output dominates"
+   },
+   {
+    "t": "Move the job to a smaller, faster model and keep the explanations as they are.",
+    "why": "Works if the smaller model passes the eval, but it still pays for 500 tokens of explanation nobody reads.",
+    "trap": "Cheaper tokens, same waste"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 2,
+  "decider": "output tokens make up most of the bill",
+  "explanation": "Find the biggest cost driver before optimising. When output tokens dominate and the extra output adds no measured value, shorten the output. Caching cuts repeated input, and batching needs work that can wait; neither fits this bill or this deadline.",
+  "eli5": {
+   "question": "A helper labels each item for sale but writes a long essay first. Most of the cost is the essay, and the label is just as good without it. The clue: most of the bill is the writing it produces.",
+   "answer": "If a courier charges by the page and you only need to send an address, don't send a letter. <b>Rule: cut the biggest cost driver first; drop output nobody uses.</b>",
+   "options": [
+    "Bulk overnight discount: sellers need it in seconds.",
+    "Just the label, no essay: cuts the main cost.",
+    "Reuse the start of the prompt: saves on reading, but the cost is writing.",
+    "Cheaper helper, same essay: still paying for the essay."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-09",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.5 Optimize token usage, latency and cost",
+  "trap": "Shortens the tail, not the wait",
+  "fam": 3,
+  "select": 2,
+  "question": "A hotel group's phone booking agent makes two model calls per caller turn: an intent check that picks one of six intents, then an answer. Both run on the most capable model, and both start with the same 9,000 tokens of fixed instructions. Answers already stream to speech, but callers hear four seconds of silence before the first word. Which two changes best cut the silence?",
+  "options": [
+   {
+    "t": "Cap answer length with a lower output token limit on each turn.",
+    "why": "Works to shorten long answers, but answers already stream, so the end of an answer is not what callers are waiting for.",
+    "trap": "Shortens the tail, not the wait"
+   },
+   {
+    "t": "Move the intent check to a smaller, faster model once it matches accuracy in testing.",
+    "why": "Best. Picking one of six intents is a simple task, and its whole call sits before the first spoken word."
+   },
+   {
+    "t": "Send the calls through the Message Batches API for its lower price.",
+    "why": "Works for jobs that can wait hours, not for a caller on the line.",
+    "trap": "Batch for a live call"
+   },
+   {
+    "t": "Cache the long fixed instructions that open every model call.",
+    "why": "Best. Both calls reprocess the same 9,000-token prefix; caching it cuts time to first token on each."
+   },
+   {
+    "t": "Turn on extended thinking so the answer step plans before it replies.",
+    "why": "Works when answers need deeper reasoning, but thinking happens before the first word and lengthens the silence.",
+    "trap": "More thinking, more silence"
+   }
+  ],
+  "answer": [
+   1,
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "Answers already stream to speech, but callers hear four seconds of silence before the first word.",
+  "explanation": "With streaming on, the wait is everything before the first token: the full intent call plus the answer call's processing of its input. A smaller model for a simple classification and a cached fixed prefix both cut that. Capping output only trims the end of an answer that is already streaming.",
+  "eli5": {
+   "question": "A phone helper does two steps before it speaks, both using the biggest brain and both rereading a long rulebook. The clue: words flow fine once it starts; the wait is before the first word.",
+   "answer": "If a restaurant keeps you waiting before taking your order, shorter dish descriptions don't help; a quicker greeter and a pre-set table do. <b>Rule: to cut time to first word, speed up what happens before the first token.</b>",
+   "options": [
+    "Shorter answers: the wait is before the first word.",
+    "Small fast brain for the simple sorting step: cuts the first wait.",
+    "Bulk overnight discount: callers are live.",
+    "Remember the rulebook instead of rereading it: cuts the start-up delay.",
+    "Think longer first: adds to the silence."
+   ]
+  }
+ },
+ {
+  "id": "p2-d4-10",
+  "domain": "D4 · Evaluation, Testing & Optimization",
+  "obj": "4.6 Monitor with logging and observability",
+  "trap": "Averages still hide segments",
+  "fam": 6,
+  "select": 1,
+  "question": "A government service assistant answers residents in English and French. French conversations are about 8% of traffic. The dashboard shows one overall resolution rate, which stayed near 82%. An audit later found French resolution fell from 80% to 55% after a prompt change six weeks ago, and no alert fired. What should the architect add to monitoring?",
+  "options": [
+   {
+    "t": "Tighten the overall resolution alert so that a two-point drop triggers it.",
+    "why": "Works partly: it might have fired here, but also on everyday noise, and it cannot say which group is failing. It would win with a single language.",
+    "trap": "Averages still hide segments"
+   },
+   {
+    "t": "Log the full prompt and response of every conversation for later review.",
+    "why": "Works for investigation once you know there is a problem, but it raises no signal by itself.",
+    "trap": "Data without a signal"
+   },
+   {
+    "t": "Track resolution and escalation per language, with an alert for each.",
+    "why": "Best. French is a small slice, so a collapse there barely moves the average; per-language metrics with their own alerts catch it and point to it."
+   },
+   {
+    "t": "Have staff read a random sample of 50 conversations every week.",
+    "why": "Works for spotting general issues, but only about four of 50 would be French, too few to notice the drop.",
+    "trap": "Random sample misses small group"
+   }
+  ],
+  "answer": [
+   2
+  ],
+  "runnerUp": 0,
+  "decider": "French conversations are about 8% of traffic.",
+  "explanation": "An overall average hides failures in a small segment. Monitor key metrics per segment that matters, such as language, product or channel, each with its own alert. A tighter overall threshold either fires on noise or still misses, and it never names the failing group.",
+  "eli5": {
+   "question": "A helper speaks English and French. French is a small slice, and its success rate crashed, but the one overall number barely moved. The clue: French is only 8% of the chats.",
+   "answer": "A school's average grade can look fine while one small class is failing. You check each class. <b>Rule: monitor key metrics per segment, not only the overall average.</b>",
+   "options": [
+    "Make the overall alarm jumpier: noisy, and can't say who's failing.",
+    "Save every chat: nobody is told anything is wrong.",
+    "A success rate and alarm for each language: catches the French drop.",
+    "Read 50 random chats: only about four would be French."
+   ]
+  }
+ }
+]

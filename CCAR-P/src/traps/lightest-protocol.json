@@ -1,0 +1,140 @@
+{
+ "n": 13,
+ "slug": "lightest-protocol",
+ "title": "The lightest protocol that fits",
+ "domain": "D3 · Integration",
+ "lines": [
+  "3.7"
+ ],
+ "glance": "Pick the lightest mechanism that meets the reuse, ownership and security needs: a direct API call or CLI for one known call, an MCP server for a capability many AI clients share, and agent-to-agent when another party's agent owns the whole job.",
+ "story": [
+  "There are several ways to connect Claude to another system. A <b>direct API call</b>, usually wrapped as one tool in your app, is the simplest: one application, one known call, nothing to share. An agent that already has a shell can use a familiar <b>command-line tool</b> (CLI) without anything new being built.",
+  "<b>MCP</b> (the Model Context Protocol) is a standard way to expose tools and data so that <i>many</i> AI clients, such as Claude Code, the desktop app and your own agents, can use the same server. It pays off when several clients need the same capability, or when the owning team wants one place to control access and change the backend without breaking every client. For a single fixed call it is extra machinery.",
+  "<b>Agent-to-agent</b> means handing a whole goal to someone else's agent, which runs its own multi-step process with its own private systems. It fits when the other party owns the logic and will not expose its systems. If they offer a plain, documented endpoint for what you need, calling that endpoint is lighter. The trap runs both ways: a heavy protocol for one call, or custom glue in every client for a tool many share."
+ ],
+ "situation": "A freight company's quoting assistant is a single internal app. To quote a shipment, Claude needs the current rate from the company's own rate service, which has a documented REST endpoint taking origin, destination and weight. The call is always the same, and no other AI client needs rates. How should rate lookup be integrated?",
+ "options": [
+  {
+   "id": "A",
+   "t": "A tool defined in the app that calls the rate endpoint directly."
+  },
+  {
+   "id": "B",
+   "t": "An MCP server for the rate service that any AI client can connect to."
+  },
+  {
+   "id": "C",
+   "t": "Hand each rate request to a quoting agent over an agent-to-agent protocol."
+  },
+  {
+   "id": "D",
+   "t": "Give Claude a shell so it can run the rate team's command-line tool."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "One app needs one fixed call, and no other AI client needs rates.",
+   "winner": "A",
+   "why": "One application with one known call needs the fewest moving parts. A single tool calling the endpoint directly does the job, with nothing to share or govern.",
+   "losers": {
+    "B": "An MCP server pays off when several clients share it. With one app and one call, it adds a server to build and run for no reuse.",
+    "C": "There is no other party's agent here, only a simple endpoint. Delegating a goal is far heavier than one call.",
+    "D": "A shell gives the assistant far more power than one lookup needs, and the app does not otherwise run commands."
+   }
+  },
+  {
+   "name": "Many clients need it",
+   "fact": "Five teams now want rates: sales in the desktop app, developers in Claude Code and three internal agents. Each has started writing its own wrapper, and security wants one place to control access.",
+   "winner": "B",
+   "why": "Several AI clients need the same capability, and security wants a single control point. One MCP server is built once, used by every client and governed centrally.",
+   "losers": {
+    "A": "One tool in one app suits a single client. Five teams each writing their own wrapper is the custom glue that MCP replaces.",
+    "C": "The rates come from the company's own simple service; there is no separate agent owning a multi-step job.",
+    "D": "A CLI suits agents that have a shell, such as Claude Code, but the desktop app and the internal agents would still need their own glue."
+   }
+  },
+  {
+   "name": "A partner's agent owns the job",
+   "fact": "Rates now come from partner carriers. Each carrier runs its own quoting agent, which checks capacity, applies contract terms and holds space over several steps, and will not expose its internal systems.",
+   "winner": "C",
+   "why": "The carrier owns a multi-step process and keeps its systems private. Handing it the goal (quote and hold this shipment) over agent-to-agent is the only way in.",
+   "losers": {
+    "A": "There is no simple endpoint to call; the carrier exposes only its agent.",
+    "B": "An MCP server would need access to the carrier's internal steps, which the carrier will not expose.",
+    "D": "The carrier offers no command-line tool, and a shell would not reach its private systems."
+   }
+  }
+ ],
+ "signals": [
+  "“only this one application needs it”",
+  "“several teams and AI clients need the same tool”",
+  "“each team is writing its own integration”",
+  "“the partner runs its own agent and will not expose its systems”",
+  "“a coding agent with a shell”",
+  "“a documented endpoint” for a single call"
+ ],
+ "remember": "Start from the lightest mechanism and move up only when a need demands it: direct call for one known call, CLI for an agent with a shell, MCP when many AI clients share it, agent-to-agent when another party's agent owns the job.",
+ "practice": [
+  {
+   "stem": "An online shop's support assistant must tell customers where their parcel is. The courier offers a documented tracking endpoint that returns the status for a tracking number. It also markets a new courier agent that handles complaints and redelivery over several steps. Only the status is needed. Which integration fits best?",
+   "select": 1,
+   "options": [
+    "Send each tracking question to the courier's agent over an agent-to-agent protocol.",
+    "Build an MCP server around the courier's endpoints for any future AI client.",
+    "Have the assistant browse the courier's public tracking page for each parcel.",
+    "A tool in the support assistant that calls the tracking endpoint directly."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: only the status is needed, and a documented endpoint returns it. One known call from one app is the lightest fit.",
+   "traps": [
+    "Works for handing over complaints or redelivery, but a status lookup is one call, not a goal.",
+    "Works when several clients need it; here there is one assistant and no reuse.",
+    "Works when no endpoint exists, but page scraping breaks easily and a documented endpoint is available.",
+    null
+   ]
+  },
+  {
+   "stem": "A retailer's stock system is used by three AI clients: a store-staff assistant, a buying agent and analysts in the Claude desktop app. Each queries the stock database tables directly with its own code. The stock team plans a schema change next month and does not want to coordinate with three client teams every time. Which mechanism fits?",
+   "select": 1,
+   "options": [
+    "An MCP server, owned by the stock team, exposing stock lookups as tools.",
+    "Keep direct database queries and send each client team the new schema early.",
+    "A stock agent that the other clients ask in plain language for what they need.",
+    "A command-line tool for stock lookups installed wherever the clients run."
+   ],
+   "key": [
+    0
+   ],
+   "why": "The deciding fact: the owning team wants to change its backend without breaking several AI clients. An MCP server it owns gives one stable interface for all of them.",
+   "traps": [
+    null,
+    "Works for one client, but every future schema change still needs three teams to update.",
+    "Works when another party owns a multi-step job; here clients need simple lookups, and an agent adds delay.",
+    "Works for agents with a shell, but two of these clients have none."
+   ]
+  },
+  {
+   "stem": "A data team's nightly pipeline sends each new support ticket to Claude for a category label, then needs the label stored in the warehouse. An engineer proposes an MCP server for the warehouse so that Claude can write each label itself. No other AI client uses the warehouse. What should the architect recommend?",
+   "select": 1,
+   "options": [
+    "Build the MCP server, so the write step can be reused by future AI clients.",
+    "Give Claude a shell so it can run the warehouse's command-line loader itself.",
+    "Have Claude return the label as structured output and let the pipeline write it.",
+    "Create a warehouse agent that receives each label and decides how to store it."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: a fixed pipeline makes one known call and no other AI client needs the warehouse. Claude returns the label; ordinary code does the write.",
+   "traps": [
+    "Works when several AI clients share the warehouse; here none do, so it is extra machinery.",
+    "Works for interactive coding agents, but it gives a batch step far more power than writing a label needs.",
+    null,
+    "Works when another party owns a multi-step job; storing a label is one fixed write."
+   ]
+  }
+ ]
+}

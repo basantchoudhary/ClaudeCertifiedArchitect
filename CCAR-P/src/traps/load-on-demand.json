@@ -1,0 +1,141 @@
+{
+ "n": 14,
+ "slug": "load-on-demand",
+ "title": "Load it when it's needed",
+ "domain": "D3 · Integration",
+ "lines": [
+  "3.8",
+  "2.4"
+ ],
+ "glance": "Load content up front only when it is small, stable and needed on almost every request; otherwise keep a short index in context and fetch the detail when a task calls for it.",
+ "story": [
+  "There are two ways to give Claude what it might need. <b>Monolithic context</b> puts everything into every request: simple, no lookup step, and cheap with prompt caching when the content is small and stable. <b>Progressive discovery</b> keeps only a short index in context and loads the detail when the task calls for it.",
+  "Monolithic context breaks down as content grows. Every token costs money and time, and dozens of procedures or tools in view at once dilute attention: the model mixes up similar steps or picks a similar but wrong tool. A bigger context window raises the limit but fixes none of that.",
+  "The tools for loading on demand differ by what is being loaded. <b>Skills</b> keep only a name and description in context and load the full instructions when a task matches, which suits procedures that must be followed whole. <b>Tool search</b> finds the relevant tools among many. <b>Retrieval</b> or reading a resource on demand suits huge reference data where each question needs a few facts."
+ ],
+ "situation": "An airline's service agent carries 25 long procedures (lost baggage, refunds, pet travel and so on), about 70,000 tokens in all, in every request. Each conversation uses one or two of them, and each procedure must be followed step by step. Replies are slow and costly, and the agent sometimes mixes steps from two procedures. What should the architect change?",
+ "options": [
+  {
+   "id": "A",
+   "t": "Package each procedure as a Skill that loads in full only when a conversation needs it."
+  },
+  {
+   "id": "B",
+   "t": "Keep all the content in every request as a stable prefix and turn on prompt caching."
+  },
+  {
+   "id": "C",
+   "t": "Move to a model with a larger context window so everything fits comfortably."
+  },
+  {
+   "id": "D",
+   "t": "Index the content for retrieval and fetch the most relevant passages for each message."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "25 long procedures, one or two used per conversation, each followed step by step.",
+   "winner": "A",
+   "why": "Skills keep only short descriptions in context and load a whole procedure when it is needed. Context shrinks, and the agent sees one procedure at a time, so steps stop mixing.",
+   "losers": {
+    "B": "Caching cuts the price of the repeated block, but the agent still sees all 25 procedures and keeps mixing their steps.",
+    "C": "A bigger window raises the limit; it does not cut cost or stop similar procedures diluting attention.",
+    "D": "Retrieving passages can return part of a procedure and miss steps. Procedures must be followed whole, which is what Skills load."
+   }
+  },
+  {
+   "name": "Small and always needed",
+   "fact": "The agent has only three short procedures, about 2,000 tokens, nearly every conversation uses all three, and they change twice a year.",
+   "winner": "B",
+   "why": "Small, stable content needed on nearly every request is the case for loading it up front. Caching the prefix makes it cheap, with no lookup step to slow replies.",
+   "losers": {
+    "A": "Skills would load on almost every conversation anyway, adding a loading step for no saving.",
+    "C": "2,000 tokens already fit easily; a larger window solves nothing here.",
+    "D": "Retrieval adds a search step and could return part of a procedure, for content small enough to send whole."
+   }
+  },
+  {
+   "name": "Huge reference data",
+   "fact": "The content is not procedures but a fare and route reference of about two million tokens, and each question needs a few facts from it.",
+   "winner": "D",
+   "why": "A reference far too big to send, where each question needs a few facts, is the case for retrieval: fetch only the matching passages.",
+   "losers": {
+    "A": "Skills package instructions to follow. A two-million-token table of fares is reference data to search, not a procedure to load whole.",
+    "B": "Two million tokens cannot be sent on every request, cached or not.",
+    "C": "No practical context window takes two million tokens on every request, and most of it would be noise."
+   }
+  }
+ ],
+ "signals": [
+  "“each task uses only a few of them”",
+  "“picks a similar but wrong tool” or “mixes up steps”",
+  "“small, stable and needed on every request”",
+  "“a very large reference consulted occasionally”",
+  "“a model with a larger context window”",
+  "“must be followed step by step”"
+ ],
+ "remember": "Small, stable and always needed: load it and cache it. Otherwise load on demand: Skills for procedures, tool search for many tools, retrieval or resources for big reference data. A bigger window is never the fix.",
+ "practice": [
+  {
+   "stem": "A telecom's field-service agent used to load 30 repair procedures in every request; they are now 30 Skills. Since the change, it often answers without loading the matching Skill. Each Skill's description reads only “Procedure” and a number, such as “Procedure 14”. What should the architect change?",
+   "select": 1,
+   "options": [
+    "Go back to loading all 30 procedures in every request, with prompt caching.",
+    "Add a system-prompt rule telling the agent to check every Skill before replying.",
+    "Merge the 30 Skills into one large Skill that always loads in full.",
+    "Rewrite each Skill's description to say what it covers and when to use it."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: the agent decides which Skill to load from its description, and “Procedure 14” says nothing. Clear descriptions make on-demand loading work.",
+   "traps": [
+    "Works for small content needed every time; 30 procedures bring back the cost and the mixing.",
+    "Works sometimes, but it cannot match tasks to Skills whose descriptions say nothing.",
+    "Works only as monolithic context under another name, with the same cost and confusion.",
+    null
+   ]
+  },
+  {
+   "stem": "A bank's phone voice assistant must start speaking within one second. It uses a 5,000-token set of card and account rules that changes monthly, and about half of all calls need some part of it. A colleague proposes moving the rules into Skills that load on demand. What should the architect recommend?",
+   "select": 1,
+   "options": [
+    "Move the rules into Skills so that calls not needing them stay lean.",
+    "Index the rules for retrieval and fetch the matching section on each call.",
+    "Keep the rules in the prompt as a stable prefix, with prompt caching on.",
+    "Expose the rules as an MCP resource that the assistant reads when needed."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: a one-second start for a small, stable set of rules. Any on-demand load adds a step before speaking, while a cached prefix is cheap and instant.",
+   "traps": [
+    "Works for long content used now and then, but loading a Skill adds a step the voice budget cannot afford.",
+    "Works for large reference data; for 5,000 tokens the search step costs more time than it saves.",
+    null,
+    "Works for large data read occasionally; here the extra read delays half of all calls."
+   ]
+  },
+  {
+   "stem": "An accounting firm's assistant must follow twelve long filing procedures exactly, step by step. Today the procedures are split into chunks, and the five most similar chunks are retrieved for each request. Reviewers find it often skips steps that sit in chunks it did not retrieve. What should the architect change?",
+   "select": 1,
+   "options": [
+    "Package each procedure as a Skill that loads in full when the task needs it.",
+    "Retrieve the ten most similar chunks instead of five for each request.",
+    "Use larger chunks so that each one holds more of a procedure's steps.",
+    "Load all twelve procedures into every request and cache them as a prefix."
+   ],
+   "key": [
+    0
+   ],
+   "why": "The deciding fact: the procedures must be followed whole, and chunk retrieval returns fragments. A Skill loads the entire procedure only when it is needed.",
+   "traps": [
+    null,
+    "Works to raise recall, but chunks can still miss steps and more unrelated text arrives.",
+    "Works partly, but chunk boundaries still split procedures somewhere.",
+    "Works for small content needed every time; twelve long procedures bring back cost and confusion."
+   ]
+  }
+ ]
+}

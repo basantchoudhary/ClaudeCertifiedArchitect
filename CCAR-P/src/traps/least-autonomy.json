@@ -1,0 +1,143 @@
+{
+ "n": 5,
+ "slug": "least-autonomy",
+ "title": "The least autonomy that works",
+ "domain": "D1 · Solution Design &amp; Architecture",
+ "lines": [
+  "1.3",
+  "1.4"
+ ],
+ "glance": "Choose the simplest pattern that solves the problem: one call, then a fixed workflow, then a single agent, and several agents only when the work splits into independent parts worth the cost.",
+ "story": [
+  "There is a ladder of patterns. An <b>augmented LLM</b> is one Claude call, perhaps with retrieval or a tool. A <b>workflow</b> is several calls in an order your code decides, so it is predictable, testable and cheap. An <b>agent</b> lets the model decide the next step in a loop, which is flexible but costlier and harder to predict. A <b>multi-agent</b> system adds a coordinator and subagents, each with its own fresh context, and uses many more tokens again.",
+  "Each step up the ladder buys flexibility and pays for it in cost, latency and predictability. So climb only as far as the problem needs. If the steps are the same every time, code can run them. If the next step depends on what was just found, an agent earns its place. If the work splits into several independent, open-ended threads, valuable enough to justify the tokens, a coordinator with parallel subagents fits.",
+  "The trap is that agents sound modern and capable. On the exam, the deciding fact is usually whether the steps are known in advance."
+ ],
+ "situation": "An accounting firm wants Claude to process expense claims. Every claim goes through the same steps in the same order: read the receipt, extract the amount and category, check them against the expense policy, and write a short note for the approver. An engineer proposes a manager agent that hands each step to its own specialist agent. What should the architect choose?",
+ "options": [
+  {
+   "id": "A",
+   "t": "A coordinator agent that hands each part of the work to its own specialist subagent."
+  },
+  {
+   "id": "B",
+   "t": "A fixed workflow in code that calls Claude for each step in a set order."
+  },
+  {
+   "id": "C",
+   "t": "A single agent with tools that decides which steps each case needs."
+  },
+  {
+   "id": "D",
+   "t": "One Claude call per case, with the inputs and the policy in a single prompt."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "Every claim goes through the same four known steps in the same order.",
+   "winner": "B",
+   "why": "The steps are known in advance, so code can run them in order. Each step can be tested on its own, and the cost is predictable.",
+   "losers": {
+    "A": "Several agents add coordination and many more tokens to a fixed sequence that needs no decisions.",
+    "C": "Letting the model choose steps adds cost and unpredictability when the steps never change.",
+    "D": "One call may work, but four distinct steps with a policy check are easier to test and fix as separate calls."
+   }
+  },
+  {
+   "name": "One simple step",
+   "fact": "The firm's rules engine already checks policy and writes the note. Claude only needs to read each receipt and return the amount and category, and a single call already meets the accuracy target on a test set.",
+   "winner": "D",
+   "why": "There is one step, and a single call passes the evaluation. Anything more adds cost and parts with no measured gain.",
+   "losers": {
+    "A": "A team of agents for one extraction step is pure overhead.",
+    "B": "A workflow of one step is just a single call with extra plumbing.",
+    "C": "There are no steps for an agent to choose between."
+   }
+  },
+  {
+   "name": "The path is not known",
+   "fact": "The job is investigating claims flagged as possible fraud. Each case needs different checks (supplier records, card transactions, travel bookings), and the next check depends on what the last one found.",
+   "winner": "C",
+   "why": "The steps cannot be fixed in advance, so a model-directed loop is needed. One agent keeps the linked findings in one context.",
+   "losers": {
+    "A": "The checks depend on each other, so splitting them across subagents loses the thread and multiplies cost.",
+    "B": "A fixed order cannot follow a lead that only appears halfway through.",
+    "D": "A single call cannot fetch new evidence and react to it."
+   }
+  }
+ ],
+ "signals": [
+  "“every item goes through the same steps” (a workflow)",
+  "“the next step depends on what it finds” (an agent)",
+  "“independent parts”, “separate sources”, “in parallel” and high value (multi-agent)",
+  "a single prompt that already passes the evaluation",
+  "an engineer who proposes agents because they are more flexible"
+ ],
+ "remember": "Use the least autonomy that solves the problem. Known steps belong in a workflow; an agent is for paths that cannot be known in advance; several agents are for independent, valuable threads.",
+ "practice": [
+  {
+   "stem": "A city's public-services line receives text messages that are pothole reports, noise complaints or missed bin collections. Each type goes to a different department with its own form and wording. An engineer proposes an agent that reads each message and decides what to do with it. Which pattern fits best?",
+   "select": 1,
+   "options": [
+    "An agent that decides for each message which tools to call and in which order.",
+    "A coordinator agent with one subagent per department, each with its own tools.",
+    "A router that classifies each message and passes it to a prompt for that form.",
+    "One general prompt that handles all three types and fills whichever form fits."
+   ],
+   "key": [
+    2
+   ],
+   "why": "The deciding fact: messages fall into a few distinct types, each handled differently. Routing gives each type its own tuned prompt, with steps known in advance.",
+   "traps": [
+    "Works when the path is unknown, but here the path is fixed once the type is known.",
+    "Works for independent, open-ended threads, but each message is one short task.",
+    null,
+    "Works for similar inputs, but three different forms are better served by tuned prompts."
+   ]
+  },
+  {
+   "stem": "A drug company's strategy team wants a weekly briefing on competitors from four separate sources: trial registries, regulatory notices, journals and patent filings. Each source needs several rounds of searching, where the next search depends on what turned up. The four threads do not depend on each other, and the briefing is high value. What design fits?",
+   "select": 1,
+   "options": [
+    "A coordinator that hands each source to its own subagent and merges results.",
+    "A fixed workflow that runs one set query per source and then writes the briefing.",
+    "A single agent that searches the four sources one after another in one context.",
+    "One Claude call with all four sources' search results pasted into the prompt."
+   ],
+   "key": [
+    0
+   ],
+   "why": "The deciding facts: four independent, open-ended threads, and a high-value result. Parallel subagents keep each thread in its own context, and the value justifies the extra tokens.",
+   "traps": [
+    null,
+    "Works when one query per source is enough, but here each search depends on the last.",
+    "Works for linked steps, but four unrelated threads crowd one context and run slowly.",
+    "Works for a one-step task, but a single call cannot run follow-up searches."
+   ]
+  },
+  {
+   "stem": "A bank's business-onboarding workflow checks applications in five fixed steps and meets its targets on most cases. The team is considering replacing it with an agent. Which two findings would justify that change?",
+   "select": 2,
+   "options": [
+    "The workflow's prompts have grown long, and the team finds them hard to maintain.",
+    "Many applications need different checks depending on what earlier checks find.",
+    "A newer model has been released that is better at choosing which tool to call.",
+    "On those varied cases, the workflow fails the evaluation and an agent prototype passes.",
+    "Volume will double next year, and the cost per application is already over plan."
+   ],
+   "key": [
+    1,
+    3
+   ],
+   "why": "The deciding facts: the path now depends on findings, and evidence shows the simpler pattern falls short where an agent succeeds. Autonomy is added when evaluation shows it is needed.",
+   "traps": [
+    "Works as a reason to tidy prompts into modules, not to change the pattern.",
+    null,
+    "Works as a reason to test the new model, but it does not change what the task needs.",
+    null,
+    "Works as a reason to cut cost, but an agent usually costs more per case, not less."
+   ]
+  }
+ ]
+}

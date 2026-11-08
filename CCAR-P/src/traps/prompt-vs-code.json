@@ -1,0 +1,144 @@
+{
+ "n": 2,
+ "slug": "prompt-vs-code",
+ "title": "Code for musts, prompt for shoulds",
+ "domain": "D2 · Models, Prompting &amp; Context",
+ "lines": [
+  "2.2",
+  "5.1",
+  "7.1"
+ ],
+ "glance": "A rule that must hold every time belongs in code or permissions; a prompt rule makes it likely, not certain. Soft preferences stay in the prompt, and judgement calls go to a person.",
+ "story": [
+  "A system prompt is the right place for role, tone, scope and format. Claude follows clear instructions well, and explaining the reason for a rule helps it handle cases the rule did not list. But a prompt instruction is <b>probabilistic</b>: it makes the right behaviour very likely, not certain. A persistent user, an odd input or a hidden instruction in a document can still push the model past it.",
+  "So the first question about any rule is: what happens on the one time in a thousand it is broken? If the answer is a legal breach, a lost sum of money or an unsafe action, the rule must be <b>deterministic</b>: checked in code (inside the tool, in a validator, in a hook) or enforced by permissions, so it holds whatever the model says. In Claude Code the same split exists: CLAUDE.md is guidance the model reads, while permission rules and hooks are enforced by the tool itself.",
+  "The trap runs both ways. A hard limit in a prompt is too weak. A soft preference forced into code is too heavy, and a rule with genuine exceptions blocked in code stops the right answers too. When the exceptions need human judgement, a person approves them before the action runs."
+ ],
+ "situation": "An airline's rebooking assistant chats with passengers after cancellations and rebooks them through a tool. Policy caps the extra cost of a partner-airline seat at $400 per passenger, with no exceptions. The system prompt states the cap. In red-team testing, a persistent tester talked the assistant into booking a $900 partner seat. What should the architect add?",
+ "options": [
+  {
+   "id": "A",
+   "t": "A check inside the rebooking tool that rejects any partner booking over the cap."
+  },
+  {
+   "id": "B",
+   "t": "A clearer statement of the partner-booking policy in the system prompt, with two examples."
+  },
+  {
+   "id": "C",
+   "t": "A step that sends partner rebookings to a duty manager to approve before they are confirmed."
+  },
+  {
+   "id": "D",
+   "t": "A daily report of partner rebookings and their extra cost for the revenue team."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "The $400 cap is a hard rule with no exceptions, and the prompt already states it.",
+   "winner": "A",
+   "why": "A rule that must hold every time goes into code. The tool rejects an over-cap booking whatever the conversation said.",
+   "losers": {
+    "B": "The prompt already states the cap and was talked past; a clearer prompt lowers the odds but cannot guarantee the cap.",
+    "C": "Approval puts staff time on a decision code can make exactly, since there are no exceptions to judge.",
+    "D": "A report finds the $900 seat the day after it was booked."
+   }
+  },
+  {
+   "name": "Exceptions need judgement",
+   "fact": "The $400 figure is a guideline. Duty managers may approve more for cases such as families with young children stranded overnight, and they decide case by case.",
+   "winner": "C",
+   "why": "The rule has real exceptions that need a person's judgement. The assistant proposes, and a manager approves each over-guideline seat before it is booked.",
+   "losers": {
+    "A": "A hard block in code would refuse the exceptions the policy allows.",
+    "B": "Leaving the exception to the model hands a judgement call, with money at stake, to a probabilistic rule.",
+    "D": "A next-day report reviews decisions that should have had approval before they happened."
+   }
+  },
+  {
+   "name": "Only a preference",
+   "fact": "There is no cap. The policy is a preference: offer the airline's own flights first, and partner seats when nothing suitable is available. Getting the order wrong costs little.",
+   "winner": "B",
+   "why": "A soft preference with little harm when missed belongs in the system prompt, explained with its reason and a couple of examples.",
+   "losers": {
+    "A": "There is no limit to enforce, and coding a preference would block reasonable partner bookings.",
+    "C": "Approving every partner booking spends staff time on a low-stakes preference.",
+    "D": "A report adds work without changing what the assistant offers."
+   }
+  }
+ ],
+ "signals": [
+  "“no exceptions”, “must never”, “required by law” or a fixed money limit",
+  "“the system prompt already states…” and it was still broken",
+  "a tester or customer who “persuaded” or “talked it into” something",
+  "“case by case” or “managers may approve” (approval may win)",
+  "“prefers”, “house style” or “costs little if missed” (the prompt may win)"
+ ],
+ "remember": "Ask what happens the one time the rule is broken. If that is unacceptable, enforce it in code or permissions; if it needs judgement, route it to a person first; if it is a soft preference, the prompt is enough.",
+ "practice": [
+  {
+   "stem": "A bank's chat assistant answers questions about savings accounts. Regulation requires that every reply quoting an interest rate includes a set risk warning, word for word. The system prompt asks for the warning, and spot checks find it missing in about one reply in two hundred. What should the architect do?",
+   "select": 1,
+   "options": [
+    "Move the warning instruction to the end of the prompt and add three examples.",
+    "Have a compliance officer check a weekly sample of replies and report misses.",
+    "Lower the temperature so the model includes the warning more consistently.",
+    "Add a code step that appends the exact warning to any reply quoting a rate."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: regulation requires the warning in every such reply. A code step makes it deterministic; a prompt can only make it likely.",
+   "traps": [
+    "Works, but it improves the odds without making the warning certain.",
+    "Works, but a sample finds misses after customers have seen the replies.",
+    "Works, but lower temperature makes output more consistent, not guaranteed.",
+    null
+   ]
+  },
+  {
+   "stem": "A water utility's assistant sets up instalment plans for customers behind on bills. Plans up to six months follow a fixed rule and start automatically. Longer plans are allowed, but the hardship team decides each one using evidence the assistant cannot verify, such as medical letters. How should longer plans be handled?",
+   "select": 1,
+   "options": [
+    "Block any plan longer than six months inside the instalment tool.",
+    "Let the assistant propose longer plans, and have an officer approve each first.",
+    "Tell the assistant in its prompt to agree longer plans for genuine hardship.",
+    "Allow longer plans, and send the hardship team a weekly list to review."
+   ],
+   "key": [
+    1
+   ],
+   "why": "The deciding fact: longer plans are allowed, but each needs a judgement on evidence the assistant cannot check. A person approves before the plan starts.",
+   "traps": [
+    "Works for a hard limit, but here it would refuse plans the policy allows.",
+    null,
+    "Works, but it hands a judgement on unverifiable evidence to the model.",
+    "Works, but the review comes after plans have already started."
+   ]
+  },
+  {
+   "stem": "A sales agent drafts and sends follow-up emails to prospects. Legal requires that it never emails anyone on the company's do-not-contact list, which changes daily, and the prompt already says so. Which two controls make this hold every time?",
+   "select": 2,
+   "options": [
+    "Check each recipient against the live do-not-contact list inside the send tool.",
+    "Paste the day's do-not-contact list into the system prompt each morning.",
+    "Let the send tool accept only contacts whose consent flag is set in the CRM.",
+    "Ask the model to double-check every recipient before it calls the send tool.",
+    "Log each email sent and have sales operations review the log every week."
+   ],
+   "key": [
+    0,
+    2
+   ],
+   "why": "The deciding fact: the rule must hold every time. A blocklist check and a consent allowlist, both in the send tool's code, enforce it whatever the model decides.",
+   "traps": [
+    null,
+    "Works, but the model may still miss a name, and a long list costs tokens on every call.",
+    null,
+    "Works, but a model checking itself is still probabilistic.",
+    "Works, but the review finds the email after it was sent."
+   ]
+  }
+ ]
+}

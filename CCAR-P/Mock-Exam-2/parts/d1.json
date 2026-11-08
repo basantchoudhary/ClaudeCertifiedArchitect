@@ -1,0 +1,325 @@
+[
+  {
+    "id": "p2-d1-01",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.1 Business problem to Claude solution",
+    "trap": "Claude doing the statistics",
+    "fam": 4,
+    "select": 1,
+    "question": "A parcel carrier wants to tell customers, at booking, how likely their delivery is to arrive late. It holds five years of delivery records in structured columns: route, weather, depot load and whether each parcel was late. A sponsor asks for Claude to make the prediction. Which design should the architect propose?",
+    "options": [
+      {"t": "Claude reads the last month of records for the route in its prompt and estimates the delay risk.", "why": "Works for a rough guess, but a prompt holds only a sample of the history, and reading rows is a weaker way to estimate a rate than training on all of them.", "trap": "Sample in the prompt"},
+      {"t": "A model trained on the history predicts the risk, and Claude explains it to the customer.", "why": "Best. The deciding fact is years of labelled, structured records: a trained model predicts from them accurately and consistently, and Claude adds the plain-language explanation."},
+      {"t": "An agent with a query tool explores the delivery history for each booking and reasons out a risk.", "why": "Works and can reach all the data, but it is slow and costly per booking, and its estimate can vary from run to run.", "trap": "Agent for a fixed prediction"},
+      {"t": "Claude retrieves the most similar past deliveries and estimates the risk from how many were late.", "why": "Works as a nearest-match guess, and it would suit free-text history, but here it ignores most of the five years of clean columns a trained model can use.", "trap": "Claude doing the statistics"}
+    ],
+    "answer": [1],
+    "runnerUp": 3,
+    "decider": "five years of delivery records in structured columns",
+    "explanation": "Claude's strength is language: reading, writing and judgement over text. Predicting a rate from years of labelled columns is a classic statistical task, so a trained model does it better, and Claude adds value by explaining the result. Retrieving similar cases would fit if the history were free-text notes rather than clean columns.",
+    "eli5": {
+      "question": "A delivery company wants to say “your parcel might be late” when people book. They have years of neat tables showing which parcels were late and why. The clue: the data is numbers in columns, not text.",
+      "answer": "To guess tomorrow's rain you use a weather model, then a presenter explains it on TV. The presenter does not do the maths in their head. <b>Rule: use a trained model for predictions from structured data, and Claude for the words around it.</b>",
+      "options": [
+        "Claude looks at last month's rows and guesses.",
+        "A prediction model does the maths, and Claude explains the answer.",
+        "An agent digs through the data for each booking and guesses.",
+        "Claude finds a few similar past parcels and guesses from them."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-02",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.1 Business problem to Claude solution",
+    "trap": "Model doing a fixed rule check",
+    "fam": 4,
+    "select": 2,
+    "question": "A hospital's prior-authorisation team handles faxed requests. Each holds free-text clinical notes from the doctor. Each insurer's approval rules are fixed numeric thresholds, such as a minimum test score, kept in a rules table. A nurse must sign every decision. The team wants to cut handling time. Which two tasks should Claude perform?",
+    "options": [
+      {"t": "Pull the test results, diagnoses and treatment history out of the notes into structured fields.", "why": "Best. The notes are free text, and reading them into fields is the language task that takes staff the most time."},
+      {"t": "Compare each extracted value with the insurer's thresholds and mark the request as met or not met.", "why": "Works most of the time, but the thresholds are fixed numbers, so code compares them exactly and the same way every time.", "trap": "Model doing a fixed rule check"},
+      {"t": "Approve requests that clearly meet every threshold, and send only borderline ones to a nurse.", "why": "Works for speed, but a nurse must sign every decision, so Claude cannot approve any request on its own.", "trap": "Removing the required human"},
+      {"t": "Draft a short case summary for the nurse, linking each fact to where it appears in the notes.", "why": "Best. Writing a clear summary from free text is a language task, and the links let the nurse verify it quickly before signing."},
+      {"t": "Rewrite the insurers' rules table as plain-language guidance for Claude to apply to each request.", "why": "Works to make the rules readable, but it turns exact thresholds into prose the model must interpret, where code applies them exactly.", "trap": "Turning rules into prose"}
+    ],
+    "answer": [0, 3],
+    "runnerUp": 1,
+    "decider": "free-text clinical notes from the doctor. Each insurer's approval rules are fixed numeric thresholds",
+    "explanation": "Split the work by its nature: Claude reads and writes language, code applies exact rules, and the nurse decides. Comparing values with thresholds is tempting to give Claude because it is already reading the case, but fixed numbers are checked exactly and auditably in code.",
+    "eli5": {
+      "question": "Nurses read messy doctor notes, check them against an insurer's number rules, and sign off. The clue: the notes are messy text, but the rules are simple numbers.",
+      "answer": "A helper reads a scribbled recipe and writes it out neatly; a kitchen scale weighs the flour; the chef approves the dish. <b>Rule: Claude for reading and writing text, code for exact rules, people for the decisions the law gives them.</b>",
+      "options": [
+        "Claude turns the messy notes into tidy fields.",
+        "Claude checks the numbers against the rules.",
+        "Claude approves the easy cases by itself.",
+        "Claude writes a short summary for the nurse, with links to the notes.",
+        "Claude reads the rules rewritten as sentences and applies them."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-03",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.2 End-to-end architecture and feedback loops",
+    "trap": "Retrying the whole job",
+    "fam": 3,
+    "select": 1,
+    "question": "An online marketplace translates about 20,000 new product listings each night, and a nightly job loads Claude's output into the catalogue. Last week one request failed with a timeout, the job stopped, and the remaining listings went untranslated until morning. Which change should the architect make?",
+    "options": [
+      {"t": "Raise the timeout on each request so that slow calls have more time to finish.", "why": "Works for that one cause, but any other single failure, such as a malformed output, would still stop the whole job.", "trap": "Fixing one cause only"},
+      {"t": "Retry the whole nightly job automatically, up to three times, whenever any listing fails.", "why": "Works for brief outages, but a listing that fails every time stops all three runs, and each retry repeats thousands of finished calls.", "trap": "Retrying the whole job"},
+      {"t": "Page an on-call engineer to fix and rerun the job whenever an alert says it has stopped.", "why": "Works, but it relies on a person at night, and every listing behind the failure still waits.", "trap": "Human patching a design gap"},
+      {"t": "Check each listing's output, retry a failed one once, and park repeat failures for review.", "why": "Best. The deciding fact is that one failure stopped the rest: handling each listing on its own lets one bad item wait while the others finish."}
+    ],
+    "answer": [3],
+    "runnerUp": 1,
+    "decider": "the job stopped, and the remaining listings went untranslated until morning",
+    "explanation": "In a pipeline, a failure should be contained to the item that failed. Per-item checks, a limited retry and a review queue let one listing wait while the rest finish. Retrying the whole job feels robust, but an item that always fails blocks every attempt.",
+    "eli5": {
+      "question": "A night shift translates 20,000 product pages. One page got stuck, and the whole shift stopped. The clue: one bad item held up all the others.",
+      "answer": "If one parcel jams on a conveyor belt, you lift it off and keep the belt running, not restart the whole warehouse. <b>Rule: handle failures per item, retry a little, and set aside what still fails.</b>",
+      "options": [
+        "Give each page more time.",
+        "Start the whole night over, up to three times.",
+        "Wake an engineer to restart it.",
+        "Check each page, retry once, and set aside the ones that still fail."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-04",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.2 End-to-end architecture and feedback loops",
+    "trap": "Uncalibrated LLM judge",
+    "fam": 6,
+    "select": 1,
+    "question": "A podcast network uses Claude to write chapter titles and timestamps for every new episode, and they publish automatically. No person reviews them, and the team has no record of what good chapters look like for its shows. Leadership asks how the team will know whether quality holds up. What should the architect add first?",
+    "options": [
+      {"t": "A weekly human grading of a small random sample, with the failures added to an eval set.", "why": "Best. The deciding fact is that no record of good output exists: a small human sample measures quality and builds that record."},
+      {"t": "A second Claude call that scores every set of chapters and alerts when the average falls.", "why": "Works at scale once the judge is shown to agree with people, but with no human-graded examples yet, nobody knows what its scores mean.", "trap": "Uncalibrated LLM judge"},
+      {"t": "A count of listener complaints about chapters, with an alert when the weekly total rises.", "why": "Works as a backstop, but few listeners complain, and complaints arrive long after a problem began.", "trap": "Lagging, sparse signal"},
+      {"t": "Full logging of every prompt and response, so engineers can look into any reported problem.", "why": "Works for investigation, but logs store outputs without saying which ones are good, so they cannot show whether quality holds.", "trap": "Records without judgement"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "the team has no record of what good chapters look like for its shows",
+    "explanation": "Monitoring needs a ground truth. With no human review and no labelled examples, the first step is a small, regular human sample, which both measures quality and feeds the eval set. An LLM judge is the natural next step for scale, but only after it has been checked against those human grades.",
+    "eli5": {
+      "question": "A robot writes chapter titles for podcasts, and nobody ever checks them. The team does not even have examples of good ones. The clue: there is nothing to compare against yet.",
+      "answer": "Before a new referee can judge matches, an experienced referee watches some games and marks the right calls. <b>Rule: start with a small human-graded sample; automate the judging only after it agrees with people.</b>",
+      "options": [
+        "A person grades a few each week and saves the bad ones as tests.",
+        "Another robot grades every one.",
+        "Count listener complaints.",
+        "Save everything in case someone complains."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-05",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.3 Architectural patterns",
+    "trap": "Tidier prompt, same overload",
+    "fam": 5,
+    "select": 1,
+    "question": "A broadband provider's support assistant answers billing questions, fault reports and cancellation requests with one combined prompt. Each type needs very different instructions, and cancellations need retention offers and legal wording. Since the cancellation rules were added, answers to fault reports have become worse. The three types are easy to tell apart. Which pattern should the architect use?",
+    "options": [
+      {"t": "Keep one prompt, but reorganise it into clearly tagged sections, one for each request type.", "why": "Works to tidy the prompt, and would suit a mild overlap, but every request still carries all three sets of instructions, which is what is interfering.", "trap": "Tidier prompt, same overload"},
+      {"t": "An agent that holds every tool and instruction and decides for itself how to handle each message.", "why": "Works, but it still loads all the instructions at once and adds cost and unpredictability where a simple sort would do.", "trap": "Agent for a sortable task"},
+      {"t": "Routing: a first call sorts each message by type and sends it on to a prompt written for that type.", "why": "Best. The deciding fact is that one type's rules are hurting another's: separate prompts stop the interference, and the types are easy to sort."},
+      {"t": "Parallelisation: run all three prompts on each message and keep the answer that scores best.", "why": "Works, but it triples the cost of every message, and picking the best answer needs yet another judge.", "trap": "Running every prompt"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "Since the cancellation rules were added, answers to fault reports have become worse",
+    "explanation": "Routing fits when inputs fall into distinct, easy-to-classify categories that each need their own handling. A prompt per type stops one type's rules from degrading another's answers. Tagged sections help a prompt with mild overlap, but here the mix of instructions itself is the problem.",
+    "eli5": {
+      "question": "One helper answers bills, broken internet and cancellations from one big rulebook. Since cancellation rules were added, the broken-internet answers got worse. The clue: the rules for one job are spoiling another.",
+      "answer": "A hospital front desk sends you to the right clinic, where each doctor follows their own guide. <b>Rule: when request types are distinct and their instructions clash, route each type to its own prompt.</b>",
+      "options": [
+        "Keep one rulebook, with tidy chapters.",
+        "Let one agent work out everything itself.",
+        "Sort each message first, then use a rulebook made for that type.",
+        "Try all three rulebooks and keep the best answer."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-06",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.3 Architectural patterns",
+    "trap": "Model check for fixed text",
+    "fam": 4,
+    "select": 1,
+    "question": "A bank's marketing team uses one Claude call to write promotional emails. Regulators require a legal disclaimer at the bottom, identical in every email. In an audit, about one email in fifty lacked the disclaimer or had reworded it. The bank wants zero misses. Which design should the architect recommend?",
+    "options": [
+      {"t": "Evaluator-optimizer: a second call checks each email for the disclaimer and asks for a redraft if needed.", "why": "Works for most emails, but the check and the redraft are both model outputs, so a reworded disclaimer can still slip through.", "trap": "Model check for fixed text"},
+      {"t": "A two-step workflow: Claude writes the email body, and code then adds the approved disclaimer.", "why": "Best. The deciding fact is that the text is identical every time: code adds it exactly, so it can never be missing or reworded."},
+      {"t": "Move the disclaimer rule to the end of the prompt, in capitals, with an example of a finished email.", "why": "Works to reduce misses, but a prompt is probabilistic, and the bank wants zero misses.", "trap": "Louder prompt for a hard rule"},
+      {"t": "A compliance reviewer reads every email before it is sent and adds the disclaimer where it is missing.", "why": "Works, but it adds manual effort to every email for a step that code does exactly.", "trap": "Person doing a mechanical step"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "identical in every email",
+    "explanation": "When part of the output is fixed text, code should produce it; asking a model to reproduce it adds a chance of error with no benefit. Evaluator-optimizer suits judgement against a checklist, such as tone or required points, but exact text is met every time only by code.",
+    "eli5": {
+      "question": "A bank's emails must all end with the same legal sentence. Sometimes the writer forgets it or changes the words. The clue: the sentence never changes.",
+      "answer": "You don't ask a child to copy the school's address onto every letter by hand; you use a printed sticker. <b>Rule: if text is fixed, let code add it; use the model only for the parts that need writing.</b>",
+      "options": [
+        "A second robot checks for the sentence and asks for a rewrite.",
+        "Claude writes the email, then code sticks the exact sentence on the end.",
+        "Shout the rule louder in the instructions.",
+        "A person checks every email and adds the sentence."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-07",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.4 Multi-agent systems and orchestration",
+    "trap": "Compaction instead of fresh context",
+    "fam": 7,
+    "select": 1,
+    "question": "An energy company's agent reviews 300 wind-farm site reports in one long session and writes a risk finding for each. Findings for the first 60 reports are good, but quality falls steadily after its context fills up. Each report can be judged on its own. What should the architect change?",
+    "options": [
+      {"t": "Turn on automatic compaction, so the agent summarises earlier reports as its context fills.", "why": "Works to keep one session going, but it suits work that needs its history; here it still carries hundreds of reports' worth of summaries the next finding does not need.", "trap": "Compaction instead of fresh context"},
+      {"t": "Move the agent to a model with a larger context window, so all 300 reports fit at once.", "why": "Works to delay the limit, but a fuller context still dilutes attention, and the reports do not need to be read together.", "trap": "Bigger window"},
+      {"t": "Ask the agent to restate its review checklist before each report, so it stays on task.", "why": "Works a little, but it adds tokens to an already full context rather than clearing it.", "trap": "Reminder in a full context"},
+      {"t": "A coordinator gives reports to subagents in small batches; each returns a short finding.", "why": "Best. The deciding fact is that quality falls once the context fills: each subagent starts clean, and the reports are independent, so nothing is lost."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "quality falls steadily after its context fills up",
+    "explanation": "Subagents give each piece of work a fresh context and return only a condensed result to the coordinator. Because the reports are independent, splitting them loses nothing. Compaction keeps a single session alive, which is right for work that depends on its history, and this work does not.",
+    "eli5": {
+      "question": "One reviewer reads 300 reports in a row and gets worse and worse as the day goes on. Each report stands alone. The clue: tiredness from a full head, not hard reports.",
+      "answer": "A teacher marking 300 essays shares them out to a team of markers, who each hand back a short grade sheet. <b>Rule: when independent work fills one context, give it to subagents with fresh contexts.</b>",
+      "options": [
+        "Squash earlier reports into notes as you go.",
+        "Get a bigger desk so all 300 fit.",
+        "Re-read the checklist before each report.",
+        "Share the reports out to helpers who each send back a short finding."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-08",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.4 Multi-agent systems and orchestration",
+    "trap": "Prompt instead of a status contract",
+    "fam": 1,
+    "select": 2,
+    "question": "A broadcaster runs a coordinator agent with three subagents that fact-check, clear music rights and write captions for each video. Two problems keep recurring: when the rights subagent times out, the coordinator reports the video as cleared; and two subagents edit the same script file and overwrite each other. Which two changes fix these problems?",
+    "options": [
+      {"t": "Instruct the coordinator to report results honestly and never to assume that a step has succeeded.", "why": "Works to nudge behaviour, but a prompt cannot reliably report a result the coordinator never received; the safe default must be built in.", "trap": "Prompt instead of a status contract"},
+      {"t": "Have each subagent return an explicit status, and treat a missing or failed status as not cleared.", "why": "Best. A timeout then produces no success status, so the video stays uncleared by default."},
+      {"t": "Merge the three subagents into one agent, so there is a single context and no hand-offs to fail.", "why": "Works to remove hand-offs, but it gives up the focused contexts and still has no rule that a timed-out check counts as failed.", "trap": "Collapsing the design"},
+      {"t": "Let the subagents message each other directly, so they can agree who edits the script and when.", "why": "Works sometimes, but agreement between agents is not guaranteed, so overwrites can still happen.", "trap": "Negotiation instead of ownership"},
+      {"t": "Give each subagent its own output, and let only the coordinator merge changes into the script.", "why": "Best. With a single writer, two subagents can no longer overwrite each other's edits."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 0,
+    "decider": "when the rights subagent times out, the coordinator reports the video as cleared; and two subagents edit the same script file and overwrite each other",
+    "explanation": "In multi-agent systems, results must be explicit and shared state needs one owner. A structured status with a safe default stops a timeout looking like success, and a single writer stops overwrites. Asking the coordinator to be honest feels like a fix, but it cannot report a result that never arrived.",
+    "eli5": {
+      "question": "A team lead has three helpers. When one helper goes quiet, the lead says “all fine”. Two helpers also scribble on the same page and rub out each other's work. The clue: silence is treated as success, and two people share one pen.",
+      "answer": "On a building site, no signed form means no go, and only the site manager writes on the master plan. <b>Rule: require an explicit status with a safe default, and give shared files a single owner.</b>",
+      "options": [
+        "Ask the lead to be honest.",
+        "Every helper must hand in a clear yes or no; no answer means no.",
+        "Fire the helpers and have one person do everything.",
+        "Let the helpers sort it out between themselves.",
+        "Each helper writes on their own sheet; only the lead updates the master page."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-09",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.5 Decomposition techniques",
+    "trap": "Reasoning instead of computing",
+    "fam": 5,
+    "select": 1,
+    "question": "A construction firm uses Claude to read supplier invoices, some with over 300 line items, and report the total for each cost category. Spot checks show that the extracted line items are almost always right, but the category totals are often wrong on long invoices. Which change should the architect make?",
+    "options": [
+      {"t": "Have Claude return the line items as structured rows, and let code add up the totals.", "why": "Best. The deciding fact is that extraction is already right and only the sums fail: code adds them exactly."},
+      {"t": "Ask Claude to reason step by step and keep a running total for each category as it goes.", "why": "Works better than a bare answer, but long arithmetic in text still slips, and it adds tokens to every invoice.", "trap": "Reasoning instead of computing"},
+      {"t": "Split each invoice into pages, total each page in its own call, then add the page totals together.", "why": "Works to shorten each sum, but every page total is still model arithmetic, so errors shrink without going away.", "trap": "Smaller sums, same weakness"},
+      {"t": "Add a second call that re-adds the totals and flags any invoice where the two calls disagree.", "why": "Works to catch some errors, but both calls add up in the same unreliable way, and it flags errors rather than removing them.", "trap": "Second guess, same weakness"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "the extracted line items are almost always right, but the category totals are often wrong on long invoices",
+    "explanation": "Decompose a task along strengths: Claude extracts from messy documents, and code does exact arithmetic. The extraction already works, so only the summing step moves. Step-by-step reasoning helps on multi-step logic, but code removes arithmetic errors entirely.",
+    "eli5": {
+      "question": "Claude copies hundreds of invoice lines correctly but adds them up wrong. The clue: the reading is fine; only the adding is broken.",
+      "answer": "A shop assistant reads the price tags, and the till adds them up. <b>Rule: let Claude read and extract; let code do the maths.</b>",
+      "options": [
+        "Claude lists the lines, and a calculator adds them.",
+        "Claude adds them up slowly, showing its working.",
+        "Claude adds up one page at a time.",
+        "A second Claude adds them again to compare."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-10",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.6 Business value pillars",
+    "trap": "Productivity instead of speed",
+    "fam": 6,
+    "select": 1,
+    "question": "An insurer's home-claims customers wait an average of twelve days for a payout, and the board's goal for a Claude claims assistant is that customers are paid sooner. Adjuster headcount will stay the same. The team is choosing the headline measure for the pilot report. Which measure best fits the goal?",
+    "options": [
+      {"t": "Claims handled by each adjuster per day, compared with the months before the pilot.", "why": "Works for a productivity goal, but it can rise while claims still wait in other queues, so it does not show customers being paid sooner.", "trap": "Productivity instead of speed"},
+      {"t": "Accuracy of the assistant's claim summaries on a labelled set of past claims.", "why": "Works as a quality check before launch, but it says nothing about how long customers wait.", "trap": "Quality instead of outcome"},
+      {"t": "Days from claim filed to payout, compared with the twelve-day baseline.", "why": "Best. The deciding fact is the goal that customers are paid sooner: time to payout measures it directly against a baseline."},
+      {"t": "Total cost per claim processed, including model usage and adjuster time.", "why": "Works for a cost goal, but the board asked for faster payouts, not cheaper ones.", "trap": "Cost instead of speed"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "customers are paid sooner",
+    "explanation": "The headline measure should be the outcome the sponsor named, with a baseline. Faster payouts are a cycle-time (efficiency) goal, so time from filing to payout is the measure. Claims per adjuster is the productivity pillar; it would lead if the goal were handling more claims with the same team.",
+    "eli5": {
+      "question": "Customers wait twelve days for insurance money, and the boss wants them paid faster. The clue: the goal is about waiting time.",
+      "answer": "If a pizza shop promises faster delivery, you time from order to doorstep, not how many pizzas each cook makes. <b>Rule: measure the outcome the sponsor named, against a baseline.</b>",
+      "options": [
+        "Count claims each worker finishes a day.",
+        "Score how accurate the summaries are.",
+        "Count days from claim to payment, compared with twelve days.",
+        "Work out the cost per claim."
+      ]
+    }
+  },
+  {
+    "id": "p2-d1-11",
+    "domain": "D1 · Solution Design & Architecture",
+    "obj": "1.6 Business value pillars",
+    "trap": "Real time with no need for it",
+    "fam": 8,
+    "select": 1,
+    "question": "A university will check 60,000 applications for missing documents after its deadline closes. Admissions officers start reading them ten days later. A smaller model meets the accuracy target on the team's eval set, and the sponsor's only aim is the lowest cost. Which design should the architect choose?",
+    "options": [
+      {"t": "Call the smaller model in real time, spreading the requests evenly across the ten days.", "why": "Works and meets the deadline, but it pays real-time prices for work nobody needs for days.", "trap": "Real time with no need for it"},
+      {"t": "Send the applications to the smaller model through batch processing, at its lower price.", "why": "Best. The deciding fact is the ten-day gap: batch results arrive well before then, at a discount on the same model."},
+      {"t": "Use the most capable model in real time, so that fewer applications are wrongly flagged.", "why": "Works for quality, but the smaller model already meets the target, and the sponsor's aim is cost.", "trap": "Buying accuracy not asked for"},
+      {"t": "Run the smaller model only on applications that a keyword scan marks as possibly incomplete.", "why": "Works to cut calls, but a keyword scan misses incomplete applications that the eval showed the model can catch.", "trap": "Cheap filter as a proxy"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "Admissions officers start reading them ten days later",
+    "explanation": "Match the design to the pillar the sponsor named and to the real deadline. With ten days before anyone reads the results, real-time answers add nothing, and batch processing gives a discount on the same model. Real-time calls would win if officers needed each result within minutes.",
+    "eli5": {
+      "question": "A university must check 60,000 forms, cheaply. Nobody looks at the results for ten days. The clue: there is no rush.",
+      "answer": "If a letter does not need to arrive tomorrow, you send it second class and pay less. <b>Rule: when the deadline allows, use batch processing for the lowest cost.</b>",
+      "options": [
+        "Check them one by one, straight away, over ten days.",
+        "Send them all in one big cheaper batch.",
+        "Use the most expensive, cleverest model.",
+        "Only check the forms a word search picks out."
+      ]
+    }
+  }
+]

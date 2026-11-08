@@ -1,0 +1,143 @@
+{
+ "n": 4,
+ "slug": "inputs-before-model",
+ "title": "Check the inputs before the model",
+ "domain": "D4 · Evaluation, Testing &amp; Optimization",
+ "lines": [
+  "4.4",
+  "3.5"
+ ],
+ "glance": "When answers go wrong, look at what went into the model (the retrieved passages and the data) before blaming or replacing the model.",
+ "story": [
+  "A RAG system (retrieval-augmented generation) finds passages in an index and gives them to Claude with the question. When an answer is wrong, there are three suspects in a fixed order: <b>the inputs</b> (did the right passage reach the model?), <b>the prompt</b> (was it there, but ignored or misused?) and only then <b>the model</b> (was everything right, and the task still too hard?).",
+  "The quickest way to tell them apart is to read the <b>trace</b> of a failing request: the record of what was retrieved and what was sent. If the needed fact is missing from the context, the cause is upstream: indexing, chunking, metadata or stale data. If the fact is present but the answer contradicts it, the prompt needs to ground the answer, for example by asking for supporting quotes and allowing “I don't know”. A model upgrade is the last step, confirmed by running the same failing cases on a more capable model.",
+  "The trap is that a model swap feels decisive. But a model cannot use a passage it never received, and a sudden failure usually follows something that changed: new data, a re-index, a new deployment."
+ ],
+ "situation": "A drug company's medical-information assistant answers doctors' questions from approved product leaflets. For one newly launched product, it states a dose that appears in no leaflet. Questions about other products are answered correctly. Nobody has looked at the traces yet. A team member proposes switching to the most capable model. What should the architect do first?",
+ "options": [
+  {
+   "id": "A",
+   "t": "Switch to the most capable model and rerun the failing questions on it."
+  },
+  {
+   "id": "B",
+   "t": "Read the traces of the failing questions to see which passages were retrieved."
+  },
+  {
+   "id": "C",
+   "t": "Require answers to quote the passage they rely on, and allow “not found”."
+  },
+  {
+   "id": "D",
+   "t": "Re-chunk the new leaflet by section, keeping each dosing table in one piece."
+  }
+ ],
+ "worlds": [
+  {
+   "name": "As written",
+   "fact": "Nobody has read the traces, so it is not yet known whether the right passage reached the model.",
+   "winner": "B",
+   "why": "Read the evidence before changing anything. The traces show whether the problem is retrieval, the prompt or the model, and only one new product fails, which points upstream.",
+   "losers": {
+    "A": "A model swap guesses at the cause, and no model can use a dosing table it never received.",
+    "C": "Grounding may be needed later, but it is a fix chosen before the cause is known.",
+    "D": "Re-chunking may be the fix, but it is a guess until the traces show a split table."
+   }
+  },
+  {
+   "name": "Traces show a split table",
+   "fact": "Traces show the new leaflet's dosing table was cut in half by fixed-size chunking, so the retrieved chunk has the product name but not the dose row.",
+   "winner": "D",
+   "why": "The needed fact never reached the model. Structure-aware chunking that keeps each table whole fixes the input.",
+   "losers": {
+    "A": "A stronger model still cannot see a dose that is not in its context.",
+    "B": "The traces have been read; the cause is known, so it is time to fix it.",
+    "C": "Quotes would make the assistant say “not found”, which is safer, but the right dose would still be missing."
+   }
+  },
+  {
+   "name": "Passage present, answer wrong",
+   "fact": "Traces show the correct dosing passage was retrieved and ranked first every time, but the answer gives a different dose that seems to come from general knowledge.",
+   "winner": "C",
+   "why": "The input is right and the model is not using it. Requiring a supporting quote and allowing “not found” ties the answer to the retrieved text.",
+   "losers": {
+    "A": "Retrieval and context are fine, but the prompt has not been fixed yet, so a model swap is premature.",
+    "B": "The traces have been read and they point to the prompt.",
+    "D": "The chunking already delivers the right passage."
+   }
+  }
+ ],
+ "signals": [
+  "“one product”, “one country” or “newly added documents” fail while the rest work",
+  "“right after a document refresh” or a re-index",
+  "“model, prompt and latency unchanged”",
+  "“traces show the passage was (or was not) retrieved”",
+  "an option that proposes a model swap as the first step"
+ ],
+ "remember": "Read the traces first. Missing fact: fix retrieval or data. Fact present but ignored: fix the prompt. Only when both are right does a more capable model become the answer.",
+ "practice": [
+  {
+   "stem": "A travel insurer's assistant answers questions about policy cover. Last month the team embedded newly added policies with a newer embedding model, but left the older policies and the query side unchanged. Since then, questions about the new policies return unrelated passages. What should the architect fix first?",
+   "select": 1,
+   "options": [
+    "Add a stronger instruction telling the model to ignore unrelated passages.",
+    "Embed queries and all documents with one model, then rebuild the index.",
+    "Cut the new policies into smaller chunks with more overlap between them.",
+    "Move the assistant to a more capable tier that handles policy wording better."
+   ],
+   "key": [
+    1
+   ],
+   "why": "The deciding fact: new documents and queries were embedded with different models, so their vectors no longer match. The inputs are wrong before the model sees anything.",
+   "traps": [
+    "Works when the right passage arrives but is ignored; here it never arrives.",
+    null,
+    "Works when ideas are split across chunks, but mismatched embeddings would still fail.",
+    "Works when reasoning is the gap, but no model can use passages that were never retrieved."
+   ]
+  },
+  {
+   "stem": "An energy trader's assistant explains why overnight positions breached risk limits, using the full risk report and limit rules, both sent whole. Traces confirm both are complete and correct, and the prompt was rewritten twice with worked examples. It explains single breaches well but gets cases wrong where three limits interact. What should the architect do next?",
+   "select": 1,
+   "options": [
+    "Send just the rule that was breached, so the model has less text to read.",
+    "Lower the temperature so that explanations are consistent between runs.",
+    "Ask the model for a confidence score and hide low-confidence explanations.",
+    "Run the failing cases on the most capable model with the same prompt and inputs."
+   ],
+   "key": [
+    3
+   ],
+   "why": "The deciding fact: inputs are confirmed correct and the prompt has been fixed twice. Upstream causes are ruled out, so test for a model mismatch on the same cases.",
+   "traps": [
+    "Works for diluted attention, but these failures need several rules together.",
+    "Works for consistency, but consistent output is not correct output.",
+    "Works as one signal, but self-reported confidence is weak and fixes nothing.",
+    null
+   ]
+  },
+  {
+   "stem": "A hotel group's assistant answers guests' questions about each hotel's facilities. Guests at three recently opened hotels get answers describing a sister hotel's spa and pool. Answers for every other hotel are correct, and nothing else has changed. Which two checks should the architect make first?",
+   "select": 2,
+   "options": [
+    "Whether the three new hotels' documents were indexed at all.",
+    "Whether a more capable model answers the same questions better.",
+    "Whether a lower temperature makes the answers more consistent.",
+    "Whether a stricter system prompt reduces the wrong answers.",
+    "Whether chunks carry a hotel tag and retrieval filters on it."
+   ],
+   "key": [
+    0,
+    4
+   ],
+   "why": "The deciding fact: only the newly added hotels fail. That points to inputs: missing documents, or chunks that do not say which hotel they belong to.",
+   "traps": [
+    null,
+    "Works only once inputs are ruled out; here they have not been checked.",
+    "Works for consistency, but the answers are consistently about the wrong hotel.",
+    "Works when the right passage arrives and is misused, which has not been checked.",
+    null
+   ]
+  }
+ ]
+}

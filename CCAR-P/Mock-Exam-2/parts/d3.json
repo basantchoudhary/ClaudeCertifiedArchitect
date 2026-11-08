@@ -1,0 +1,356 @@
+[
+  {
+    "id": "p2-d3-01",
+    "domain": "D3 · Integration",
+    "obj": "3.1 Capability bloat",
+    "trap": "Approval instead of removal",
+    "fam": 4,
+    "select": 1,
+    "question": "A hospital's discharge orchestrator hands each patient's notes to a subagent that reads them and drafts a plain-language summary for the family. The subagent was defined without its own tool list, so it inherits every orchestrator tool, including ordering medication and messaging pharmacies. The notes include free text typed by outside clinics. What should the architect change?",
+    "options": [
+      {"t": "Require a clinician to approve any medication order the subagent places.", "why": "Works when a role sometimes needs a risky tool, but this subagent never orders anything, so approval guards a capability it should not hold at all.", "trap": "Approval instead of removal"},
+      {"t": "Tell the subagent to ignore any instructions it finds inside the notes.", "why": "Works as an extra layer, but a prompt is probabilistic and the ordering and messaging tools stay in reach of injected text.", "trap": "Prompt where removal was needed"},
+      {"t": "Give the subagent its own tool list with only the notes-reading tool.", "why": "Best. The subagent only reads notes and drafts text, so an explicit, minimal tool list removes ordering and messaging from its reach entirely."},
+      {"t": "Run the subagent on a smaller model with a narrower system prompt.", "why": "Works to cut cost, but a different model or prompt does not change which tools the subagent is allowed to call.", "trap": "Model change, same permissions"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "a subagent that reads them and drafts a plain-language summary for the family",
+    "explanation": "Least privilege applies to every agent in a system, subagents included: a subagent that inherits its parent's tools carries capabilities its job never uses. Clinician approval would fit a role that sometimes needs to order medication; here removal eliminates the risk, while approval only adds a checkpoint in front of it.",
+    "eli5": {
+      "question": "A helper whose only job is to read a file and write a friendly letter was handed the whole office's keys, including the medicine cupboard. Strangers can write notes in that file. The clue: the helper only reads and writes a summary.",
+      "answer": "You give the letter-writer a pen, not the cupboard keys plus a rule to ask before opening it. <b>Rule: give each agent and subagent only the tools its own job uses.</b>",
+      "options": [
+        "Let the helper keep the keys, but a nurse must say yes before any medicine order.",
+        "Tell the helper to ignore anything in the notes that sounds like an order.",
+        "Hand the helper just the one key it needs: reading the notes.",
+        "Swap the helper for a smaller one with shorter instructions."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-02",
+    "domain": "D3 · Integration",
+    "obj": "3.2 Authentication and authorization gaps",
+    "trap": "Shorter window, same power",
+    "fam": 3,
+    "select": 1,
+    "question": "A wealth manager's assistant helps advisors review client portfolios. Each advisor signs in with multi-factor authentication, and the assistant calls the portfolio platform with the advisor's own delegated token. The token is requested with the platform's full scope, which includes placing trades, though the assistant only reads holdings and performance. What is the main gap, and the fix?",
+    "options": [
+      {"t": "Authentication: add a second sign-in step before each session with the assistant.", "why": "Works when identity is weak, but advisors already prove who they are with multi-factor sign-in; the gap is what the token allows.", "trap": "Fixing the part that works"},
+      {"t": "Authorization: request a read-only scope for the assistant's delegated token.", "why": "Best. The assistant only reads holdings and performance, so the token should carry only read scope; trading power disappears from the integration."},
+      {"t": "Token lifetime: cut the delegated token's expiry from hours to fifteen minutes.", "why": "Works to shrink the window a stolen token is useful, but within that window it can still place trades the assistant never needs.", "trap": "Shorter window, same power"},
+      {"t": "Auditing: log every trade the assistant places and review the log each day.", "why": "Works to spot misuse afterwards, but it detects unwanted trades rather than making them impossible.", "trap": "Detective control only"}
+    ],
+    "answer": [1],
+    "runnerUp": 2,
+    "decider": "though the assistant only reads holdings and performance",
+    "explanation": "Delegated tokens solve whose rights the agent uses, but the scope requested still has to match the job. Identity is already strong, so the gap is authorization: request the narrowest scope. A shorter lifetime is good hygiene, yet it leaves the trading power in place.",
+    "eli5": {
+      "question": "An advisor lends the assistant their own key card, but the card opens the trading floor as well as the reading room. The assistant only ever reads. The clue: it only reads holdings and performance.",
+      "answer": "If someone only needs the library, you give them a library-only pass, not your master pass for a shorter time. <b>Rule: ask for the smallest token scope the task needs.</b>",
+      "options": [
+        "Make the advisor show ID a second time.",
+        "Get a card that opens only the reading room.",
+        "Keep the master card, but make it expire sooner.",
+        "Keep the master card, and check the trading list every evening."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-03",
+    "domain": "D3 · Integration",
+    "obj": "3.2 Authentication and authorization gaps",
+    "trap": "Rebuilding rules the CRM has",
+    "fam": 2,
+    "select": 1,
+    "question": "A mobile network's in-store assistant helps staff look up customer accounts. Staff sign in with single sign-on, and the CRM already restricts each staff account to customers in that person's region. The assistant, however, queries the CRM through one national service account, and a store employee was shown a customer from another region. What should the architect change?",
+    "options": [
+      {"t": "Give the assistant one service account per region and route by store location.", "why": "Works when the CRM has no per-user rules, but here it copies rules the CRM already enforces, and it breaks for staff covering another region's store.", "trap": "Rebuilding rules the CRM has"},
+      {"t": "Add the staff member's region to the system prompt and tell Claude to stay within it.", "why": "Works most of the time, but a prompt is not an access control, and the national account can still read every region.", "trap": "Prompt as access control"},
+      {"t": "Alert security whenever a lookup returns a customer outside the staff member's region.", "why": "Works to spot leaks, but only after the customer's data has already been shown.", "trap": "Detects, doesn't prevent"},
+      {"t": "Query the CRM with each signed-in staff member's own delegated token.", "why": "Best. The CRM already restricts each staff account by region, so acting with the user's own token lets those existing rules apply to every assistant lookup."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "the CRM already restricts each staff account to customers in that person's region",
+    "explanation": "When the system of record already enforces per-user permissions, the agent should act as the user so those rules apply unchanged. Per-region service accounts would be a reasonable fallback if the CRM had no per-user rules, but here they duplicate logic and drift from it.",
+    "eli5": {
+      "question": "The filing room already lets each clerk see only their own region's files. But the assistant walks in with the head office master key. The clue: the filing room already knows each clerk's limits.",
+      "answer": "If the door already checks each person's badge, send each person with their own badge rather than cutting new master keys. <b>Rule: when the system already enforces per-user access, act as the user.</b>",
+      "options": [
+        "Cut a separate master key for each region and pick by shop.",
+        "Remind the assistant which region it should stick to.",
+        "Ring an alarm after the wrong file is shown.",
+        "Use each clerk's own badge, so the filing room's rules apply."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-04",
+    "domain": "D3 · Integration",
+    "obj": "3.3 Accuracy-latency trade-offs",
+    "trap": "Speed bought with accuracy",
+    "fam": 3,
+    "select": 2,
+    "question": "A furniture retailer's product-question chat is accurate but slow, and customers leave before answers appear. The SLA is first visible text within 3 seconds. Most of the wait is extended thinking with a large budget, and an eval shows the same accuracy with thinking turned off. A smaller, faster model fails a fifth of the eval cases. Which two changes fit best?",
+    "options": [
+      {"t": "Stream the reply so text appears while the rest is still being generated.", "why": "Best. Streaming puts the first words on screen early, which is exactly what the first-visible-text SLA measures."},
+      {"t": "Switch to the smaller model, which answers well within the 3-second SLA.", "why": "Works when the smaller model passes the eval, but here it fails a fifth of cases, trading away accuracy the current model keeps without thinking.", "trap": "Speed bought with accuracy"},
+      {"t": "Cache the system prompt and catalogue context to cut time to first token.", "why": "Works to trim prompt processing, but most of the wait is thinking, so caching shaves only a small part.", "trap": "Trimming the small part"},
+      {"t": "Turn off extended thinking for these questions, keeping the current model.", "why": "Best. The eval shows the same accuracy without thinking, so removing it cuts the biggest delay at no quality cost."},
+      {"t": "Show a typing indicator and a message saying the answer is on its way.", "why": "Works to reassure customers, but no answer text appears any sooner, so the SLA is still missed.", "trap": "Masking the wait"}
+    ],
+    "answer": [0, 3],
+    "runnerUp": 1,
+    "decider": "an eval shows the same accuracy with thinking turned off",
+    "explanation": "Justify latency settings with evidence: thinking that adds no measured accuracy is pure delay, so turn it off, and stream so first text arrives early. A smaller model would win if it passed the eval, but here it costs a fifth of the answers while the cheaper fix keeps them.",
+    "eli5": {
+      "question": "A shop assistant pauses for a long think before every answer, but tests show the answers are just as good without the pause. A quicker trainee gets one in five wrong. The clue: the long think doesn't make answers better.",
+      "answer": "If someone's careful pause doesn't improve anything, ask them to skip it and start talking right away. <b>Rule: cut the delay your evals show adds nothing, and show text as soon as it exists.</b>",
+      "options": [
+        "Start speaking while the rest of the answer is being worked out.",
+        "Send in the quicker trainee who gets one in five wrong.",
+        "Have the notes ready on the desk, which saves only a little time.",
+        "Skip the long think, since it doesn't help.",
+        "Show a 'one moment please' sign without answering any sooner."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-05",
+    "domain": "D3 · Integration",
+    "obj": "3.3 Accuracy-latency trade-offs",
+    "trap": "Routing for cheap errors",
+    "fam": 2,
+    "select": 1,
+    "question": "A hotel chain's guest app sends each in-stay request, such as extra towels or a broken heater, to housekeeping, maintenance or the front desk. A heavier configuration routes about 3% more requests correctly but adds five seconds while the guest waits on the screen. A misrouted request is passed to the right team with one tap. Which configuration fits?",
+    "options": [
+      {"t": "Keep the current fast configuration for all requests, as it runs today.", "why": "Best. A misroute costs one tap to fix, so a small accuracy gain does not justify making every guest wait five more seconds."},
+      {"t": "Use the heavier configuration for every request, accepting the extra wait.", "why": "Works when errors are costly, but here a wrong route is fixed with one tap while every guest pays the wait.", "trap": "Accuracy the case doesn't need"},
+      {"t": "Send requests the fast setup is unsure about to the heavier configuration.", "why": "Works when mistakes are expensive and only some cases are hard, but here even a caught error saves only one tap, so the extra path is not worth building.", "trap": "Routing for cheap errors"},
+      {"t": "Re-check each request with the heavier setup afterwards and re-route if it differs.", "why": "Works to raise accuracy without delay, but it adds a second pipeline to save one tap per mistake.", "trap": "Machinery for a one-tap fix"}
+    ],
+    "answer": [0],
+    "runnerUp": 2,
+    "decider": "A misrouted request is passed to the right team with one tap.",
+    "explanation": "An accuracy gain is worth paying for only in proportion to the cost of the errors it prevents. Selective routing would win if a misroute meant a missed safety issue or lost revenue; when the error is fixed with one tap, the fast configuration is the justified choice.",
+    "eli5": {
+      "question": "A front desk can sort guest requests instantly, or think five seconds longer and get a few more right. A wrong one is passed on with one tap. The clue: a mistake costs one tap.",
+      "answer": "You don't hire a second checker to catch letters that the mail room re-sorts in a second. <b>Rule: pay for accuracy only when the mistakes it prevents are costly.</b>",
+      "options": [
+        "Keep sorting instantly, as now.",
+        "Make every guest wait five seconds for slightly better sorting.",
+        "Send only the tricky ones to the slow, careful sorter.",
+        "Have the careful sorter double-check everything afterwards."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-06",
+    "domain": "D3 · Integration",
+    "obj": "3.4 Observability at scale",
+    "trap": "Encrypted is still stored",
+    "fam": 4,
+    "select": 1,
+    "question": "A health insurer's member assistant handles 200,000 chats a day. Engineers need to investigate answers that members flag as wrong. Compliance forbids storing member health details anywhere outside the claims system, so full transcripts cannot be kept in the logging platform. Which monitoring approach fits?",
+    "options": [
+      {"t": "Keep full transcripts in the logging platform, encrypted and deleted after 30 days.", "why": "Works when short, encrypted retention is allowed, but the rule forbids storing health details there at all, encrypted or not.", "trap": "Encrypted is still stored"},
+      {"t": "Record daily totals of chats, errors, tokens and cost, with no per-chat detail.", "why": "Works for capacity and spend, but totals cannot show what went wrong in a single flagged chat.", "trap": "Too coarse to diagnose"},
+      {"t": "Trace each chat's steps, tool calls and timings, redacting health details first.", "why": "Best. A per-chat trace shows which step or tool went wrong, and redacting health details before logging keeps it within the compliance rule."},
+      {"t": "Rely on members' thumbs-down ratings and ask them to describe each problem.", "why": "Works as a signal of where to look, but a member's description cannot show which retrieval or tool step failed.", "trap": "Feedback is not a trace"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "Compliance forbids storing member health details anywhere outside the claims system",
+    "explanation": "At scale, observability means structured, per-request traces, and in regulated settings the trace must be designed around what may be stored. Encrypted short retention would be the usual answer if policy allowed it; here only redacted traces give engineers the detail they need without breaking the rule.",
+    "eli5": {
+      "question": "Engineers need to see what went wrong in a chat, but the rules say no health details may be written down outside the claims office. The clue: health details can't be stored anywhere else.",
+      "answer": "A flight recorder logs every switch and timing without recording the passengers' private conversations. <b>Rule: trace every step, and redact what you may not store.</b>",
+      "options": [
+        "Keep the full chats, locked up, and shred them after a month.",
+        "Count chats and costs per day, with no detail on any single one.",
+        "Record every step and timing, with health details blacked out first.",
+        "Ask unhappy members to explain what went wrong."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-07",
+    "domain": "D3 · Integration",
+    "obj": "3.5 Chunking and indexing",
+    "trap": "Bigger, still blind cuts",
+    "fam": 5,
+    "select": 2,
+    "question": "A credit union's member assistant answers fee questions from 300 rate sheets, PDF files that are mostly tables. Fixed-size chunking cuts tables apart, so retrieved rows arrive without their column headers or the name of the account they belong to, and Claude mixes up fees between accounts. Which two changes best fix the chunking?",
+    "options": [
+      {"t": "Double the fixed chunk size so most tables fit inside a single chunk.", "why": "Works for small tables, but cuts still fall at arbitrary points, so large tables still split and lose their headers.", "trap": "Bigger, still blind cuts"},
+      {"t": "Chunk on table boundaries, repeating the header row if a table must split.", "why": "Best. Following the document's structure keeps every row next to the column headers that give its numbers meaning."},
+      {"t": "Add a reranker that reorders the top 30 chunks before they reach Claude.", "why": "Works when the right chunk is ranked too low, but reordering cannot restore headers the chunks never contained.", "trap": "Reordering broken chunks"},
+      {"t": "Add 100 tokens of overlap so neighbouring chunks share their boundary rows.", "why": "Works for sentences split at a boundary, but the header sits at the top of the table, far from most cuts.", "trap": "Overlap won't carry headers"},
+      {"t": "Prefix each chunk with the rate sheet's account name and the table's title.", "why": "Best. A short context header tells Claude, and the retriever, which account each row belongs to."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 0,
+    "decider": "retrieved rows arrive without their column headers or the name of the account they belong to",
+    "explanation": "Chunk along the document's own structure and give each chunk the context it lost when it was cut out. Larger fixed chunks would help if tables were all small, but they still cut blindly, so big tables keep losing their headers.",
+    "eli5": {
+      "question": "Price lists were cut into strips with scissors, so many strips show numbers with no column titles and no account name. The clue: rows arrive without headers or the account name.",
+      "answer": "Cut a timetable between tables, not through them, and write the route name on every piece. <b>Rule: chunk along the document's structure and label each chunk with what it belongs to.</b>",
+      "options": [
+        "Use bigger strips, still cut without looking.",
+        "Cut between tables, and copy the header row onto any piece of a big table.",
+        "Sort the strips better, though they still lack titles.",
+        "Let neighbouring strips overlap a little at the edges.",
+        "Write the account name and table title on top of every strip."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-08",
+    "domain": "D3 · Integration",
+    "obj": "3.5 Chunking and indexing",
+    "trap": "Fixed size ignores entry edges",
+    "fam": 3,
+    "select": 1,
+    "question": "An energy retailer's help assistant indexes 3,000 FAQ entries, each a question with a short answer of under 150 words. They were chunked at a fixed 800 tokens, so each chunk holds several unrelated entries. Retrieval finds the right chunk, but Claude often answers from a neighbouring entry inside it. What should the architect change?",
+    "options": [
+      {"t": "Re-chunk at a fixed 150 tokens with overlap, so each chunk is about one entry.", "why": "Works to shrink chunks, but fixed cuts still split entries and the overlap blends neighbours back together.", "trap": "Fixed size ignores entry edges"},
+      {"t": "Index each FAQ entry as its own chunk, keeping question and answer together.", "why": "Best. Each entry is already a short, complete unit, so one chunk per entry gives Claude exactly the matching answer and nothing else."},
+      {"t": "Add a reranker so the most relevant chunk is passed to Claude first.", "why": "Works when the right chunk ranks too low, but here it is already found; the problem is what else is inside it.", "trap": "Ranking the mixed chunk"},
+      {"t": "Tell Claude to answer only from the entry that best matches the question.", "why": "Works partly, but it asks the model to untangle mixed chunks that indexing should never have created.", "trap": "Prompt over structure"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "each a question with a short answer of under 150 words",
+    "explanation": "The best chunk is the content's natural unit when that unit is already small and self-contained. Smaller fixed chunks would suit long, unstructured prose, but with FAQ entries they still cut across entry edges.",
+    "eli5": {
+      "question": "Each FAQ is a tiny card with one question and its answer, but they were glued together in stacks of five. The clue: every entry is already short and complete.",
+      "answer": "Index cards are filed one card per slot, not five glued together. <b>Rule: when content comes in small natural units, make each unit a chunk.</b>",
+      "options": [
+        "Cut the stacks into smaller pieces by size, which still slices cards.",
+        "File each card on its own.",
+        "Put the right stack on top, still glued to the others.",
+        "Ask Claude to pick the right card out of the stack."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-09",
+    "domain": "D3 · Integration",
+    "obj": "3.6 Retrieval strategy",
+    "trap": "Retrieval the size doesn't need",
+    "fam": 2,
+    "select": 1,
+    "question": "A city council's assistant answers residents' questions from its bylaws handbook, about 30,000 tokens in total, updated once a year. The team built vector retrieval over it, but answers often miss exceptions defined in other sections that the bylaws cross-reference. Questions vary widely and can touch any part of the handbook. What should the architect recommend?",
+    "options": [
+      {"t": "Retrieve the parent section around each match instead of small chunks.", "why": "Works for a large corpus, but cross-referenced exceptions sit in other sections, and the whole handbook fits in context anyway.", "trap": "Retrieval the size doesn't need"},
+      {"t": "Add keyword search so section numbers in cross-references are matched.", "why": "Works to catch exact references, but it still retrieves only parts, and some exceptions are not referenced by number.", "trap": "Better search, still partial"},
+      {"t": "Raise the number of retrieved chunks from 5 to 20 for every question.", "why": "Works by chance sometimes, but more similar chunks do not reliably include the distant section that holds the exception.", "trap": "More of the same chunks"},
+      {"t": "Put the whole handbook in the prompt and cache it as a stable prefix.", "why": "Best. At about 30,000 tokens and yearly updates, the handbook fits in context, so every cross-reference is visible and caching keeps cost and latency down."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "about 30,000 tokens in total, updated once a year",
+    "explanation": "Retrieval exists for corpora too large to send whole; a small, stable document can go in full, cached. Parent-section retrieval would fit a library of handbooks, but here retrieval only hides the cross-referenced parts the answers need.",
+    "eli5": {
+      "question": "The rulebook is short enough to hand over whole, yet the assistant gets torn-out pages and misses the exceptions on other pages. The clue: the whole book is small and rarely changes.",
+      "answer": "If the rulebook is a thin pamphlet, you read the whole thing instead of searching an index. <b>Rule: if the source fits in context and is stable, include it whole and cache it.</b>",
+      "options": [
+        "Tear out the whole chapter around each match.",
+        "Also search for the section numbers mentioned in the text.",
+        "Tear out more pages each time.",
+        "Hand over the whole pamphlet, kept ready on the desk."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-10",
+    "domain": "D3 · Integration",
+    "obj": "3.7 Connection protocols (MCP, API/CLI, agent-to-agent)",
+    "trap": "Agent loop for a fixed task",
+    "fam": 2,
+    "select": 2,
+    "question": "A manufacturer wants engineers in Claude Code and planners in the Claude desktop app to query its maintenance system. It also wants a scheduled job that sends each day's 5,000 work orders through one fixed classification prompt, with results needed within a day. Which two integration choices fit best?",
+    "options": [
+      {"t": "Give each client its own custom integration code for the maintenance system.", "why": "Works for one client, but two clients would each maintain their own code and access rules.", "trap": "Duplicate integrations"},
+      {"t": "Run the nightly job as an agent that pulls work orders through the MCP server.", "why": "Works and reuses the server, but a fixed prompt over known inputs needs no agent loop or tool choices.", "trap": "Agent loop for a fixed task"},
+      {"t": "One MCP server for the maintenance system, shared by both interactive clients.", "why": "Best. Two different AI clients need the same system, and one MCP server gives both a single, controlled integration."},
+      {"t": "Link the desktop app and the nightly job through an agent-to-agent protocol.", "why": "Works between independent agents, but neither side here is an agent that needs to delegate to another.", "trap": "Protocol with no peer agent"},
+      {"t": "Send the nightly work orders straight to the Batch API from the scheduled job.", "why": "Best. One fixed prompt with results due within a day is a plain, non-urgent API workload that batching handles at lower cost."}
+    ],
+    "answer": [2, 4],
+    "runnerUp": 1,
+    "decider": "through one fixed classification prompt, with results needed within a day",
+    "explanation": "Pick the mechanism per workload: MCP when several AI clients need the same system, a direct API call when code already knows exactly what to send. The agent version would win if the job had to decide which records to fetch; with a fixed prompt it only adds steps.",
+    "eli5": {
+      "question": "Two kinds of staff want to ask the maintenance system questions, and a night job must stamp the same label onto thousands of forms within a day. The clue: the night job does one fixed thing and can wait.",
+      "answer": "Install one shared front desk for people with questions, and send the stack of forms to the overnight stamping service. <b>Rule: MCP for shared interactive access, a plain batch API call for fixed bulk work.</b>",
+      "options": [
+        "Build a separate connection for each app.",
+        "Have a thinking agent fetch and label each form overnight.",
+        "Build one shared connection that both apps use.",
+        "Have the app and the job talk to each other as agents.",
+        "Send the forms straight to the cheaper overnight service."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-11",
+    "domain": "D3 · Integration",
+    "obj": "3.7 Connection protocols (MCP, API/CLI, agent-to-agent)",
+    "trap": "Safer secrets, still 300 copies",
+    "fam": 4,
+    "select": 1,
+    "question": "A pharma company's 300 scientists use an MCP server for its compound database from the Claude desktop app. Each laptop runs its own local copy of the server, with database credentials in a config file. Security wants to update the server once for everyone and revoke a person's access centrally. What should the architect recommend?",
+    "options": [
+      {"t": "Host one remote MCP server that scientists reach with their company sign-in.", "why": "Best. A single hosted server is updated once, and tying access to each scientist's sign-in lets security revoke one person centrally."},
+      {"t": "Keep local copies, with credentials fetched at start-up from a secrets manager.", "why": "Works to remove secrets from config files, but 300 copies still need updating, and revoking one person depends on how the secret is shared.", "trap": "Safer secrets, still 300 copies"},
+      {"t": "Replace the server with a REST API that each scientist calls from scripts.", "why": "Works for scripted access, but it drops the Claude desktop integration the scientists use.", "trap": "Losing the AI client"},
+      {"t": "Push updated server copies to every laptop through device management.", "why": "Works for one-step updates, but credentials still sit on each laptop, so access is not revoked centrally.", "trap": "Updates, but no central revoke"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "Security wants to update the server once for everyone and revoke a person's access centrally.",
+    "explanation": "Local servers suit one person's tools on one machine; a shared, governed integration belongs on a remote MCP server with per-user sign-in. A secrets manager fixes credentials in files but not the 300 copies or central revocation.",
+    "eli5": {
+      "question": "Three hundred people each keep their own copy of the same machine at their desk, with the password taped to it. Security wants one place to update it and switch people off. The clue: update once and revoke centrally.",
+      "answer": "Replace 300 home printers with one office printer you badge into. <b>Rule: a shared, governed integration goes on one remote server with per-user sign-in.</b>",
+      "options": [
+        "Run one central server that everyone signs in to.",
+        "Keep 300 copies, but lock the password in a safe.",
+        "Throw out the AI app and use scripts instead.",
+        "Post new copies to every desk automatically."
+      ]
+    }
+  },
+  {
+    "id": "p2-d3-12",
+    "domain": "D3 · Integration",
+    "obj": "3.8 Progressive discovery vs monolithic context",
+    "trap": "Retreat instead of repair",
+    "fam": 3,
+    "select": 1,
+    "question": "An online marketplace moved its seller-support agent's 120 tools behind tool search, so definitions load only when needed. Since then the agent sometimes says it cannot do tasks it handled before. Logs show the search never surfaces the right tool, and many tool descriptions are a single vague line such as “helper for orders”. What should the architect do?",
+    "options": [
+      {"t": "Load all 120 tool definitions on every request again, with the prefix cached.", "why": "Works to restore the old behaviour, but it brings back the cost and tool-confusion that discovery was meant to fix.", "trap": "Retreat instead of repair"},
+      {"t": "Rewrite each tool's name and description to say what it does and when to use it.", "why": "Best. Tool search matches on names and descriptions, so vague one-liners cannot be found; clear descriptions make discovery work."},
+      {"t": "Keep the ten most-used tools always loaded and defer the remaining ones.", "why": "Works for frequent tasks, but the tools that go missing are not necessarily the popular ones, and their descriptions stay vague.", "trap": "Fixes only the popular tools"},
+      {"t": "Move to the most capable model so it phrases its tool searches better.", "why": "Works a little, but no search phrasing can match a description that never says what the tool does.", "trap": "Model can't find the undescribed"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "many tool descriptions are a single vague line such as “helper for orders”",
+    "explanation": "Progressive discovery depends on the metadata it searches: names and descriptions must say what each tool does. Going back to loading everything would fit a small tool set; with 120 tools the right move is to repair the descriptions, not abandon discovery.",
+    "eli5": {
+      "question": "The agent now looks tools up in a catalogue instead of carrying them all, but the catalogue entries just say things like 'helper for orders'. The clue: the descriptions say almost nothing.",
+      "answer": "A library catalogue only works if each card says what the book is about. <b>Rule: discovery is only as good as the names and descriptions it searches.</b>",
+      "options": [
+        "Carry every tool again, all the time.",
+        "Write clear catalogue cards for every tool.",
+        "Carry the ten favourites and look up the rest.",
+        "Hire a cleverer searcher for the same useless cards."
+      ]
+    }
+  }
+]

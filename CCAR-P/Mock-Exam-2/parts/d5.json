@@ -1,0 +1,428 @@
+[
+ {
+  "id": "p2-d5-01",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.1 Guardrails and safety controls",
+  "trap": "Prompt already failed",
+  "fam": 1,
+  "select": 1,
+  "question": "A brokerage's education assistant explains investing concepts to retail customers. The firm is not permitted to recommend specific securities in this channel, and the system prompt says so with examples. Red-team testing still drew out a specific buy recommendation on about 4% of tricky prompts. The assistant handles 30,000 chats a day. What should the architect add?",
+  "options": [
+   {
+    "t": "Have a licensed adviser approve every reply before customers see it.",
+    "why": "Works at low volume, but per-reply approval at 30,000 chats a day is impractical and slow.",
+    "trap": "Human review at high volume"
+   },
+   {
+    "t": "Strengthen the system prompt with more refusal examples and firmer wording.",
+    "why": "Works when a rule is new or vague, but this one is already stated with examples and still leaks.",
+    "trap": "Prompt already failed"
+   },
+   {
+    "t": "Check each reply with a separate classifier that blocks recommendations.",
+    "why": "Best. The prompt-level control has been shown to leak; an independent output check stops recommendations before customers see them, and it scales."
+   },
+   {
+    "t": "Remove the assistant's access to live market prices and named securities.",
+    "why": "Works if the job did not need them, but explaining investing uses real examples, and a recommendation can be phrased without live prices.",
+    "trap": "Removes what the job needs"
+   }
+  ],
+  "answer": [
+   2
+  ],
+  "runnerUp": 1,
+  "decider": "Red-team testing still drew out a specific buy recommendation on about 4% of tricky prompts.",
+  "explanation": "When a rule is regulatory and a prompt-level control has been shown to leak, add an independent output guardrail that checks each reply before it reaches the user. More prompting has already been tried. Approving every reply by hand does not scale to this volume.",
+  "eli5": {
+   "question": "A helper teaches people about investing but must not tell them what to buy. Even with clear instructions, it slips about 4 times in 100 tricky chats. The clue: the instructions were tried and still leak.",
+   "answer": "If a 'no dogs' sign doesn't work, you put a gate at the door. <b>Rule: when a must-not rule leaks through the prompt, add an independent check on the output.</b>",
+   "options": [
+    "An expert approves every reply: far too many chats.",
+    "Stronger instructions: already tried, still slipping.",
+    "A separate checker blocks any buy tip: catches the leaks.",
+    "Take away price data: the teaching needs it."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-02",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.1 Guardrails and safety controls",
+  "trap": "Prompt where enforcement needed",
+  "fam": 1,
+  "select": 2,
+  "question": "A retailer's analytics agent writes and runs SQL against the sales warehouse to answer managers' questions. In testing, one generated query deleted a staging table, and another scanned five years of history for six hours. Managers cannot read SQL. Which two controls best stop both problems from recurring?",
+  "options": [
+   {
+    "t": "Run the agent's queries under a database role that can only read.",
+    "why": "Best. A read-only role makes deletes impossible, whatever SQL the agent writes."
+   },
+   {
+    "t": "Log every query the agent runs to an audit table for weekly review.",
+    "why": "Works for accountability, but it finds the deleted table after the damage is done.",
+    "trap": "Detects after damage"
+   },
+   {
+    "t": "Add a system-prompt rule to write only short, read-only SELECT queries.",
+    "why": "Works most of the time, but a prompt rule is probabilistic; the testing already showed the agent writing destructive and runaway SQL.",
+    "trap": "Prompt where enforcement needed"
+   },
+   {
+    "t": "Set a query timeout and scan limit in the warehouse for the agent's role.",
+    "why": "Best. Limits enforced by the warehouse stop runaway scans regardless of the query."
+   },
+   {
+    "t": "Have the requesting manager approve each query before the agent runs it.",
+    "why": "Works when the approver can judge the action, but managers cannot read SQL, so approval becomes a rubber stamp.",
+    "trap": "Approver can't judge SQL"
+   }
+  ],
+  "answer": [
+   0,
+   3
+  ],
+  "runnerUp": 2,
+  "decider": "one generated query deleted a staging table, and another scanned five years of history for six hours",
+  "explanation": "Enforce limits in the system the agent acts on: a read-only role makes deletes impossible, and warehouse timeouts and scan limits cap runaway queries. A prompt rule is probabilistic. Human approval only works when the approver can judge what they approve.",
+  "eli5": {
+   "question": "A helper writes database commands for managers. In testing, one command deleted a table and another ran for six hours. Managers can't read the commands. The clue: humans can't check the commands, so the limits must sit in the system.",
+   "answer": "Give a new intern a read-only key and a photocopier with an automatic shut-off, rather than a note saying 'please be careful'. <b>Rule: enforce limits in the system, not in the instructions.</b>",
+   "options": [
+    "A read-only key: deleting becomes impossible.",
+    "Keep a list of commands: you find out after the damage.",
+    "Ask it nicely to read only: it may still slip.",
+    "A time and size limit on every command: stops runaway queries.",
+    "Manager approves each command: they can't read them."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-03",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.2 Risks, limitations and failure modes",
+  "trap": "Zero temperature isn't a guarantee",
+  "fam": 9,
+  "select": 1,
+  "question": "An insurer uses Claude to help rate commercial property risks. When auditors re-ran last quarter's cases through the same prompt and model, 6% came back with a different rating. The regulator requires the insurer to show, for any case, the rating it issued and the basis for it. What should the architect put in place?",
+  "options": [
+   {
+    "t": "Set the temperature to zero so that reruns reproduce the issued ratings.",
+    "why": "Works to reduce variation, but identical outputs are still not guaranteed, and a rerun is not the record of what was issued.",
+    "trap": "Zero temperature isn't a guarantee"
+   },
+   {
+    "t": "Record each issued rating with its inputs, prompt version and reasoning.",
+    "why": "Best. Outputs can vary between runs, so what was issued and why must be captured at decision time, not reproduced later."
+   },
+   {
+    "t": "Run each case three times and issue whichever rating comes up most.",
+    "why": "Works to make ratings more consistent, but it still leaves nothing to show the regulator later.",
+    "trap": "Consistency, not a record"
+   },
+   {
+    "t": "Move the rating step to the most capable model, whose answers vary less.",
+    "why": "Works to improve quality, but any model can vary between runs, and the gap is a missing record.",
+    "trap": "Model swap for a records gap"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 0,
+  "decider": "show, for any case, the rating it issued and the basis for it",
+  "explanation": "LLM outputs are not guaranteed to be identical between runs, even at temperature zero, so audits cannot rely on re-running. Keep a durable record of each decision with its inputs, versions and reasoning. Lower temperature reduces variation but does not create the record the regulator asks for.",
+  "eli5": {
+   "question": "An insurer's helper rates buildings. Asked again, it changed some answers. The regulator wants to see what was actually decided and why. The clue: they must show the rating as it was issued.",
+   "answer": "A doctor doesn't re-examine you to prove what she prescribed last year; she keeps the prescription on file. <b>Rule: since outputs can vary, record each decision with its inputs when it is made.</b>",
+   "options": [
+    "Turn randomness down: reruns can still differ, and a rerun isn't the record.",
+    "Save each rating with what went in and why: the regulator's proof.",
+    "Ask three times and take the majority: still nothing on file.",
+    "Use the biggest model: still no record."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-04",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.2 Risks, limitations and failure modes",
+  "trap": "More reasoning, still not exact",
+  "fam": 5,
+  "select": 1,
+  "question": "A credit union's assistant answers members' questions about loan repayments, including the total interest over a loan and the effect of an extra payment. Reviewers found small arithmetic errors in about one in twenty of the longer calculations. Figures quoted to members must be exact to the cent. What is the best change?",
+  "options": [
+   {
+    "t": "Turn on extended thinking so it works through each calculation step by step.",
+    "why": "Works to reduce errors, and would be enough if approximate figures were acceptable; it still leaves exact arithmetic to a probabilistic model.",
+    "trap": "More reasoning, still not exact"
+   },
+   {
+    "t": "Add several worked repayment calculations to the prompt as examples.",
+    "why": "Works to show the method, but the model still does the arithmetic itself and can still slip.",
+    "trap": "Examples don't make maths exact"
+   },
+   {
+    "t": "Switch loan questions to the most capable model available.",
+    "why": "Works to lower the error rate, but exact arithmetic is a limitation of language models generally.",
+    "trap": "Better model, same limitation"
+   },
+   {
+    "t": "Have a calculation tool compute the figures and the model explain them.",
+    "why": "Best. Code computes exact figures every time, and the model does what it is good at: explaining them to the member."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "Figures quoted to members must be exact to the cent.",
+  "explanation": "Exact arithmetic is a known language-model limitation; delegate it to deterministic code through a tool and let the model explain the result. Extended thinking and stronger models reduce errors but cannot guarantee exactness.",
+  "eli5": {
+   "question": "A helper works out loan interest for members, but sometimes gets the maths slightly wrong, and every cent must be right. The clue: the figures must be exact.",
+   "answer": "Even a great maths teacher uses a calculator when a bank statement must be exact. <b>Rule: give exact calculations to code; let the model explain the result.</b>",
+   "options": [
+    "Think longer: fewer slips, but not none.",
+    "Show worked examples: still mental maths.",
+    "Bigger model: still mental maths.",
+    "Calculator does the numbers, helper explains: exact every time."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-05",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.3 Human-in-the-loop by risk and confidence",
+  "trap": "More reviewers, same blind spot",
+  "fam": 3,
+  "select": 1,
+  "question": "A bank's agent reviews anti-money-laundering alerts and drafts a closure when it judges an alert a false positive. Analysts approve 97% of drafts. The review screen shows only the agent's one-paragraph conclusion. A regulator's sample found approved closures where the transaction history contradicted that conclusion. What is the best change to the review step?",
+  "options": [
+   {
+    "t": "Show the transactions and records the conclusion relies on beside each draft.",
+    "why": "Best. Reviewers cannot check a conclusion without its evidence; putting the records beside the draft makes the human check real."
+   },
+   {
+    "t": "Have the agent report its confidence and send only low-confidence drafts to analysts.",
+    "why": "Works when confidence is calibrated, but it cuts review further, and the problem is what reviewers can see, not which drafts reach them.",
+    "trap": "Self-reported confidence"
+   },
+   {
+    "t": "Add a second analyst to approve every closure before it is final.",
+    "why": "Works when single reviewers miss what is in front of them, but here the evidence is in front of no one; two people reading the same paragraph share the blind spot.",
+    "trap": "More reviewers, same blind spot"
+   },
+   {
+    "t": "Lower the analysts' daily alert quota so each gets more review time.",
+    "why": "Works when reviewers are rushed, but more time with a summary still gives them nothing to check it against.",
+    "trap": "Time without the evidence"
+   }
+  ],
+  "answer": [
+   0
+  ],
+  "runnerUp": 2,
+  "decider": "The review screen shows only the agent's one-paragraph conclusion.",
+  "explanation": "Human review works only if the reviewer can verify the output against its evidence. Show the sources the conclusion relies on next to the draft. Adding reviewers or time without the evidence repeats the same rubber stamp.",
+  "eli5": {
+   "question": "A helper drafts 'nothing suspicious here' notes, and people approve them almost every time. But they see only the helper's summary, not the bank records. The clue: the screen shows only the summary.",
+   "answer": "You can't check someone's homework if you see only their final answer and not the question. <b>Rule: put the evidence in front of the human reviewer.</b>",
+   "options": [
+    "Show the records next to the draft: now people can check.",
+    "Let the helper say how sure it is: the issue is what reviewers can see.",
+    "A second person: both still see only the summary.",
+    "More time each: still nothing to check against."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-06",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.4 Compliance with regulations",
+  "trap": "De-identifying doesn't satisfy policy",
+  "fam": 4,
+  "select": 1,
+  "question": "A US federal agency wants to pilot a Claude assistant that summarises benefit case files. Agency policy allows real case data only on cloud services authorised at the required FedRAMP level. To start quickly, the team plans to use an engineer's existing commercial API account, whose authorisation status nobody has checked. What should the architect require?",
+  "options": [
+   {
+    "t": "Encrypt the case files in transit and at rest on the engineer's account.",
+    "why": "Works as a baseline control, but encryption does not make an unverified service authorised.",
+    "trap": "Encryption isn't authorisation"
+   },
+   {
+    "t": "Remove names and case numbers from the files before they are sent.",
+    "why": "Works to reduce exposure, but the files still hold dates, conditions and other details, and the policy governs where real case data may go.",
+    "trap": "De-identifying doesn't satisfy policy"
+   },
+   {
+    "t": "Use synthetic case files until an authorised deployment is confirmed.",
+    "why": "Best. Policy ties real data to authorised services; synthetic files let the pilot start now while the authorised path is confirmed."
+   },
+   {
+    "t": "Go ahead, since a short pilot with a few files is a small exposure.",
+    "why": "Wrong: the policy has no pilot exemption, and real data on an unverified service is a breach however small.",
+    "trap": "Small scope still breaches"
+   }
+  ],
+  "answer": [
+   2
+  ],
+  "runnerUp": 1,
+  "decider": "Agency policy allows real case data only on cloud services authorised at the required FedRAMP level.",
+  "explanation": "Compliance requirements decide where data may go; technical controls like encryption or de-identification do not change a service's authorisation status. Prove the design with synthetic data and move to real data only on a deployment confirmed to meet the required level.",
+  "eli5": {
+   "question": "A government office wants to test an AI helper on real case files, but its rules allow real files only on approved services. The team wants to use an account nobody has checked. The clue: real files only on approved services.",
+   "answer": "If a rule says blood samples go only to a certified lab, wrapping them better or labelling them less doesn't certify another lab. Practise with pretend samples until the certified lab is ready. <b>Rule: compliance decides where data may go; test with synthetic data until the approved path exists.</b>",
+   "options": [
+    "Lock the files up: the service still isn't approved.",
+    "Remove names: still real case data on an unapproved service.",
+    "Made-up files until an approved service is confirmed: starts now, stays within the rules.",
+    "Just go, it's small: breaks the rule."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-07",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.4 Compliance with regulations",
+  "trap": "Notice isn't an explanation",
+  "fam": 8,
+  "select": 2,
+  "question": "An online lender in the EU uses Claude to assess personal-loan applications. Its legal counsel advises that an applicant should not be refused by a solely automated decision, and that a refused applicant must be able to get a meaningful explanation. The assistant currently declines applications on its own. Which two changes best address counsel's advice?",
+  "options": [
+   {
+    "t": "Tell applicants on the application page that AI helps assess their loan.",
+    "why": "Works as general transparency, but it does not give any refused applicant the reason for their decision.",
+    "trap": "Notice isn't an explanation"
+   },
+   {
+    "t": "Have a credit officer, with authority to overturn it, decide every refusal.",
+    "why": "Best. A person with real authority making each refusal means it is no longer solely automated."
+   },
+   {
+    "t": "Remove names and birth dates from applications before the assistant sees them.",
+    "why": "Works for data minimisation, but it addresses neither of counsel's two points.",
+    "trap": "Minimisation, wrong requirement"
+   },
+   {
+    "t": "Host the assistant and its logs in a data centre inside the EU.",
+    "why": "Works for a data-residency requirement, which counsel did not raise.",
+    "trap": "Residency, wrong requirement"
+   },
+   {
+    "t": "Record the factors behind each decision so that the reason can be given.",
+    "why": "Best. A meaningful explanation needs the factors captured at decision time."
+   }
+  ],
+  "answer": [
+   1,
+   4
+  ],
+  "runnerUp": 0,
+  "decider": "The assistant currently declines applications on its own.",
+  "explanation": "Where significant decisions must not be solely automated, a human with real authority must make them, not just sign off. A meaningful explanation needs the factors recorded when the decision is made. A general AI-use notice supports transparency but explains no individual refusal.",
+  "eli5": {
+   "question": "A lender's AI turns down loans on its own. Lawyers say a person must make refusals and refused people must get a real reason. The clue: right now the AI refuses by itself.",
+   "answer": "A referee's assistant can flag a foul, but the referee makes the call and tells the player why. <b>Rule: a person with real authority decides significant refusals, and the reasons are kept so they can be explained.</b>",
+   "options": [
+    "Say AI is used: doesn't give anyone their reason.",
+    "A loan officer who can overturn it makes each refusal: no longer automated alone.",
+    "Hide names: a privacy step, not what the lawyers asked for.",
+    "Keep data in the EU: a different rule.",
+    "Keep the reasons for each decision: so they can be explained."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-08",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.5 Ethical AI: bias, fairness, transparency",
+  "trap": "Blinding isn't evidence",
+  "fam": 6,
+  "select": 1,
+  "question": "A regional development agency uses Claude to score small-business grant applications against a published rubric. Before launch, its board wants evidence that applications of equal merit get the same score, whatever the applicant's gender, ethnicity or first language. The agency holds no demographic data on past applicants. What should the architect do?",
+  "options": [
+   {
+    "t": "Remove names and personal details from applications before they are scored.",
+    "why": "Works as a mitigation, but writing style and business details can still signal group, and blinding produces no evidence. It fits once testing shows names drive a gap.",
+    "trap": "Blinding isn't evidence"
+   },
+   {
+    "t": "Run paired tests that change only group-linked details, and compare scores.",
+    "why": "Best. Paired tests hold merit fixed and vary only signals such as names or dialect, giving direct evidence without demographic records."
+   },
+   {
+    "t": "Instruct the assistant in its system prompt to score every group equally.",
+    "why": "Works as a reminder, but an instruction is not a measurement, and the board asked for evidence.",
+    "trap": "Instruction isn't measurement"
+   },
+   {
+    "t": "Have staff re-score every application that falls in the assistant's bottom fifth.",
+    "why": "Works as a safety net for low scores, but it does not show whether equal applications are scored alike across groups.",
+    "trap": "Review without measuring bias"
+   }
+  ],
+  "answer": [
+   1
+  ],
+  "runnerUp": 0,
+  "decider": "its board wants evidence that applications of equal merit get the same score",
+  "explanation": "Fairness claims need measurement. When group labels are unavailable, counterfactual pairs that differ only in group-linked details show whether the score moves. Blinding inputs is a useful mitigation but proves nothing by itself.",
+  "eli5": {
+   "question": "An agency wants proof its AI scores grant applications fairly, but it has no records of who applied. The clue: the board wants evidence, not promises.",
+   "answer": "To test whether a marker is fair, hand in two identical essays with different names and see if the marks differ. <b>Rule: prove fairness with paired tests that change only the group detail.</b>",
+   "options": [
+    "Hide names: may help, but proves nothing.",
+    "Same application, different names, compare scores: real evidence.",
+    "Tell it to be fair: a promise, not proof.",
+    "Staff re-check low scores: doesn't show whether groups are treated alike."
+   ]
+  }
+ },
+ {
+  "id": "p2-d5-09",
+  "domain": "D5 · Governance, Safety & Risk",
+  "obj": "5.5 Ethical AI: bias, fairness, transparency",
+  "trap": "Public notice, wrong audience",
+  "fam": 8,
+  "select": 1,
+  "question": "A university uses Claude to give each postgraduate application a score from 1 to 10 against a rubric, and admissions staff make the final decisions. Staff say they cannot tell why an application got its score, so they cannot spot or challenge a score that looks wrong. What should the architect change?",
+  "options": [
+   {
+    "t": "Publish a notice on the admissions site explaining how AI supports scoring.",
+    "why": "Works for transparency to applicants, but staff need the reason for each score, not a general statement.",
+    "trap": "Public notice, wrong audience"
+   },
+   {
+    "t": "Show a confidence level from the assistant next to every score it gives.",
+    "why": "Works as a triage signal if calibrated, but a number does not say why, and model-stated confidence is often unreliable.",
+    "trap": "Confidence isn't a reason"
+   },
+   {
+    "t": "Stop scoring and give staff the applications without any AI input.",
+    "why": "Works if the scores had no value, but nothing suggests that; it discards the help instead of making it checkable.",
+    "trap": "Drops value instead of explaining"
+   },
+   {
+    "t": "Have each score cite the rubric criteria and passages that support it.",
+    "why": "Best. Staff can only challenge what they can see; citing criteria and evidence makes every score checkable."
+   }
+  ],
+  "answer": [
+   3
+  ],
+  "runnerUp": 0,
+  "decider": "they cannot tell why an application got its score",
+  "explanation": "Transparency for decision-makers means each output shows its basis: which criteria and which evidence. That lets staff verify and challenge it. A public AI-use notice is transparency for a different audience, the applicants.",
+  "eli5": {
+   "question": "A university's AI scores applications, but staff can't see why any score was given, so they can't catch bad ones. The clue: staff can't tell why.",
+   "answer": "A mark is easy to challenge when the feedback says 'lost two points for no references on page 3'. <b>Rule: make each AI judgement show the criteria and evidence behind it.</b>",
+   "options": [
+    "A notice for applicants: staff still don't see reasons.",
+    "A sureness number: still no reason.",
+    "Drop the AI: loses the help.",
+    "Each score shows the rubric points and quotes behind it: now staff can check."
+   ]
+  }
+ }
+]

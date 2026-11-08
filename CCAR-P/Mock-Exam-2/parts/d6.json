@@ -1,0 +1,267 @@
+[
+  {
+    "id": "p2-d6-01",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.1 Structured discovery",
+    "trap": "Building on second-hand needs",
+    "fam": 6,
+    "select": 1,
+    "question": "A tyre manufacturer wants an assistant that helps maintenance technicians fix machine faults on the factory floor. The plant manager and two engineering leads have described what it should do, and the sponsor has approved a budget. None of the technicians who will use it have been asked how they work today. What should the architect do next?",
+    "options": [
+      {"t": "Write the requirements from the managers' interviews and start the design.", "why": "Works when the people interviewed are the users. Here they are the users' managers, so the design would rest on guesses about the floor.", "trap": "Managers as proxy users"},
+      {"t": "Build a quick prototype from that description and let a few technicians try it.", "why": "Works once you know how the users work, because a prototype tests a design. Built now, it bakes in the managers' assumptions and only shows whether technicians like that guess.", "trap": "Building on second-hand needs"},
+      {"t": "Shadow technicians on shift and interview them about how they find fixes today.", "why": "Best. None of the technicians who will use it have been asked how they work, so watching and asking them is the missing discovery step before any design."},
+      {"t": "Send every technician a short survey asking which features they want most.", "why": "Works for reaching many people, but a feature wish list misses how the work is really done: noise, gloves, where manuals live.", "trap": "Wish list instead of observation"}
+    ],
+    "answer": [2],
+    "runnerUp": 1,
+    "decider": "None of the technicians who will use it have been asked how they work today.",
+    "explanation": "Structured discovery must include the people who will use the system, not only the people who sponsor or manage it. A prototype is a good next step once user needs are known; built before that, it tests the managers' assumptions instead of the technicians' reality.",
+    "eli5": {
+      "question": "A factory wants a helper for the mechanics who fix machines. The bosses said what it should do. Nobody has asked the mechanics. The clue: the people who will use it were never asked.",
+      "answer": "You would not design a kitchen only from what the restaurant owner says; you watch the cooks work first. <b>Rule: discovery talks to and watches the real users before anything is built.</b>",
+      "options": [
+        "Write it all down from the bosses: guesses about the mechanics' work.",
+        "Make a quick version and let mechanics try it: tests the bosses' guess, not their needs.",
+        "Watch mechanics on shift and ask them: learns how the work really happens.",
+        "Send a survey of wanted features: a wish list, not how the job is done."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-02",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.1 Structured discovery",
+    "trap": "Peers negotiating the owner's call",
+    "fam": 8,
+    "select": 1,
+    "question": "A retail bank is scoping an assistant for mortgage advisers. The head of sales wants it to suggest products during calls; the head of compliance wants it limited to answering policy questions. Both report to the chief operating officer, who funds the project but has not said which goal comes first. Other discovery work is complete. What should the architect do first?",
+    "options": [
+      {"t": "Have the chief operating officer set the order of goals, and record it.", "why": "Best. The person who funds the project has not said which goal comes first, so the priority is theirs to set; recording it stops the question reopening later."},
+      {"t": "Design for both goals, with product suggestions off until compliance agrees.", "why": "Works as a compromise when budget allows both, but it guesses the priority and builds scope nobody has chosen.", "trap": "Building both to avoid choosing"},
+      {"t": "Run a workshop with both heads until they agree on a shared scope.", "why": "Works when the two heads own the decision together. Here they are peers with opposite goals, and the person who owns the choice is their boss.", "trap": "Peers negotiating the owner's call"},
+      {"t": "Start with the compliance scope, since it carries the lower regulatory risk.", "why": "Works as a sensible default, but it is the architect making a business priority call that belongs to the sponsor.", "trap": "Architect decides the priority"}
+    ],
+    "answer": [0],
+    "runnerUp": 2,
+    "decider": "who funds the project but has not said which goal comes first",
+    "explanation": "Discovery includes finding out who decides. When two stakeholders want conflicting goals, the architect takes the conflict to the person accountable for the outcome and records the answer. A workshop between peers would be right if they jointly owned the decision.",
+    "eli5": {
+      "question": "Two managers want different things from the same helper. Their boss pays for it but hasn't said which matters more. The clue: the boss who pays hasn't chosen yet.",
+      "answer": "If two kids argue over the car radio, you ask the parent who is driving, not have the kids debate all trip. <b>Rule: take a goal conflict to the person who owns the decision, and write the answer down.</b>",
+      "options": [
+        "Ask the boss to choose and write it down: the right person decides.",
+        "Build both and switch one off: builds things nobody picked.",
+        "Get the two managers to agree: they don't own the choice.",
+        "Pick the safer one yourself: not the architect's call."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-03",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.2 Communicate decisions and trade-offs",
+    "trap": "Right document, wrong audience",
+    "fam": 8,
+    "select": 1,
+    "question": "A city council decided that its planning-enquiry assistant will not answer questions about live planning applications, because a reply could be read as an official decision. Those questions will be passed to the council's front-desk staff instead. A decision record already explains the choice for the project board. What should the architect give front-desk staff before launch?",
+    "options": [
+      {"t": "The decision record, so staff can see the options weighed and the reasons.", "why": "Works for the board and future architects, who need the full reasoning. Front-desk staff need to know what will reach them and what to do.", "trap": "Right document, wrong audience"},
+      {"t": "A short brief on which questions reach them, why, and how handoffs arrive.", "why": "Best. Those questions will be passed to front-desk staff, so they need the decision in terms of their own work: what comes to them, the one-line reason, and how it arrives."},
+      {"t": "The eval results showing how reliably the assistant spots those questions.", "why": "Works for the team judging quality, but staff cannot act on a detection score.", "trap": "Metrics for the wrong reader"},
+      {"t": "A walkthrough of the handoff design, so staff can report faults precisely.", "why": "Works for the support team that maintains the routing, but it is technical detail front-desk staff do not need.", "trap": "Technical depth for end users"}
+    ],
+    "answer": [1],
+    "runnerUp": 0,
+    "decider": "Those questions will be passed to the council's front-desk staff instead.",
+    "explanation": "The same decision is communicated differently to each audience. The board gets the decision record; the people whose work changes get what it means for them. The decision record would be right if the reader were the board or a future architect.",
+    "eli5": {
+      "question": "The council's helper won't answer questions about open planning cases; those go to the front desk instead. The board already has the long reasons. The clue: the front-desk team will now get those questions.",
+      "answer": "When a shop changes who handles refunds, the cashiers get a one-page note on what to do, not the board's meeting minutes. <b>Rule: tell each audience what the decision means for them.</b>",
+      "options": [
+        "Give them the board's long record: right reasons, wrong readers.",
+        "A short note on what comes to them, why, and how: what they need.",
+        "Show how well the helper spots those questions: nothing they can act on.",
+        "Explain the technical routing: detail they don't need."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-04",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.2 Communicate decisions and trade-offs",
+    "trap": "False precision",
+    "fam": 7,
+    "select": 1,
+    "question": "A food-delivery company's finance director asks the architect for the yearly running cost of a planned rider-support assistant, to put in next year's budget. The cost depends mainly on message volume, and nobody knows it yet: operations estimates range from 20,000 to 80,000 conversations a month. How should the architect present the cost?",
+    "options": [
+      {"t": "One figure based on the midpoint volume, so the budget line stays simple.", "why": "Works when volume is known within a narrow band. Here it could be four times higher or lower, and one number hides that.", "trap": "False precision"},
+      {"t": "The figure for the highest volume, so the budget cannot be exceeded.", "why": "Works when overspending is the only concern, but it may tie up far more budget than needed and hides the likely cost.", "trap": "Padding to the worst case"},
+      {"t": "A full cost model by component, for the finance team to work through.", "why": "Works for an engineering cost review, but the director asked for a budget figure, not a model to rebuild.", "trap": "Detail instead of an answer"},
+      {"t": "Low, expected and high costs by volume, re-checked after the pilot.", "why": "Best. Nobody knows the volume yet, so a range tied to the cost driver shows the real uncertainty, and the pilot gives a date when it narrows."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "nobody knows it yet: operations estimates range from 20,000 to 80,000 conversations a month",
+    "explanation": "When a key input is uncertain, an honest trade-off presentation shows the range, names what drives it, and says when the estimate will improve. A single figure is fine once the driver is known within a narrow band.",
+    "eli5": {
+      "question": "Finance wants a yearly cost for the riders' helper. The cost depends on how many chats there will be, and that could be anywhere from small to four times bigger. The clue: nobody knows the volume yet.",
+      "answer": "If you don't know how many guests are coming, you tell the caterer 'between 40 and 80, we'll confirm next week', not a made-up 60. <b>Rule: when the driver is unknown, give a range, name the driver and say when it firms up.</b>",
+      "options": [
+        "One middle number: hides how wrong it could be.",
+        "The biggest number: locks up money that may not be needed.",
+        "A big spreadsheet of parts: not the answer finance asked for.",
+        "Low, likely and high, checked after the pilot: honest and useful."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-05",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.3 SLAs and expectation alignment",
+    "trap": "Facts without realignment",
+    "fam": 3,
+    "select": 1,
+    "question": "An energy supplier's operations head agreed an SLA for the billing assistant: 90% of sampled answers correct each month, and replies within ten seconds. Both targets have been met for three months. This week the head forwarded three wrong answers that customers posted online and asked for the assistant to be rebuilt. What should the architect do?",
+    "options": [
+      {"t": "Start the rebuild now, since the head's confidence matters more than the SLA figures.", "why": "Works when the system is failing its targets. Here it meets them, so a rebuild reacts to three anecdotes at high cost.", "trap": "Reacting to anecdotes"},
+      {"t": "Review the cases and SLA results with the head; agree whether the target changes.", "why": "Best. Both targets have been met, so the head's expectation has moved beyond what was agreed; reviewing together either reaffirms the SLA or renegotiates it openly."},
+      {"t": "Send the head the monthly reports showing that every SLA target has been met.", "why": "Works to set the record straight, but the head's expectation has changed, and a report alone does not realign it.", "trap": "Facts without realignment"},
+      {"t": "Block answers on those three topics until the prompt has been fixed.", "why": "Works as a quick containment for a serious fault, but it treats three cases without settling what level of quality was agreed.", "trap": "Treating the symptom"}
+    ],
+    "answer": [1],
+    "runnerUp": 2,
+    "decider": "Both targets have been met for three months.",
+    "explanation": "An SLA is a shared agreement, so when a stakeholder's expectations drift from it, the architect reopens the agreement with them rather than either rebuilding or just quoting the figures. Sending the reports would be enough if the head had only misread the results.",
+    "eli5": {
+      "question": "The boss agreed '9 in 10 answers right' and the helper hits it every month. Now three bad answers went public and the boss wants it rebuilt. The clue: it has met the agreed targets.",
+      "answer": "If a builder met the agreed spec and you now want more, you sit down and agree a new spec, not tear the house down or wave the contract at each other. <b>Rule: when expectations drift from an SLA met, review it together and reaffirm or change it.</b>",
+      "options": [
+        "Rebuild it: a big cost for three stories.",
+        "Look at the cases and the numbers together and agree the target: realigns the boss.",
+        "Send the reports: true, but the boss still wants more.",
+        "Block those topics: patches three cases, settles nothing."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-06",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.3 Feedback loops",
+    "trap": "Another proxy measure",
+    "fam": 6,
+    "select": 2,
+    "question": "A university's admissions assistant was approved on one success measure: correct answers about deadlines and entry requirements. The sponsor's weekly report shows only the number of conversations handled, which keeps rising, so the sponsor is pleased. Meanwhile, admissions staff keep emailing the team about students given wrong deadlines. Which two changes should the architect make?",
+    "options": [
+      {"t": "Add sampled answer accuracy to the sponsor's weekly report, beside the volume.", "why": "Best. The sponsor's report shows only conversations handled, which is not the measure the assistant was approved on; accuracy puts the real result in front of the sponsor."},
+      {"t": "Add a student satisfaction score to the weekly report beside the volume figure.", "why": "Works as a view of user experience, but a student can be satisfied with a wrong deadline; it is another proxy.", "trap": "Another proxy measure"},
+      {"t": "Set a target for conversations handled, since the sponsor already follows it.", "why": "Works when adoption is the goal, but here it rewards volume, not correct answers.", "trap": "Targeting the proxy"},
+      {"t": "Give staff a simple way to log wrong answers, reviewed weekly into eval cases.", "why": "Best. Staff are already spotting errors by email; a logged, reviewed channel turns those reports into tests that stop the errors returning."},
+      {"t": "Ask staff to hold their reports until the planned quarterly review.", "why": "Works to reduce noise, but wrong deadlines harm students now, and a quarterly loop is too slow.", "trap": "Slowing the feedback loop"}
+    ],
+    "answer": [0, 3],
+    "runnerUp": 1,
+    "decider": "The sponsor's weekly report shows only the number of conversations handled",
+    "explanation": "A feedback loop must report the measure the stakeholder agreed to and turn front-line error reports into fixes. Volume and satisfaction are proxies; they would suit a project whose goal was adoption or experience.",
+    "eli5": {
+      "question": "The helper was approved for giving correct answers. The boss only sees how many chats there were, so the boss is happy. Staff keep reporting wrong deadlines. The clue: the boss's report shows only the chat count.",
+      "answer": "A restaurant judged on food quality shouldn't only count plates served; it should taste the food and listen to the waiters' complaints. <b>Rule: report the agreed measure, and turn front-line error reports into tests.</b>",
+      "options": [
+        "Show answer accuracy to the boss: the measure that was agreed.",
+        "Add a happiness score: students can be happy with a wrong date.",
+        "Make chat count a target: rewards the wrong thing.",
+        "Let staff log mistakes and turn them into tests: fixes stick.",
+        "Make staff wait three months: too slow while students get hurt."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-07",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.4 Document for the reader",
+    "trap": "Quality evidence, not control evidence",
+    "fam": 8,
+    "select": 1,
+    "question": "A building society's model-risk team must approve a loan-servicing assistant before it goes live. Their reviewers will not run the system. They ask two questions: what customer data flows where, and which actions the model can take without a person approving them. The project has code, eval reports, runbooks and a deployment guide. What should the architect prepare for them?",
+    "options": [
+      {"t": "The eval reports, showing the quality reached on each task the assistant does.", "why": "Works when reviewers ask how well it performs. They asked about data flows and unapproved actions, which eval scores do not show.", "trap": "Quality evidence, not control evidence"},
+      {"t": "The runbooks, showing how the team responds when the assistant fails.", "why": "Works for the operations team taking it over, but it answers neither reviewer question.", "trap": "Operations doc for reviewers"},
+      {"t": "Read access to the code, so reviewers can trace every path for themselves.", "why": "Works for engineers, but these reviewers will not run the system and should not have to reverse-engineer the answers.", "trap": "Raw material, not an answer"},
+      {"t": "A data-flow diagram marking each model action and the approval it needs.", "why": "Best. The reviewers asked which actions the model can take without a person approving them, and where data goes; one diagram answers both directly."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "which actions the model can take without a person approving them",
+    "explanation": "Architecture documents are written for a reader and their questions. Risk reviewers need data flows and control points; quality evidence would be the right document if they had asked how accurate the assistant is.",
+    "eli5": {
+      "question": "Risk checkers must approve a loan helper. They won't use it. They want to know where customer data goes and what the helper can do without a person saying yes. The clue: that second question.",
+      "answer": "A fire inspector asks where the exits and alarms are; you hand them the floor plan, not your restaurant reviews. <b>Rule: give each reader the document that answers their question.</b>",
+      "options": [
+        "Test scores: show quality, not what it may do alone.",
+        "The fix-it guides: for the team running it, not the checkers.",
+        "The code: makes the checkers dig for the answer.",
+        "A map of data and actions with who approves each: answers both questions."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-08",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.4 Implementation guidance",
+    "trap": "More documentation, same gap",
+    "fam": 5,
+    "select": 1,
+    "question": "A media group's platform team designed how product teams should build Claude assistants, including how to treat text from web pages as untrusted. Two teams have built assistants so far; both read the 40-page design document, and both handled untrusted text differently, one unsafely. Four more teams start next month. What should the platform team provide?",
+    "options": [
+      {"t": "A starter template with the untrusted-text handling built in, plus a short guide.", "why": "Best. Both teams read the document and still built it differently, so the guidance needs to ship as working code the teams start from, not more words."},
+      {"t": "A revised design document with a clearer, longer section on untrusted text.", "why": "Works when teams missed a guideline because it was unclear. Here both read it and still diverged, so more text is unlikely to change the outcome.", "trap": "More documentation, same gap"},
+      {"t": "A design review of each new team's assistant before it is allowed to go live.", "why": "Works as a backstop, but it finds the mistake after the team has built it, and the platform team becomes a bottleneck for four teams.", "trap": "Catching it late"},
+      {"t": "A one-day course on prompt injection for every developer on the new teams.", "why": "Works to raise awareness, but understanding the risk does not make four teams implement the defence the same way.", "trap": "Training for a build problem"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "both read the 40-page design document, and both handled untrusted text differently",
+    "explanation": "Implementation guidance works best when the safe path is the default one: a reference implementation or template that teams start from. A clearer document would win if teams had skipped or misread a vague rule.",
+    "eli5": {
+      "question": "Two teams read a long rule book on handling unsafe web text, and both did it differently, one badly. Four more teams are coming. The clue: they read the book and still got it wrong.",
+      "answer": "If people keep assembling a shelf wrong despite the manual, you ship it with the tricky part already assembled. <b>Rule: when reading the guide isn't enough, give a ready-made template with the safe part built in.</b>",
+      "options": [
+        "A starter kit with the safe part built in: everyone starts right.",
+        "A longer rule book: they already read one.",
+        "Check each team at the end: finds the mistake late.",
+        "A training day: knowing the risk isn't building it the same way."
+      ]
+    }
+  },
+  {
+    "id": "p2-d6-09",
+    "domain": "D6 · Stakeholders & Lifecycle",
+    "obj": "6.5 Lifecycle phases",
+    "trap": "Re-proving the pilot",
+    "fam": 4,
+    "select": 2,
+    "question": "A grocery chain's stock-query assistant passed its pilot with 40 store managers, meeting every agreed target. During the pilot, the project team read every conversation by hand to spot problems. After launch, that team moves to other work. Next month it goes live to 2,000 stores, and finance has already approved the running cost at that volume. Which two steps are most needed before the wider launch?",
+    "options": [
+      {"t": "Run the eval suite again on a larger set of cases to confirm the pilot results.", "why": "Works when pilot results are in doubt. They met every target; the gap is what replaces the hand-reading once volume grows.", "trap": "Re-proving the pilot"},
+      {"t": "Re-estimate the running cost at full volume to confirm the approved budget.", "why": "Works when the cost has not been checked, but finance has already approved it at that volume.", "trap": "Redoing settled work"},
+      {"t": "Set up automated monitoring of sampled answers, with alerts on the agreed targets.", "why": "Best. The team read every conversation by hand during the pilot, which cannot scale to 2,000 stores; automated sampling and alerts take over that job."},
+      {"t": "Move to a more capable model to handle the wider range of store questions.", "why": "Works if the pilot showed quality gaps, but it met every target, and a model change would need re-testing.", "trap": "Fixing what isn't broken"},
+      {"t": "Name an operations owner and on-call path for alerts once the project team steps back.", "why": "Best. Monitoring only helps if someone acts on it; the people who watched the pilot are moving on, so ownership must be handed over explicitly."}
+    ],
+    "answer": [2, 4],
+    "runnerUp": 0,
+    "decider": "During the pilot, the project team read every conversation by hand to spot problems.",
+    "explanation": "Moving from pilot to production means replacing the project team's manual watching with automated monitoring and a named owner who acts on it. Re-running evals would matter if pilot quality were in doubt.",
+    "eli5": {
+      "question": "A shop helper did well in a small trial where the team read every chat by hand. Soon it goes to 2,000 stores, and the money is already approved. The clue: the team checked everything by hand.",
+      "answer": "A babysitter can watch two kids by eye; a school of 2,000 needs cameras, alarms and a named teacher on duty. <b>Rule: before scaling, replace manual watching with monitoring and a named owner.</b>",
+      "options": [
+        "Test again with more cases: the trial already passed.",
+        "Recount the cost: finance already said yes.",
+        "Automatic checks with alerts: replaces the hand-reading.",
+        "Switch to a bigger model: nothing is broken.",
+        "Name who answers the alerts: someone must act when they fire."
+      ]
+    }
+  }
+]

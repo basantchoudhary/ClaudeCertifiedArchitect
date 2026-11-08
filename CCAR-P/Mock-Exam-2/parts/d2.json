@@ -1,0 +1,238 @@
+[
+  {
+    "id": "p2-d2-01",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.1 Model selection trade-offs",
+    "trap": "Downgrading the hard step",
+    "fam": 3,
+    "select": 1,
+    "question": "A consultancy's research agent has a coordinator that plans each task and writes the final report, and twenty subagents that each read one source and summarise it. Everything runs on the most capable model, and cost is over budget. Step-level evals show that a smaller model's source summaries match the capable model's, but its final reports score lower. What should the architect do?",
+    "options": [
+      {"t": "Move the whole system to the smaller model, and add a human review of each final report.", "why": "Works to cut cost, and would win if the final reports also matched, but the eval shows the report step gets worse, and review only catches that afterwards.", "trap": "Downgrading the hard step"},
+      {"t": "Keep the capable model throughout, and cache the instructions that all subagents share.", "why": "Works to trim cost, but most of the spend is twenty full subagent runs on the expensive model, which caching barely changes.", "trap": "Small saving, wrong lever"},
+      {"t": "Run the subagents on the smaller model, and keep the coordinator on the capable one.", "why": "Best. The deciding fact is the step-level result: the smaller model matches on summaries, which are most of the calls, and only the report step needs the capable model."},
+      {"t": "Cut the subagents from twenty to ten, each summarising two sources on the capable model.", "why": "Works to reduce calls, but the same reading still happens on the expensive model, so the saving is small.", "trap": "Fewer agents, same price"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "a smaller model's source summaries match the capable model's, but its final reports score lower",
+    "explanation": "Model choice can be made per role, not per system. High-volume, simpler steps go to the smaller model where evals show it is good enough, and the hard planning and writing stay on the capable model. Moving everything down would be right only if the report step also held up.",
+    "eli5": {
+      "question": "A research team has one boss writing the report and twenty helpers summarising sources, all very expensive. Cheaper helpers summarise just as well, but a cheaper boss writes worse reports. The clue: tests show which job the cheaper model can do.",
+      "answer": "A restaurant hires kitchen porters for chopping and keeps the head chef for the final dish. <b>Rule: pick the model per step, using step-level evals.</b>",
+      "options": [
+        "Make everyone cheaper and check the reports afterwards.",
+        "Keep everyone expensive and save a little on shared notes.",
+        "Cheaper helpers, expensive boss.",
+        "Fewer expensive helpers doing more each."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-02",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.1 Model selection trade-offs",
+    "trap": "A closer public proxy",
+    "fam": 6,
+    "select": 1,
+    "question": "A fashion retailer chose a model because it topped a public leaderboard of maths and coding puzzles. On the retailer's own task, pulling sizes, materials and colours from supplier descriptions, it misses its accuracy target and is slow. The team must choose again within a month. What should the architect do?",
+    "options": [
+      {"t": "Label a few hundred real descriptions and compare candidates on accuracy, speed and cost.", "why": "Best. The deciding fact is that the leaderboard tests puzzles, not this task: a labelled set of the retailer's own descriptions measures what matters."},
+      {"t": "Switch to the model that tops the newest public leaderboard for reading long documents.", "why": "Works better than a puzzle ranking, but it still tests someone else's task, not attribute extraction from these descriptions.", "trap": "A closer public proxy"},
+      {"t": "Keep the model, and add examples of correct extractions until results look good enough.", "why": "Works to lift accuracy, but it does nothing for the slowness, and without a test set nobody can tell when it is good enough.", "trap": "Tuning without a measure"},
+      {"t": "Move to the most capable model available, as the safest choice for a production task.", "why": "Works for accuracy, but it is likely slower and dearer, and the choice is still made without testing the real task.", "trap": "Biggest model by default"}
+    ],
+    "answer": [0],
+    "runnerUp": 1,
+    "decider": "it topped a public leaderboard of maths and coding puzzles",
+    "explanation": "Public benchmarks measure general skills on other people's tasks. Model choice should rest on an eval built from your own data, weighed against latency and cost. A leaderboard closer to the task is tempting, but it is still a proxy for the retailer's real descriptions.",
+    "eli5": {
+      "question": "A shop picked a helper because it won a maths contest, but it is bad at reading clothing labels. The clue: the contest tested a different skill.",
+      "answer": "You hire a chef by tasting their cooking, not by their chess rating. <b>Rule: choose models with a test made from your own task, comparing accuracy, speed and cost.</b>",
+      "options": [
+        "Make a test from real labels and try each candidate.",
+        "Pick the winner of a reading contest instead.",
+        "Keep it and give it more examples.",
+        "Pick the biggest, cleverest one."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-03",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.2 System prompts, templates and guardrails",
+    "trap": "Treating the symptom in code",
+    "fam": 3,
+    "select": 1,
+    "question": "A utility's phone line turns Claude's replies into speech. Callers hear the speech engine read out asterisks, hash signs and list numbers. The system prompt says “Do not use markdown”, yet the symbols keep appearing. Which change should the architect make first?",
+    "options": [
+      {"t": "Strip markdown symbols out of each reply in code before it reaches the speech engine.", "why": "Works as a backstop, but the reply is still written as a list, so callers hear choppy fragments with the symbols removed.", "trap": "Treating the symptom in code"},
+      {"t": "Repeat the no-markdown rule in capitals at both the start and the end of the prompt.", "why": "Works a little, but it repeats a negative rule without telling Claude what to write instead.", "trap": "Louder negative rule"},
+      {"t": "Add a full list of every markdown symbol that a reply must never contain.", "why": "Works to name the symbols, but it is still only a ban, and a reply can avoid them while staying list-shaped.", "trap": "Longer ban list"},
+      {"t": "Say that replies are spoken aloud, and ask for short, conversational sentences.", "why": "Best. The deciding fact is that a bare “do not” keeps failing: saying what to do and why lets Claude write for listening."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "The system prompt says “Do not use markdown”, yet the symbols keep appearing",
+    "explanation": "Anthropic's guidance is to tell Claude what to do rather than only what not to do, and to give the reason. Knowing the reply will be heard, Claude writes it for a listener, not just without symbols. Stripping symbols in code is a sensible backstop, but it leaves list-shaped replies that sound broken.",
+    "eli5": {
+      "question": "A phone helper's answers are read aloud, and callers hear “star star hash”. The rule just says “don't use markdown”. The clue: the rule says what not to do, and not why.",
+      "answer": "Telling a speaker “don't use slides” is weaker than “you're on the radio, so talk it through”. <b>Rule: say what you want and why, not only what to avoid.</b>",
+      "options": [
+        "Delete the symbols with code afterwards.",
+        "Shout the rule twice.",
+        "List every banned symbol.",
+        "Explain the answer will be spoken, and ask for chatty sentences."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-04",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.2 System prompts, templates and guardrails",
+    "trap": "Shouting instead of fixing",
+    "fam": 5,
+    "select": 2,
+    "question": "A clinic network's appointment assistant has a 6,000-word system prompt, grown by adding a rule after each incident. Several rules now contradict one another, and the model follows them unevenly. One rule must hold on every reply: no advice about medicine doses. Which two changes should the architect make?",
+    "options": [
+      {"t": "Rewrite the prompt into tagged sections, resolving the conflicting rules and removing duplicates.", "why": "Best. Contradictions make any model follow rules unevenly, so the prompt itself must be made consistent and clearly structured."},
+      {"t": "Mark the rules that are most often missed as CRITICAL, in capitals, so they get priority.", "why": "Works a little, but it leaves the contradictions in place, and heavy emphasis can make the model over-apply rules.", "trap": "Shouting instead of fixing"},
+      {"t": "Screen every reply with a separate check for dose advice, and block any reply that fails it.", "why": "Best. A rule that must hold every time needs enforcement outside the prompt, so a miss is caught before it is sent."},
+      {"t": "Split the assistant into five assistants, one per group of rules, behind a router.", "why": "Works to shorten each prompt, but appointment requests do not divide into rule groups, and the conflicts would remain.", "trap": "Overbuilt split"},
+      {"t": "Move to a model with a larger context window so the long prompt gets more attention.", "why": "Works for prompts that do not fit, but this one fits, and no model can follow two rules that contradict each other.", "trap": "Bigger window"}
+    ],
+    "answer": [0, 2],
+    "runnerUp": 1,
+    "decider": "Several rules now contradict one another, and the model follows them unevenly. One rule must hold on every reply",
+    "explanation": "A prompt grown by patches needs restructuring: clear sections, one consistent rule set, no duplicates. Rules that must never fail also need a guardrail outside the prompt. Capital-letter emphasis feels like a quick fix, but it cannot resolve a contradiction.",
+    "eli5": {
+      "question": "A clinic helper's rulebook grew by a new rule after every mistake, and now rules disagree. One rule is a must: never talk about medicine doses. The clue: the rulebook is messy, and one rule cannot fail even once.",
+      "answer": "Tidy a messy staff handbook, and for the one rule that must never break, lock the medicine cupboard. <b>Rule: restructure conflicting prompts, and enforce must-hold rules outside the prompt.</b>",
+      "options": [
+        "Rewrite the rulebook neatly, fixing the clashes.",
+        "Put the forgotten rules in capitals.",
+        "Check every answer for dose advice before it goes out.",
+        "Make five helpers, one for each rule group.",
+        "Get a helper with a bigger memory."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-05",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.3 Prompt engineering techniques",
+    "trap": "Trimming a step that adds nothing",
+    "fam": 3,
+    "select": 1,
+    "question": "A payments company classifies merchants into business categories. Its zero-shot prompt already met the accuracy target. An engineer then added step-by-step reasoning: accuracy did not change, but responses now take three times as long, which breaks the latency limit. What should the architect do?",
+    "options": [
+      {"t": "Keep the reasoning, but stream each response so that the first words arrive sooner.", "why": "Works for chat screens, but the category is used only once the whole response is done, so total time does not change.", "trap": "Streaming a whole-answer task"},
+      {"t": "Remove the reasoning step and go back to the zero-shot prompt that met the target.", "why": "Best. The deciding fact is that accuracy did not change: the reasoning adds time and cost and buys nothing."},
+      {"t": "Keep the reasoning, and move to a smaller, faster model to win back the lost time.", "why": "Works to cut latency, but it keeps a step that bought nothing and puts untested accuracy at risk.", "trap": "Changing the model, not the step"},
+      {"t": "Keep the reasoning, but limit it to two short sentences before the category.", "why": "Works to shorten replies, and would fit if reasoning had raised accuracy, but here it still pays for a step that added nothing.", "trap": "Trimming a step that adds nothing"}
+    ],
+    "answer": [1],
+    "runnerUp": 3,
+    "decider": "accuracy did not change",
+    "explanation": "A technique must earn its cost. Step-by-step reasoning helps on multi-step problems, but here the eval shows it changed nothing while tripling response time. Shortening the reasoning would make sense only if it had raised accuracy and the team wanted to keep that gain.",
+    "eli5": {
+      "question": "A sorting helper was already good. Someone told it to “show its working”, and it got no better, just three times slower. The clue: the extra step changed nothing.",
+      "answer": "If a shortcut gets you there just as well, you stop taking the long road. <b>Rule: keep a prompting technique only if the eval shows it helps.</b>",
+      "options": [
+        "Keep the working, but show the first words sooner.",
+        "Drop the working and go back to the old prompt.",
+        "Keep the working, use a faster helper.",
+        "Keep the working, but make it shorter."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-06",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.4 Context windows and token usage",
+    "trap": "Retrieval for a corpus that fits",
+    "fam": 7,
+    "select": 1,
+    "question": "A procurement team's assistant answers questions across six supplier contracts, about 80,000 tokens in all, which fit easily in the context window. The prompt puts the user's question first, then the contracts after it, with no labels. Answers often mix up which supplier a clause belongs to. What should the architect change first?",
+    "options": [
+      {"t": "Split the contracts into chunks and retrieve the five most relevant ones for each question.", "why": "Works when documents exceed the window, but these fit, and loose chunks lose the supplier context the answers already confuse.", "trap": "Retrieval for a corpus that fits"},
+      {"t": "Move to a model with a larger context window so that each contract has more room.", "why": "Works for documents that do not fit, but these fit easily, and the problem is unlabelled structure, not space.", "trap": "Bigger window"},
+      {"t": "Have a smaller model summarise each contract, and send the six summaries instead.", "why": "Works to cut tokens, but summaries drop the clause detail the questions are about.", "trap": "Summaries lose clauses"},
+      {"t": "Put the contracts first, each in a tagged block naming its supplier, and the question last.", "why": "Best. The deciding fact is unlabelled contracts placed after the question: tags with the supplier name, and the question at the end, follow long-context guidance."}
+    ],
+    "answer": [3],
+    "runnerUp": 0,
+    "decider": "then the contracts after it, with no labels",
+    "explanation": "Anthropic's long-context guidance is to place long documents at the top, wrap each in tags with metadata such as its source, and put the question at the end. The contracts already fit, so the fix is structure, not less or more context. Retrieval would win if the contracts were too large or too many to send together.",
+    "eli5": {
+      "question": "A helper gets a question, then six contracts piled up with no name on any of them, and mixes up who said what. The clue: everything fits; it is just unlabelled.",
+      "answer": "Put each contract in a folder with the supplier's name on it, then ask your question. <b>Rule: long documents first, each tagged with its source, question last.</b>",
+      "options": [
+        "Cut the contracts into bits and fetch the best five bits.",
+        "Get a bigger desk.",
+        "Use short summaries instead of the contracts.",
+        "Label each contract with its supplier, put them first, and ask last."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-07",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.5 Prompt reuse strategies",
+    "trap": "Keep-alive workaround",
+    "fam": 3,
+    "select": 1,
+    "question": "A law firm's internal assistant sends the same 20,000-token policy prefix on every request, with prompt caching enabled. Lawyers use it steadily but lightly: requests arrive about every ten to fifteen minutes. Nearly every request misses the cache and pays full price. What should the architect change?",
+    "options": [
+      {"t": "Send a small dummy request every four minutes so that the cached prefix never expires.", "why": "Works, but it pays for a stream of requests nobody needs all day, where a longer cache lifetime fixes it directly.", "trap": "Keep-alive workaround"},
+      {"t": "Shorten the policy prefix to the sections that lawyers ask about most often.", "why": "Works to cut tokens, but it drops policy the assistant sometimes needs, and the cache still expires between requests.", "trap": "Cutting needed context"},
+      {"t": "Use the longer, one-hour cache lifetime for the policy prefix.", "why": "Best. The deciding fact is the gap between requests: it is longer than the default cache lifetime of a few minutes, and well within an hour."},
+      {"t": "Send the requests through batch processing to get its lower price instead.", "why": "Works for work that can wait, but lawyers are waiting for each answer, so batch timing does not fit.", "trap": "Batch for interactive use"}
+    ],
+    "answer": [2],
+    "runnerUp": 0,
+    "decider": "requests arrive about every ten to fifteen minutes",
+    "explanation": "The default prompt cache lasts a few minutes and is refreshed by each hit, so steady but sparse traffic keeps missing it. A longer cache lifetime costs a little more to write but turns those misses into hits. A keep-alive ping works, but it pays all day for requests that do nothing.",
+    "eli5": {
+      "question": "A shared rulebook is kept handy for five minutes, but lawyers only ask every ten to fifteen minutes, so it is always put away. The clue: the gap is longer than the keep-handy time.",
+      "answer": "If the library takes back your book after five minutes and you read every fifteen, ask for a one-hour loan. <b>Rule: match the cache lifetime to the gap between requests.</b>",
+      "options": [
+        "Poke the system every four minutes to keep it awake.",
+        "Cut the rulebook down.",
+        "Keep the rulebook handy for an hour.",
+        "Send the questions in a slow, cheap batch."
+      ]
+    }
+  },
+  {
+    "id": "p2-d2-08",
+    "domain": "D2 · Models, Prompting & Context",
+    "obj": "2.5 Prompt reuse strategies",
+    "trap": "Always-on instructions",
+    "fam": 8,
+    "select": 2,
+    "question": "A bank's analysts use Claude each quarter to prepare a regulatory return in a fixed spreadsheet layout. Each time they paste in three pages of instructions, and the layout comes out differently. The capital ratios in the return must be calculated exactly, and the instructions are not needed for any other work. Which two changes should the architect make?",
+    "options": [
+      {"t": "Add the three pages to the analysts' shared system prompt, so they load in every session.", "why": "Works to stop the pasting, but it loads quarterly instructions into every session, for work that never needs them.", "trap": "Always-on instructions"},
+      {"t": "Package the instructions and the spreadsheet template as a Skill that loads for this task.", "why": "Best. The instructions are needed only for this task, so a Skill keeps them in one maintained place and loads them only when the return is prepared."},
+      {"t": "Cache the three pages of instructions, so each analyst's session reads them more cheaply.", "why": "Works to cut cost, but the problem is an inconsistent layout and exact ratios, which caching does not touch.", "trap": "Fixing cost, not consistency"},
+      {"t": "Ask Claude to calculate each ratio a second time and confirm that both results agree.", "why": "Works to catch some slips, but both calculations are model arithmetic, and the ratios must be exact.", "trap": "Model double-check for maths"},
+      {"t": "Include a script in the Skill that calculates the ratios and fills in the template.", "why": "Best. A script computes the ratios exactly and fills the same layout every time."}
+    ],
+    "answer": [1, 4],
+    "runnerUp": 0,
+    "decider": "The capital ratios in the return must be calculated exactly, and the instructions are not needed for any other work",
+    "explanation": "Skills package task-specific instructions, templates and scripts so they load only when the task needs them. A bundled script handles the parts that must be exact. Putting the instructions in the shared system prompt also stops the pasting, but it loads them into every unrelated session.",
+    "eli5": {
+      "question": "Every quarter, analysts paste in three pages of instructions, and the spreadsheet comes out different each time. The numbers must be exact. The clue: the instructions are for one job only, and the maths cannot be off.",
+      "answer": "Keep a labelled toolbox for the quarterly job, with the instructions and a calculator inside; open it only for that job. <b>Rule: put task-only instructions in a Skill, and exact steps in a script inside it.</b>",
+      "options": [
+        "Put the instructions in everyone's everyday setup.",
+        "Make a Skill with the instructions and the template.",
+        "Store the instructions so they cost less to send.",
+        "Ask Claude to do the maths twice.",
+        "Add a script to the Skill that does the maths and fills the sheet."
+      ]
+    }
+  }
+]
